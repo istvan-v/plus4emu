@@ -1,0 +1,270 @@
+plus4 2.0 beta
+==============
+
+plus4 is a portable emulator of the Commodore Plus/4 computer, written
+in C++, and supporting Windows and POSIX platforms (32 bit Windows, and
+32 and 64 bit Linux have been tested).
+It implements accurate, high quality hardware emulation, however, the
+system requirements are higher than that of most other emulators.
+
+Features
+========
+
+General
+-------
+
+  * graphical user interface using the FLTK library
+  * software (FLTK based) or OpenGL video, with resizable emulator
+    window, fullscreen mode, brightness/contrast/gamma can be set
+    globally or separately for red/green/blue channels, color
+    saturation control; additional features in OpenGL mode only: single
+    or double buffered (with synchronization to vertical refresh) mode,
+    linear texture filtering, and some display effects
+  * real time audio output uses the PortAudio library (v18 or v19), with
+    support for many native audio APIs (MME/DirectSound/ASIO on Windows,
+    OSS/ALSA/JACK on Linux, and CoreAudio on MacOS X); high quality
+    sample rate conversion with low aliasing; volume control, two first
+    order highpass filters with configurable cutoff frequency, and an
+    optional parametric equalizer can be applied to the audio signal
+  * recording sound output to a WAV format sound file
+  * saving and loading snapshots of the state of the emulated machine
+  * demo recording (snapshot combined with stream of keyboard events
+    which can be played back with accurate timing)
+  * tape emulation with playback, recording, and setting tape position;
+    markers can be created for quick positioning to specific tape
+    locations (useful for tapes with multiple files); uses custom file
+    format which is PCM audio data with 1 to 8 bits of sample resolution
+    and variable sample rate, and header including the table of markers
+  * command line utility for converting C16 .tap files to plus4 format
+  * simple GUI debugger with support for breakpoints/watchpoints,
+    viewing the current state of CPU registers and memory paging,
+    displaying memory dump or loading from or saving to a file in ASCII
+    or binary format, modifying memory or searching for a pattern of
+    bytes, disassembler with support for all undocumented 6502 opcodes,
+    address offset for code that runs at a different location than where
+    it is at the time of disassembling, and saving disassembly to a
+    file. For memory operations and the disassembler, addresses can be
+    16 bit CPU (affected by current paging and includes memory mapped
+    I/O registers) or 22 bit physical (all ROM and RAM data can be
+    accessed, regardless of memory paging) addresses.
+
+Plus/4 emulation
+----------------
+
+  * cycle based emulation of the 7501/8501 CPU, supporting all
+    documented and undocumented opcodes, and fully compatible decimal
+    mode
+  * TED 7360/8360 emulation with high level of compatibility, implements
+    all documented video modes, PAL/NTSC mode switching, as well as most
+    known display artifacts; all registers can be read and written, and
+    the internal operation and timing is reproduced with good accuracy
+  * RAM size can be 16, 32, 64, 256, or 1024 kilobytes (the latter two
+    using the Hannes memory expansion)
+  * up to 8 16 kilobyte banks of ROM can be loaded from external image
+    files
+  * experimental hardware level emulation of the 1541 and 1581 floppy
+    disk drives, with support for D64 and D81 files
+  * load and automatically start .PRG file on start-up
+  * optional extension ROM (p4fileio.rom) for direct access to .PRG
+    files by the load/save commands on the host system in a single user
+    selectable directory
+
+Usage
+=====
+
+Command line options
+--------------------
+
+  -h
+  -help
+  --help
+    print the list of available command line options
+  -cfg <FILENAME>
+    load an ASCII format configuration file on startup, and apply
+    settings
+  -prg <FILENAME>
+    load and run program file on startup
+  -opengl
+    use OpenGL video driver (this is the default, and is recommended
+    when hardware accelerated OpenGL is available)
+  -no-opengl
+    use software video driver; this is slower than OpenGL when used at
+    high resolutions, and also disables many display effects, but should
+    work on all machines; however, it will use a color depth of 24 bits,
+    while in OpenGL mode the textures are 16 bit (R5G6B5) only, to
+    improve performance
+  OPTION=VALUE
+    set configuration variable 'OPTION' to 'VALUE'; the available
+    variable names are the same as those used in ASCII format
+    configuration files
+  OPTION
+    set boolean configuration variable 'OPTION' to true
+
+'File' menu
+-----------
+
+Set working directory
+
+  Set the directory to be accessed by the optional file I/O ROM
+  extension modules.
+
+Load file
+
+  Load a plus4 format binary file, which may be a previously saved
+  snapshot or demo, a binary format configuration file, or a program
+  file with plus4 header.
+
+Load configuration file
+
+  Select and load an ASCII format configuration file and apply the new
+  settings. If the configuration file does not include all the supported
+  options, those that are omitted are left unchanged.
+
+Save configuration file
+
+  Save the current emulator configuration to an ASCII text file, which
+  can be edited with any text editor, and can be loaded at a later time.
+
+Quick snapshot / Set file name
+
+  Select file name for quick snapshots. The default is
+  ~/.plus4emu/qs_plus4.dat. This setting is not saved on exit.
+
+Quick snapshot / Load (Ctrl + F10)
+
+  Load the quick snapshot file if it exists.
+
+Quick snapshot / Save (Ctrl + F9)
+
+  Save a snapshot of the current state of the emulated machine to the
+  quick snapshot file. The snapshot will also include the current memory
+  configuration and ROM images, but clock frequency and timing settings
+  are not restored when loading a snapshot. The file format may be
+  subject to changes between different releases of the emulator. Note
+  that the state of any floppy drives is currently not saved, and the
+  drives are reset on loading a snapshot.
+
+Save snapshot
+
+  Save snapshot to the selected file (see notes above).
+
+Record demo
+
+  Save snapshot (including clock frequency and timing settings) and
+  record keyboard events to the selected file until the recording is
+  stopped. The events can be replayed with accurate timing when the
+  file is loaded later. Note that the file format may change between
+  different releases of the emulator. Events that
+
+Stop demo (Ctrl + F12)
+
+  Stop any currently running demo playback or recording.
+
+Record sound file
+
+  Write 16 bit signed PCM sound output to a WAV format sound file.
+
+Stop sound recording
+
+  Close sound output file if it is currently being written.
+
+Quit
+
+  Exit the emulator.
+
+'Machine' menu
+--------------
+
+Reset / Reset (F11)
+
+  This has the same effect as using the reset button on the real
+  machine.
+
+Reset / Force reset (Ctrl + F11)
+
+  In addition to a normal reset, make sure that the emulated machine is
+  really restarted using the standard ROM reset routines, and do not
+  allow programs to disable reset by setting custom (RAM) handlers.
+  In the case of Plus/4 emulation, most of the RAM data is still
+  preserved.
+  This option will also turn off automatically enabled extensions that
+  increase CPU usage, such as 1541/1581 drives with no disk opened.
+
+Reset / Reset clock frequencies
+
+  Reset clock frequency and timing settings to those specified in the
+  machine configuration; this is normally only useful after demo
+  playback, which may override the settings.
+
+Reset / Reset machine configuration (Shift + F11)
+
+  Reset memory configuration (RAM size, ROM images), clock frequency,
+  and timing settings according to the machine configuration, and clear
+  all RAM data. Implies 'Force reset' and 'Reset clock frequencies'.
+  Reverting the configuration can be useful after snapshot loading or
+  demo playback, as these may change the settings.
+
+'Options' menu
+--------------
+
+Display / Cycle display mode (F9)
+
+  Cycle between these four display modes:
+    window with no menu bar
+    window with menu bar (this is the default)
+    fullscreen with menu bar
+    fullscreen with no menu bar
+
+Display / Set size to 384x288
+Display / Set size to 768x576
+Display / Set size to 1152x864
+
+  Resize the emulator window to predefined width/height values; this has
+  no effect in fullscreen mode. While the window can also be resized
+  using the window manager, sizes that are integer multiples of the
+  actual screen resolution of the emulated machine may look better,
+  particularly when texture filtering is not used.
+
+Sound / Increase volume
+
+  Increase sound output volume by about 1.5 dB.
+
+Sound / Decrease volume
+
+  Decrease sound output volume by about 1.5 dB.
+
+Floppy / Configure...
+
+  Opens a dialog for setting up floppy emulation. For each drive, an
+  image file can be selected. If the file name is left empty, that means
+  having no disk in that particular drive. It may also be possible to
+  directly access a real disk by using the /dev/fd* devices (on Linux)
+  or \\.\A: (on Windows) as the image file.
+  The file format must be either D64 or D81; the type is determined from
+  the file size. Opening a D64 file will enable 1541 emulation for that
+  particular drive, while the 1581 will be emulated for D81 files.
+  Since these drives are emulated at the hardware level (with a 6502
+  CPU, etc.), enabling them increases the CPU usage. A drive will remain
+  active until a different type of image file is opened, or a snapshot
+  is loaded or 'Force reset' (or anything that implies it) is used while
+  there is no disk opened.
+
+Floppy / Remove disk from unit 8
+Floppy / Remove disk from unit 9
+Floppy / Remove disk from unit 10
+Floppy / Remove disk from unit 11
+
+  These are just shortcuts for setting the image file name for a
+  specific floppy drive to an empty string.
+
+Copyright
+=========
+
+plus4 is copyright (C) 2003-2007 by Istvan Varga
+
+Credits
+-------
+
+Thanks to Hársfalvi Levente for testing the emulator and providing some
+hardware information.
+

@@ -1,0 +1,249 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0107 
+do_not_include_H_from_C 
+header_name {.hpp} 
+code_name {.cpp}
+decl {\#include "gui.hpp"} {selected
+} 
+
+class Plus4EmuGUI_DiskConfigWindow {open
+} {
+  decl {Plus4EmuGUI& gui;} {}
+  Function {Plus4EmuGUI_DiskConfigWindow(Plus4EmuGUI& gui_) : gui(gui_)} {open
+  } {
+    Fl_Window window {
+      label {Floppy configuration}
+      callback {{
+  try {
+    gui.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+  updateWindow();
+  window->hide();
+}} open
+      xywh {88 224 400 365} type Double color 37 visible
+    } {
+      Fl_Group {} {open
+        xywh {10 10 380 310} box THIN_UP_BOX color 38
+      } {
+        Fl_Group {} {
+          label {Unit 8} open
+          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 20 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+        } {
+          Fl_Input floppyAImageFileValuator {
+            callback {{
+  try {
+    gui.config["floppy.a.imageFile"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 45 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            code0 {o->cursor_color(FL_YELLOW);}
+          }
+          Fl_Button {} {
+            label {...}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.diskImageDirectory,
+                       "Disk image files (*)",
+                       Fl_File_Chooser::SINGLE,
+                       "Select disk image file")) {
+      gui.config["floppy.a.imageFile"] = tmp;
+      floppyAImageFileValuator->value(tmp.c_str());
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {265 45 25 25} color 39 selection_color 40 labelcolor 52
+          }
+          Fl_Box {} {
+            label {Image file}
+            xywh {300 45 70 25} color 38 labelcolor 52 align 20
+          }
+        }
+        Fl_Group {} {
+          label {Unit 9} open
+          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 95 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+        } {
+          Fl_Input floppyBImageFileValuator {
+            callback {{
+  try {
+    gui.config["floppy.b.imageFile"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 120 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            code0 {o->cursor_color(FL_YELLOW);}
+          }
+          Fl_Button {} {
+            label {...}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.diskImageDirectory,
+                       "Disk image files (*)",
+                       Fl_File_Chooser::SINGLE,
+                       "Select disk image file")) {
+      gui.config["floppy.b.imageFile"] = tmp;
+      floppyBImageFileValuator->value(tmp.c_str());
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {265 120 25 25} color 39 selection_color 40 labelcolor 52
+          }
+          Fl_Box {} {
+            label {Image file}
+            xywh {300 120 70 25} color 38 labelcolor 52 align 20
+          }
+        }
+        Fl_Group {} {
+          label {Unit 10} open
+          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 170 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+        } {
+          Fl_Input floppyCImageFileValuator {
+            callback {{
+  try {
+    gui.config["floppy.c.imageFile"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 195 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            code0 {o->cursor_color(FL_YELLOW);}
+          }
+          Fl_Button {} {
+            label {...}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.diskImageDirectory,
+                       "Disk image files (*)",
+                       Fl_File_Chooser::SINGLE,
+                       "Select disk image file")) {
+      gui.config["floppy.c.imageFile"] = tmp;
+      floppyCImageFileValuator->value(tmp.c_str());
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {265 195 25 25} color 39 selection_color 40 labelcolor 52
+          }
+          Fl_Box {} {
+            label {Image file}
+            xywh {300 195 70 25} color 38 labelcolor 52 align 20
+          }
+        }
+        Fl_Group {} {
+          label {Unit 11} open
+          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 245 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+        } {
+          Fl_Input floppyDImageFileValuator {
+            callback {{
+  try {
+    gui.config["floppy.d.imageFile"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 270 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            code0 {o->cursor_color(FL_YELLOW);}
+          }
+          Fl_Button {} {
+            label {...}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.diskImageDirectory,
+                       "Disk image files (*)",
+                       Fl_File_Chooser::SINGLE,
+                       "Select disk image file")) {
+      gui.config["floppy.d.imageFile"] = tmp;
+      floppyDImageFileValuator->value(tmp.c_str());
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {265 270 25 25} color 39 selection_color 40 labelcolor 52
+          }
+          Fl_Box {} {
+            label {Image file}
+            xywh {300 270 70 25} color 38 labelcolor 52 align 20
+          }
+        }
+      }
+      Fl_Button {} {
+        label Apply
+        callback {{
+  try {
+    gui.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+  updateWindow();
+}}
+        xywh {255 330 60 25} color 38 selection_color 39 labelcolor 52
+      }
+      Fl_Button {} {
+        label OK
+        callback {{
+  try {
+    gui.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+  updateWindow();
+  window->hide();
+}}
+        xywh {325 330 60 25} color 38 selection_color 39 labelcolor 52
+      }
+    }
+  }
+  Function {~Plus4EmuGUI_DiskConfigWindow()} {open
+  } {
+    code {{
+  delete window;
+}} {}
+  }
+  Function {show()} {open return_type void
+  } {
+    code {{
+  updateWindow();
+  window->show();
+}} {}
+  }
+  Function {hide()} {open return_type void
+  } {
+    code {{
+  window->hide();
+}} {}
+  }
+  Function {updateWindow()} {open private return_type void
+  } {
+    code {{
+  floppyAImageFileValuator->value(gui.config.floppy.a.imageFile.c_str());
+  floppyBImageFileValuator->value(gui.config.floppy.b.imageFile.c_str());
+  floppyCImageFileValuator->value(gui.config.floppy.c.imageFile.c_str());
+  floppyDImageFileValuator->value(gui.config.floppy.d.imageFile.c_str());
+}} {}
+  }
+} 
