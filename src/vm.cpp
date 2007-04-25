@@ -304,16 +304,6 @@ namespace Plus4Emu {
     (void) freq_;
   }
 
-  void VirtualMachine::setVideoMemoryLatency(size_t t_)
-  {
-    (void) t_;
-  }
-
-  void VirtualMachine::setEnableMemoryTimingEmulation(bool isEnabled)
-  {
-    (void) isEnabled;
-  }
-
   void VirtualMachine::setKeyboardState(int keyCode, bool isPressed)
   {
     (void) keyCode;
@@ -514,9 +504,10 @@ namespace Plus4Emu {
     noBreakOnDataRead = n;
   }
 
-  void VirtualMachine::setSingleStepMode(bool isEnabled)
+  void VirtualMachine::setSingleStepMode(bool isEnabled, bool stepOverFlag)
   {
     (void) isEnabled;
+    (void) stepOverFlag;
   }
 
   void VirtualMachine::setBreakPointCallback(void (*breakPointCallback_)(
@@ -652,7 +643,8 @@ namespace Plus4Emu {
     }
     if (fileName.length() == 0)
       return;
-    tape = new Tape(fileName.c_str(), 0, defaultTapeSampleRate, bitsPerSample);
+    tape = openTapeFile(fileName.c_str(), 0,
+                        defaultTapeSampleRate, bitsPerSample);
     tapeFileName = fileName;
     if (tapeRecordOn)
       tape->record();

@@ -66,7 +66,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   o->value(gui.config.sound.sampleRate);
   gui.config.soundSettingsChanged = true;
 }}
-          xywh {20 125 75 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 11025 maximum 192000 step 1 value 48000 textcolor 52
+          xywh {20 125 75 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 11025 maximum 96000 step 1 value 48000 textcolor 52
           code0 {o->cursor_color(FL_YELLOW);}
         }
         Fl_Input soundOutputFileValuator {
@@ -318,13 +318,19 @@ class Plus4EmuGUI_SoundConfigWindow {open
   }
 }} {}
   }
+  Function {shown()} {open return_type bool
+  } {
+    code {{
+  return bool(window->shown());
+}} {}
+  }
   Function {hide()} {open return_type void
   } {
     code {{
   window->hide();
 }} {}
   }
-  Function {updateWindow()} {open private return_type void
+  Function {updateWindow()} {open return_type void
   } {
     code {{
   {

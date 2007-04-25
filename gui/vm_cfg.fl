@@ -23,7 +23,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   updateWindow();
   window->hide();
 }} open
-      xywh {428 237 400 450} type Double color 37 visible
+      xywh {182 139 400 450} type Double color 37 visible
     } {
       Fl_Button {} {
         label Apply
@@ -74,7 +74,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   o->value(double(gui.config.vm.cpuClockFrequency));
 }}
-              xywh {30 75 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 1 maximum 5e+08 step 1 value 1 textcolor 52
+              xywh {30 75 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 1 maximum 1.5e+08 step 1 value 1 textcolor 52
               code0 {o->cursor_color(FL_YELLOW);}
             }
             Fl_Value_Input vmVideoFrequencyValuator {
@@ -88,7 +88,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   updateWindow();
 }}
-              xywh {30 110 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 5e+06 maximum 4e+07 step 1 value 1.77345e+07 textcolor 52
+              xywh {30 110 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 7e+06 maximum 3.6e+07 step 1 value 1.77345e+07 textcolor 52
               code0 {o->cursor_color(FL_YELLOW);}
             }
           }
@@ -172,12 +172,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM00FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.00.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x00, o->value());
 }}
                 xywh {75 130 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -185,19 +180,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.00.file"] = tmp;
-      memoryROM00FileNameValuator->value(gui.config.memory.rom[0x00].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x00);
 }}
                 xywh {245 130 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -216,12 +199,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM01FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.01.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x01, o->value());
 }}
                 xywh {75 160 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -229,19 +207,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.01.file"] = tmp;
-      memoryROM01FileNameValuator->value(gui.config.memory.rom[0x01].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x01);
 }}
                 xywh {245 160 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -260,12 +226,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM02FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.02.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x02, o->value());
 }}
                 xywh {75 190 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -273,19 +234,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.02.file"] = tmp;
-      memoryROM02FileNameValuator->value(gui.config.memory.rom[0x02].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x02);
 }}
                 xywh {245 190 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -304,12 +253,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM03FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.03.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x03, o->value());
 }}
                 xywh {75 220 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -317,19 +261,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.03.file"] = tmp;
-      memoryROM03FileNameValuator->value(gui.config.memory.rom[0x03].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x03);
 }}
                 xywh {245 220 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -348,12 +280,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM04FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.04.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x04, o->value());
 }}
                 xywh {75 250 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -361,19 +288,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.04.file"] = tmp;
-      memoryROM04FileNameValuator->value(gui.config.memory.rom[0x04].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x04);
 }}
                 xywh {245 250 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -392,12 +307,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM05FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.05.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x05, o->value());
 }}
                 xywh {75 280 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -405,19 +315,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.05.file"] = tmp;
-      memoryROM05FileNameValuator->value(gui.config.memory.rom[0x05].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x05);
 }}
                 xywh {245 280 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -436,12 +334,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM06FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.06.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x06, o->value());
 }}
                 xywh {75 310 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -449,19 +342,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.06.file"] = tmp;
-      memoryROM06FileNameValuator->value(gui.config.memory.rom[0x06].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x06);
 }}
                 xywh {245 310 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -480,12 +361,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM07FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.07.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x07, o->value());
 }}
                 xywh {75 340 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -493,19 +369,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.07.file"] = tmp;
-      memoryROM07FileNameValuator->value(gui.config.memory.rom[0x07].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x07);
 }}
                 xywh {245 340 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -524,12 +388,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM10FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.10.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x10, o->value());
 }}
                 xywh {75 370 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -537,19 +396,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.10.file"] = tmp;
-      memoryROM10FileNameValuator->value(gui.config.memory.rom[0x10].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x10);
 }}
                 xywh {245 370 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -568,12 +415,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM20FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.20.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x20, o->value());
 }}
                 xywh {75 400 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -581,19 +423,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.20.file"] = tmp;
-      memoryROM20FileNameValuator->value(gui.config.memory.rom[0x20].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x20);
 }}
                 xywh {245 400 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -612,12 +442,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM21FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.21.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x21, o->value());
 }}
                 xywh {75 430 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -625,19 +450,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.21.file"] = tmp;
-      memoryROM21FileNameValuator->value(gui.config.memory.rom[0x21].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x21);
 }}
                 xywh {245 430 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -656,12 +469,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM22FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.22.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x22, o->value());
 }}
                 xywh {75 460 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -669,19 +477,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.22.file"] = tmp;
-      memoryROM22FileNameValuator->value(gui.config.memory.rom[0x22].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x22);
 }}
                 xywh {245 460 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -700,12 +496,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM23FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.23.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x23, o->value());
 }}
                 xywh {75 490 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -713,19 +504,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.23.file"] = tmp;
-      memoryROM23FileNameValuator->value(gui.config.memory.rom[0x23].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x23);
 }}
                 xywh {245 490 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -744,12 +523,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM30FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.30.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x30, o->value());
 }}
                 xywh {75 520 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -757,19 +531,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.30.file"] = tmp;
-      memoryROM30FileNameValuator->value(gui.config.memory.rom[0x30].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x30);
 }}
                 xywh {245 520 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -788,12 +550,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               }
               Fl_Input memoryROM31FileNameValuator {
                 callback {{
-  try {
-    gui.config["memory.rom.31.file"] = o->value();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  setROMImageFile(0x31, o->value());
 }}
                 xywh {75 550 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -801,19 +558,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
-                       Fl_File_Chooser::SINGLE,
-                       "Select ROM image file")) {
-      gui.config["memory.rom.31.file"] = tmp;
-      memoryROM31FileNameValuator->value(gui.config.memory.rom[0x31].file.c_str());
-    }
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
+  browseROMImageFile(0x31);
 }}
                 xywh {245 550 25 25} color 38 selection_color 39 labelcolor 52
               }
@@ -845,13 +590,19 @@ class Plus4EmuGUI_MachineConfigWindow {open
   window->show();
 }} {}
   }
+  Function {shown()} {open return_type bool
+  } {
+    code {{
+  return bool(window->shown());
+}} {}
+  }
   Function {hide()} {open return_type void
   } {
     code {{
   window->hide();
 }} {}
   }
-  Function {updateWindow()} {open private return_type void
+  Function {updateWindow()} {open return_type void
   } {
     code {{
   vmCPUFrequencyValuator->value(double(gui.config.vm.cpuClockFrequency));
@@ -890,6 +641,116 @@ class Plus4EmuGUI_MachineConfigWindow {open
   memoryROM30OffsetValuator->value(double(gui.config.memory.rom[0x30].offset));
   memoryROM31FileNameValuator->value(gui.config.memory.rom[0x31].file.c_str());
   memoryROM31OffsetValuator->value(double(gui.config.memory.rom[0x31].offset));
+}} {}
+  }
+  Function {setROMImageFile(uint8_t segment_, const std::string& fileName_)} {open private return_type void
+  } {
+    code {{
+  try {
+    char    cfgVarName[24];
+    std::sprintf(&(cfgVarName[0]), "memory.rom.%02X.file", (unsigned int) segment_);
+    Plus4Emu::ConfigurationDB::ConfigurationVariable& cv = gui.config[&(cfgVarName[0])];
+    bool    wasEmpty = (std::string(cv).length() <= 0);
+    cv = fileName_;
+    std::string fName = std::string(cv);
+    if (fName.length() > 0) {
+      std::FILE *f = std::fopen(fName.c_str(), "rb");
+      long    fSize = 0L;
+      if (f) {
+        if (std::fseek(f, 0L, SEEK_END) >= 0)
+          fSize = std::ftell(f);
+        std::fclose(f);
+        f = (std::FILE *) 0;
+      }
+      long    offs = long(gui.config.memory.rom[segment_].offset);
+      bool    updateFlag = false;
+      while ((offs + 32767L) < fSize &&
+             segment_ != 0x07 && segment_ != 0x13 &&
+             segment_ != 0x23 && segment_ != 0x33) {
+        segment_++;
+        offs = offs + 16384L;
+        updateFlag = true;
+        gui.config.memory.rom[segment_].offset = int(offs);
+        std::sprintf(&(cfgVarName[0]), "memory.rom.%02X.file", (unsigned int) segment_);
+        gui.config[&(cfgVarName[0])] = fName;
+      }
+      if (updateFlag)
+        updateWindow();
+    }
+    else if (!wasEmpty) {
+      if (gui.config.memory.rom[segment_].offset != 0) {
+        gui.config.memory.rom[segment_].offset = 0;
+        updateWindow();
+      }
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}} {}
+  }
+  Function {browseROMImageFile(uint8_t segment_)} {open private return_type void
+  } {
+    code {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.romImageDirectory,
+                       "ROM image files (*)",
+                       Fl_File_Chooser::SINGLE,
+                       "Select ROM image file")) {
+      setROMImageFile(segment_, tmp);
+      switch (segment_) {
+      case 0x00:
+        memoryROM00FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x01:
+        memoryROM01FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x02:
+        memoryROM02FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x03:
+        memoryROM03FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x04:
+        memoryROM04FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x05:
+        memoryROM05FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x06:
+        memoryROM06FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x07:
+        memoryROM07FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x10:
+        memoryROM10FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x20:
+        memoryROM20FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x21:
+        memoryROM21FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x22:
+        memoryROM22FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x23:
+        memoryROM23FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x30:
+        memoryROM30FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x31:
+        memoryROM31FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      }
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
 }} {}
   }
 } 

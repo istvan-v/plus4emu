@@ -21,7 +21,7 @@ class Plus4EmuConfigInstallerGUI {open
   keyboardMapHU = false;
 }} {}
     Fl_Window mainWindow {
-      label {Reinstall plus4 configuration files ?} open
+      label {Reinstall plus4emu configuration files ?} open
       xywh {296 333 370 95} type Double visible
     } {
       Fl_Check_Button {} {

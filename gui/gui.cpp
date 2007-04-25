@@ -223,17 +223,19 @@ void Plus4EmuGUI::updateDisplay(double t)
   if (isPaused_ != oldPauseFlag) {
     oldPauseFlag = isPaused_;
     if (isPaused_)
-      mainWindow->label("plus4 2.0 beta (paused)");
+      mainWindow->label("plus4emu 1.0.0 beta (paused)");
     else
-      mainWindow->label("plus4 2.0 beta");
+      mainWindow->label("plus4emu 1.0.0 beta");
   }
   int   newDemoStatus = (isRecordingDemo_ ? 2 : (isPlayingDemo_ ? 1 : 0));
   if (newDemoStatus != oldDemoStatus) {
+    const Fl_Menu_Item *m = mainMenuBar->find_item("File/Stop demo (Ctrl+F12)");
     if (newDemoStatus == 0) {
       if (oldDemoStatus == 2)
         closeDemoFile(false);
       demoStatusDisplay1->hide();
       demoStatusDisplay2->hide();
+      const_cast<Fl_Menu_Item *>(m)->deactivate();
     }
     else {
       demoStatusDisplay1->show();
@@ -246,6 +248,7 @@ void Plus4EmuGUI::updateDisplay(double t)
         demoStatusDisplay2->textcolor(FL_RED);
         demoStatusDisplay2->value("R");
       }
+      const_cast<Fl_Menu_Item *>(m)->activate();
     }
     oldDemoStatus = newDemoStatus;
     mainWindow->redraw();
@@ -341,28 +344,37 @@ void Plus4EmuGUI::run()
 {
   config.setErrorCallback(&errorMessageCallback, (void *) this);
   // set initial window size from saved configuration
+  mainWindow->resizable((Fl_Widget *) 0);
   emulatorWindowGroup->resizable((Fl_Widget *) 0);
   emulatorWindow->color(36, 36);
   resizeWindow(config.display.width, config.display.height);
   // create menu bar
-  mainMenuBar->add("File/Load file",
-                   (char *) 0, &menuCallback_File_LoadFile, (void *) this);
-  mainMenuBar->add("File/Load configuration file",
+  mainMenuBar->add("File/Configuration/Load from ASCII file",
                    (char *) 0, &menuCallback_File_LoadConfig, (void *) this);
-  mainMenuBar->add("File/Save configuration file",
+  mainMenuBar->add("File/Configuration/Load from binary file",
+                   (char *) 0, &menuCallback_File_LoadFile, (void *) this);
+  mainMenuBar->add("File/Configuration/Save as ASCII file",
                    (char *) 0, &menuCallback_File_SaveConfig, (void *) this);
-  mainMenuBar->add("File/Quick snapshot/Set file name",
-                   (char *) 0, &menuCallback_File_QSFileName, (void *) this);
-  mainMenuBar->add("File/Quick snapshot/Load (Ctrl+F10)",
-                   (char *) 0, &menuCallback_File_QSLoad, (void *) this);
-  mainMenuBar->add("File/Quick snapshot/Save (Ctrl+F9)",
-                   (char *) 0, &menuCallback_File_QSSave, (void *) this);
+  mainMenuBar->add("File/Configuration/Save",
+                   (char *) 0, &menuCallback_File_SaveMainCfg, (void *) this);
+  mainMenuBar->add("File/Configuration/Revert",
+                   (char *) 0, &menuCallback_File_RevertCfg, (void *) this);
   mainMenuBar->add("File/Save snapshot",
                    (char *) 0, &menuCallback_File_SaveSnapshot, (void *) this);
+  mainMenuBar->add("File/Load snapshot",
+                   (char *) 0, &menuCallback_File_LoadFile, (void *) this);
+  mainMenuBar->add("File/Quick snapshot/Set file name",
+                   (char *) 0, &menuCallback_File_QSFileName, (void *) this);
+  mainMenuBar->add("File/Quick snapshot/Save (Ctrl+F9)",
+                   (char *) 0, &menuCallback_File_QSSave, (void *) this);
+  mainMenuBar->add("File/Quick snapshot/Load (Ctrl+F10)",
+                   (char *) 0, &menuCallback_File_QSLoad, (void *) this);
   mainMenuBar->add("File/Record demo",
                    (char *) 0, &menuCallback_File_RecordDemo, (void *) this);
   mainMenuBar->add("File/Stop demo (Ctrl+F12)",
                    (char *) 0, &menuCallback_File_StopDemo, (void *) this);
+  mainMenuBar->add("File/Load demo",
+                   (char *) 0, &menuCallback_File_LoadFile, (void *) this);
   mainMenuBar->add("File/Record sound file",
                    (char *) 0, &menuCallback_File_RecordSound, (void *) this);
   mainMenuBar->add("File/Stop sound recording",
@@ -375,9 +387,7 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_SavePRG, (void *) this);
   mainMenuBar->add("File/Quit",
                    (char *) 0, &menuCallback_File_Quit, (void *) this);
-  mainMenuBar->add("Machine/Toggle pause (F10)",
-                   (char *) 0, &menuCallback_Machine_Pause, (void *) this);
-  mainMenuBar->add("Machine/Toggle full speed",
+  mainMenuBar->add("Machine/Full speed",
                    (char *) 0, &menuCallback_Machine_FullSpeed, (void *) this);
   mainMenuBar->add("Machine/Tape/Select image file",
                    (char *) 0, &menuCallback_Machine_OpenTape, (void *) this);
@@ -427,18 +437,20 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_QuickCfgS1, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Save config 2",
                    (char *) 0, &menuCallback_Machine_QuickCfgS2, (void *) this);
+  mainMenuBar->add("Machine/Toggle pause (F10)",
+                   (char *) 0, &menuCallback_Machine_Pause, (void *) this);
   mainMenuBar->add("Machine/Configure...",
                    (char *) 0, &menuCallback_Machine_Configure, (void *) this);
-  mainMenuBar->add("Options/Display/Cycle display mode (F9)",
-                   (char *) 0, &menuCallback_Options_DpyMode, (void *) this);
+  mainMenuBar->add("Options/Display/Configure...",
+                   (char *) 0, &menuCallback_Options_DpyConfig, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 384x288",
                    (char *) 0, &menuCallback_Options_DpySize1, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 768x576",
                    (char *) 0, &menuCallback_Options_DpySize2, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 1152x864",
                    (char *) 0, &menuCallback_Options_DpySize3, (void *) this);
-  mainMenuBar->add("Options/Display/Configure...",
-                   (char *) 0, &menuCallback_Options_DpyConfig, (void *) this);
+  mainMenuBar->add("Options/Display/Cycle display mode (F9)",
+                   (char *) 0, &menuCallback_Options_DpyMode, (void *) this);
   mainMenuBar->add("Options/Sound/Increase volume",
                    (char *) 0, &menuCallback_Options_SndIncVol, (void *) this);
   mainMenuBar->add("Options/Sound/Decrease volume",
@@ -447,20 +459,36 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_SndConfig, (void *) this);
   mainMenuBar->add("Options/Floppy/Configure...",
                    (char *) 0, &menuCallback_Options_FloppyCfg, (void *) this);
-  mainMenuBar->add("Options/Floppy/Remove disk from unit 8",
+  mainMenuBar->add("Options/Floppy/Remove disk/Unit 8",
                    (char *) 0, &menuCallback_Options_FloppyRmA, (void *) this);
-  mainMenuBar->add("Options/Floppy/Remove disk from unit 9",
+  mainMenuBar->add("Options/Floppy/Remove disk/Unit 9",
                    (char *) 0, &menuCallback_Options_FloppyRmB, (void *) this);
-  mainMenuBar->add("Options/Floppy/Remove disk from unit 10",
+  mainMenuBar->add("Options/Floppy/Remove disk/Unit 10",
                    (char *) 0, &menuCallback_Options_FloppyRmC, (void *) this);
-  mainMenuBar->add("Options/Floppy/Remove disk from unit 11",
+  mainMenuBar->add("Options/Floppy/Remove disk/Unit 11",
                    (char *) 0, &menuCallback_Options_FloppyRmD, (void *) this);
+  mainMenuBar->add("Options/Floppy/Remove disk/All drives",
+                   (char *) 0, &menuCallback_Options_FloppyRmv, (void *) this);
+  mainMenuBar->add("Options/Floppy/Replace disk/Unit 8",
+                   (char *) 0, &menuCallback_Options_FloppyRpA, (void *) this);
+  mainMenuBar->add("Options/Floppy/Replace disk/Unit 9",
+                   (char *) 0, &menuCallback_Options_FloppyRpB, (void *) this);
+  mainMenuBar->add("Options/Floppy/Replace disk/Unit 10",
+                   (char *) 0, &menuCallback_Options_FloppyRpC, (void *) this);
+  mainMenuBar->add("Options/Floppy/Replace disk/Unit 11",
+                   (char *) 0, &menuCallback_Options_FloppyRpD, (void *) this);
+  mainMenuBar->add("Options/Floppy/Replace disk/All drives",
+                   (char *) 0, &menuCallback_Options_FloppyRpl, (void *) this);
   mainMenuBar->add("Options/Set working directory",
                    (char *) 0, &menuCallback_Options_FileIODir, (void *) this);
   mainMenuBar->add("Debug/Start debugger",
                    (char *) 0, &menuCallback_Debug_OpenDebugger, (void *) this);
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Full speed")
+                        - mainMenuBar->menu()),
+                    FL_MENU_TOGGLE);
+  updateMenu();
   mainWindow->show();
   emulatorWindow->show();
   // load and apply GUI configuration
@@ -550,9 +578,10 @@ void Plus4EmuGUI::resizeWindow(int w, int h)
 
 int Plus4EmuGUI::handleFLTKEvent(int event)
 {
-  if (event == FL_FOCUS)
+  switch (event) {
+  case FL_FOCUS:
     return 1;
-  if (event == FL_UNFOCUS) {
+  case FL_UNFOCUS:
     functionKeyState = 0U;
     try {
       vmThread.resetKeyboard();
@@ -561,155 +590,173 @@ int Plus4EmuGUI::handleFLTKEvent(int event)
       errorMessage(e.what());
     }
     return 1;
-  }
-  if (event == FL_KEYUP || event == FL_KEYDOWN) {
-    int   keyCode = Fl::event_key();
-    bool  isKeyPress = (event == FL_KEYDOWN);
-    if (!(keyCode >= (FL_F + 9) && keyCode <= (FL_F + 12))) {
-      int   n = config.convertKeyCode(keyCode);
-      if (n >= 0 && (functionKeyState == 0U || !isKeyPress)) {
-        try {
-          vmThread.setKeyboardState(uint8_t(n), isKeyPress);
+  case FL_KEYUP:
+  case FL_KEYDOWN:
+    {
+      int   keyCode = Fl::event_key();
+      bool  isKeyPress = (event == FL_KEYDOWN);
+      if (!(keyCode >= (FL_F + 9) && keyCode <= (FL_F + 12))) {
+        int   n = config.convertKeyCode(keyCode);
+        if (n >= 0 && (functionKeyState == 0U || !isKeyPress)) {
+          try {
+#ifdef WIN32
+            if (keyCode == FL_Shift_L || keyCode == FL_Shift_R) {
+              // work around FLTK bug
+              int   tmp = config.convertKeyCode(FL_Shift_L);
+              if (tmp >= 0)
+                vmThread.setKeyboardState(uint8_t(tmp),
+                                          (GetKeyState(VK_LSHIFT) < 0));
+              tmp = config.convertKeyCode(FL_Shift_R);
+              if (tmp >= 0)
+                vmThread.setKeyboardState(uint8_t(tmp),
+                                          (GetKeyState(VK_RSHIFT) < 0));
+            }
+            else
+#endif
+            {
+              vmThread.setKeyboardState(uint8_t(n), isKeyPress);
+            }
+          }
+          catch (std::exception& e) {
+            errorMessage(e.what());
+          }
+          if (functionKeyState == 0U || isKeyPress)
+            return 1;
         }
-        catch (std::exception& e) {
-          errorMessage(e.what());
-        }
-        if (functionKeyState == 0U || isKeyPress)
-          return 1;
       }
-    }
-    int   n = -1;
-    switch (keyCode) {
-    case FL_Alt_L:
-      n = 28;
-      break;
-    case FL_Alt_R:
-      n = 29;
-      break;
-    case (FL_F + 5):
-    case (FL_F + 6):
-    case (FL_F + 7):
-    case (FL_F + 8):
-    case (FL_F + 9):
-    case (FL_F + 10):
-    case (FL_F + 11):
-    case (FL_F + 12):
-      n = keyCode - (FL_F + 5);
-      if (Fl::event_shift())
-        n += 8;
-      else if (Fl::event_ctrl())
-        n += 16;
-      break;
-    case 0x64:
-      if (Fl::event_alt() || !isKeyPress)
-        n = 24;
-      break;
-    case 0x6D:
-      if (Fl::event_alt() || !isKeyPress)
-        n = 25;
-      break;
-    case 0x77:
-      if (Fl::event_alt() || !isKeyPress)
-        n = 26;
-      break;
-    case FL_Pause:
-      n = 27;
-      break;
-    case FL_Page_Down:
-      n = 30;
-      break;
-    case FL_Page_Up:
-      n = 31;
-      break;
-    }
-    if (n >= 0) {
-      uint32_t  bitMask = 1U << n;
-      bool      wasPressed = !!(functionKeyState & bitMask);
-      if (isKeyPress != wasPressed) {
-        if (isKeyPress)
-          functionKeyState |= bitMask;
-        else
-          functionKeyState &= (bitMask ^ uint32_t(0xFFFFFFFFU));
-        if (isKeyPress) {
-          switch (n) {
-          case 0:                                       // F5:
-            menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
-            break;
-          case 1:                                       // F6:
-            menuCallback_Machine_OpenTape((Fl_Widget *) 0, (void *) this);
-            break;
-          case 2:                                       // F7:
-            menuCallback_File_LoadFile((Fl_Widget *) 0, (void *) this);
-            break;
-          case 3:                                       // F8:
-            menuCallback_File_LoadPRG((Fl_Widget *) 0, (void *) this);
-            break;
-          case 4:                                       // F9:
-            menuCallback_Options_DpyMode((Fl_Widget *) 0, (void *) this);
-            break;
-          case 5:                                       // F10:
-            menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
-            break;
-          case 6:                                       // F11:
-            menuCallback_Machine_Reset((Fl_Widget *) 0, (void *) this);
-            break;
-          case 7:                                       // F12:
-            menuCallback_Machine_TapeNxtCP((Fl_Widget *) 0, (void *) this);
-            break;
-          case 8:                                       // Shift + F5:
-            menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
-            break;
-          case 9:                                       // Shift + F6:
-            menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
-            break;
-          case 10:                                      // Shift + F7:
-            menuCallback_File_SaveSnapshot((Fl_Widget *) 0, (void *) this);
-            break;
-          case 11:                                      // Shift + F8:
-            menuCallback_File_SavePRG((Fl_Widget *) 0, (void *) this);
-            break;
-          case 12:                                      // Shift + F9:
-            menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
-            break;
-          case 13:                                      // Shift + F10:
-            menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
-            break;
-          case 14:                                      // Shift + F11:
-            menuCallback_Machine_ResetAll((Fl_Widget *) 0, (void *) this);
-            break;
-          case 15:                                      // Shift + F12:
-            menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
-            break;
-          case 20:                                      // Ctrl + F9:
-            menuCallback_File_QSSave((Fl_Widget *) 0, (void *) this);
-            break;
-          case 21:                                      // Ctrl + F10:
-            menuCallback_File_QSLoad((Fl_Widget *) 0, (void *) this);
-            break;
-          case 22:                                      // Ctrl + F11:
-            menuCallback_Machine_ColdReset((Fl_Widget *) 0, (void *) this);
-            break;
-          case 23:                                      // Ctrl + F12:
-            menuCallback_File_StopDemo((Fl_Widget *) 0, (void *) this);
-            break;
-          case 24:                                      // Alt + D:
-            menuCallback_Options_FloppyCfg((Fl_Widget *) 0, (void *) this);
-            break;
-          case 25:                                      // Alt + M:
-            menuCallback_Debug_OpenDebugger((Fl_Widget *) 0, (void *) this);
-            break;
-          case 26:                                      // Alt + W:
-            menuCallback_Machine_FullSpeed((Fl_Widget *) 0, (void *) this);
-            break;
-          case 27:                                      // Pause:
-            menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
-            break;
-          case 30:                                      // PageDown:
-            menuCallback_Machine_QuickCfgL1((Fl_Widget *) 0, (void *) this);
-            break;
-          case 31:                                      // PageUp:
-            menuCallback_Machine_QuickCfgL2((Fl_Widget *) 0, (void *) this);
-            break;
+      int   n = -1;
+      switch (keyCode) {
+      case FL_Alt_L:
+        n = 28;
+        break;
+      case FL_Alt_R:
+        n = 29;
+        break;
+      case (FL_F + 5):
+      case (FL_F + 6):
+      case (FL_F + 7):
+      case (FL_F + 8):
+      case (FL_F + 9):
+      case (FL_F + 10):
+      case (FL_F + 11):
+      case (FL_F + 12):
+        n = keyCode - (FL_F + 5);
+        if (Fl::event_shift())
+          n += 8;
+        else if (Fl::event_ctrl())
+          n += 16;
+        break;
+      case 0x64:
+        if (Fl::event_alt() || !isKeyPress)
+          n = 24;
+        break;
+      case 0x6D:
+        if (Fl::event_alt() || !isKeyPress)
+          n = 25;
+        break;
+      case 0x77:
+        if (Fl::event_alt() || !isKeyPress)
+          n = 26;
+        break;
+      case FL_Pause:
+        n = 27;
+        break;
+      case FL_Page_Down:
+        n = 30;
+        break;
+      case FL_Page_Up:
+        n = 31;
+        break;
+      }
+      if (n >= 0) {
+        uint32_t  bitMask = 1U << n;
+        bool      wasPressed = !!(functionKeyState & bitMask);
+        if (isKeyPress != wasPressed) {
+          if (isKeyPress)
+            functionKeyState |= bitMask;
+          else
+            functionKeyState &= (bitMask ^ uint32_t(0xFFFFFFFFU));
+          if (isKeyPress) {
+            switch (n) {
+            case 0:                                     // F5:
+              menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
+              break;
+            case 1:                                     // F6:
+              menuCallback_Machine_OpenTape((Fl_Widget *) 0, (void *) this);
+              break;
+            case 2:                                     // F7:
+              menuCallback_File_LoadFile((Fl_Widget *) 0, (void *) this);
+              break;
+            case 3:                                     // F8:
+              menuCallback_File_LoadPRG((Fl_Widget *) 0, (void *) this);
+              break;
+            case 4:                                     // F9:
+              menuCallback_Options_DpyMode((Fl_Widget *) 0, (void *) this);
+              break;
+            case 5:                                     // F10:
+              menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
+              break;
+            case 6:                                     // F11:
+              menuCallback_Machine_Reset((Fl_Widget *) 0, (void *) this);
+              break;
+            case 7:                                     // F12:
+              menuCallback_Machine_TapeNxtCP((Fl_Widget *) 0, (void *) this);
+              break;
+            case 8:                                     // Shift + F5:
+              menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
+              break;
+            case 9:                                     // Shift + F6:
+              menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
+              break;
+            case 10:                                    // Shift + F7:
+              menuCallback_File_SaveSnapshot((Fl_Widget *) 0, (void *) this);
+              break;
+            case 11:                                    // Shift + F8:
+              menuCallback_File_SavePRG((Fl_Widget *) 0, (void *) this);
+              break;
+            case 12:                                    // Shift + F9:
+              menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
+              break;
+            case 13:                                    // Shift + F10:
+              menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
+              break;
+            case 14:                                    // Shift + F11:
+              menuCallback_Machine_ResetAll((Fl_Widget *) 0, (void *) this);
+              break;
+            case 15:                                    // Shift + F12:
+              menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
+              break;
+            case 20:                                    // Ctrl + F9:
+              menuCallback_File_QSSave((Fl_Widget *) 0, (void *) this);
+              break;
+            case 21:                                    // Ctrl + F10:
+              menuCallback_File_QSLoad((Fl_Widget *) 0, (void *) this);
+              break;
+            case 22:                                    // Ctrl + F11:
+              menuCallback_Machine_ColdReset((Fl_Widget *) 0, (void *) this);
+              break;
+            case 23:                                    // Ctrl + F12:
+              menuCallback_File_StopDemo((Fl_Widget *) 0, (void *) this);
+              break;
+            case 24:                                    // Alt + D:
+              menuCallback_Options_FloppyCfg((Fl_Widget *) 0, (void *) this);
+              break;
+            case 25:                                    // Alt + M:
+              menuCallback_Debug_OpenDebugger((Fl_Widget *) 0, (void *) this);
+              break;
+            case 26:                                    // Alt + W:
+              menuCallback_Machine_FullSpeed((Fl_Widget *) 0, (void *) this);
+              break;
+            case 27:                                    // Pause:
+              menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
+              break;
+            case 30:                                    // PageDown:
+              menuCallback_Machine_QuickCfgL1((Fl_Widget *) 0, (void *) this);
+              break;
+            case 31:                                    // PageUp:
+              menuCallback_Machine_QuickCfgL2((Fl_Widget *) 0, (void *) this);
+              break;
+            }
           }
         }
       }
@@ -810,11 +857,26 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
   return retval;
 }
 
-void Plus4EmuGUI::applyEmulatorConfiguration()
+void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 {
   if (lockVMThread()) {
     try {
+      bool    updateMenuFlag_ = config.soundSettingsChanged;
       config.applySettings();
+      if (updateWindowFlag_) {
+        if (diskConfigWindow->shown())
+          diskConfigWindow->updateWindow();
+        if (displaySettingsWindow->shown())
+          displaySettingsWindow->updateWindow();
+        if (soundSettingsWindow->shown())
+          soundSettingsWindow->updateWindow();
+        if (machineConfigWindow->shown())
+          machineConfigWindow->updateWindow();
+        if (debugWindow->shown())
+          debugWindow->updateWindow();
+      }
+      if (updateMenuFlag_)
+        updateMenu();
     }
     catch (...) {
       unlockVMThread();
@@ -822,6 +884,21 @@ void Plus4EmuGUI::applyEmulatorConfiguration()
     }
     unlockVMThread();
   }
+}
+
+void Plus4EmuGUI::updateMenu()
+{
+  const Fl_Menu_Item  *m;
+  m = mainMenuBar->find_item("Machine/Full speed");
+  if (config.sound.enabled)
+    const_cast<Fl_Menu_Item *>(m)->clear();
+  else
+    const_cast<Fl_Menu_Item *>(m)->set();
+  m = mainMenuBar->find_item("File/Stop sound recording");
+  if (config.sound.file.length() > 0)
+    const_cast<Fl_Menu_Item *>(m)->activate();
+  else
+    const_cast<Fl_Menu_Item *>(m)->deactivate();
 }
 
 void Plus4EmuGUI::errorMessageCallback(void *userData, const char *msg)
@@ -1037,8 +1114,6 @@ void Plus4EmuGUI::saveQuickConfig(int n)
     fName = "p4vmcfg1.cfg";
   else
     fName = "p4vmcfg2.cfg";
-  if (!fName)
-    return;
   try {
     Plus4Emu::ConfigurationDB tmpCfg;
     tmpCfg.createKey("vm.cpuClockFrequency", config.vm.cpuClockFrequency);
@@ -1059,14 +1134,14 @@ void Plus4EmuGUI::menuCallback_File_LoadFile(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.loadFileDirectory, "All files (*)",
-                        Fl_File_Chooser::SINGLE, "Load plus4 binary file")) {
+                        Fl_File_Chooser::SINGLE, "Load plus4emu binary file")) {
       if (gui_.lockVMThread()) {
         try {
           Plus4Emu::File  f(tmp.c_str());
           gui_.vm.registerChunkTypes(f);
           gui_.config.registerChunkType(f);
           f.processAllChunks();
-          gui_.applyEmulatorConfiguration();
+          gui_.applyEmulatorConfiguration(true);
         }
         catch (...) {
           gui_.unlockVMThread();
@@ -1092,7 +1167,7 @@ void Plus4EmuGUI::menuCallback_File_LoadConfig(Fl_Widget *o, void *v)
                         Fl_File_Chooser::SINGLE,
                         "Load ASCII format configuration file")) {
       gui_.config.loadState(tmp.c_str());
-      gui_.applyEmulatorConfiguration();
+      gui_.applyEmulatorConfiguration(true);
     }
   }
   catch (std::exception& e) {
@@ -1112,6 +1187,35 @@ void Plus4EmuGUI::menuCallback_File_SaveConfig(Fl_Widget *o, void *v)
                         "Save configuration as ASCII text file")) {
       gui_.config.saveState(tmp.c_str());
     }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_File_SaveMainCfg(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    Plus4Emu::File  f;
+    gui_.config.saveState(f);
+    f.writeFile("plus4cfg.dat", true);
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_File_RevertCfg(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    Plus4Emu::File  f("plus4cfg.dat", true);
+    gui_.config.registerChunkType(f);
+    f.processAllChunks();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1276,7 +1380,7 @@ void Plus4EmuGUI::menuCallback_File_RecordSound(Fl_Widget *o, void *v)
                         Fl_File_Chooser::CREATE,
                         "Record sound output to WAV file")) {
       gui_.config["sound.file"] = tmp;
-      gui_.applyEmulatorConfiguration();
+      gui_.applyEmulatorConfiguration(true);
     }
   }
   catch (std::exception& e) {
@@ -1290,7 +1394,7 @@ void Plus4EmuGUI::menuCallback_File_StopSndRecord(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config["sound.file"] = std::string("");
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1700,7 +1804,7 @@ void Plus4EmuGUI::menuCallback_Machine_QuickCfgL1(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config.loadState("p4vmcfg1.cfg", true);
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1713,7 +1817,7 @@ void Plus4EmuGUI::menuCallback_Machine_QuickCfgL2(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config.loadState("p4vmcfg2.cfg", true);
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1797,7 +1901,7 @@ void Plus4EmuGUI::menuCallback_Options_SndIncVol(Fl_Widget *o, void *v)
     Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
         gui_.config["sound.volume"];
     cv = double(cv) * 1.1892;
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1812,7 +1916,7 @@ void Plus4EmuGUI::menuCallback_Options_SndDecVol(Fl_Widget *o, void *v)
     Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
         gui_.config["sound.volume"];
     cv = double(cv) * 0.8409;
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1839,7 +1943,7 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRmA(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config["floppy.a.imageFile"] = "";
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1852,7 +1956,7 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRmB(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config["floppy.b.imageFile"] = "";
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1865,7 +1969,7 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRmC(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config["floppy.c.imageFile"] = "";
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1878,7 +1982,173 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRmD(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     gui_.config["floppy.d.imageFile"] = "";
-    gui_.applyEmulatorConfiguration();
+    gui_.applyEmulatorConfiguration(true);
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRmv(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["floppy.a.imageFile"] = "";
+    gui_.config["floppy.b.imageFile"] = "";
+    gui_.config["floppy.c.imageFile"] = "";
+    gui_.config["floppy.d.imageFile"] = "";
+    gui_.applyEmulatorConfiguration(true);
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRpA(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
+            gui_.config["floppy.a.imageFile"];
+        std::string tmp = std::string(cv);
+        cv = "";
+        gui_.applyEmulatorConfiguration();
+        cv = tmp;
+        gui_.applyEmulatorConfiguration();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRpB(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
+            gui_.config["floppy.b.imageFile"];
+        std::string tmp = std::string(cv);
+        cv = "";
+        gui_.applyEmulatorConfiguration();
+        cv = tmp;
+        gui_.applyEmulatorConfiguration();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRpC(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
+            gui_.config["floppy.c.imageFile"];
+        std::string tmp = std::string(cv);
+        cv = "";
+        gui_.applyEmulatorConfiguration();
+        cv = tmp;
+        gui_.applyEmulatorConfiguration();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRpD(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
+            gui_.config["floppy.d.imageFile"];
+        std::string tmp = std::string(cv);
+        cv = "";
+        gui_.applyEmulatorConfiguration();
+        cv = tmp;
+        gui_.applyEmulatorConfiguration();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cvA =
+            gui_.config["floppy.a.imageFile"];
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cvB =
+            gui_.config["floppy.b.imageFile"];
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cvC =
+            gui_.config["floppy.c.imageFile"];
+        Plus4Emu::ConfigurationDB::ConfigurationVariable& cvD =
+            gui_.config["floppy.d.imageFile"];
+        std::string tmpA = std::string(cvA);
+        std::string tmpB = std::string(cvB);
+        std::string tmpC = std::string(cvC);
+        std::string tmpD = std::string(cvD);
+        cvA = "";
+        cvB = "";
+        cvC = "";
+        cvD = "";
+        gui_.applyEmulatorConfiguration();
+        cvA = tmpA;
+        cvB = tmpB;
+        cvC = tmpC;
+        cvD = tmpD;
+        gui_.applyEmulatorConfiguration();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());

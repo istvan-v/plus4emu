@@ -85,18 +85,18 @@ namespace Plus4Emu {
       errorCallbackUserData((void *) 0)
   {
     defineConfigurationVariable(*this, "vm.cpuClockFrequency",
-                                vm.cpuClockFrequency, 4000000U,
-                                vmConfigurationChanged, 2000000.0, 250000000.0);
+                                vm.cpuClockFrequency, 1U,
+                                vmConfigurationChanged, 1.0, 150000000.0);
     defineConfigurationVariable(*this, "vm.videoClockFrequency",
-                                vm.videoClockFrequency, 890625U,
-                                vmConfigurationChanged, 178125.0, 1781250.0);
+                                vm.videoClockFrequency, 17734475U,
+                                vmConfigurationChanged, 7159090.0, 35468950.0);
     defineConfigurationVariable(*this, "vm.enableFileIO",
                                 vm.enableFileIO, false,
                                 vmConfigurationChanged);
     // ----------------
     defineConfigurationVariable(*this, "memory.ram.size",
-                                memory.ram.size, 128,
-                                memoryConfigurationChanged, 64.0, 3712.0, 16.0);
+                                memory.ram.size, 64,
+                                memoryConfigurationChanged, 16.0, 1024.0, 16.0);
     for (size_t i = 0; i < 64; i++) {
       if (i >= 8 && ((i & 15) >= 4 || (i >= 17 && i <= 19) || i >= 50))
         continue;
@@ -190,7 +190,7 @@ namespace Plus4Emu {
                                 soundSettingsChanged, -1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.sampleRate",
                                 sound.sampleRate, 48000.0,
-                                soundSettingsChanged, 11025.0, 192000.0);
+                                soundSettingsChanged, 11025.0, 96000.0);
     defineConfigurationVariable(*this, "sound.latency",
                                 sound.latency, 0.1,
                                 soundSettingsChanged, 0.005, 0.5);
@@ -270,11 +270,11 @@ namespace Plus4Emu {
                                   *floppyChanged_, -1.0, 240.0);
       std::sprintf(s, "floppy.%c.sides", int('a') + i);
       defineConfigurationVariable(*this, std::string(s),
-                                  floppy_->sides, int(2),
+                                  floppy_->sides, int(-1),
                                   *floppyChanged_, -1.0, 2.0);
       std::sprintf(s, "floppy.%c.sectorsPerTrack", int('a') + i);
       defineConfigurationVariable(*this, std::string(s),
-                                  floppy_->sectorsPerTrack, int(9),
+                                  floppy_->sectorsPerTrack, int(-1),
                                   *floppyChanged_, -1.0, 240.0);
     }
     // ----------------

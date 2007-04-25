@@ -319,6 +319,13 @@ namespace Plus4Emu {
     startTime = getRealTime_();
   }
 
+  void Timer::reset(double t)
+  {
+    volatile uint64_t offs;
+    offs = uint64_t(int64_t((t / secondsPerTick) + (t >= 0.0 ? 0.5 : -0.5)));
+    startTime = getRealTime_() - offs;
+  }
+
   void Timer::wait(double t)
   {
 #ifdef WIN32
@@ -326,6 +333,16 @@ namespace Plus4Emu {
 #else
     usleep((unsigned int) (t * 1000000.0 + 0.5));
 #endif
+  }
+
+  uint32_t Timer::getRandomSeedFromTime()
+  {
+    uint32_t  tmp1 = uint32_t(getRealTime_() & 0xFFFFFFFFUL);
+    uint64_t  tmp2 = tmp1 * uint64_t(0xC2B0C3CCUL);
+    tmp1 = ((uint32_t(tmp2) ^ uint32_t(tmp2 >> 32)) & uint32_t(0xFFFFFFFFUL));
+    tmp2 = tmp1 * uint64_t(0xC2B0C3CCUL);
+    tmp1 = ((uint32_t(tmp2) ^ uint32_t(tmp2 >> 32)) & uint32_t(0xFFFFFFFFUL));
+    return tmp1;
   }
 
   // --------------------------------------------------------------------------

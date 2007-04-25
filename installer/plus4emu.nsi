@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-2.0-beta.exe"
+  OutFile "plus4emu-1.0.0-beta.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -36,6 +36,7 @@
 ;--------------------------------
 ;Pages
 
+  !insertmacro MUI_PAGE_LICENSE "..\COPYING"
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   ;Start Menu Folder Page Configuration
@@ -62,13 +63,13 @@ Section "plus4emu" SecMain
 
   SetOutPath "$INSTDIR"
 
+  File "..\COPYING"
   File /nonfatal "..\LICENSE.FLTK"
   File /nonfatal "..\LICENSE.PortAudio"
   File /nonfatal "..\LICENSE.dotconf"
   File /nonfatal "..\LICENSE.libsndfile"
+  File "/oname=news.txt" "..\NEWS"
   File "/oname=readme.txt" "..\README"
-  File "D:\MinGW\bin\dotconf.dll"
-  File "D:\MinGW\bin\fltk.dll"
   File "..\plus4emu.exe"
   File "D:\MinGW\bin\libsndfile-1.dll"
   File "..\makecfg.exe"
@@ -88,14 +89,7 @@ Section "plus4emu" SecMain
 
   SetOutPath "$INSTDIR\roms"
 
-  File "..\roms\3plus1hi.rom"
-  File "..\roms\3plus1lo.rom"
-  File "..\roms\dos1541.rom"
-  File "..\roms\dos1581.rom"
-  File "..\roms\p4_basic.rom"
   File "..\roms\p4fileio.rom"
-  File "..\roms\p4kernal.rom"
-  File "..\roms\p4_ntsc.rom"
 
   SetOutPath "$INSTDIR\tape"
 
@@ -122,6 +116,64 @@ Section "plus4emu" SecMain
 
 SectionEnd
 
+Section "Source code" SecSrc
+
+  SetOutPath "$INSTDIR\src"
+
+  File "..\COPYING"
+  File "..\NEWS"
+  File "..\README"
+  File "..\SConstruct"
+
+  SetOutPath "$INSTDIR\src\config"
+
+  File "..\config\*.cfg"
+
+  SetOutPath "$INSTDIR\src\disk"
+
+  File "..\disk\*.zip"
+
+  SetOutPath "$INSTDIR\src\gui"
+
+  File "..\gui\*.fl"
+  File "..\gui\gui.cpp"
+  File "..\gui\gui.hpp"
+  File "..\gui\main.cpp"
+
+  SetOutPath "$INSTDIR\src\installer"
+
+  File "..\installer\*.nsi"
+  File "..\installer\*.fl"
+  File "..\installer\makecfg.cpp"
+
+  SetOutPath "$INSTDIR\src\resid"
+
+  File "..\resid\AUTHORS"
+  File "..\resid\COPYING"
+  File "..\resid\ChangeLog"
+  File "..\resid\NEWS"
+  File "..\resid\README"
+  File "..\resid\THANKS"
+  File "..\resid\TODO"
+  File "..\resid\*.cpp"
+  File "..\resid\*.hpp"
+
+  SetOutPath "$INSTDIR\src\roms"
+
+  File "..\roms\*.rom"
+
+  SetOutPath "$INSTDIR\src\src"
+
+  File "..\src\*.cpp"
+  File "..\src\*.hpp"
+  File "..\src\*.py"
+
+  SetOutPath "$INSTDIR\src\util"
+
+  File "..\util\*.cpp"
+
+SectionEnd
+
 Section "Associate .prg files with plus4emu" SecAssoc
 
   WriteRegStr HKCR ".prg" "" "Plus4Emu.PRGFile"
@@ -132,17 +184,49 @@ Section "Associate .prg files with plus4emu" SecAssoc
 
 SectionEnd
 
+Section "Download ROM images" SecDLRoms
+
+  SetOutPath "$INSTDIR\roms"
+
+  Push ""
+  Push "p4_ntsc.rom"
+  Push "p4kernal.rom"
+  Push "p4_basic.rom"
+  Push "dos1581.rom"
+  Push "dos1541.rom"
+  Push "3plus1lo.rom"
+  Push "3plus1hi.rom"
+
+  downloadLoop:
+
+    Pop $0
+    StrCmp $0 "" downloadLoopDone 0
+    NSISdl::download "http://www.sharemation.com/IstvanV/roms/$0" "$INSTDIR\roms\$0"
+    Pop $R0
+    StrCmp $R0 "success" downloadLoop 0
+    StrCmp $R0 "cancel" downloadLoop 0
+    MessageBox MB_OK "Download failed: $R0"
+    Goto downloadLoop
+
+  downloadLoopDone:
+
+SectionEnd
+
 ;--------------------------------
 ;Descriptions
 
   ;Language strings
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
+  LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
   LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg files with plus4emu"
+  LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
 
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_SecMain)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecSrc} $(DESC_SecSrc)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssoc} $(DESC_SecAssoc)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecDLRoms} $(DESC_SecDLRoms)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
@@ -150,13 +234,13 @@ SectionEnd
 
 Section "Uninstall"
 
+  Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\LICENSE.FLTK"
   Delete "$INSTDIR\LICENSE.PortAudio"
   Delete "$INSTDIR\LICENSE.dotconf"
   Delete "$INSTDIR\LICENSE.libsndfile"
+  Delete "$INSTDIR\news.txt"
   Delete "$INSTDIR\readme.txt"
-  Delete "$INSTDIR\dotconf.dll"
-  Delete "$INSTDIR\fltk.dll"
   Delete "$INSTDIR\plus4emu.exe"
   Delete "$INSTDIR\libsndfile-1.dll"
   Delete "$INSTDIR\makecfg.exe"
@@ -183,6 +267,7 @@ Section "Uninstall"
   Delete "$INSTDIR\config\P4_64k_NTSC_3PLUS1_FileIO.cfg"
   RMDir "$INSTDIR\config"
   RMDir "$INSTDIR\demo"
+  Delete "$INSTDIR\disk\disk.zip"
   RMDir "$INSTDIR\disk"
   RMDir "$INSTDIR\progs"
   Delete "$INSTDIR\roms\3plus1hi.rom"

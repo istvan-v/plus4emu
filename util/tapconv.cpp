@@ -25,7 +25,8 @@
 
 int main(int argc, char **argv)
 {
-  std::FILE *inFile = (std::FILE *) 0;
+  std::FILE       *inFile = (std::FILE *) 0;
+  Plus4Emu::Tape  *outFile = (Plus4Emu::Tape *) 0;
   try {
     if (argc != 3)
       throw Plus4Emu::Exception("Usage: tapconv <infile> <outfile>");
@@ -50,9 +51,9 @@ int main(int argc, char **argv)
     int     inputSignal = (usingOldTapFormat ? -1 : 1);
     int     inputCnt = 0;
     int     savedInputCnt = 0;
-    Plus4Emu::Tape  outFile(argv[2], 3, 27710, 1);
-    outFile.record();
-    outFile.setIsMotorOn(true);
+    outFile = Plus4Emu::openTapeFile(argv[2], 3, 27710, 1);
+    outFile->record();
+    outFile->setIsMotorOn(true);
     while (true) {
       if (!inputCnt) {
         inputSignal = -inputSignal;
@@ -80,8 +81,8 @@ int main(int argc, char **argv)
       outputSignal += inputSignal;
       if (++cnt >= 32) {
         cnt = 0;
-        outFile.setInputSignal(outputSignal > 0 ? 1 : 0);
-        outFile.runOneSample();
+        outFile->setInputSignal(outputSignal > 0 ? 1 : 0);
+        outFile->runOneSample();
         outputSignal = 0;
       }
       if (inputCnt)
@@ -91,10 +92,13 @@ int main(int argc, char **argv)
   catch (std::exception& e) {
     if (inFile)
       std::fclose(inFile);
+    if (outFile)
+      delete outFile;
     std::fprintf(stderr, "%s\n", e.what());
     return -1;
   }
   std::fclose(inFile);
+  delete outFile;
   return 0;
 }
 

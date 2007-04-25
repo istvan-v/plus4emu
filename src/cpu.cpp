@@ -1222,7 +1222,7 @@ namespace Plus4 {
         uint8_t bp = breakPointTable[i];
         if (bp)
           bplst.addMemoryBreakPoint(uint16_t(i),
-                                    !!(bp & 1), !!(bp & 2), bp >> 2);
+                                    !!(bp & 1), !!(bp & 2), false, bp >> 2);
       }
     }
     return bplst;

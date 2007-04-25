@@ -645,18 +645,6 @@ namespace Plus4 {
     updateTimingParameters(ted->getIsNTSCMode());
   }
 
-  void Plus4VM::setVideoMemoryLatency(size_t t_)
-  {
-    // this is not implemented for this machine
-    (void) t_;
-  }
-
-  void Plus4VM::setEnableMemoryTimingEmulation(bool isEnabled)
-  {
-    // this is not implemented for this machine
-    (void) isEnabled;
-  }
-
   void Plus4VM::setKeyboardState(int keyCode, bool isPressed)
   {
     if (!isPlayingDemo)
@@ -797,8 +785,9 @@ namespace Plus4 {
     ted->setBreakPointPriorityThreshold(n);
   }
 
-  void Plus4VM::setSingleStepMode(bool isEnabled)
+  void Plus4VM::setSingleStepMode(bool isEnabled, bool stepOverFlag)
   {
+    (void) stepOverFlag;
     ted->setSingleStepMode(isEnabled);
   }
 

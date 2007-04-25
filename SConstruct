@@ -31,7 +31,6 @@ if win32CrossCompile:
 plus4emuGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
     plus4emuGUIEnvironment.Prepend(LIBS = ['fltk'])
-    plus4emuGUIEnvironment.Prepend(LINKFLAGS = ['-Wl,--enable-runtime-pseudo-reloc'])
 elif not plus4emuGUIEnvironment.ParseConfig(
         '%s --cxxflags --ldflags --libs' % fltkConfig):
     print 'WARNING: could not run fltk-config'
@@ -39,8 +38,8 @@ elif not plus4emuGUIEnvironment.ParseConfig(
 
 plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
-    plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk', 'glu32', 'opengl32'])
-    plus4emuGLGUIEnvironment.Prepend(LINKFLAGS = ['-Wl,--enable-runtime-pseudo-reloc'])
+    plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk_gl', 'fltk',
+                                             'glu32', 'opengl32'])
 elif not plus4emuGLGUIEnvironment.ParseConfig(
         '%s --use-gl --cxxflags --ldflags --libs' % fltkConfig):
     print 'WARNING: could not run fltk-config'

@@ -211,7 +211,10 @@ namespace Plus4Emu {
     void displayFrame();
     // ----------------
     Colormap      colormap;
-    bool          *linesChanged;
+    // linesChanged[n] & 0x01 is non-zero if video data for line n has been
+    // received in the current frame; linesChanged[n] & 0x80 is non-zero if
+    // line n has changed in the current frame
+    uint8_t       *linesChanged;
     uint8_t       forceUpdateLineCnt;
     uint8_t       forceUpdateLineMask;
     bool          redrawFlag;

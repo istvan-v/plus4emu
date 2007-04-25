@@ -101,10 +101,6 @@ namespace Plus4Emu {
     virtual void setCPUFrequency(size_t freq_);
     // set the number of video 'slots' per second
     virtual void setVideoFrequency(size_t freq_);
-    // set parameter used for tuning video memory timing (defaults to 62 ns)
-    virtual void setVideoMemoryLatency(size_t t_);
-    // set if emulation of memory timing is enabled
-    virtual void setEnableMemoryTimingEmulation(bool isEnabled);
     // Set state of key 'keyCode' (0 to 127).
     virtual void setKeyboardState(int keyCode, bool isPressed);
     // -------------------------- DISK AND FILE I/O ---------------------------
@@ -189,7 +185,7 @@ namespace Plus4Emu {
     // Set if the breakpoint callback should be called whenever the first byte
     // of a CPU instruction is read from memory. Breakpoints are ignored in
     // this mode.
-    virtual void setSingleStepMode(bool isEnabled);
+    virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
     // Set function to be called when a breakpoint is triggered.
     virtual void setBreakPointCallback(void (*breakPointCallback_)(
                                            void *userData,

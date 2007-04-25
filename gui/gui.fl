@@ -115,8 +115,9 @@ class Plus4EmuGUI {open
   }
   decl {bool browseFile(std::string& fileName, std::string& dirName, const char *pattern, int type, const char *title);} {public
   }
-  decl {void applyEmulatorConfiguration();} {public
+  decl {void applyEmulatorConfiguration(bool updateWindowFlag_ = false);} {public
   }
+  decl {void updateMenu();} {}
   decl {static void errorMessageCallback(void *userData, const char *msg);} {}
   decl {static void fileNameCallback(void *userData, std::string& fileName);} {}
   decl {static void fltkCheckCallback(void *userData);} {}
@@ -127,6 +128,8 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_File_LoadFile(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_LoadConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_SaveConfig(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_File_SaveMainCfg(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_File_RevertCfg(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_QSFileName(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_QSLoad(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_QSSave(Fl_Widget *o, void *v);} {}
@@ -179,6 +182,12 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FloppyRmB(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRmC(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRmD(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRmv(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRpA(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRpB(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRpC(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRpD(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Help_About(Fl_Widget *o, void *v);} {}
@@ -188,7 +197,7 @@ class Plus4EmuGUI {open
   this->init_();
 }} {}
     Fl_Window mainWindow {
-      label plus4 open
+      label plus4emu open
       xywh {248 54 400 360} type Single color 37 selection_color 0 resizable size_range {384 348 1536 1182} visible
     } {
       Fl_Menu_Bar mainMenuBar {open
@@ -227,7 +236,7 @@ class Plus4EmuGUI {open
       }
     }
     Fl_Window errorMessageWindow {
-      label {plus4 error} open
+      label {plus4emu error} open
       xywh {249 553 280 150} type Double color 37 selection_color 236 modal visible
     } {
       Fl_Box {} {

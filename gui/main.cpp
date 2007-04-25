@@ -115,20 +115,6 @@ int main(int argc, char **argv)
     config = new Plus4Emu::EmulatorConfiguration(
         *vm, *(dynamic_cast<Plus4Emu::VideoDisplay *>(w)), *audioOutput);
     config->setErrorCallback(&cfgErrorFunc, (void *) 0);
-    // set machine specific defaults and limits
-    Plus4Emu::ConfigurationDB::ConfigurationVariable  *cv;
-    cv = &((*config)["vm.cpuClockFrequency"]);
-    (*cv).setRange(1.0, 150000000.0, 0.0);
-    (*cv) = (unsigned int) 1;
-    (*cv).setCallback(&plus4ClockFreqChangeCallback, config, true);
-    cv = &((*config)["vm.videoClockFrequency"]);
-    (*cv).setRange(7159090.0, 35468950.0, 1.0);
-    (*cv) = (unsigned int) 17734475;
-    cv = &((*config)["memory.ram.size"]);
-    (*cv).setRange(16.0, 1024.0, 16.0);
-    (*cv) = int(64);
-    cv = &((*config)["sound.sampleRate"]);
-    (*cv).setRange(11025.0, 96000.0, 0.0);
     // load base configuration (if available)
     try {
       Plus4Emu::File  f(cfgFileName, true);

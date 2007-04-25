@@ -115,10 +115,6 @@ namespace Plus4 {
     virtual void setCPUFrequency(size_t freq_);
     // set TED input clock frequency (defaults to 17734475 Hz)
     virtual void setVideoFrequency(size_t freq_);
-    // set parameter used for tuning video memory timing
-    virtual void setVideoMemoryLatency(size_t t_);
-    // set if emulation of memory timing is enabled
-    virtual void setEnableMemoryTimingEmulation(bool isEnabled);
     // Set state of key 'keyCode' (0 to 127).
     virtual void setKeyboardState(int keyCode, bool isPressed);
     // -------------------------- DISK AND FILE I/O ---------------------------
@@ -152,7 +148,7 @@ namespace Plus4 {
     // Set if the breakpoint callback should be called whenever the first byte
     // of a CPU instruction is read from memory. Breakpoints are ignored in
     // this mode.
-    virtual void setSingleStepMode(bool isEnabled);
+    virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
     // Returns the segment at page 'n' (0 to 3).
     virtual uint8_t getMemoryPage(int n) const;
     // Read a byte from memory. If 'isCPUAddress' is false, bits 14 to 21 of
