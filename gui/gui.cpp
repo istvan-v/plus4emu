@@ -223,9 +223,9 @@ void Plus4EmuGUI::updateDisplay(double t)
   if (isPaused_ != oldPauseFlag) {
     oldPauseFlag = isPaused_;
     if (isPaused_)
-      mainWindow->label("plus4emu 1.0.0 beta (paused)");
+      mainWindow->label("plus4emu 1.0.0 (paused)");
     else
-      mainWindow->label("plus4emu 1.0.0 beta");
+      mainWindow->label("plus4emu 1.0.0");
   }
   int   newDemoStatus = (isRecordingDemo_ ? 2 : (isPlayingDemo_ ? 1 : 0));
   if (newDemoStatus != oldDemoStatus) {
