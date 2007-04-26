@@ -53,8 +53,10 @@ namespace Plus4 {
       breakPointTable((uint8_t *) 0),
       breakPointCnt(0),
       singleStepModeEnabled(false),
+      singleStepModeStepOverFlag(false),
       haveBreakPoints(false),
-      breakPointPriorityThreshold(0)
+      breakPointPriorityThreshold(0),
+      singleStepModeNextAddr(int32_t(-1))
   {
     try {
       memoryReadCallbacks = new MemoryReadFunc[65536];
@@ -103,7 +105,7 @@ namespace Plus4 {
               break;
             }
             if (singleStepModeEnabled)
-              breakPointCallback(false, reg_PC, opNum);
+              checkSingleStepModeBreak(reg_PC, opNum);
             else if (haveBreakPoints)
               checkReadBreakPoint(reg_PC, opNum);
             reg_PC = (reg_PC + 1) & 0xFFFF;
@@ -1153,8 +1155,10 @@ namespace Plus4 {
   {
     if (!singleStepModeEnabled) {
       uint8_t *tbl = breakPointTable;
-      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0)
-        breakPointCallback(false, addr, value);
+      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0) {
+        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+          breakPointCallback(false, addr, value);
+      }
     }
   }
 
@@ -1162,17 +1166,38 @@ namespace Plus4 {
   {
     if (!singleStepModeEnabled) {
       uint8_t *tbl = breakPointTable;
-      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 2) != 0)
-        breakPointCallback(true, addr, value);
+      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 2) != 0) {
+        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+          breakPointCallback(true, addr, value);
+      }
     }
   }
 
-  void M7501::setBreakPoint(uint16_t addr, int priority, bool r, bool w)
+  void M7501::checkSingleStepModeBreak(uint16_t addr, uint8_t value)
   {
-    uint8_t mode = (r ? 1 : 0) + (w ? 2 : 0);
+    if (singleStepModeStepOverFlag) {
+      if (singleStepModeNextAddr >= int32_t(0) &&
+          singleStepModeNextAddr != int32_t(addr))
+        return;
+    }
+    if (value == 0x20)
+      singleStepModeNextAddr = (addr + 3) & 0xFFFF;
+    else
+      singleStepModeNextAddr = int32_t(-1);
+    if (breakPointTable != (uint8_t *) 0) {
+      if (breakPointTable[addr] & 0x10)
+        return;
+    }
+    breakPointCallback(false, addr, value);
+  }
+
+  void M7501::setBreakPoint(uint16_t addr, int priority,
+                            bool r, bool w, bool ignoreFlag)
+  {
+    uint8_t mode = (r ? 1 : 0) | (w ? 2 : 0) | (ignoreFlag ? 31 : 0);
     if (mode) {
       // create new breakpoint, or change existing one
-      mode += uint8_t((priority > 0 ? (priority < 3 ? priority : 3) : 0) << 2);
+      mode |= uint8_t((priority > 0 ? (priority < 3 ? priority : 3) : 0) << 2);
       if (!breakPointTable) {
         breakPointTable = new uint8_t[65536];
         for (int i = 0; i < 65536; i++)
@@ -1183,7 +1208,7 @@ namespace Plus4 {
       if (!bp)
         breakPointCnt++;
       if (bp > mode)
-        mode = (bp & 12) + (mode & 3);
+        mode = (bp & 28) | (mode & 3);
       mode |= (bp & 3);
       bp = mode;
     }
@@ -1201,7 +1226,7 @@ namespace Plus4 {
   void M7501::clearBreakPoints()
   {
     for (unsigned int addr = 0; addr < 65536; addr++)
-      setBreakPoint(uint16_t(addr), 0, false, false);
+      setBreakPoint(uint16_t(addr), 0, false, false, false);
   }
 
   void M7501::setBreakPointPriorityThreshold(int n)
@@ -1222,15 +1247,19 @@ namespace Plus4 {
         uint8_t bp = breakPointTable[i];
         if (bp)
           bplst.addMemoryBreakPoint(uint16_t(i),
-                                    !!(bp & 1), !!(bp & 2), false, bp >> 2);
+                                    !!(bp & 1), !!(bp & 2), !!(bp & 16),
+                                    bp >> 2);
       }
     }
     return bplst;
   }
 
-  void M7501::setSingleStepMode(bool isEnabled)
+  void M7501::setSingleStepMode(bool isEnabled, bool stepOverFlag)
   {
     singleStepModeEnabled = isEnabled;
+    singleStepModeStepOverFlag = isEnabled && stepOverFlag;
+    if (!isEnabled)
+      singleStepModeNextAddr = int32_t(-1);
   }
 
   void M7501::breakPointCallback(bool isWrite, uint16_t addr, uint8_t value)

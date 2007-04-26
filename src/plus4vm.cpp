@@ -766,7 +766,8 @@ namespace Plus4 {
     }
     for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
       const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-      ted->setBreakPoint(bp.addr(), bp.priority(), bp.isRead(), bp.isWrite());
+      ted->setBreakPoint(bp.addr(), bp.priority(),
+                         bp.isRead(), bp.isWrite(), bp.isIgnore());
     }
   }
 
@@ -787,8 +788,7 @@ namespace Plus4 {
 
   void Plus4VM::setSingleStepMode(bool isEnabled, bool stepOverFlag)
   {
-    (void) stepOverFlag;
-    ted->setSingleStepMode(isEnabled);
+    ted->setSingleStepMode(isEnabled, stepOverFlag);
   }
 
   uint8_t Plus4VM::getMemoryPage(int n) const

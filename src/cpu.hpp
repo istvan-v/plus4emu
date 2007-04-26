@@ -158,10 +158,13 @@ namespace Plus4 {
     uint8_t     *breakPointTable;
     size_t      breakPointCnt;
     bool        singleStepModeEnabled;
+    bool        singleStepModeStepOverFlag;
     bool        haveBreakPoints;
     uint8_t     breakPointPriorityThreshold;
+    int32_t     singleStepModeNextAddr;
     void checkReadBreakPoint(uint16_t addr, uint8_t value);
     void checkWriteBreakPoint(uint16_t addr, uint8_t value);
+    void checkSingleStepModeBreak(uint16_t addr, uint8_t value);
    protected:
     inline uint8_t readMemory(uint16_t addr)
     {
@@ -209,12 +212,13 @@ namespace Plus4 {
     {
       reg_SR |= uint8_t(0x40);
     }
-    void setBreakPoint(uint16_t addr, int priority, bool r, bool w);
+    void setBreakPoint(uint16_t addr, int priority,
+                       bool r, bool w, bool ignoreFlag);
     void clearBreakPoints();
     void setBreakPointPriorityThreshold(int n);
     int getBreakPointPriorityThreshold() const;
     Plus4Emu::BreakPointList getBreakPointList();
-    void setSingleStepMode(bool isEnabled);
+    void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
     void saveState(Plus4Emu::File::Buffer&);
     void saveState(Plus4Emu::File&);
     void loadState(Plus4Emu::File::Buffer&);
