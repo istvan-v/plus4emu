@@ -30,20 +30,6 @@ static void cfgErrorFunc(void *userData, const char *msg)
   std::cerr << "WARNING: " << msg << std::endl;
 }
 
-static void plus4ClockFreqChangeCallback(void *userData,
-                                         const std::string& name,
-                                         unsigned int value)
-{
-  (void) name;
-  Plus4Emu::EmulatorConfiguration&  cfg =
-      *(reinterpret_cast<Plus4Emu::EmulatorConfiguration *>(userData));
-  if (value <= 1000U)
-    cfg.vm.cpuClockFrequency = (value < 100U ? value : 100U);
-  else
-    cfg.vm.cpuClockFrequency = (value > 700000U ? value : 700000U);
-  cfg.vmConfigurationChanged = true;
-}
-
 int main(int argc, char **argv)
 {
   Fl_Window *w = (Fl_Window *) 0;
