@@ -22,7 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-static const char *epteFileMagic = "ENTERPRISE 128K TAPE FILE       ";
+static const char *c16TAPFileMagic = "C16-TAPE-RAW";
 
 static int cuePointCmpFunc(const void *p1, const void *p2)
 {
@@ -575,185 +575,152 @@ namespace Plus4Emu {
 
   // --------------------------------------------------------------------------
 
-  Tape_EPTE::Tape_EPTE(const char *fileName, int bitsPerSample)
+  Tape_C16::Tape_C16(const char *fileName, int bitsPerSample)
     : Tape(bitsPerSample),
       f((std::FILE *) 0),
-      bytesRemaining(0),
       endOfTape(false),
-      shiftReg(0x00),
-      bitsRemaining(0),
-      halfPeriodSamples(5),
-      samplesRemaining(0),
-      leaderSampleCnt(0),
-      chunkBytesRemaining(0),
-      chunkCnt(0)
+      usingOldTapFormat(false),
+      inputSignal(0),
+      inputCnt(0),
+      savedInputCnt(0)
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Exception("invalid tape file name");
     f = std::fopen(fileName, "rb");
     if (!f)
       throw Exception("error opening tape file");
-    bool    isEPTEFile = false;
+    bool    isC16TAPFile = false;
     if (std::fseek(f, 0L, SEEK_END) >= 0) {
-      if (std::ftell(f) >= 512L) {
-        std::fseek(f, 128L, SEEK_SET);
-        for (int i = 0; i < 32; i++) {
-          if (std::fgetc(f) != int(epteFileMagic[i]))
+      if (std::ftell(f) >= 20L) {
+        std::fseek(f, 0L, SEEK_SET);
+        for (int i = 0; i <= 12; i++) {
+          if (i == 12) {
+            int   c = std::fgetc(f);
+            isC16TAPFile = true;
+            if (c == 1)
+              usingOldTapFormat = true;
+            else if (c == 2)
+              usingOldTapFormat = false;
+            else
+              isC16TAPFile = false;
             break;
-          if (i == 31)
-            isEPTEFile = true;
+          }
+          if (std::fgetc(f) != int(c16TAPFileMagic[i]))
+            break;
         }
       }
     }
-    if (!isEPTEFile) {
+    if (!isC16TAPFile) {
       std::fclose(f);
       throw Exception("invalid tape file header");
     }
+    sampleRate = 55420L;
     this->seek(0.0);
   }
 
-  Tape_EPTE::~Tape_EPTE()
+  Tape_C16::~Tape_C16()
   {
     if (f)
       std::fclose(f);
   }
 
-  void Tape_EPTE::runOneSample_()
+  void Tape_C16::runOneSample_()
   {
     if (endOfTape) {
+      tapePosition = tapeLength;
       outputState = 0;
       return;
     }
-    if (!samplesRemaining) {
-      outputState = (outputState == 0 ?
-                     (1 << (requestedBitsPerSample - 1)) : 0);
-      if (halfPeriodSamples == 8) {
-        // sync bit
-        if (outputState == 0)
-          halfPeriodSamples = 6;
-        samplesRemaining = 8;
-      }
-      else {
-        if (outputState != 0 && leaderSampleCnt == 0) {
-          if (!bitsRemaining) {
-            if (chunkBytesRemaining) {
-              chunkBytesRemaining--;
-              shiftReg = uint8_t(std::fgetc(f));
-              bytesRemaining--;
-              bitsRemaining = 8;
+    // downsample by a factor of 16
+    int   outputSignal = 0;
+    for (int i = 0; i < 16; i++) {
+      if (!inputCnt) {
+        inputSignal = -inputSignal;
+        if (!(usingOldTapFormat && inputSignal > 0)) {
+          int   c = std::fgetc(f);
+          if (c == EOF) {
+            endOfTape = true;
+            break;
+          }
+          if (!c) {
+            savedInputCnt = 0;
+            c = std::fgetc(f);
+            if (c == EOF) {
+              endOfTape = true;
+              break;
             }
-            else {
-              // end of chunk, start leader
-              halfPeriodSamples = 5;
-              leaderSampleCnt = 120000; // 5 seconds
+            savedInputCnt = savedInputCnt | (c & 0xFF);
+            c = std::fgetc(f);
+            if (c == EOF) {
+              endOfTape = true;
+              break;
             }
+            savedInputCnt = savedInputCnt | ((c & 0xFF) << 8);
+            c = std::fgetc(f);
+            if (c == EOF) {
+              endOfTape = true;
+              break;
+            }
+            savedInputCnt = savedInputCnt | ((c & 0xFF) << 16);
           }
-          if (bitsRemaining) {
-            bitsRemaining--;
-            if (!(shiftReg & 0x01))
-              halfPeriodSamples = 6;    // bit = 0
-            else
-              halfPeriodSamples = 4;    // bit = 1
-            shiftReg = shiftReg >> 1;
-          }
+          else
+            savedInputCnt = (c & 0xFF) << 3;
+          if (usingOldTapFormat)
+            savedInputCnt = savedInputCnt >> 1;
         }
-        samplesRemaining = halfPeriodSamples;
+        inputCnt = savedInputCnt;
       }
+      outputSignal += inputSignal;
+      if (inputCnt)
+        inputCnt--;
     }
-    if (leaderSampleCnt) {
-      leaderSampleCnt--;
-      if (!leaderSampleCnt) {
-        if (!bytesRemaining) {
-          endOfTape = true;             // end of tape
-          outputState = 0;
-          samplesRemaining = 0;
-          tapePosition = tapeLength;
-          return;
-        }
-        // sync bit
-        halfPeriodSamples = 8;
-        // next chunk
-        size_t  startPos = 0;
-        size_t  endPos = 0;
-        if (chunkCnt < 128) {
-          std::fseek(f, long(chunkCnt << 2), SEEK_SET);
-          startPos = size_t(std::fgetc(f) & 0xFF);
-          startPos |= (size_t(std::fgetc(f) & 0xFF) << 8);
-          startPos |= (size_t(std::fgetc(f) & 0xFF) << 16);
-          startPos |= (size_t(std::fgetc(f) & 0xFF) << 24);
-          if (++chunkCnt < 128) {
-            endPos = size_t(std::fgetc(f) & 0xFF);
-            endPos |= (size_t(std::fgetc(f) & 0xFF) << 8);
-            endPos |= (size_t(std::fgetc(f) & 0xFF) << 16);
-            endPos |= (size_t(std::fgetc(f) & 0xFF) << 24);
-          }
-          std::fseek(f, long(startPos + 512), SEEK_SET);
-        }
-        if (endPos > startPos)
-          chunkBytesRemaining = endPos - startPos;
-        else
-          chunkBytesRemaining = bytesRemaining;
-      }
-    }
-    if (samplesRemaining > 0)
-      samplesRemaining--;
     tapePosition++;
-    tapeLength = tapePosition + (bytesRemaining * 80) + leaderSampleCnt + 1;
+    tapeLength = tapePosition + 1;
+    outputState = (outputSignal > 0 ? (1 << (requestedBitsPerSample - 1)) : 0);
   }
 
-  void Tape_EPTE::setIsMotorOn(bool newState)
+  void Tape_C16::setIsMotorOn(bool newState)
   {
     isMotorOn = newState;
   }
 
-  void Tape_EPTE::stop()
+  void Tape_C16::stop()
   {
     isPlaybackOn = false;
     isRecordOn = false;
   }
 
-  void Tape_EPTE::seek(double t)
+  void Tape_C16::seek(double t)
   {
     if (t <= 0.0) {
-      tapeLength = 0;
+      tapeLength = 1;
       tapePosition = 0;
       outputState = 0;
-      bytesRemaining = 0;
       endOfTape = false;
-      shiftReg = 0x00;
-      bitsRemaining = 0;
-      halfPeriodSamples = 5;
-      samplesRemaining = 0;
-      leaderSampleCnt = 0;
-      chunkBytesRemaining = 0;
-      chunkCnt = 0;
-      if (std::fseek(f, 0L, SEEK_END) >= 0) {
-        long    n = std::ftell(f);
-        if (n > 512L) {
-          bytesRemaining = size_t(n - 512L);
-          tapeLength = bytesRemaining * 80;
-          std::fseek(f, 512L, SEEK_SET);
-        }
-      }
+      inputSignal = (usingOldTapFormat ? -1 : 1);
+      inputCnt = 0;
+      savedInputCnt = 0;
+      if (std::fseek(f, 20L, SEEK_SET) < 0)
+        endOfTape = true;
     }
   }
 
-  void Tape_EPTE::seekToCuePoint(bool isForward, double t)
+  void Tape_C16::seekToCuePoint(bool isForward, double t)
   {
     (void) t;
     if (!isForward)
       this->seek(0.0);
   }
 
-  void Tape_EPTE::addCuePoint()
+  void Tape_C16::addCuePoint()
   {
   }
 
-  void Tape_EPTE::deleteNearestCuePoint()
+  void Tape_C16::deleteNearestCuePoint()
   {
   }
 
-  void Tape_EPTE::deleteAllCuePoints()
+  void Tape_C16::deleteAllCuePoints()
   {
   }
 
@@ -765,7 +732,7 @@ namespace Plus4Emu {
     Tape    *t = (Tape *) 0;
     if (mode != 3) {
       try {
-        t = new Tape_EPTE(fileName, bitsPerSample);
+        t = new Tape_C16(fileName, bitsPerSample);
       }
       catch (...) {
       }

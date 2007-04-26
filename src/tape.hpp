@@ -200,22 +200,18 @@ namespace Plus4Emu {
     virtual void deleteAllCuePoints();
   };
 
-  class Tape_EPTE : public Tape {
+  class Tape_C16 : public Tape {
    private:
     std::FILE *f;
-    size_t    bytesRemaining;
     bool      endOfTape;
-    uint8_t   shiftReg;
-    uint8_t   bitsRemaining;
-    uint8_t   halfPeriodSamples;
-    size_t    samplesRemaining;
-    size_t    leaderSampleCnt;
-    size_t    chunkBytesRemaining;
-    size_t    chunkCnt;
+    bool      usingOldTapFormat;
+    int       inputSignal;
+    int       inputCnt;
+    int       savedInputCnt;
    public:
-    // Open EPTE format tape file 'fileName' read-only.
-    Tape_EPTE(const char *fileName, int bitsPerSample = 1);
-    virtual ~Tape_EPTE();
+    // Open C16 format tape file 'fileName' read-only.
+    Tape_C16(const char *fileName, int bitsPerSample = 1);
+    virtual ~Tape_C16();
     // run tape emulation for a period of 1.0 / getSampleRate() seconds
    protected:
     virtual void runOneSample_();
