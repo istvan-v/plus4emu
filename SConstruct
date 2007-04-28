@@ -69,6 +69,8 @@ if not configure.CheckCHeader('GL/gl.h'):
     print ' *** error: OpenGL is not found'
     Exit(-1)
 haveDotconf = configure.CheckCHeader('dotconf.h')
+if configure.CheckCHeader('stdint.h'):
+    plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_STDINT_H'])
 configure.Finish()
 
 if not havePortAudioV19:
@@ -80,6 +82,17 @@ plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
 plus4emuGLGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGLGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
+
+def fluidCompile(flNames):
+    cppNames = []
+    for flName in flNames:
+        if flName.endswith('.fl'):
+            cppName = flName[:-3] + '_fl.cpp'
+            hppName = flName[:-3] + '_fl.hpp'
+            Command([cppName, hppName], flName,
+                    'fluid -c -o %s -h %s $SOURCES' % (cppName, hppName))
+            cppNames += [cppName]
+    return cppNames
 
 plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/bplist.cpp
@@ -153,32 +166,12 @@ if not win32CrossCompile:
 else:
     plus4emuEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
 
-Command(['gui/gui_fl.cpp', 'gui/gui_fl.hpp'], 'gui/gui.fl',
-        'fluid -c -o gui/gui_fl.cpp -h gui/gui_fl.hpp $SOURCES')
-Command(['gui/disk_cfg.cpp', 'gui/disk_cfg.hpp'], 'gui/disk_cfg.fl',
-        'fluid -c -o gui/disk_cfg.cpp -h gui/disk_cfg.hpp $SOURCES')
-Command(['gui/disp_cfg.cpp', 'gui/disp_cfg.hpp'], 'gui/disp_cfg.fl',
-        'fluid -c -o gui/disp_cfg.cpp -h gui/disp_cfg.hpp $SOURCES')
-Command(['gui/snd_cfg.cpp', 'gui/snd_cfg.hpp'], 'gui/snd_cfg.fl',
-        'fluid -c -o gui/snd_cfg.cpp -h gui/snd_cfg.hpp $SOURCES')
-Command(['gui/vm_cfg.cpp', 'gui/vm_cfg.hpp'], 'gui/vm_cfg.fl',
-        'fluid -c -o gui/vm_cfg.cpp -h gui/vm_cfg.hpp $SOURCES')
-Command(['gui/debug_fl.cpp', 'gui/debug_fl.hpp'], 'gui/debug.fl',
-        'fluid -c -o gui/debug_fl.cpp -h gui/debug_fl.hpp $SOURCES')
-Command(['gui/about_fl.cpp', 'gui/about_fl.hpp'], 'gui/about.fl',
-        'fluid -c -o gui/about_fl.cpp -h gui/about_fl.hpp $SOURCES')
-
-plus4emu = plus4emuEnvironment.Program('plus4emu', Split('''
-    gui/gui.cpp
-    gui/gui_fl.cpp
-    gui/disk_cfg.cpp
-    gui/disp_cfg.cpp
-    gui/snd_cfg.cpp
-    gui/vm_cfg.cpp
-    gui/debug_fl.cpp
-    gui/about_fl.cpp
-    gui/main.cpp
-'''))
+plus4emu = plus4emuEnvironment.Program('plus4emu',
+    ['gui/gui.cpp']
+    + fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl', 'gui/disp_cfg.fl',
+                    'gui/snd_cfg.fl', 'gui/vm_cfg.fl', 'gui/debug.fl',
+                    'gui/about.fl'])
+    + ['gui/main.cpp'])
 Depends(plus4emu, plus4emuLib)
 Depends(plus4emu, residLib)
 
@@ -202,13 +195,7 @@ if not win32CrossCompile:
 else:
     makecfgEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
 
-Command(['installer/mkcfg_fl.cpp', 'installer/mkcfg_fl.hpp'],
-        'installer/mkcfg.fl',
-        'fluid -c -o installer/mkcfg_fl.cpp -h installer/mkcfg_fl.hpp $SOURCES')
-
-makecfg = makecfgEnvironment.Program('makecfg', Split('''
-    installer/makecfg.cpp
-    installer/mkcfg_fl.cpp
-'''))
+makecfg = makecfgEnvironment.Program('makecfg',
+    ['installer/makecfg.cpp'] + fluidCompile(['installer/mkcfg.fl']))
 Depends(makecfg, plus4emuLib)
 

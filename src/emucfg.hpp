@@ -46,7 +46,7 @@ namespace Plus4Emu {
     } vm;
     bool          vmConfigurationChanged;
     // --------
-    struct {
+    struct MemoryConfiguration_ {
       struct {
         int       size;
       } ram;
@@ -62,7 +62,8 @@ namespace Plus4Emu {
       // ROM files can be loaded to segments 0x00 to 0x07, 0x10 to 0x13,
       // 0x20 to 0x23, and 0x30 to 0x33
       ROMSegmentConfig  rom[52];
-    } memory;
+    };
+    MemoryConfiguration_  memory;
     bool          memoryConfigurationChanged;
     // --------
     struct {
@@ -99,7 +100,7 @@ namespace Plus4Emu {
     } display;
     bool          displaySettingsChanged;
     // --------
-    struct {
+    struct SoundConfiguration_ {
       bool        enabled;
       bool        highQuality;
       int         device;
@@ -117,7 +118,8 @@ namespace Plus4Emu {
         double    level;
         double    q;
       } equalizer;
-    } sound;
+    };
+    SoundConfiguration_   sound;
     bool          soundSettingsChanged;
     // --------
     int           keyboard[128][2];
@@ -136,29 +138,32 @@ namespace Plus4Emu {
       {
       }
     };
-    struct {
+    struct FloppyConfiguration_ {
       FloppyDriveSettings a;
       FloppyDriveSettings b;
       FloppyDriveSettings c;
       FloppyDriveSettings d;
-    } floppy;
+    };
+    FloppyConfiguration_  floppy;
     bool          floppyAChanged;
     bool          floppyBChanged;
     bool          floppyCChanged;
     bool          floppyDChanged;
     // --------
-    struct {
+    struct TapeConfiguration_ {
       std::string imageFile;
       int         defaultSampleRate;
       bool        fastMode;
-    } tape;
+    };
+    TapeConfiguration_    tape;
     bool          tapeSettingsChanged;
     bool          tapeDefaultSampleRateChanged;
     bool          fastTapeModeChanged;
     // --------
-    struct {
+    struct FileIOConfiguration_ {
       std::string workingDirectory;
-    } fileio;
+    };
+    FileIOConfiguration_  fileio;
     bool          fileioSettingsChanged;
     // --------
     struct {

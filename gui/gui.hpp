@@ -44,10 +44,10 @@ class Plus4EmuGUI_DebugWindow;
 class Plus4EmuGUI_AboutWindow;
 
 #include "gui_fl.hpp"
-#include "disk_cfg.hpp"
-#include "disp_cfg.hpp"
-#include "snd_cfg.hpp"
-#include "vm_cfg.hpp"
+#include "disk_cfg_fl.hpp"
+#include "disp_cfg_fl.hpp"
+#include "snd_cfg_fl.hpp"
+#include "vm_cfg_fl.hpp"
 #include "debug_fl.hpp"
 #include "about_fl.hpp"
 
