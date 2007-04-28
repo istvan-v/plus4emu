@@ -599,7 +599,7 @@ int Plus4EmuGUI::handleFLTKEvent(int event)
         int   n = config.convertKeyCode(keyCode);
         if (n >= 0 && (functionKeyState == 0U || !isKeyPress)) {
           try {
-#ifdef WIN32
+#if 0
             if (keyCode == FL_Shift_L || keyCode == FL_Shift_R) {
               // work around FLTK bug
               int   tmp = config.convertKeyCode(FL_Shift_L);
