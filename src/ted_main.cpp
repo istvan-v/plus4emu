@@ -32,14 +32,20 @@ namespace Plus4 {
       M7501::run(cpu_clock_multiplier);
       if (!cycle_count)
         playSample(0);
-      if (line_buf_pos < 473) {
-        if (line_buf_pos >= 0) {
-          uint8_t *bufp = &(line_buf[line_buf_pos]);
-          bufp[3] = bufp[2] = bufp[1] = bufp[0] = uint8_t(0x00);
-          bufp[7] = bufp[6] = bufp[5] = bufp[4] = uint8_t(0x00);
+      if (line_buf_pos >= 384) {
+        if (line_buf_pos <= 480) {
+          drawLine(&(line_buf[0]), line_buf_pos);
+          line_buf_pos = line_buf_pos - 456;
         }
-        line_buf_pos += 8;
+        else
+          line_buf_pos = -64;
       }
+      if (line_buf_pos >= 0) {
+        uint8_t *bufp = &(line_buf[line_buf_pos]);
+        bufp[3] = bufp[2] = bufp[1] = bufp[0] = uint8_t(0x00);
+        bufp[7] = bufp[6] = bufp[5] = bufp[4] = uint8_t(0x00);
+      }
+      line_buf_pos += 8;
       if (!ted_disabled)
         video_column |= uint8_t(0x01);
       cycle_count = (cycle_count + 1) & 3;
