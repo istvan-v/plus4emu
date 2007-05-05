@@ -25,11 +25,11 @@
 #include "display.hpp"
 #include "soundio.hpp"
 #include "vm.hpp"
+#include "p4floppy.hpp"
 
 namespace Plus4 {
 
   class SID;
-  class FloppyDrive;
 
   class Plus4VM : public Plus4Emu::VirtualMachine {
    private:
@@ -91,6 +91,7 @@ namespace Plus4 {
     bool      sidEnabled;
     FloppyDrive *floppyDrives[4];
     uint8_t   *floppyROM_1541;
+    uint8_t   *floppyROM_1551;
     uint8_t   *floppyROM_1581_0;
     uint8_t   *floppyROM_1581_1;
     // ----------------
@@ -98,129 +99,222 @@ namespace Plus4 {
     void stopDemoRecording(bool writeFile_);
     void updateTimingParameters(bool ntscMode_);
     void resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_);
+    inline M7501 * getDebugCPU()
+    {
+      if (currentDebugContext == 0)
+        return ted;
+      else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1]->getCPU());
+      return (M7501 *) 0;
+    }
+    inline const M7501 * getDebugCPU() const
+    {
+      if (currentDebugContext == 0)
+        return ted;
+      else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1]->getCPU());
+      return (M7501 *) 0;
+    }
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
-    // run emulation for the specified number of microseconds
+    /*!
+     * Run emulation for the specified number of microseconds.
+     */
     virtual void run(size_t microseconds);
-    // reset emulated machine; if 'isColdReset' is true, RAM is cleared
+    /*!
+     * Reset emulated machine; if 'isColdReset' is true, RAM is cleared.
+     */
     virtual void reset(bool isColdReset = false);
-    // delete all ROM segments, and resize RAM to 'memSize' kilobytes
-    // implies calling reset(true)
+    /*!
+     * Delete all ROM segments, and resize RAM to 'memSize' kilobytes;
+     * implies calling reset(true).
+     */
     virtual void resetMemoryConfiguration(size_t memSize);
-    // load ROM segment 'n' from the specified file, skipping 'offs' bytes
+    /*!
+     * Load ROM segment 'n' from the specified file, skipping 'offs' bytes.
+     */
     virtual void loadROMSegment(uint8_t n, const char *fileName, size_t offs);
-    // set CPU clock frequency (in Hz, or clock multiplier if a small value
-    // is specified); defaults to 1
+    /*!
+     * Set CPU clock frequency (in Hz, or clock multiplier if a small value
+     * is specified); defaults to 1.
+     */
     virtual void setCPUFrequency(size_t freq_);
-    // set TED input clock frequency (defaults to 17734475 Hz)
+    /*!
+     * Set TED input clock frequency (defaults to 17734475 Hz).
+     */
     virtual void setVideoFrequency(size_t freq_);
-    // Set state of key 'keyCode' (0 to 127).
+    /*!
+     * Set state of key 'keyCode' (0 to 127).
+     */
     virtual void setKeyboardState(int keyCode, bool isPressed);
     // -------------------------- DISK AND FILE I/O ---------------------------
-    // Load disk image for drive 'n' (counting from zero); an empty file
-    // name means no disk.
+    /*!
+     * Load disk image for drive 'n' (counting from zero); an empty file
+     * name means no disk.
+     */
     virtual void setDiskImageFile(int n, const std::string& fileName_,
                                   int nTracks_ = -1, int nSides_ = 2,
                                   int nSectorsPerTrack_ = 9);
     // ---------------------------- TAPE EMULATION ----------------------------
-    // Set tape image file name (if the file name is NULL or empty, tape
-    // emulation is disabled).
+    /*!
+     * Set tape image file name (if the file name is NULL or empty, tape
+     * emulation is disabled).
+     */
     virtual void setTapeFileName(const std::string& fileName);
-    // start tape playback
+    /*!
+     * Start tape playback.
+     */
     virtual void tapePlay();
-    // start tape recording; if the tape file is read-only, this is
-    // equivalent to calling tapePlay()
+    /*!
+     * Start tape recording; if the tape file is read-only, this is
+     * equivalent to calling tapePlay().
+     */
     virtual void tapeRecord();
-    // stop tape playback and recording
+    /*!
+     * Stop tape playback and recording.
+     */
     virtual void tapeStop();
     // ------------------------------ DEBUGGING -------------------------------
-    // Add breakpoints from the specified breakpoint list (see also
-    // bplist.hpp).
+    /*!
+     * Set the debugging context (CPU number).
+     *   0: main CPU
+     *   1: floppy drive (unit 8)
+     *   2: floppy drive (unit 9)
+     *   3: floppy drive (unit 10)
+     *   4: floppy drive (unit 11)
+     */
+    virtual void setDebugContext(int n);
+    /*!
+     * Add breakpoints from the specified breakpoint list (see also
+     * bplist.hpp).
+     */
     virtual void setBreakPoints(const Plus4Emu::BreakPointList& bpList);
-    // Returns the currently defined breakpoints.
+    /*!
+     * Returns the currently defined breakpoints.
+     */
     virtual Plus4Emu::BreakPointList getBreakPoints();
-    // Clear all breakpoints.
+    /*!
+     * Clear all breakpoints.
+     */
     virtual void clearBreakPoints();
-    // Set breakpoint priority threshold (0 to 4); breakpoints with a
-    // priority less than this value will not trigger a break.
+    /*!
+     * Set breakpoint priority threshold (0 to 4); breakpoints with a
+     * priority less than this value will not trigger a break.
+     */
     virtual void setBreakPointPriorityThreshold(int n);
-    // Set if the breakpoint callback should be called whenever the first byte
-    // of a CPU instruction is read from memory. Breakpoints are ignored in
-    // this mode.
+    /*!
+     * Set if the breakpoint callback should be called whenever the first byte
+     * of a CPU instruction is read from memory. Breakpoints are ignored in
+     * this mode.
+     */
     virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
-    // Returns the segment at page 'n' (0 to 3).
+    /*!
+     * Returns the segment at page 'n' (0 to 3).
+     */
     virtual uint8_t getMemoryPage(int n) const;
-    // Read a byte from memory. If 'isCPUAddress' is false, bits 14 to 21 of
-    // 'addr' define the segment number, while bits 0 to 13 are the offset
-    // (0 to 0x3FFF) within the segment; otherwise, 'addr' is interpreted as
-    // a 16-bit CPU address.
+    /*!
+     * Read a byte from memory. If 'isCPUAddress' is false, bits 14 to 21 of
+     * 'addr' define the segment number, while bits 0 to 13 are the offset
+     * (0 to 0x3FFF) within the segment; otherwise, 'addr' is interpreted as
+     * a 16-bit CPU address.
+     */
     virtual uint8_t readMemory(uint32_t addr, bool isCPUAddress = false) const;
-    // Write a byte to memory. If 'isCPUAddress' is false, bits 14 to 21 of
-    // 'addr' define the segment number, while bits 0 to 13 are the offset
-    // (0 to 0x3FFF) within the segment; otherwise, 'addr' is interpreted as
-    // a 16-bit CPU address.
-    // NOTE: calling this function will stop any demo recording or playback.
+    /*!
+     * Write a byte to memory. If 'isCPUAddress' is false, bits 14 to 21 of
+     * 'addr' define the segment number, while bits 0 to 13 are the offset
+     * (0 to 0x3FFF) within the segment; otherwise, 'addr' is interpreted as
+     * a 16-bit CPU address.
+     * NOTE: calling this function will stop any demo recording or playback.
+     */
     virtual void writeMemory(uint32_t addr, uint8_t value,
                              bool isCPUAddress = false);
-    // Returns the current value of the CPU program counter (PC).
+    /*!
+     * Returns the current value of the CPU program counter (PC).
+     */
     virtual uint16_t getProgramCounter() const;
-    // Returns the CPU address of the last byte pushed to the stack.
+    /*!
+     * Returns the CPU address of the last byte pushed to the stack.
+     */
     virtual uint16_t getStackPointer() const;
-    // Dumps the current values of all CPU registers to 'buf' in ASCII format.
-    // The register list may be written as multiple lines separated by '\n'
-    // characters, however, there is no newline character at the end of the
-    // buffer. The maximum line width is 40 characters.
+    /*!
+     * Dumps the current values of all CPU registers to 'buf' in ASCII format.
+     * The register list may be written as multiple lines separated by '\n'
+     * characters, however, there is no newline character at the end of the
+     * buffer. The maximum line width is 40 characters.
+     */
     virtual void listCPURegisters(std::string& buf) const;
-    // Disassemble one CPU instruction, starting from memory address 'addr',
-    // and write the result to 'buf' (not including a newline character).
-    // 'offs' is added to the instruction address that is printed.
-    // The maximum line width is 40 characters.
-    // Returns the address of the next instruction. If 'isCPUAddress' is
-    // true, 'addr' is interpreted as a 16-bit CPU address, otherwise it
-    // is assumed to be a 22-bit physical address (8 bit segment + 14 bit
-    // offset).
+    /*!
+     * Disassemble one CPU instruction, starting from memory address 'addr',
+     * and write the result to 'buf' (not including a newline character).
+     * 'offs' is added to the instruction address that is printed.
+     * The maximum line width is 40 characters.
+     * Returns the address of the next instruction. If 'isCPUAddress' is
+     * true, 'addr' is interpreted as a 16-bit CPU address, otherwise it
+     * is assumed to be a 22-bit physical address (8 bit segment + 14 bit
+     * offset).
+     */
     virtual uint32_t disassembleInstruction(std::string& buf, uint32_t addr,
                                             bool isCPUAddress = false,
                                             int32_t offs = 0) const;
-    // Returns read-only reference to a structure containing all CPU
-    // registers; see plus4/cpu.hpp for more information.
+    /*!
+     * Returns read-only reference to a structure containing all CPU
+     * registers; see plus4/cpu.hpp for more information.
+     */
     virtual const M7501Registers& getCPURegisters() const;
     // ------------------------------- FILE I/O -------------------------------
-    // Save snapshot of virtual machine state, including all ROM and RAM
-    // segments, as well as all hardware registers. Note that the clock
-    // frequency and timing settings, tape and disk state, and breakpoint list
-    // are not saved.
+    /*!
+     * Save snapshot of virtual machine state, including all ROM and RAM
+     * segments, as well as all hardware registers. Note that the clock
+     * frequency and timing settings, tape and disk state, and breakpoint list
+     * are not saved.
+     */
     virtual void saveState(Plus4Emu::File&);
-    // Save clock frequency and timing settings.
+    /*!
+     * Save clock frequency and timing settings.
+     */
     virtual void saveMachineConfiguration(Plus4Emu::File&);
-    // save program
+    /*!
+     * Save program.
+     */
     virtual void saveProgram(Plus4Emu::File&);
     virtual void saveProgram(const char *fileName);
-    // load program
+    /*!
+     * Load program.
+     */
     virtual void loadProgram(const char *fileName);
-    // Register all types of file data supported by this class, for use by
-    // Plus4Emu::File::processAllChunks(). Note that loading snapshot data
-    // will clear all breakpoints.
+    /*!
+     * Register all types of file data supported by this class, for use by
+     * Plus4Emu::File::processAllChunks(). Note that loading snapshot data
+     * will clear all breakpoints.
+     */
     virtual void registerChunkTypes(Plus4Emu::File&);
-    // Start recording a demo to the file object, which will be used until
-    // the recording is stopped for some reason.
-    // Implies calling saveMachineConfiguration() and saveState() first.
+    /*!
+     * Start recording a demo to the file object, which will be used until
+     * the recording is stopped for some reason.
+     * Implies calling saveMachineConfiguration() and saveState() first.
+     */
     virtual void recordDemo(Plus4Emu::File&);
-    // Stop playing or recording demo.
+    /*!
+     * Stop playing or recording demo.
+     */
     virtual void stopDemo();
-    // Returns true if a demo is currently being recorded. The recording stops
-    // when stopDemo() is called, any tape or disk I/O is attempted, clock
-    // frequency and timing settings are changed, or a snapshot is loaded.
-    // This function will also flush demo data to the associated file object
-    // after recording is stopped for some reason other than calling
-    // stopDemo().
+    /*!
+     * Returns true if a demo is currently being recorded. The recording stops
+     * when stopDemo() is called, any tape or disk I/O is attempted, clock
+     * frequency and timing settings are changed, or a snapshot is loaded.
+     * This function will also flush demo data to the associated file object
+     * after recording is stopped for some reason other than calling
+     * stopDemo().
+     */
     virtual bool getIsRecordingDemo();
-    // Returns true if a demo is currently being played. The playback stops
-    // when the end of the demo is reached, stopDemo() is called, any tape or
-    // disk I/O is attempted, clock frequency and timing settings are changed,
-    // or a snapshot is loaded. Note that keyboard events are ignored while
-    // playing a demo.
+    /*!
+     * Returns true if a demo is currently being played. The playback stops
+     * when the end of the demo is reached, stopDemo() is called, any tape or
+     * disk I/O is attempted, clock frequency and timing settings are changed,
+     * or a snapshot is loaded. Note that keyboard events are ignored while
+     * playing a demo.
+     */
     virtual bool getIsPlayingDemo() const;
     // ----------------
     virtual void loadState(Plus4Emu::File::Buffer&);

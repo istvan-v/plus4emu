@@ -760,5 +760,74 @@ namespace Plus4 {
     via1.setPortB(via1PortBInput);
   }
 
+  M7501 * VC1541::getCPU()
+  {
+    return (&cpu);
+  }
+
+  const M7501 * VC1541::getCPU() const
+  {
+    return (&cpu);
+  }
+
+  uint8_t VC1541::readMemoryDebug(uint16_t addr) const
+  {
+    if (addr < 0x2000) {
+      if (addr < 0x1000)
+        return memory_ram[addr & 0x07FF];
+      else if (addr >= 0x1C00)
+        return via2.readRegisterDebug(addr & 0x000F);
+      else if (addr >= 0x1800)
+        return via1.readRegisterDebug(addr & 0x000F);
+    }
+    else if (addr >= 0x8000) {
+      if (memory_rom)
+        return memory_rom[addr & 0x3FFF];
+    }
+    return uint8_t(0xFF);
+  }
+
+  void VC1541::writeMemoryDebug(uint16_t addr, uint8_t value)
+  {
+    if (addr < 0x1800) {
+      if (addr < 0x1000)
+        memory_ram[addr & 0x07FF] = value;
+    }
+    else if (addr < 0x1C00)
+      via1.writeRegister(addr & 0x000F, value);
+    else if (addr < 0x2000)
+      via2.writeRegister(addr & 0x000F, value);
+  }
+
+  uint8_t VC1541::getLEDState() const
+  {
+    // TODO: implement this
+    return uint8_t(0x00);
+  }
+
+  void VC1541::saveState(Plus4Emu::File::Buffer& buf)
+  {
+    // TODO: implement this
+    (void) buf;
+  }
+
+  void VC1541::saveState(Plus4Emu::File& f)
+  {
+    // TODO: implement this
+    (void) f;
+  }
+
+  void VC1541::loadState(Plus4Emu::File::Buffer& buf)
+  {
+    // TODO: implement this
+    (void) buf;
+  }
+
+  void VC1541::registerChunkTypes(Plus4Emu::File& f)
+  {
+    // TODO: implement this
+    (void) f;
+  }
+
 }       // namespace Plus4
 

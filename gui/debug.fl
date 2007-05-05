@@ -496,6 +496,17 @@ class Plus4EmuGUI_DebugWindow {open
           }
         }
       }
+      Fl_Choice debugContextValuator {
+        callback {{
+  if (o->value() >= 0) {
+    gui.vm.setDebugContext(o->value());
+    updateWindow();
+  }
+}} open
+        xywh {15 415 150 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
+        code0 {o->add("Main CPU|Unit 8|Unit 9|Unit 10|Unit 11");}
+        code1 {o->value(gui.vm.getDebugContext());}
+      } {}
       Fl_Button {} {
         label Step
         callback {{

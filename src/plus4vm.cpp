@@ -224,7 +224,7 @@ namespace Plus4 {
         return;
     }
     vm.breakPointCallback(vm.breakPointCallbackUserData,
-                          false, isWrite, addr, value);
+                          0, false, isWrite, addr, value);
   }
 
   uint8_t Plus4VM::TED7360_::sidRegisterRead(void *userData, uint16_t addr)
@@ -352,6 +352,7 @@ namespace Plus4 {
       soundOutputAccumulator(0),
       sidEnabled(false),
       floppyROM_1541((uint8_t *) 0),
+      floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
       floppyROM_1581_1((uint8_t *) 0)
   {
@@ -396,6 +397,8 @@ namespace Plus4 {
     }
     if (floppyROM_1541)
       delete[] floppyROM_1541;
+    if (floppyROM_1551)
+      delete[] floppyROM_1551;
     if (floppyROM_1581_0)
       delete[] floppyROM_1581_0;
     if (floppyROM_1581_1)
@@ -533,6 +536,10 @@ namespace Plus4 {
         delete[] floppyROM_1541;
         floppyROM_1541 = (uint8_t *) 0;
       }
+      if (floppyROM_1551) {
+        delete[] floppyROM_1551;
+        floppyROM_1551 = (uint8_t *) 0;
+      }
       if (floppyROM_1581_0) {
         delete[] floppyROM_1581_0;
         floppyROM_1581_0 = (uint8_t *) 0;
@@ -566,6 +573,10 @@ namespace Plus4 {
       case 0x10:
         floppyROMSegment = 2;
         floppyROMPtr = &floppyROM_1541;
+        break;
+      case 0x20:
+        floppyROMSegment = 3;
+        floppyROMPtr = &floppyROM_1551;
         break;
       case 0x30:
         floppyROMSegment = 0;
@@ -709,6 +720,7 @@ namespace Plus4 {
         floppyDrives[n]->setROMImage(0, floppyROM_1581_0);
         floppyDrives[n]->setROMImage(1, floppyROM_1581_1);
         floppyDrives[n]->setROMImage(2, floppyROM_1541);
+        floppyDrives[n]->setROMImage(3, floppyROM_1551);
       }
       floppyDrives[n]->setDiskImageFile(fileName_);
     }
@@ -753,6 +765,25 @@ namespace Plus4 {
     ted->setTapeButtonState(false);
   }
 
+  void Plus4VM::setDebugContext(int n)
+  {
+    currentDebugContext = (n >= 0 ? (n <= 4 ? n : 4) : 0);
+    // disable single stepping in other debug contexts
+    for (int i = 0; i < 5; i++) {
+      if (i != currentDebugContext) {
+        M7501   *p = (M7501 *) 0;
+        if (i != 0) {
+          if (floppyDrives[i - 1] != (FloppyDrive *) 0)
+            p = floppyDrives[i - 1]->getCPU();
+        }
+        else
+          p = ted;
+        if (p)
+          p->setSingleStepMode(false, false);
+      }
+    }
+  }
+
   void Plus4VM::setBreakPoints(const Plus4Emu::BreakPointList& bpList)
   {
     for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
@@ -764,43 +795,114 @@ namespace Plus4 {
         throw Plus4Emu::Exception("segment:offset format breakpoints are not "
                                   "supported on this machine");
     }
-    for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
-      const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-      ted->setBreakPoint(bp.addr(), bp.priority(),
+    M7501   *p = getDebugCPU();
+    if (p) {
+      for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
+        const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
+        p->setBreakPoint(bp.addr(), bp.priority(),
                          bp.isRead(), bp.isWrite(), bp.isIgnore());
+      }
     }
   }
 
   Plus4Emu::BreakPointList Plus4VM::getBreakPoints()
   {
-    return (ted->getBreakPointList());
+    M7501   *p = getDebugCPU();
+    if (p)
+      return (p->getBreakPointList());
+    return (Plus4Emu::BreakPointList());
   }
 
   void Plus4VM::clearBreakPoints()
   {
-    ted->clearBreakPoints();
+    M7501   *p = getDebugCPU();
+    if (p)
+      p->clearBreakPoints();
   }
 
   void Plus4VM::setBreakPointPriorityThreshold(int n)
   {
-    ted->setBreakPointPriorityThreshold(n);
+    M7501   *p = getDebugCPU();
+    if (p)
+      p->setBreakPointPriorityThreshold(n);
   }
 
   void Plus4VM::setSingleStepMode(bool isEnabled, bool stepOverFlag)
   {
-    ted->setSingleStepMode(isEnabled, stepOverFlag);
+    M7501   *p = getDebugCPU();
+    if (p)
+      p->setSingleStepMode(isEnabled, stepOverFlag);
   }
 
   uint8_t Plus4VM::getMemoryPage(int n) const
   {
-    return ted->getMemoryPage(n);
+    if (currentDebugContext == 0)
+      return ted->getMemoryPage(n);
+    else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0) {
+      // floppy drives are mapped to segments 60..6F
+      return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
+    }
+    return uint8_t(0x7F);
   }
 
   uint8_t Plus4VM::readMemory(uint32_t addr, bool isCPUAddress) const
   {
-    if (isCPUAddress)
-      return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
-    return ted->readMemoryRaw(addr & uint32_t(0x003FFFFF));
+    if (isCPUAddress) {
+      if (currentDebugContext == 0) {
+        return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
+      }
+      else {
+        const FloppyDrive *p = floppyDrives[currentDebugContext - 1];
+        if (p)
+          return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
+      }
+    }
+    else {
+      uint8_t segment = uint8_t((addr >> 14) & 0xFF);
+      switch (segment) {
+      case 0x10:
+        if (floppyROM_1541)
+          return floppyROM_1541[addr & 0x3FFFU];
+        break;
+      case 0x20:
+        if (floppyROM_1551)
+          return floppyROM_1551[addr & 0x3FFFU];
+        break;
+      case 0x30:
+        if (floppyROM_1581_0)
+          return floppyROM_1581_0[addr & 0x3FFFU];
+        break;
+      case 0x31:
+        if (floppyROM_1581_1)
+          return floppyROM_1581_1[addr & 0x3FFFU];
+        break;
+      case 0x60:
+      case 0x61:
+      case 0x62:
+      case 0x63:
+      case 0x64:
+      case 0x65:
+      case 0x66:
+      case 0x67:
+      case 0x68:
+      case 0x69:
+      case 0x6A:
+      case 0x6B:
+      case 0x6C:
+      case 0x6D:
+      case 0x6E:
+      case 0x6F:
+        {
+          const FloppyDrive *p = floppyDrives[(segment >> 2) & 3];
+          if (p)
+            return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
+        }
+        break;
+      default:
+        return ted->readMemoryRaw(addr & uint32_t(0x003FFFFF));
+      }
+    }
+    return uint8_t(0xFF);
   }
 
   void Plus4VM::writeMemory(uint32_t addr, uint8_t value, bool isCPUAddress)
@@ -809,34 +911,65 @@ namespace Plus4 {
       stopDemoPlayback();
       stopDemoRecording(false);
     }
-    if (isCPUAddress)
-      ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
-    else
-      ted->writeMemoryRaw(addr & uint32_t(0x003FFFFF), value);
+    if (isCPUAddress) {
+      if (currentDebugContext == 0) {
+        ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
+      }
+      else {
+        FloppyDrive *p = floppyDrives[currentDebugContext - 1];
+        if (p)
+          p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+      }
+    }
+    else {
+      if (!(addr >= 0x00180000U && addr <= 0x001BFFFFU)) {
+        ted->writeMemoryRaw(addr & uint32_t(0x003FFFFF), value);
+      }
+      else {
+        FloppyDrive *p = floppyDrives[(addr >> 16) & 3U];
+        if (p)
+          p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+      }
+    }
   }
 
   uint16_t Plus4VM::getProgramCounter() const
   {
-    return ted->getRegisters().reg_PC;
+    const M7501 *p = getDebugCPU();
+    if (p)
+      return p->getRegisters().reg_PC;
+    return uint16_t(0xFFFF);
   }
 
   uint16_t Plus4VM::getStackPointer() const
   {
-    return (uint16_t(0x0100)
-            | uint16_t((ted->getRegisters().reg_SP + uint8_t(1))
-                       & uint8_t(0xFF)));
+    const M7501 *p = getDebugCPU();
+    if (p) {
+      return (uint16_t(0x0100)
+              | uint16_t((p->getRegisters().reg_SP + uint8_t(1))
+                         & uint8_t(0xFF)));
+    }
+    return uint16_t(0xFFFF);
   }
 
   void Plus4VM::listCPURegisters(std::string& buf) const
   {
-    char    tmpBuf[96];
-    const M7501Registers& r = ted->getRegisters();
-    std::sprintf(&(tmpBuf[0]),
-                 " PC  SR AC XR YR SP\n"
-                 "%04X %02X %02X %02X %02X %02X",
-                 (unsigned int) r.reg_PC, (unsigned int) r.reg_SR,
-                 (unsigned int) r.reg_AC, (unsigned int) r.reg_XR,
-                 (unsigned int) r.reg_YR, (unsigned int) r.reg_SP);
+    char        tmpBuf[96];
+    const M7501 *p = getDebugCPU();
+    if (p) {
+      const M7501Registers& r = p->getRegisters();
+      std::sprintf(&(tmpBuf[0]),
+                   " PC  SR AC XR YR SP\n"
+                   "%04X %02X %02X %02X %02X %02X",
+                   (unsigned int) r.reg_PC, (unsigned int) r.reg_SR,
+                   (unsigned int) r.reg_AC, (unsigned int) r.reg_XR,
+                   (unsigned int) r.reg_YR, (unsigned int) r.reg_SP);
+    }
+    else {
+      std::sprintf(&(tmpBuf[0]),
+                   " PC  SR AC XR YR SP\n"
+                   "FFFF FF FF FF FF FF");
+    }
     buf = &(tmpBuf[0]);
   }
 
@@ -850,6 +983,9 @@ namespace Plus4 {
 
   const M7501Registers& Plus4VM::getCPURegisters() const
   {
+    const M7501 *p = getDebugCPU();
+    if (p)
+      return p->getRegisters();
     return ted->getRegisters();
   }
 

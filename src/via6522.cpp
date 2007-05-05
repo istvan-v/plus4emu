@@ -145,6 +145,7 @@ namespace Plus4 {
       break;
     case 0x0A:                                  // shift register
       viaRegisters[0x0D] = viaRegisters[0x0D] & 0xFB;
+      updateInterruptFlags();
       break;
     case 0x0B:                                  // auxiliary control register
       break;
@@ -228,6 +229,7 @@ namespace Plus4 {
       break;
     case 0x0A:                                  // shift register
       viaRegisters[0x0D] = viaRegisters[0x0D] & 0xFB;
+      updateInterruptFlags();
       break;
     case 0x0B:                                  // auxiliary control register
       viaRegisters[addr] = value;
@@ -279,6 +281,67 @@ namespace Plus4 {
       portARegister = value;
       break;
     }
+  }
+
+  uint8_t VIA6522::readRegisterDebug(uint16_t addr) const
+  {
+    addr = addr & 0x000F;
+    uint8_t value = viaRegisters[addr];
+    switch (addr) {
+    case 0x00:                                  // port B
+      if (!(viaRegisters[0x0B] & 0x02) || !(viaRegisters[0x0D] & 0x10))
+        value = getPortB();
+      else
+        value = portBLatch;
+      value = (value & (portBDataDirection ^ 0xFF))
+              | (portBRegister & portBDataDirection);
+      break;
+    case 0x01:                                  // port A (controls handshake)
+      if (!(viaRegisters[0x0B] & 0x01) || !(viaRegisters[0x0D] & 0x02))
+        value = getPortA();
+      else
+        value = portALatch;
+      break;
+    case 0x02:                                  // port B data direction
+      break;
+    case 0x03:                                  // port A data direction
+      break;
+    case 0x04:                                  // timer 1 low byte
+      value = uint8_t(timer1Counter & 0x00FF);
+      break;
+    case 0x05:                                  // timer 1 high byte
+      value = uint8_t(timer1Counter >> 8);
+      break;
+    case 0x06:                                  // timer 1 latch low byte
+      value = uint8_t(timer1Latch & 0x00FF);
+      break;
+    case 0x07:                                  // timer 1 latch high byte
+      value = uint8_t(timer1Latch >> 8);
+      break;
+    case 0x08:                                  // timer 2 low byte
+      value = uint8_t(timer2Counter & 0x00FF);
+      break;
+    case 0x09:                                  // timer 2 high byte
+      value = uint8_t(timer2Counter >> 8);
+      break;
+    case 0x0A:                                  // shift register
+      break;
+    case 0x0B:                                  // auxiliary control register
+      break;
+    case 0x0C:                                  // peripheral control register
+      break;
+    case 0x0D:                                  // interrupt flag register
+      break;
+    case 0x0E:                                  // interrupt enable register
+      break;
+    case 0x0F:                                  // port A (no handshake)
+      if (!(viaRegisters[0x0B] & 0x01) || !(viaRegisters[0x0D] & 0x02))
+        value = getPortA();
+      else
+        value = portALatch;
+      break;
+    }
+    return value;
   }
 
   void VIA6522::irqStateChangeCallback(bool newState)

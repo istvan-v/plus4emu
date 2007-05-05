@@ -40,10 +40,12 @@
 #endif
 
 static void defaultBreakPointCallback(void *userData,
+                                      int debugContext_,
                                       bool isIO, bool isWrite,
                                       uint16_t addr, uint8_t value)
 {
   (void) userData;
+  (void) debugContext_;
   (void) isIO;
   (void) isWrite;
   (void) addr;
@@ -118,6 +120,7 @@ namespace Plus4Emu {
       defaultTapeSampleRate(24000L),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
+      currentDebugContext(0),
       noBreakOnDataRead(false),
       fileIOEnabled(false),
 #ifndef WIN32
@@ -480,6 +483,16 @@ namespace Plus4Emu {
     fastTapeModeEnabled = isEnabled;
   }
 
+  void VirtualMachine::setDebugContext(int n)
+  {
+    (void) n;
+  }
+
+  int VirtualMachine::getDebugContext() const
+  {
+    return currentDebugContext;
+  }
+
   void VirtualMachine::setBreakPoints(const BreakPointList& bpList)
   {
     (void) bpList;
@@ -512,6 +525,7 @@ namespace Plus4Emu {
 
   void VirtualMachine::setBreakPointCallback(void (*breakPointCallback_)(
                                                  void *userData,
+                                                 int debugContext_,
                                                  bool isIO, bool isWrite,
                                                  uint16_t addr, uint8_t value),
                                              void *userData_)

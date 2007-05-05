@@ -269,5 +269,104 @@ namespace Plus4 {
     ciaPortAInput = (ciaPortAInput & uint8_t(0x7F)) | uint8_t(0x02);
   }
 
+  M7501 * VC1581::getCPU()
+  {
+    return (&cpu);
+  }
+
+  const M7501 * VC1581::getCPU() const
+  {
+    return (&cpu);
+  }
+
+  uint8_t VC1581::readMemoryDebug(uint16_t addr) const
+  {
+    if (addr < 0x6000) {
+      if (addr < 0x2000)
+        return memory_ram[addr];
+      else if (addr >= 0x4000 && addr <= 0x43FF)
+        return cia.readRegisterDebug(addr & 0x000F);
+    }
+    else if (addr >= 0x8000) {
+      if (addr < 0xC000) {
+        if (memory_rom_0)
+          return memory_rom_0[addr & 0x3FFF];
+      }
+      else {
+        if (memory_rom_1)
+          return memory_rom_1[addr & 0x3FFF];
+      }
+    }
+    else if (addr < 0x6400) {
+      switch (addr & 3) {
+      case 0:
+        return wd177x.readStatusRegisterDebug();
+      case 1:
+        return wd177x.readTrackRegister();
+      case 2:
+        return wd177x.readSectorRegister();
+      case 3:
+        return wd177x.readDataRegisterDebug();
+      }
+    }
+    return uint8_t(0xFF);
+  }
+
+  void VC1581::writeMemoryDebug(uint16_t addr, uint8_t value)
+  {
+    if (addr < 0x4400) {
+      if (addr < 0x2000)
+        memory_ram[addr] = value;
+      else if (addr >= 0x4000)
+        cia.writeRegister(addr & 0x000F, value);
+    }
+    else if (addr >= 0x6000 && addr <= 0x63FF) {
+      switch (addr & 3) {
+      case 0:
+        wd177x.writeCommandRegister(value);
+        break;
+      case 1:
+        wd177x.writeTrackRegister(value);
+        break;
+      case 2:
+        wd177x.writeSectorRegister(value);
+        break;
+      case 3:
+        wd177x.writeDataRegister(value);
+        break;
+      }
+    }
+  }
+
+  uint8_t VC1581::getLEDState() const
+  {
+    // TODO: implement this
+    return uint8_t(0x00);
+  }
+
+  void VC1581::saveState(Plus4Emu::File::Buffer& buf)
+  {
+    // TODO: implement this
+    (void) buf;
+  }
+
+  void VC1581::saveState(Plus4Emu::File& f)
+  {
+    // TODO: implement this
+    (void) f;
+  }
+
+  void VC1581::loadState(Plus4Emu::File::Buffer& buf)
+  {
+    // TODO: implement this
+    (void) buf;
+  }
+
+  void VC1581::registerChunkTypes(Plus4Emu::File& f)
+  {
+    // TODO: implement this
+    (void) f;
+  }
+
 }       // namespace Plus4
 

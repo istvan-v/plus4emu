@@ -235,6 +235,54 @@ namespace Plus4 {
     ciaRegisters[n] = value;
   }
 
+  uint8_t CIA8520::readRegisterDebug(uint16_t addr) const
+  {
+    uint8_t n = uint8_t(addr & 0x000F);
+    uint8_t value = ciaRegisters[n];
+    switch (n) {
+    case 0x04:                                  // timer A low
+      value = uint8_t(timerAState & 0xFF);
+      break;
+    case 0x05:                                  // timer A high
+      value = uint8_t((timerAState >> 8) & 0xFF);
+      break;
+    case 0x06:                                  // timer B low
+      value = uint8_t(timerBState & 0xFF);
+      break;
+    case 0x07:                                  // timer B high
+      value = uint8_t((timerBState >> 8) & 0xFF);
+      break;
+    case 0x08:                                  // TOD bits 0 to 7
+      if (todReadLatchFlag)
+        value = uint8_t(todReadLatch & 0xFFU);
+      else
+        value = uint8_t(todCounter & 0xFFU);
+      break;
+    case 0x09:                                  // TOD bits 8 to 15
+      if (todReadLatchFlag)
+        value = uint8_t((todReadLatch >> 8) & 0xFFU);
+      else
+        value = uint8_t((todCounter >> 8) & 0xFFU);
+      break;
+    case 0x0A:                                  // TOD bits 16 to 23
+      value = uint8_t((todCounter >> 16) & 0xFFU);
+      break;
+    case 0x0B:                                  // unused
+      value = uint8_t(0x00);
+      break;
+    case 0x0D:                                  // interrupt control register
+      value &= uint8_t(0x9F);
+      break;
+    case 0x0E:                                  // control register A
+      value &= uint8_t(0xEF);
+      break;
+    case 0x0F:                                  // control register B
+      value &= uint8_t(0xEF);
+      break;
+    }
+    return value;
+  }
+
   void CIA8520::reset()
   {
     for (int i = 0; i < 16; i++)

@@ -121,7 +121,7 @@ class Plus4EmuGUI {open
   decl {static void errorMessageCallback(void *userData, const char *msg);} {}
   decl {static void fileNameCallback(void *userData, std::string& fileName);} {}
   decl {static void fltkCheckCallback(void *userData);} {}
-  decl {static void breakPointCallback(void *userData, bool isIO, bool isWrite, uint16_t addr, uint8_t value);} {}
+  decl {static void breakPointCallback(void *userData, int debugContext_, bool isIO, bool isWrite, uint16_t addr, uint8_t value);} {}
   decl {static void screenshotCallback(void *userData, const unsigned char *buf, int w_, int h_);} {}
   decl {bool closeDemoFile(bool stopDemo_);} {}
   decl {void saveQuickConfig(int n);} {}

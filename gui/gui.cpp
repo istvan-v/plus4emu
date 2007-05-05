@@ -931,10 +931,12 @@ void Plus4EmuGUI::fltkCheckCallback(void *userData)
 }
 
 void Plus4EmuGUI::breakPointCallback(void *userData,
+                                     int debugContext_,
                                      bool isIO, bool isWrite,
                                      uint16_t addr, uint8_t value)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
+  gui_.vm.setDebugContext(debugContext_);
   Fl::lock();
   if (gui_.exitFlag || !gui_.mainWindow->shown()) {
     Fl::unlock();

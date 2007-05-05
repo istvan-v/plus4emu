@@ -53,6 +53,7 @@ namespace Plus4 {
     virtual ~CIA8520();
     uint8_t readRegister(uint16_t addr);
     void    writeRegister(uint16_t addr, uint8_t value);
+    uint8_t readRegisterDebug(uint16_t addr) const;
     // set the FLAG input to 'newState' (true = high, false = low)
     inline void setFlagState(bool newState)
     {

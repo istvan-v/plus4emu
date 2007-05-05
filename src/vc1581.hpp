@@ -70,24 +70,58 @@ namespace Plus4 {
    public:
     VC1581(int driveNum_ = 8);
     virtual ~VC1581();
-    // use 'romData_' (should point to 16384 bytes of data which is expected
-    // to remain valid until either a new address is set or the object is
-    // destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed
-    // values for 'n' are:
-    //   0: 1581 low
-    //   1: 1581 high
-    //   2: 1541
-    // if this drive type does not use the selected ROM bank, the function call
-    // is ignored
+    /*!
+     * Use 'romData_' (should point to 16384 bytes of data which is expected
+     * to remain valid until either a new address is set or the object is
+     * destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed
+     * values for 'n' are:
+     *   0: 1581 low
+     *   1: 1581 high
+     *   2: 1541
+     *   3: 1551
+     * if this drive type does not use the selected ROM bank, the function call
+     * is ignored.
+     */
     virtual void setROMImage(int n, const uint8_t *romData_);
-    // open disk image file 'fileName_' (an empty file name means no disk)
+    /*!
+     * Open disk image file 'fileName_' (an empty file name means no disk).
+     */
     virtual void setDiskImageFile(const std::string& fileName_);
-    // returns true if there is a disk image file opened
+    /*!
+     * Returns true if there is a disk image file opened.
+     */
     virtual bool haveDisk() const;
-    // run floppy emulation for 't' microseconds
+    /*!
+     * Run floppy emulation for 't' microseconds.
+     */
     virtual void run(SerialBus& serialBus_, size_t t = 1);
-    // reset floppy drive
+    /*!
+     * Reset floppy drive.
+     */
     virtual void reset();
+    /*!
+     * Returns pointer to the drive CPU.
+     */
+    virtual M7501 * getCPU();
+    virtual const M7501 * getCPU() const;
+    /*!
+     * Read a byte from drive memory (used for debugging).
+     */
+    virtual uint8_t readMemoryDebug(uint16_t addr) const;
+    /*!
+     * Write a byte to drive memory (used for debugging).
+     */
+    virtual void writeMemoryDebug(uint16_t addr, uint8_t value);
+    /*!
+     * Returns the current state of drive LEDs. Bit 0 is set if the red LED
+     * is on, and bit 1 is set if the green LED is on.
+     */
+    virtual uint8_t getLEDState() const;
+    // snapshot save/load functions
+    virtual void saveState(Plus4Emu::File::Buffer&);
+    virtual void saveState(Plus4Emu::File&);
+    virtual void loadState(Plus4Emu::File::Buffer&);
+    virtual void registerChunkTypes(Plus4Emu::File&);
   };
 
 }       // namespace Plus4
