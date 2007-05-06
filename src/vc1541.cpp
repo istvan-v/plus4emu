@@ -73,7 +73,68 @@ static const uint8_t gcrDecodeTable[32] = {
   0xFF, 0x09, 0x0A, 0x0B, 0xFF, 0x0D, 0x0E, 0xFF
 };
 
+static void defaultBreakPointCallback(void *userData,
+                                      int debugContext_,
+                                      bool isIO, bool isWrite,
+                                      uint16_t addr, uint8_t value)
+{
+  (void) userData;
+  (void) debugContext_;
+  (void) isIO;
+  (void) isWrite;
+  (void) addr;
+  (void) value;
+}
+
 namespace Plus4 {
+
+  VC1541::M7501_::M7501_(VC1541& vc1541_)
+    : M7501(),
+      vc1541(vc1541_)
+  {
+    // initialize memory map
+    setMemoryCallbackUserData((void *) &vc1541_);
+    for (uint16_t i = 0x0000; i <= 0x0FFF; i++) {
+      setMemoryReadCallback(i, &VC1541::readMemory_RAM);
+      setMemoryWriteCallback(i, &VC1541::writeMemory_RAM);
+    }
+    for (uint16_t i = 0x1000; i <= 0x17FF; i++) {
+      setMemoryReadCallback(i, &VC1541::readMemory_Dummy);
+      setMemoryWriteCallback(i, &VC1541::writeMemory_Dummy);
+    }
+    for (uint16_t i = 0x1800; i <= 0x1BFF; i++) {
+      setMemoryReadCallback(i, &VC1541::readMemory_VIA1);
+      setMemoryWriteCallback(i, &VC1541::writeMemory_VIA1);
+    }
+    for (uint16_t i = 0x1C00; i <= 0x1FFF; i++) {
+      setMemoryReadCallback(i, &VC1541::readMemory_VIA2);
+      setMemoryWriteCallback(i, &VC1541::writeMemory_VIA2);
+    }
+    for (uint16_t i = 0x2000; i <= 0x7FFF; i++) {
+      setMemoryReadCallback(i, &VC1541::readMemory_Dummy);
+      setMemoryWriteCallback(i, &VC1541::writeMemory_Dummy);
+    }
+    for (uint32_t i = 0x8000; i <= 0xFFFF; i++) {
+      setMemoryReadCallback(uint16_t(i), &VC1541::readMemory_ROM);
+      setMemoryWriteCallback(uint16_t(i), &VC1541::writeMemory_Dummy);
+    }
+  }
+
+  VC1541::M7501_::~M7501_()
+  {
+  }
+
+  void VC1541::M7501_::breakPointCallback(bool isWrite,
+                                          uint16_t addr, uint8_t value)
+  {
+    if (vc1541.noBreakOnDataRead && !isWrite) {
+      if (reg_PC != addr)
+        return;
+    }
+    vc1541.breakPointCallback(vc1541.breakPointCallbackUserData,
+                              (vc1541.deviceNumber & 3) + 1,
+                              false, isWrite, addr, value);
+  }
 
   VC1541::VIA6522_::VIA6522_(VC1541& vc1541_)
     : VIA6522(),
@@ -532,7 +593,7 @@ namespace Plus4 {
 
   VC1541::VC1541(int driveNum_)
     : FloppyDrive(driveNum_),
-      cpu(),
+      cpu(*this),
       via1(*this),
       via2(*this),
       memory_rom((uint8_t *) 0),
@@ -558,34 +619,11 @@ namespace Plus4 {
       nTracks(0),
       idCharacter1(0x41),
       idCharacter2(0x41),
-      imageFile((std::FILE *) 0)
+      imageFile((std::FILE *) 0),
+      breakPointCallback(&defaultBreakPointCallback),
+      breakPointCallbackUserData((void *) 0),
+      noBreakOnDataRead(false)
   {
-    // initialize memory map
-    cpu.setMemoryCallbackUserData((void *) this);
-    for (uint16_t i = 0x0000; i <= 0x0FFF; i++) {
-      cpu.setMemoryReadCallback(i, &readMemory_RAM);
-      cpu.setMemoryWriteCallback(i, &writeMemory_RAM);
-    }
-    for (uint16_t i = 0x1000; i <= 0x17FF; i++) {
-      cpu.setMemoryReadCallback(i, &readMemory_Dummy);
-      cpu.setMemoryWriteCallback(i, &writeMemory_Dummy);
-    }
-    for (uint16_t i = 0x1800; i <= 0x1BFF; i++) {
-      cpu.setMemoryReadCallback(i, &readMemory_VIA1);
-      cpu.setMemoryWriteCallback(i, &writeMemory_VIA1);
-    }
-    for (uint16_t i = 0x1C00; i <= 0x1FFF; i++) {
-      cpu.setMemoryReadCallback(i, &readMemory_VIA2);
-      cpu.setMemoryWriteCallback(i, &writeMemory_VIA2);
-    }
-    for (uint16_t i = 0x2000; i <= 0x7FFF; i++) {
-      cpu.setMemoryReadCallback(i, &readMemory_Dummy);
-      cpu.setMemoryWriteCallback(i, &writeMemory_Dummy);
-    }
-    for (uint32_t i = 0x8000; i <= 0xFFFF; i++) {
-      cpu.setMemoryReadCallback(uint16_t(i), &readMemory_ROM);
-      cpu.setMemoryWriteCallback(uint16_t(i), &writeMemory_Dummy);
-    }
     // clear RAM and track buffers
     for (int i = 0; i < 2048; i++)
       memory_ram[i] = 0x00;
@@ -768,6 +806,25 @@ namespace Plus4 {
   const M7501 * VC1541::getCPU() const
   {
     return (&cpu);
+  }
+
+  void VC1541::setBreakPointCallback(void (*breakPointCallback_)(
+                                         void *userData,
+                                         int debugContext_,
+                                         bool isIO, bool isWrite,
+                                         uint16_t addr, uint8_t value),
+                                     void *userData_)
+  {
+    if (breakPointCallback_)
+      breakPointCallback = breakPointCallback_;
+    else
+      breakPointCallback = &defaultBreakPointCallback;
+    breakPointCallbackUserData = userData_;
+  }
+
+  void VC1541::setNoBreakOnDataRead(bool n)
+  {
+    noBreakOnDataRead = n;
   }
 
   uint8_t VC1541::readMemoryDebug(uint16_t addr) const

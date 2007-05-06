@@ -936,13 +936,12 @@ void Plus4EmuGUI::breakPointCallback(void *userData,
                                      uint16_t addr, uint8_t value)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
-  gui_.vm.setDebugContext(debugContext_);
   Fl::lock();
   if (gui_.exitFlag || !gui_.mainWindow->shown()) {
     Fl::unlock();
     return;
   }
-  gui_.debugWindow->breakPoint(isIO, isWrite, addr, value);
+  gui_.debugWindow->breakPoint(debugContext_, isIO, isWrite, addr, value);
   if (!gui_.debugWindow->shown()) {
     gui_.debugWindowShowFlag = true;
     Fl::awake();

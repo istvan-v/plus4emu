@@ -40,6 +40,9 @@ namespace Plus4 {
       static uint8_t sidRegisterRead(void *userData, uint16_t addr);
       static void sidRegisterWrite(void *userData,
                                    uint16_t addr, uint8_t value);
+      static uint8_t parallelIECRead(void *userData, uint16_t addr);
+      static void parallelIECWrite(void *userData,
+                                   uint16_t addr, uint8_t value);
      public:
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
@@ -204,11 +207,26 @@ namespace Plus4 {
      */
     virtual void setBreakPointPriorityThreshold(int n);
     /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n);
+    /*!
      * Set if the breakpoint callback should be called whenever the first byte
      * of a CPU instruction is read from memory. Breakpoints are ignored in
      * this mode.
      */
     virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
+    /*!
+     * Set function to be called when a breakpoint is triggered.
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_,
+                                           bool isIO, bool isWrite,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_);
     /*!
      * Returns the segment at page 'n' (0 to 3).
      */

@@ -29,6 +29,7 @@
 #include "resid/sid.hpp"
 #include "p4floppy.hpp"
 #include "vc1541.hpp"
+#include "vc1551.hpp"
 #include "vc1581.hpp"
 
 static void writeDemoTimeCnt(Plus4Emu::File::Buffer& buf, uint64_t n)
@@ -71,6 +72,10 @@ namespace Plus4 {
       setMemoryWriteCallback(uint16_t(0xFD40) + i, &sidRegisterWrite);
       setMemoryReadCallback(uint16_t(0xFE80) + i, &sidRegisterRead);
       setMemoryWriteCallback(uint16_t(0xFE80) + i, &sidRegisterWrite);
+    }
+    for (uint16_t i = 0xFEC0; i <= 0xFEFF; i++) {
+      setMemoryReadCallback(i, &parallelIECRead);
+      setMemoryWriteCallback(i, &parallelIECWrite);
     }
   }
 
@@ -244,6 +249,39 @@ namespace Plus4 {
     ted.dataBusState = value;
     ted.vm.sidEnabled = true;
     ted.vm.sid_->write(uint8_t(addr) & uint8_t(0x1F), value);
+  }
+
+  uint8_t Plus4VM::TED7360_::parallelIECRead(void *userData, uint16_t addr)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    for (int i = 0; i < 2; i++) {
+      if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
+        if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
+          VC1551& vc1551 =
+              *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+          if (vc1551.parallelIECRead(addr, ted.dataBusState))
+            break;
+        }
+      }
+    }
+    return ted.dataBusState;
+  }
+
+  void Plus4VM::TED7360_::parallelIECWrite(void *userData,
+                                           uint16_t addr, uint8_t value)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    ted.dataBusState = value;
+    for (int i = 0; i < 2; i++) {
+      if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
+        if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
+          VC1551& vc1551 =
+              *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+          if (vc1551.parallelIECWrite(addr, ted.dataBusState))
+            break;
+        }
+      }
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -714,13 +752,21 @@ namespace Plus4 {
       }
       if (!floppyDrives[n]) {
         if (isD64)
-          floppyDrives[n] = new VC1541(n + 8);
+          floppyDrives[n] = new VC1551(n + 8);
         else
           floppyDrives[n] = new VC1581(n + 8);
         floppyDrives[n]->setROMImage(0, floppyROM_1581_0);
         floppyDrives[n]->setROMImage(1, floppyROM_1581_1);
         floppyDrives[n]->setROMImage(2, floppyROM_1541);
         floppyDrives[n]->setROMImage(3, floppyROM_1551);
+        floppyDrives[n]->setBreakPointCallback(breakPointCallback,
+                                               breakPointCallbackUserData);
+        M7501   *p = floppyDrives[n]->getCPU();
+        if (p) {
+          p->setBreakPointPriorityThreshold(
+              ted->getBreakPointPriorityThreshold());
+        }
+        floppyDrives[n]->setNoBreakOnDataRead(noBreakOnDataRead);
       }
       floppyDrives[n]->setDiskImageFile(fileName_);
     }
@@ -822,9 +868,23 @@ namespace Plus4 {
 
   void Plus4VM::setBreakPointPriorityThreshold(int n)
   {
-    M7501   *p = getDebugCPU();
-    if (p)
-      p->setBreakPointPriorityThreshold(n);
+    ted->setBreakPointPriorityThreshold(n);
+    for (int i = 0; i < 4; i++) {
+      M7501   *p = (M7501 *) 0;
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        p = floppyDrives[i]->getCPU();
+      if (p)
+        p->setBreakPointPriorityThreshold(n);
+    }
+  }
+
+  void Plus4VM::setNoBreakOnDataRead(bool n)
+  {
+    noBreakOnDataRead = n;
+    for (int i = 0; i < 4; i++) {
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        floppyDrives[i]->setNoBreakOnDataRead(n);
+    }
   }
 
   void Plus4VM::setSingleStepMode(bool isEnabled, bool stepOverFlag)
@@ -832,6 +892,20 @@ namespace Plus4 {
     M7501   *p = getDebugCPU();
     if (p)
       p->setSingleStepMode(isEnabled, stepOverFlag);
+  }
+
+  void Plus4VM::setBreakPointCallback(void (*breakPointCallback_)(
+                                          void *userData,
+                                          int debugContext_,
+                                          bool isIO, bool isWrite,
+                                          uint16_t addr, uint8_t value),
+                                      void *userData_)
+  {
+    VirtualMachine::setBreakPointCallback(breakPointCallback_, userData_);
+    for (int i = 0; i < 4; i++) {
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        floppyDrives[i]->setBreakPointCallback(breakPointCallback_, userData_);
+    }
   }
 
   uint8_t Plus4VM::getMemoryPage(int n) const

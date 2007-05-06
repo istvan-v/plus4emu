@@ -31,6 +31,16 @@ namespace Plus4 {
 
   class VC1581 : public FloppyDrive {
    private:
+    class M7501_ : public M7501 {
+     private:
+      VC1581& vc1581;
+     public:
+      M7501_(VC1581& vc1581_);
+      virtual ~M7501_();
+     protected:
+      virtual void breakPointCallback(bool isWrite,
+                                      uint16_t addr, uint8_t value);
+    };
     class CIA8520_ : public CIA8520 {
      private:
       VC1581& vc1581;
@@ -44,7 +54,7 @@ namespace Plus4 {
      protected:
       virtual void interruptCallback(bool irqState);
     };
-    M7501     cpu;
+    M7501_    cpu;
     CIA8520_  cia;                      // 4000 to 43FF
     Plus4Emu::WD177x  wd177x;           // 6000 to 63FF
     const uint8_t *memory_rom_0;        // 8000 to BFFF
@@ -56,6 +66,12 @@ namespace Plus4 {
     uint8_t   ciaPortAInput;
     uint8_t   ciaPortBInput;
     size_t    diskChangeCnt;
+    void      (*breakPointCallback)(void *userData,
+                                    int debugContext_,
+                                    bool isIO, bool isWrite,
+                                    uint16_t addr, uint8_t value);
+    void      *breakPointCallbackUserData;
+    bool      noBreakOnDataRead;
     // memory read/write callbacks
     static uint8_t readRAM(void *userData, uint16_t addr);
     static uint8_t readDummy(void *userData, uint16_t addr);
@@ -104,6 +120,21 @@ namespace Plus4 {
      */
     virtual M7501 * getCPU();
     virtual const M7501 * getCPU() const;
+    /*!
+     * Set function to be called when a breakpoint is triggered.
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_,
+                                           bool isIO, bool isWrite,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_);
+    /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n);
     /*!
      * Read a byte from drive memory (used for debugging).
      */

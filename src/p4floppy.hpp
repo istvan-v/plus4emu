@@ -72,6 +72,21 @@ namespace Plus4 {
     virtual M7501 * getCPU() = 0;
     virtual const M7501 * getCPU() const = 0;
     /*!
+     * Set function to be called when a breakpoint is triggered.
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_,
+                                           bool isIO, bool isWrite,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_) = 0;
+    /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n) = 0;
+    /*!
      * Read a byte from drive memory (used for debugging).
      */
     virtual uint8_t readMemoryDebug(uint16_t addr) const = 0;

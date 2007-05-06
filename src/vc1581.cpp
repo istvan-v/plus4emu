@@ -25,7 +25,66 @@
 #include "p4floppy.hpp"
 #include "vc1581.hpp"
 
+static void defaultBreakPointCallback(void *userData,
+                                      int debugContext_,
+                                      bool isIO, bool isWrite,
+                                      uint16_t addr, uint8_t value)
+{
+  (void) userData;
+  (void) debugContext_;
+  (void) isIO;
+  (void) isWrite;
+  (void) addr;
+  (void) value;
+}
+
 namespace Plus4 {
+
+  VC1581::M7501_::M7501_(VC1581& vc1581_)
+    : M7501(),
+      vc1581(vc1581_)
+  {
+    // initialize memory map
+    setMemoryCallbackUserData((void *) &vc1581_);
+    for (uint16_t i = 0x0000; i <= 0x1FFF; i++) {
+      setMemoryReadCallback(i, &VC1581::readRAM);
+      setMemoryWriteCallback(i, &VC1581::writeRAM);
+    }
+    for (uint16_t i = 0x2000; i <= 0x7FFF; i++) {
+      setMemoryReadCallback(i, &VC1581::readDummy);
+      setMemoryWriteCallback(i, &VC1581::writeDummy);
+    }
+    for (uint16_t i = 0x4000; i <= 0x43FF; i++) {
+      setMemoryReadCallback(i, &VC1581::readCIA8520);
+      setMemoryWriteCallback(i, &VC1581::writeCIA8520);
+    }
+    for (uint16_t i = 0x6000; i <= 0x63FF; i++) {
+      setMemoryReadCallback(i, &VC1581::readWD177x);
+      setMemoryWriteCallback(i, &VC1581::writeWD177x);
+    }
+    for (uint16_t i = 0x8000; i <= 0xBFFF; i++)
+      setMemoryReadCallback(i, &VC1581::readROM0);
+    for (uint32_t i = 0xC000; i <= 0xFFFF; i++)
+      setMemoryReadCallback(uint16_t(i), &VC1581::readROM1);
+    for (uint32_t i = 0x8000; i <= 0xFFFF; i++)
+      setMemoryWriteCallback(uint16_t(i), &VC1581::writeDummy);
+  }
+
+  VC1581::M7501_::~M7501_()
+  {
+  }
+
+  void VC1581::M7501_::breakPointCallback(bool isWrite,
+                                          uint16_t addr, uint8_t value)
+  {
+    if (vc1581.noBreakOnDataRead && !isWrite) {
+      if (reg_PC != addr)
+        return;
+    }
+    vc1581.breakPointCallback(vc1581.breakPointCallbackUserData,
+                              (vc1581.deviceNumber & 3) + 1,
+                              false, isWrite, addr, value);
+  }
 
   VC1581::CIA8520_::~CIA8520_()
   {
@@ -136,7 +195,7 @@ namespace Plus4 {
 
   VC1581::VC1581(int driveNum_)
     : FloppyDrive(driveNum_),
-      cpu(),
+      cpu(*this),
       cia(*this),
       wd177x(),
       memory_rom_0((uint8_t *) 0),
@@ -146,32 +205,11 @@ namespace Plus4 {
       interruptRequestFlag(false),
       ciaPortAInput(0),
       ciaPortBInput(0),
-      diskChangeCnt(0)
+      diskChangeCnt(0),
+      breakPointCallback(&defaultBreakPointCallback),
+      breakPointCallbackUserData((void *) 0),
+      noBreakOnDataRead(false)
   {
-    // initialize memory map
-    cpu.setMemoryCallbackUserData((void *) this);
-    for (uint16_t i = 0x0000; i <= 0x1FFF; i++) {
-      cpu.setMemoryReadCallback(i, &readRAM);
-      cpu.setMemoryWriteCallback(i, &writeRAM);
-    }
-    for (uint16_t i = 0x2000; i <= 0x7FFF; i++) {
-      cpu.setMemoryReadCallback(i, &readDummy);
-      cpu.setMemoryWriteCallback(i, &writeDummy);
-    }
-    for (uint16_t i = 0x4000; i <= 0x43FF; i++) {
-      cpu.setMemoryReadCallback(i, &readCIA8520);
-      cpu.setMemoryWriteCallback(i, &writeCIA8520);
-    }
-    for (uint16_t i = 0x6000; i <= 0x63FF; i++) {
-      cpu.setMemoryReadCallback(i, &readWD177x);
-      cpu.setMemoryWriteCallback(i, &writeWD177x);
-    }
-    for (uint16_t i = 0x8000; i <= 0xBFFF; i++)
-      cpu.setMemoryReadCallback(i, &readROM0);
-    for (uint32_t i = 0xC000; i <= 0xFFFF; i++)
-      cpu.setMemoryReadCallback(uint16_t(i), &readROM1);
-    for (uint32_t i = 0x8000; i <= 0xFFFF; i++)
-      cpu.setMemoryWriteCallback(uint16_t(i), &writeDummy);
     // clear RAM
     for (uint16_t i = 0; i < 8192; i++)
       memory_ram[i] = 0x00;
@@ -277,6 +315,25 @@ namespace Plus4 {
   const M7501 * VC1581::getCPU() const
   {
     return (&cpu);
+  }
+
+  void VC1581::setBreakPointCallback(void (*breakPointCallback_)(
+                                         void *userData,
+                                         int debugContext_,
+                                         bool isIO, bool isWrite,
+                                         uint16_t addr, uint8_t value),
+                                     void *userData_)
+  {
+    if (breakPointCallback_)
+      breakPointCallback = breakPointCallback_;
+    else
+      breakPointCallback = &defaultBreakPointCallback;
+    breakPointCallbackUserData = userData_;
+  }
+
+  void VC1581::setNoBreakOnDataRead(bool n)
+  {
+    noBreakOnDataRead = n;
   }
 
   uint8_t VC1581::readMemoryDebug(uint16_t addr) const

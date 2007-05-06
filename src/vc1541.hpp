@@ -30,6 +30,16 @@ namespace Plus4 {
 
   class VC1541 : public FloppyDrive {
    private:
+    class M7501_ : public M7501 {
+     private:
+      VC1541& vc1541;
+     public:
+      M7501_(VC1541& vc1541_);
+      virtual ~M7501_();
+     protected:
+      virtual void breakPointCallback(bool isWrite,
+                                      uint16_t addr, uint8_t value);
+    };
     class VIA6522_ : public VIA6522 {
      private:
       VC1541& vc1541;
@@ -38,7 +48,7 @@ namespace Plus4 {
       virtual ~VIA6522_();
       virtual void irqStateChangeCallback(bool newState);
     };
-    M7501       cpu;
+    M7501_      cpu;
     VIA6522_    via1;                   // serial port interface (1800..1BFF)
     VIA6522_    via2;                   // floppy control (1C00..1FFF)
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
@@ -71,6 +81,12 @@ namespace Plus4 {
     uint8_t     idCharacter1;
     uint8_t     idCharacter2;
     std::FILE   *imageFile;
+    void        (*breakPointCallback)(void *userData,
+                                      int debugContext_,
+                                      bool isIO, bool isWrite,
+                                      uint16_t addr, uint8_t value);
+    void        *breakPointCallbackUserData;
+    bool        noBreakOnDataRead;
     // ----------------
     static uint8_t readMemory_RAM(void *userData, uint16_t addr);
     static uint8_t readMemory_Dummy(void *userData, uint16_t addr);
@@ -126,6 +142,21 @@ namespace Plus4 {
      */
     virtual M7501 * getCPU();
     virtual const M7501 * getCPU() const;
+    /*!
+     * Set function to be called when a breakpoint is triggered.
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_,
+                                           bool isIO, bool isWrite,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_);
+    /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n);
     /*!
      * Read a byte from drive memory (used for debugging).
      */

@@ -28,6 +28,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {uint32_t disassemblyViewAddress;} {}
   decl {uint32_t disassemblyNextAddress;} {}
   decl {Fl_Text_Buffer *bpEditBuffer;} {}
+  decl {std::string breakPointLists[5];} {}
   Function {Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_) : gui(gui_)} {open
   } {
     code {{
@@ -47,6 +48,8 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyEndAddress = 0x0000003FU;
   disassemblyViewAddress = 0x00000000U;
   disassemblyNextAddress = 0x00000000U;
+  for (int i = 0; i < 5; i++)
+    breakPointLists[i] = "";
   bpEditBuffer = new Fl_Text_Buffer();
 }} {}
     Fl_Window window {
@@ -499,7 +502,7 @@ class Plus4EmuGUI_DebugWindow {open
       Fl_Choice debugContextValuator {
         callback {{
   if (o->value() >= 0) {
-    gui.vm.setDebugContext(o->value());
+    setDebugContext(o->value());
     updateWindow();
   }
 }} open
@@ -574,7 +577,7 @@ class Plus4EmuGUI_DebugWindow {open
   window->label(&(windowTitle[0]));
 }} {}
   }
-  Function {breakPoint(bool isIO, bool isWrite, uint16_t addr, uint8_t value)} {open return_type void
+  Function {breakPoint(int debugContext_, bool isIO, bool isWrite, uint16_t addr, uint8_t value)} {open return_type void
   } {
     code {{
   if (isIO) {
@@ -596,6 +599,8 @@ class Plus4EmuGUI_DebugWindow {open
   window->label(&(windowTitle[0]));
   if (debugTabs->value() == breakPointsTab)
     debugTabs->value(mainTab);
+  setDebugContext(debugContext_);
+  debugContextValuator->value(debugContext_);
   disassemblyViewAddress = uint32_t(gui.vm.getProgramCounter() & 0xFFFF);
   if (!disassemblyCPUAddressMode) {
     uint32_t  cpuAddr_ = disassemblyViewAddress;
@@ -986,6 +991,33 @@ class Plus4EmuGUI_DebugWindow {open
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());
+  }
+}} {}
+  }
+  Function {setDebugContext(int n)} {open private return_type void
+  } {
+    code {{
+  n = (n >= 0 ? (n <= 4 ? n : 4) : 0);
+  int   tmp = gui.vm.getDebugContext();
+  if (n != tmp) {
+    const char  *s = (char *) 0;
+    try {
+      s = bpEditBuffer->text();
+      if (s) {
+        breakPointLists[tmp] = s;
+        std::free(const_cast<char *>(s));
+        s = (char *) 0;
+      }
+      else
+        breakPointLists[tmp] = "";
+      gui.vm.setDebugContext(n);
+      bpEditBuffer->text(breakPointLists[n].c_str());
+    }
+    catch (std::exception& e) {
+      if (s)
+        std::free(const_cast<char *>(s));
+      gui.errorMessage(e.what());
+    }
   }
 }} {}
   }
