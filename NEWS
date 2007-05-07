@@ -1,3 +1,10 @@
 Changes in version 1.0.1
 ------------------------
 
+  * implemented 1551 drive emulation
+  * the debugger now allows for debugging floppy drives; the drives are
+    also mapped to the physical address range $180000-$1BFFFF
+  * blank video output is generated when the TED is disabled by setting
+    bit 5 of $FF07
+  * minor GUI improvements and fixes
+

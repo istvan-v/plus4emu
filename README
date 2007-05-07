@@ -27,16 +27,10 @@ General
     order highpass filters with configurable cutoff frequency, and an
     optional parametric equalizer can be applied to the audio signal
   * recording sound output to a WAV format sound file
+  * saving screenshots as 768x576 8-bit RLE compressed TGA files
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
     which can be played back with accurate timing)
-  * tape emulation with playback, recording, and setting tape position;
-    markers can be created for quick positioning to specific tape
-    locations (useful for tapes with multiple files); uses custom file
-    format which is PCM audio data with 1 to 8 bits of sample resolution
-    and variable sample rate, and header including the table of markers;
-    there is also limited (read only) support for the commonly used C16
-    tape files
   * simple GUI debugger with support for breakpoints/watchpoints,
     viewing the current state of CPU registers and memory paging,
     displaying memory dump or loading from or saving to a file in ASCII
@@ -63,9 +57,19 @@ Plus/4 emulation
     using the Hannes memory expansion)
   * up to 8 16 kilobyte banks of ROM can be loaded from external image
     files
-  * experimental hardware level emulation of the 1541 and 1581 floppy
-    disk drives, with support for D64 and D81 files
+  * tape emulation with playback, recording, and setting tape position;
+    markers can be created for quick positioning to specific tape
+    locations (useful for tapes with multiple files); uses custom file
+    format which is PCM audio data with 1 to 8 bits of sample resolution
+    and variable sample rate, and header including the table of markers;
+    there is also limited (read only) support for the commonly used C16
+    tape files
+  * experimental hardware level emulation of the 1541, 1551, and 1581
+    floppy disk drives, with support for D64 and D81 files
   * load and automatically start .PRG file on start-up
+  * .PRG files can be associated with plus4emu on Windows
+  * SID chip (MOS 8580) emulation using version 0.16 of the reSID
+    library written by Dag Lem
   * optional extension ROM (p4fileio.rom) for direct access to .PRG
     files by the load/save commands on the host system in a single user
     selectable directory
@@ -100,7 +104,7 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
 Once these are installed, you can edit the file 'SConstruct' in the top
 level source directory for setting compiler flags etc., and run the
 command 'scons' for building the emulator. The resulting executable
-files (plus4emu and tapeedit) can be copied to any directory that is in
+files (plus4emu and tapconv) can be copied to any directory that is in
 the PATH, but when installing the first time, you also need to set up
 configuration files and ROM images:
 
@@ -188,9 +192,15 @@ Configuration / Revert
 
 Save snapshot
 
-  Save snapshot to the selected file (see notes above).
+  Save a snapshot of the current state of the emulated machine to the
+  selected file. The snapshot will also include the current memory
+  configuration and ROM images, but clock frequency and timing settings
+  are not restored when loading a snapshot. The file format may be
+  subject to changes between different releases of the emulator. Note
+  that the state of any floppy drives is currently not saved, and the
+  drives are reset on loading a snapshot.
 
-Load snapshot
+Load snapshot (F7)
 
   Load a plus4emu format binary file, which may be a previously saved
   snapshot or demo, a binary format configuration file, or a program
@@ -203,13 +213,7 @@ Quick snapshot / Set file name
 
 Quick snapshot / Save (Ctrl + F9)
 
-  Save a snapshot of the current state of the emulated machine to the
-  quick snapshot file. The snapshot will also include the current memory
-  configuration and ROM images, but clock frequency and timing settings
-  are not restored when loading a snapshot. The file format may be
-  subject to changes between different releases of the emulator. Note
-  that the state of any floppy drives is currently not saved, and the
-  drives are reset on loading a snapshot.
+  Save snapshot to the quick snapshot file (see notes above).
 
 Quick snapshot / Load (Ctrl + F10)
 
@@ -221,13 +225,14 @@ Record demo
   record keyboard events to the selected file until the recording is
   stopped. The events can be replayed with accurate timing when the
   file is loaded later. Note that the file format may change between
-  different releases of the emulator. Events that
+  different releases of the emulator, and the timing may also be
+  incorrect when using a different version to play a demo file.
 
 Stop demo (Ctrl + F12)
 
   Stop any currently running demo playback or recording.
 
-Load demo
+Load demo (F7)
 
   Load a plus4emu format binary file, which may be a previously saved
   snapshot or demo, a binary format configuration file, or a program
@@ -267,7 +272,8 @@ Reset / Force reset (Ctrl + F11)
   allow programs to disable reset by setting custom (RAM) handlers;
   however, most of the RAM data is still preserved.
   This option will also turn off automatically enabled extensions that
-  increase CPU usage, such as 1541/1581 drives with no disk opened.
+  increase CPU usage, such as SID emulation and 1541/1551/1581 drives
+  with no disk opened.
 
 Reset / Reset clock frequencies
 
@@ -282,6 +288,18 @@ Reset / Reset machine configuration (Shift + F11)
   all RAM data. Implies 'Force reset' and 'Reset clock frequencies'.
   Reverting the configuration can be useful after snapshot loading or
   demo playback, as these may change the settings.
+
+Enable SID emulation
+
+  Turn on SID emulation, making the SID registers appear at FD40-FD5F
+  and FE80-FE9F; this increases the CPU usage of the emulator.
+  SID emulation is also automatically enabled when a byte is written to
+  the above mentioned address ranges, but some programs detect if a SID
+  card is present by only reading the registers, and in those cases
+  using this option is needed. SID emulation remains active until the
+  next use of 'Force reset' or 'Reset machine configuration', and
+  snapshot data includes SID state and whether it was enabled or not at
+  the time of saving the snapshot.
 
 Quick configuration / Load config 1 (PageDown)
 
@@ -333,7 +351,7 @@ Sound / Decrease volume
 
   Decrease sound output volume by about 1.5 dB.
 
-Floppy / Configure...
+Floppy / Configure... (Alt + D)
 
   Opens a dialog for setting up floppy emulation. For each drive, an
   image file can be selected. If the file name is left empty, that means
@@ -341,8 +359,9 @@ Floppy / Configure...
   directly access a real disk by using the /dev/fd* devices (on Linux)
   or \\.\A: (on Windows) as the image file.
   The file format must be either D64 or D81; the type is determined from
-  the file size. Opening a D64 file will enable 1541 emulation for that
-  particular drive, while the 1581 will be emulated for D81 files.
+  the file size. Opening a D64 file will enable 1541 or 1551 emulation
+  for that particular drive, while the 1581 will be emulated for D81
+  files.
   Since these drives are emulated at the hardware level (with a 6502
   CPU, etc.), enabling them increases the CPU usage. A drive will remain
   active until a different type of image file is opened, or a snapshot
