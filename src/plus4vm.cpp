@@ -254,13 +254,15 @@ namespace Plus4 {
   uint8_t Plus4VM::TED7360_::parallelIECRead(void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
-    for (int i = 0; i < 2; i++) {
-      if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
-        if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
-          VC1551& vc1551 =
-              *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
-          if (vc1551.parallelIECRead(addr, ted.dataBusState))
-            break;
+    if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
+      for (int i = 0; i < 2; i++) {
+        if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
+          if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
+            VC1551& vc1551 =
+                *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+            if (vc1551.parallelIECRead(addr, ted.dataBusState))
+              break;
+          }
         }
       }
     }
@@ -272,13 +274,15 @@ namespace Plus4 {
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
-    for (int i = 0; i < 2; i++) {
-      if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
-        if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
-          VC1551& vc1551 =
-              *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
-          if (vc1551.parallelIECWrite(addr, ted.dataBusState))
-            break;
+    if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
+      for (int i = 0; i < 2; i++) {
+        if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
+          if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
+            VC1551& vc1551 =
+                *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+            if (vc1551.parallelIECWrite(addr, ted.dataBusState))
+              break;
+          }
         }
       }
     }
