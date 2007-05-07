@@ -97,8 +97,8 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "memory.ram.size",
                                 memory.ram.size, 64,
                                 memoryConfigurationChanged, 16.0, 1024.0, 16.0);
-    for (size_t i = 0; i < 64; i++) {
-      if (i >= 8 && ((i & 15) >= 4 || (i >= 17 && i <= 19) || i >= 50))
+    for (size_t i = 0; i < 50; i++) {
+      if (i >= 8 && i < 48 && (i != 16 && i != 32))
         continue;
       char  tmpBuf[24];
       char  *s = &(tmpBuf[0]);

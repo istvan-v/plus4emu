@@ -152,7 +152,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
             xywh {20 95 360 300} box DOWN_BOX color 36 selection_color 40 labelcolor 52 align 5
           } {
             Fl_Group {} {open
-              xywh {25 100 325 485} box FLAT_BOX color 36 labelcolor 52
+              xywh {25 100 325 395} box FLAT_BOX color 36 labelcolor 52
             } {
               Fl_Box {} {
                 label Segment
@@ -437,12 +437,12 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 21
+                label 30
                 xywh {30 430 35 25} box DOWN_BOX color 0 labelcolor 52
               }
-              Fl_Input memoryROM21FileNameValuator {
+              Fl_Input memoryROM30FileNameValuator {
                 callback {{
-  setROMImageFile(0x21, o->value());
+  setROMImageFile(0x30, o->value());
 }}
                 xywh {75 430 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
@@ -450,90 +450,9 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x21);
-}}
-                xywh {245 430 25 25} color 38 selection_color 39 labelcolor 52
-              }
-              Fl_Value_Input memoryROM21OffsetValuator {
-                callback {{
-  gui.config.memory.rom[0x21].offset = int(o->clamp(o->value()) + 0.5);
-  gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x21].offset));
-}}
-                xywh {280 430 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Box {} {
-                label 22
-                xywh {30 460 35 25} box DOWN_BOX color 0 labelcolor 52
-              }
-              Fl_Input memoryROM22FileNameValuator {
-                callback {{
-  setROMImageFile(0x22, o->value());
-}}
-                xywh {75 460 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Button {} {
-                label {...}
-                callback {{
-  browseROMImageFile(0x22);
-}}
-                xywh {245 460 25 25} color 38 selection_color 39 labelcolor 52
-              }
-              Fl_Value_Input memoryROM22OffsetValuator {
-                callback {{
-  gui.config.memory.rom[0x22].offset = int(o->clamp(o->value()) + 0.5);
-  gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x22].offset));
-}}
-                xywh {280 460 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Box {} {
-                label 23
-                xywh {30 490 35 25} box DOWN_BOX color 0 labelcolor 52
-              }
-              Fl_Input memoryROM23FileNameValuator {
-                callback {{
-  setROMImageFile(0x23, o->value());
-}}
-                xywh {75 490 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Button {} {
-                label {...}
-                callback {{
-  browseROMImageFile(0x23);
-}}
-                xywh {245 490 25 25} color 38 selection_color 39 labelcolor 52
-              }
-              Fl_Value_Input memoryROM23OffsetValuator {
-                callback {{
-  gui.config.memory.rom[0x23].offset = int(o->clamp(o->value()) + 0.5);
-  gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x23].offset));
-}}
-                xywh {280 490 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Box {} {
-                label 30
-                xywh {30 520 35 25} box DOWN_BOX color 0 labelcolor 52
-              }
-              Fl_Input memoryROM30FileNameValuator {
-                callback {{
-  setROMImageFile(0x30, o->value());
-}}
-                xywh {75 520 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
-              }
-              Fl_Button {} {
-                label {...}
-                callback {{
   browseROMImageFile(0x30);
 }}
-                xywh {245 520 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 430 25 25} color 38 selection_color 39 labelcolor 52
               }
               Fl_Value_Input memoryROM30OffsetValuator {
                 callback {{
@@ -541,18 +460,18 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x30].offset));
 }}
-                xywh {280 520 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
+                xywh {280 430 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
                 label 31
-                xywh {30 550 35 25} box DOWN_BOX color 0 labelcolor 52
+                xywh {30 460 35 25} box DOWN_BOX color 0 labelcolor 52
               }
               Fl_Input memoryROM31FileNameValuator {
                 callback {{
   setROMImageFile(0x31, o->value());
 }}
-                xywh {75 550 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+                xywh {75 460 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Button {} {
@@ -560,7 +479,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 callback {{
   browseROMImageFile(0x31);
 }}
-                xywh {245 550 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 460 25 25} color 38 selection_color 39 labelcolor 52
               }
               Fl_Value_Input memoryROM31OffsetValuator {
                 callback {{
@@ -568,7 +487,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x31].offset));
 }}
-                xywh {280 550 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
+                xywh {280 460 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
                 code0 {o->cursor_color(FL_YELLOW);}
               }
             }
@@ -631,12 +550,6 @@ class Plus4EmuGUI_MachineConfigWindow {open
   memoryROM10OffsetValuator->value(double(gui.config.memory.rom[0x10].offset));
   memoryROM20FileNameValuator->value(gui.config.memory.rom[0x20].file.c_str());
   memoryROM20OffsetValuator->value(double(gui.config.memory.rom[0x20].offset));
-  memoryROM21FileNameValuator->value(gui.config.memory.rom[0x21].file.c_str());
-  memoryROM21OffsetValuator->value(double(gui.config.memory.rom[0x21].offset));
-  memoryROM22FileNameValuator->value(gui.config.memory.rom[0x22].file.c_str());
-  memoryROM22OffsetValuator->value(double(gui.config.memory.rom[0x22].offset));
-  memoryROM23FileNameValuator->value(gui.config.memory.rom[0x23].file.c_str());
-  memoryROM23OffsetValuator->value(double(gui.config.memory.rom[0x23].offset));
   memoryROM30FileNameValuator->value(gui.config.memory.rom[0x30].file.c_str());
   memoryROM30OffsetValuator->value(double(gui.config.memory.rom[0x30].offset));
   memoryROM31FileNameValuator->value(gui.config.memory.rom[0x31].file.c_str());
@@ -665,8 +578,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
       long    offs = long(gui.config.memory.rom[segment_].offset);
       bool    updateFlag = false;
       while ((offs + 32767L) < fSize &&
-             segment_ != 0x07 && segment_ != 0x13 &&
-             segment_ != 0x23 && segment_ != 0x33) {
+             segment_ != 0x07 && segment_ != 0x10 &&
+             segment_ != 0x20 && segment_ != 0x31) {
         segment_++;
         offs = offs + 16384L;
         updateFlag = true;
@@ -695,7 +608,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*)",
+                       "ROM image files (*.rom)",
                        Fl_File_Chooser::SINGLE,
                        "Select ROM image file")) {
       setROMImageFile(segment_, tmp);
@@ -729,15 +642,6 @@ class Plus4EmuGUI_MachineConfigWindow {open
         break;
       case 0x20:
         memoryROM20FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
-        break;
-      case 0x21:
-        memoryROM21FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
-        break;
-      case 0x22:
-        memoryROM22FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
-        break;
-      case 0x23:
-        memoryROM23FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
         break;
       case 0x30:
         memoryROM30FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
