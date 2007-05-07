@@ -23,14 +23,14 @@ class Plus4EmuGUI_DiskConfigWindow {open
   updateWindow();
   window->hide();
 }} open
-      xywh {88 224 400 365} type Double color 37 visible
+      xywh {204 187 400 435} type Double color 37 visible
     } {
       Fl_Group {} {open
-        xywh {10 10 380 310} box THIN_UP_BOX color 38
+        xywh {10 10 380 380} box THIN_UP_BOX color 38
       } {
         Fl_Group {} {
           label {Unit 8} open
-          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 20 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 20 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
         } {
           Fl_Input floppyAImageFileValuator {
             callback {{
@@ -41,7 +41,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 45 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 45 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
           }
           Fl_Button {} {
@@ -50,7 +50,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*)",
+                       "Disk image files (*.{d64,d81})",
                        Fl_File_Chooser::SINGLE,
                        "Select disk image file")) {
       gui.config["floppy.a.imageFile"] = tmp;
@@ -67,10 +67,29 @@ class Plus4EmuGUI_DiskConfigWindow {open
             label {Image file}
             xywh {300 45 70 25} color 38 labelcolor 52 align 20
           }
+          Fl_Choice floppyADriveTypeValuator {
+            callback {{
+  try {
+    gui.config["floppy.a.driveType"] = o->value();
+    gui.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+  o->value(gui.config.floppy.a.driveType);
+}} open
+            xywh {30 80 80 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
+            code0 {o->add("1541|1551");}
+            code1 {o->value(gui.config.floppy.a.driveType);}
+          } {}
+          Fl_Box {} {
+            label {Drive type for D64 files}
+            xywh {120 80 170 25} labelcolor 52 align 20
+          }
         }
         Fl_Group {} {
           label {Unit 9} open
-          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 95 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 130 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
         } {
           Fl_Input floppyBImageFileValuator {
             callback {{
@@ -81,7 +100,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 120 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 155 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
           }
           Fl_Button {} {
@@ -90,7 +109,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*)",
+                       "Disk image files (*.{d64,d81})",
                        Fl_File_Chooser::SINGLE,
                        "Select disk image file")) {
       gui.config["floppy.b.imageFile"] = tmp;
@@ -101,16 +120,35 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 120 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 155 25 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 120 70 25} color 38 labelcolor 52 align 20
+            xywh {300 155 70 25} color 38 labelcolor 52 align 20
+          }
+          Fl_Choice floppyBDriveTypeValuator {
+            callback {{
+  try {
+    gui.config["floppy.b.driveType"] = o->value();
+    gui.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+  o->value(gui.config.floppy.b.driveType);
+}} open
+            xywh {30 190 80 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
+            code0 {o->add("1541|1551");}
+            code1 {o->value(gui.config.floppy.b.driveType);}
+          } {}
+          Fl_Box {} {
+            label {Drive type for D64 files}
+            xywh {120 190 170 25} labelcolor 52 align 20
           }
         }
         Fl_Group {} {
           label {Unit 10} open
-          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 170 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 240 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
         } {
           Fl_Input floppyCImageFileValuator {
             callback {{
@@ -121,7 +159,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 195 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 265 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
           }
           Fl_Button {} {
@@ -130,7 +168,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*)",
+                       "Disk image files (*.{d64,d81})",
                        Fl_File_Chooser::SINGLE,
                        "Select disk image file")) {
       gui.config["floppy.c.imageFile"] = tmp;
@@ -141,16 +179,16 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 195 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 265 25 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 195 70 25} color 38 labelcolor 52 align 20
+            xywh {300 265 70 25} color 38 labelcolor 52 align 20
           }
         }
         Fl_Group {} {
           label {Unit 11} open
-          tooltip {Note: you can set at most one of the disk geometry parameters to -1 to have it calculated from the image file size} xywh {20 245 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 315 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
         } {
           Fl_Input floppyDImageFileValuator {
             callback {{
@@ -161,7 +199,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u720 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 270 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 340 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
           }
           Fl_Button {} {
@@ -170,7 +208,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*)",
+                       "Disk image files (*.{d64,d81})",
                        Fl_File_Chooser::SINGLE,
                        "Select disk image file")) {
       gui.config["floppy.d.imageFile"] = tmp;
@@ -181,11 +219,11 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 270 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 340 25 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 270 70 25} color 38 labelcolor 52 align 20
+            xywh {300 340 70 25} color 38 labelcolor 52 align 20
           }
         }
       }
@@ -200,7 +238,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   }
   updateWindow();
 }}
-        xywh {255 330 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {255 400 60 25} color 38 selection_color 39 labelcolor 52
       }
       Fl_Button {} {
         label OK
@@ -214,7 +252,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   updateWindow();
   window->hide();
 }}
-        xywh {325 330 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {325 400 60 25} color 38 selection_color 39 labelcolor 52
       }
     }
   }
@@ -247,7 +285,9 @@ class Plus4EmuGUI_DiskConfigWindow {open
   } {
     code {{
   floppyAImageFileValuator->value(gui.config.floppy.a.imageFile.c_str());
+  floppyADriveTypeValuator->value(gui.config.floppy.a.driveType);
   floppyBImageFileValuator->value(gui.config.floppy.b.imageFile.c_str());
+  floppyBDriveTypeValuator->value(gui.config.floppy.b.driveType);
   floppyCImageFileValuator->value(gui.config.floppy.c.imageFile.c_str());
   floppyDImageFileValuator->value(gui.config.floppy.d.imageFile.c_str());
 }} {}

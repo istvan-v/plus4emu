@@ -314,14 +314,11 @@ namespace Plus4Emu {
   }
 
   void VirtualMachine::setDiskImageFile(int n, const std::string& fileName_,
-                                        int nTracks_, int nSides_,
-                                        int nSectorsPerTrack_)
+                                        int driveType)
   {
     (void) n;
     (void) fileName_;
-    (void) nTracks_;
-    (void) nSides_;
-    (void) nSectorsPerTrack_;
+    (void) driveType;
   }
 
   void VirtualMachine::setEnableFileIO(bool isEnabled)

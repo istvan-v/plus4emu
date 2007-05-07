@@ -154,11 +154,12 @@ namespace Plus4 {
     // -------------------------- DISK AND FILE I/O ---------------------------
     /*!
      * Load disk image for drive 'n' (counting from zero); an empty file
-     * name means no disk.
+     * name means no disk. If 'driveType' is 0, the 1541 will be emulated
+     * for D64 files, while if it is 1 (for n < 2 only), the 1551 will be
+     * emulated. For D81 files, this parameter is ignored.
      */
     virtual void setDiskImageFile(int n, const std::string& fileName_,
-                                  int nTracks_ = -1, int nSides_ = 2,
-                                  int nSectorsPerTrack_ = 9);
+                                  int driveType = 0);
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape

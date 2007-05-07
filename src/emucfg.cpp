@@ -264,18 +264,10 @@ namespace Plus4Emu {
       defineConfigurationVariable(*this, std::string(s),
                                   floppy_->imageFile, std::string(""),
                                   *floppyChanged_);
-      std::sprintf(s, "floppy.%c.tracks", int('a') + i);
+      std::sprintf(s, "floppy.%c.driveType", int('a') + i);
       defineConfigurationVariable(*this, std::string(s),
-                                  floppy_->tracks, int(-1),
-                                  *floppyChanged_, -1.0, 240.0);
-      std::sprintf(s, "floppy.%c.sides", int('a') + i);
-      defineConfigurationVariable(*this, std::string(s),
-                                  floppy_->sides, int(-1),
-                                  *floppyChanged_, -1.0, 2.0);
-      std::sprintf(s, "floppy.%c.sectorsPerTrack", int('a') + i);
-      defineConfigurationVariable(*this, std::string(s),
-                                  floppy_->sectorsPerTrack, int(-1),
-                                  *floppyChanged_, -1.0, 240.0);
+                                  floppy_->driveType, int(i == 1 ? 1 : 0),
+                                  *floppyChanged_, 0.0, 1.0);
     }
     // ----------------
     defineConfigurationVariable(*this, "tape.imageFile",
@@ -408,60 +400,48 @@ namespace Plus4Emu {
     }
     if (floppyAChanged) {
       try {
-        vm_.setDiskImageFile(0, floppy.a.imageFile,
-                             floppy.a.tracks, floppy.a.sides,
-                             floppy.a.sectorsPerTrack);
+        vm_.setDiskImageFile(0, floppy.a.imageFile, floppy.a.driveType);
       }
       catch (Exception& e) {
         floppy.a.imageFile = "";
-        vm_.setDiskImageFile(0, floppy.a.imageFile,
-                             floppy.a.tracks, floppy.a.sides,
-                             floppy.a.sectorsPerTrack);
+        vm_.setDiskImageFile(0, floppy.a.imageFile, floppy.a.driveType);
         errorCallback(errorCallbackUserData, e.what());
       }
       floppyAChanged = false;
     }
     if (floppyBChanged) {
       try {
-        vm_.setDiskImageFile(1, floppy.b.imageFile,
-                             floppy.b.tracks, floppy.b.sides,
-                             floppy.b.sectorsPerTrack);
+        vm_.setDiskImageFile(1, floppy.b.imageFile, floppy.b.driveType);
       }
       catch (Exception& e) {
         floppy.b.imageFile = "";
-        vm_.setDiskImageFile(1, floppy.b.imageFile,
-                             floppy.b.tracks, floppy.b.sides,
-                             floppy.b.sectorsPerTrack);
+        vm_.setDiskImageFile(1, floppy.b.imageFile, floppy.b.driveType);
         errorCallback(errorCallbackUserData, e.what());
       }
       floppyBChanged = false;
     }
     if (floppyCChanged) {
+      if (floppy.c.driveType == 1)
+        floppy.c.driveType = 0;         // 1551 is not allowed for this drive
       try {
-        vm_.setDiskImageFile(2, floppy.c.imageFile,
-                             floppy.c.tracks, floppy.c.sides,
-                             floppy.c.sectorsPerTrack);
+        vm_.setDiskImageFile(2, floppy.c.imageFile, floppy.c.driveType);
       }
       catch (Exception& e) {
         floppy.c.imageFile = "";
-        vm_.setDiskImageFile(2, floppy.c.imageFile,
-                             floppy.c.tracks, floppy.c.sides,
-                             floppy.c.sectorsPerTrack);
+        vm_.setDiskImageFile(2, floppy.c.imageFile, floppy.c.driveType);
         errorCallback(errorCallbackUserData, e.what());
       }
       floppyCChanged = false;
     }
     if (floppyDChanged) {
+      if (floppy.d.driveType == 1)
+        floppy.d.driveType = 0;         // 1551 is not allowed for this drive
       try {
-        vm_.setDiskImageFile(3, floppy.d.imageFile,
-                             floppy.d.tracks, floppy.d.sides,
-                             floppy.d.sectorsPerTrack);
+        vm_.setDiskImageFile(3, floppy.d.imageFile, floppy.d.driveType);
       }
       catch (Exception& e) {
         floppy.d.imageFile = "";
-        vm_.setDiskImageFile(3, floppy.d.imageFile,
-                             floppy.d.tracks, floppy.d.sides,
-                             floppy.d.sectorsPerTrack);
+        vm_.setDiskImageFile(3, floppy.d.imageFile, floppy.d.driveType);
         errorCallback(errorCallbackUserData, e.what());
       }
       floppyDChanged = false;

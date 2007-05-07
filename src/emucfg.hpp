@@ -127,14 +127,10 @@ namespace Plus4Emu {
     // --------
     struct FloppyDriveSettings {
       std::string imageFile;
-      int         tracks;
-      int         sides;
-      int         sectorsPerTrack;
+      int         driveType;
       FloppyDriveSettings()
         : imageFile(""),
-          tracks(-1),
-          sides(2),
-          sectorsPerTrack(9)
+          driveType(0)
       {
       }
     };

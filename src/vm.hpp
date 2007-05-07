@@ -151,8 +151,7 @@ namespace Plus4Emu {
      * name means no disk.
      */
     virtual void setDiskImageFile(int n, const std::string& fileName_,
-                                  int nTracks_ = -1, int nSides_ = 2,
-                                  int nSectorsPerTrack_ = 9);
+                                  int driveType = 0);
     /*!
      * Set if the emulated machine should be allowed to access files in the
      * working directory.

@@ -712,12 +712,8 @@ namespace Plus4 {
   }
 
   void Plus4VM::setDiskImageFile(int n, const std::string& fileName_,
-                                 int nTracks_, int nSides_,
-                                 int nSectorsPerTrack_)
+                                 int driveType)
   {
-    (void) nTracks_;
-    (void) nSides_;
-    (void) nSectorsPerTrack_;
     if (n < 0 || n > 3)
       throw Plus4Emu::Exception("invalid floppy drive number");
     if (fileName_.length() == 0) {
@@ -741,9 +737,24 @@ namespace Plus4 {
         else
           throw Plus4Emu::Exception("error opening disk image file");
       }
+      int     newDriveType = (isD64 ? driveType : 4);
+      if (newDriveType == 1) {
+        if (n >= 2) {
+          throw Plus4Emu::Exception("1551 emulation is only allowed "
+                                    "for unit 8 and unit 9");
+        }
+      }
+      else if (!(newDriveType == 0 || newDriveType == 4))
+        throw Plus4Emu::Exception("invalid floppy drive type");
       if (floppyDrives[n]) {
-        if ((typeid(*(floppyDrives[n])) == typeid(VC1581) && isD64) ||
-            (typeid(*(floppyDrives[n])) != typeid(VC1581) && !isD64)) {
+        int     oldDriveType = -1;
+        if (typeid(*(floppyDrives[n])) == typeid(VC1541))
+          oldDriveType = 0;
+        else if (typeid(*(floppyDrives[n])) == typeid(VC1551))
+          oldDriveType = 1;
+        else if (typeid(*(floppyDrives[n])) == typeid(VC1581))
+          oldDriveType = 4;
+        if (newDriveType != oldDriveType) {
           // need to change drive type
           delete floppyDrives[n];
           floppyDrives[n] = (FloppyDrive *) 0;
@@ -751,14 +762,21 @@ namespace Plus4 {
         }
       }
       if (!floppyDrives[n]) {
-        if (isD64)
+        switch (newDriveType) {
+        case 0:
+          floppyDrives[n] = new VC1541(n + 8);
+          floppyDrives[n]->setROMImage(2, floppyROM_1541);
+          break;
+        case 1:
           floppyDrives[n] = new VC1551(n + 8);
-        else
+          floppyDrives[n]->setROMImage(3, floppyROM_1551);
+          break;
+        case 4:
           floppyDrives[n] = new VC1581(n + 8);
-        floppyDrives[n]->setROMImage(0, floppyROM_1581_0);
-        floppyDrives[n]->setROMImage(1, floppyROM_1581_1);
-        floppyDrives[n]->setROMImage(2, floppyROM_1541);
-        floppyDrives[n]->setROMImage(3, floppyROM_1551);
+          floppyDrives[n]->setROMImage(0, floppyROM_1581_0);
+          floppyDrives[n]->setROMImage(1, floppyROM_1581_1);
+          break;
+        }
         floppyDrives[n]->setBreakPointCallback(breakPointCallback,
                                                breakPointCallbackUserData);
         M7501   *p = floppyDrives[n]->getCPU();
