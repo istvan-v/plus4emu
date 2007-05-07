@@ -361,7 +361,7 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_RevertCfg, (void *) this);
   mainMenuBar->add("File/Save snapshot",
                    (char *) 0, &menuCallback_File_SaveSnapshot, (void *) this);
-  mainMenuBar->add("File/Load snapshot",
+  mainMenuBar->add("File/Load snapshot (F7)",
                    (char *) 0, &menuCallback_File_LoadFile, (void *) this);
   mainMenuBar->add("File/Quick snapshot/Set file name",
                    (char *) 0, &menuCallback_File_QSFileName, (void *) this);
@@ -373,7 +373,7 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_RecordDemo, (void *) this);
   mainMenuBar->add("File/Stop demo (Ctrl+F12)",
                    (char *) 0, &menuCallback_File_StopDemo, (void *) this);
-  mainMenuBar->add("File/Load demo",
+  mainMenuBar->add("File/Load demo (F7)",
                    (char *) 0, &menuCallback_File_LoadFile, (void *) this);
   mainMenuBar->add("File/Record sound file",
                    (char *) 0, &menuCallback_File_RecordSound, (void *) this);
@@ -381,15 +381,15 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_StopSndRecord, (void *) this);
   mainMenuBar->add("File/Save screenshot",
                    (char *) 0, &menuCallback_File_Screenshot, (void *) this);
-  mainMenuBar->add("File/Load program",
+  mainMenuBar->add("File/Load program (F8)",
                    (char *) 0, &menuCallback_File_LoadPRG, (void *) this);
   mainMenuBar->add("File/Save program",
                    (char *) 0, &menuCallback_File_SavePRG, (void *) this);
   mainMenuBar->add("File/Quit",
                    (char *) 0, &menuCallback_File_Quit, (void *) this);
-  mainMenuBar->add("Machine/Full speed",
+  mainMenuBar->add("Machine/Full speed (Alt+W)",
                    (char *) 0, &menuCallback_Machine_FullSpeed, (void *) this);
-  mainMenuBar->add("Machine/Tape/Select image file",
+  mainMenuBar->add("Machine/Tape/Select image file (F6)",
                    (char *) 0, &menuCallback_Machine_OpenTape, (void *) this);
   mainMenuBar->add("Machine/Tape/Play (Shift + F9)",
                    (char *) 0, &menuCallback_Machine_TapePlay, (void *) this);
@@ -457,7 +457,7 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_SndDecVol, (void *) this);
   mainMenuBar->add("Options/Sound/Configure...",
                    (char *) 0, &menuCallback_Options_SndConfig, (void *) this);
-  mainMenuBar->add("Options/Floppy/Configure...",
+  mainMenuBar->add("Options/Floppy/Configure... (Alt+D)",
                    (char *) 0, &menuCallback_Options_FloppyCfg, (void *) this);
   mainMenuBar->add("Options/Floppy/Remove disk/Unit 8",
                    (char *) 0, &menuCallback_Options_FloppyRmA, (void *) this);
@@ -481,11 +481,11 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FloppyRpl, (void *) this);
   mainMenuBar->add("Options/Set working directory",
                    (char *) 0, &menuCallback_Options_FileIODir, (void *) this);
-  mainMenuBar->add("Debug/Start debugger",
+  mainMenuBar->add("Debug/Start debugger (Alt+M)",
                    (char *) 0, &menuCallback_Debug_OpenDebugger, (void *) this);
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Full speed")
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Full speed (Alt+W)")
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
   updateMenu();
@@ -889,7 +889,7 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 void Plus4EmuGUI::updateMenu()
 {
   const Fl_Menu_Item  *m;
-  m = mainMenuBar->find_item("Machine/Full speed");
+  m = mainMenuBar->find_item("Machine/Full speed (Alt+W)");
   if (config.sound.enabled)
     const_cast<Fl_Menu_Item *>(m)->clear();
   else
@@ -1504,7 +1504,7 @@ void Plus4EmuGUI::menuCallback_Machine_OpenTape(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.tapeImageDirectory, "Tape files (*)",
+    if (gui_.browseFile(tmp, gui_.tapeImageDirectory, "Tape files (*.tap)",
                         Fl_File_Chooser::CREATE, "Select tape image file")) {
       Plus4EmuGUI::menuCallback_Machine_TapeStop(o, v);
       gui_.config["tape.imageFile"] = tmp;
