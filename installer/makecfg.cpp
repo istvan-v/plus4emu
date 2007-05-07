@@ -195,9 +195,9 @@ class Plus4EmuMachineConfiguration {
       {
       }
     };
-    // ROM files can be loaded to segments 0x00 to 0x07, 0x10 to 0x13,
-    // 0x20 to 0x23, and 0x30 to 0x33
-    ROMSegmentConfig  rom[52];
+    // ROM files can be loaded to segments 0x00 to 0x07, 0x10, 0x20,
+    // 0x30, and 0x31
+    ROMSegmentConfig  rom[50];
   } memory;
  public:
   Plus4EmuMachineConfiguration(Plus4Emu::ConfigurationDB& config, int n,
@@ -244,6 +244,7 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   if (n >= 8)
     memory.rom[0x06].file = romDirectory + "p4fileio.rom";
   memory.rom[0x10].file = romDirectory + "dos1541.rom";
+  memory.rom[0x20].file = romDirectory + "dos1551.rom";
   memory.rom[0x30].file = romDirectory + "dos1581.rom";
   memory.rom[0x31].file = romDirectory + "dos1581.rom";
   memory.rom[0x31].offset = 16384;
@@ -270,12 +271,6 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   config.createKey("memory.rom.10.offset", memory.rom[0x10].offset);
   config.createKey("memory.rom.20.file", memory.rom[0x20].file);
   config.createKey("memory.rom.20.offset", memory.rom[0x20].offset);
-  config.createKey("memory.rom.21.file", memory.rom[0x21].file);
-  config.createKey("memory.rom.21.offset", memory.rom[0x21].offset);
-  config.createKey("memory.rom.22.file", memory.rom[0x22].file);
-  config.createKey("memory.rom.22.offset", memory.rom[0x22].offset);
-  config.createKey("memory.rom.23.file", memory.rom[0x23].file);
-  config.createKey("memory.rom.23.offset", memory.rom[0x23].offset);
   config.createKey("memory.rom.30.file", memory.rom[0x30].file);
   config.createKey("memory.rom.30.offset", memory.rom[0x30].offset);
   config.createKey("memory.rom.31.file", memory.rom[0x31].file);
