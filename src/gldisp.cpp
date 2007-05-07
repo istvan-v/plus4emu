@@ -227,7 +227,7 @@ namespace Plus4Emu {
   {
     unsigned char lineBuf1[768];
     unsigned char *curLine_ = &(lineBuf1[0]);
-    // full horizontal resolution, no interlace (768x288)
+    // half horizontal resolution, no interlace (384x288)
     // no texture filtering or effects
     for (size_t yc = 0; yc < 288; yc += 8) {
       for (size_t offs = 0; offs < 8; offs++) {
@@ -247,13 +247,13 @@ namespace Plus4Emu {
         else
           std::memset(curLine_, 0, 768);
         // build 16-bit texture:
-        // full horizontal resolution, no interlace (768x8)
-        uint16_t  *txtp = &(textureBuffer[offs * 768]);
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(curLine_[xc]);
+        // half horizontal resolution, no interlace (384x8)
+        uint16_t  *txtp = &(textureBuffer[offs * 384]);
+        for (size_t xc = 0; xc < 768; xc += 2)
+          txtp[xc >> 1] = colormap(curLine_[xc], curLine_[xc + 1]);
       }
       // load texture
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 8,
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
                       GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
                       (GLvoid *) textureBuffer);
       // update display
@@ -264,9 +264,9 @@ namespace Plus4Emu {
       glBegin(GL_QUADS);
       glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 8.0));
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(0.001 / 8.0));
+      glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(0.001 / 8.0));
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(7.999 / 8.0));
+      glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(7.999 / 8.0));
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
       glTexCoord2f(GLfloat(0.0), GLfloat(7.999 / 8.0));
       glVertex2f(GLfloat(x0), GLfloat(ycf1));
@@ -548,7 +548,7 @@ namespace Plus4Emu {
 
     if (displayParameters.displayQuality == 0 &&
         displayParameters.bufferingMode == 0) {
-      // full horizontal resolution, no interlace (768x288)
+      // half horizontal resolution, no interlace (384x288)
       // no texture filtering or effects
       glDisable(GL_BLEND);
       unsigned char lineBuf1[768];
@@ -580,13 +580,13 @@ namespace Plus4Emu {
           else
             std::memset(curLine_, 0, 768);
           // build 16-bit texture:
-          // full horizontal resolution, no interlace (768x8)
-          uint16_t  *txtp = &(textureBuffer[offs * 768]);
-          for (size_t xc = 0; xc < 768; xc++)
-            txtp[xc] = colormap(curLine_[xc]);
+          // half horizontal resolution, no interlace (384x8)
+          uint16_t  *txtp = &(textureBuffer[offs * 384]);
+          for (size_t xc = 0; xc < 768; xc += 2)
+            txtp[xc >> 1] = colormap(curLine_[xc], curLine_[xc + 1]);
         }
         // load texture
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 8,
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
                         GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
                         (GLvoid *) textureBuffer);
         // update display
@@ -597,9 +597,9 @@ namespace Plus4Emu {
         glBegin(GL_QUADS);
         glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 8.0));
         glVertex2f(GLfloat(x0), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(0.001 / 8.0));
+        glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(0.001 / 8.0));
         glVertex2f(GLfloat(x1), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(7.999 / 8.0));
+        glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(7.999 / 8.0));
         glVertex2f(GLfloat(x1), GLfloat(ycf1));
         glTexCoord2f(GLfloat(0.0), GLfloat(7.999 / 8.0));
         glVertex2f(GLfloat(x0), GLfloat(ycf1));
