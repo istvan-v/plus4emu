@@ -499,6 +499,17 @@ namespace Plus4 {
       // FIXME: should report errors ?
       (void) setCurrentTrack(currentTrack + (currentTrackFrac > 0 ? 1 : -1));
     }
+    if (diskChangeCnt) {
+      diskChangeCnt--;
+      if (diskChangeCnt == 0) {
+        // after disk change, the write protection flag is inverted for 0.25
+        // seconds
+        memory_ram[0x0001] = uint8_t((memory_ram[0x0001] & 0xEF)
+                                     | (writeProtectFlag ? 0x00 : 0x10));
+        spindleMotorSpeed = 0;
+      }
+      return false;
+    }
     // update spindle motor speed
     // spin up/down time is 16 * (65536 / 4) cycles / 1000000 Hz = ~262 ms
     if (!(memory_ram[0x0001] & 0x04)) {
@@ -594,7 +605,7 @@ namespace Plus4 {
       deviceNumber(uint8_t(driveNum_)),
       diskID(0x00),
       dataBusState(0x00),
-      writeProtectFlag(true),
+      writeProtectFlag(false),
       trackDirtyFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
@@ -610,6 +621,7 @@ namespace Plus4 {
       currentTrackStepperMotorPhase(0),
       spindleMotorSpeed(0),
       nTracks(0),
+      diskChangeCnt(15625),
       idCharacter1(0x41),
       idCharacter2(0x41),
       imageFile((std::FILE *) 0),
@@ -653,11 +665,12 @@ namespace Plus4 {
       imageFile = (std::FILE *) 0;
       nTracks = 0;
     }
-    writeProtectFlag = true;
+    writeProtectFlag = false;
     headLoadedFlag = false;
     prvByteWasFF = false;
     syncFlag = false;
     spindleMotorSpeed = 0;
+    diskChangeCnt = 15625;
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
     currentTrackStepperMotorPhase = 0;
     memory_ram[0x0001] &= uint8_t(0xEF);
@@ -695,8 +708,10 @@ namespace Plus4 {
       (void) setCurrentTrack(18);       // FIXME: should report errors ?
       currentTrackStepperMotorPhase = 0;
     }
+    // invert write protect sense input for 0.25 seconds so that the DOS can
+    // detect the disk change
     memory_ram[0x0001] = uint8_t((memory_ram[0x0001] & 0xEF)
-                                 | (writeProtectFlag ? 0x00 : 0x10));
+                                 | (writeProtectFlag ? 0x10 : 0x00));
   }
 
   bool VC1551::haveDisk() const

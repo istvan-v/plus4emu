@@ -64,7 +64,7 @@ namespace Plus4 {
     bool        trackDirtyFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
-    bool        syncFlag;               // true if found sync
+    uint8_t     via2PortBInput;         // bit 7: /SYNC, bit 4: /WPS
     uint8_t     motorUpdateCnt;         // decrements from 15 to 0
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
     int         shiftRegisterBitCntFrac;    // 0 to 65535
@@ -78,6 +78,7 @@ namespace Plus4 {
     int         spindleMotorSpeed;      // 0 (stopped) to 65536 (full speed)
     int         nTracks;                // number of tracks (35, 40, or zero
                                         // if there is no disk image file)
+    int         diskChangeCnt;          // decrements from 15625 to 0
     uint8_t     idCharacter1;
     uint8_t     idCharacter2;
     std::FILE   *imageFile;

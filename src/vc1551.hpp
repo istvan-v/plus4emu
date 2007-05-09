@@ -68,6 +68,7 @@ namespace Plus4 {
     int         spindleMotorSpeed;      // 0 (stopped) to 65536 (full speed)
     int         nTracks;                // number of tracks (35, 40, or zero
                                         // if there is no disk image file)
+    int         diskChangeCnt;          // decrements from 15625 to 0
     uint8_t     idCharacter1;
     uint8_t     idCharacter2;
     std::FILE   *imageFile;

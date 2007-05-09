@@ -503,6 +503,18 @@ namespace Plus4 {
       // FIXME: should report errors ?
       (void) setCurrentTrack(currentTrack + (currentTrackFrac > 0 ? 1 : -1));
     }
+    if (diskChangeCnt) {
+      diskChangeCnt--;
+      if (diskChangeCnt == 0) {
+        // write protect sense input is inverted for 0.25 seconds after
+        // disk change
+        via2PortBInput = uint8_t(writeProtectFlag ? (via2PortBInput & 0xEF)
+                                                    : (via2PortBInput | 0x10));
+        via2.setPortB(via2PortBInput);
+        spindleMotorSpeed = 0;
+      }
+      return false;
+    }
     // update spindle motor speed
     // spin up/down time is 16 * (65536 / 4) cycles / 1000000 Hz = ~262 ms
     if (!(via2.getPortB() & 0x04)) {
@@ -602,11 +614,11 @@ namespace Plus4 {
       dataBusState(0x00),
       via1PortBInput(0xFF),
       interruptRequestFlag(false),
-      writeProtectFlag(true),
+      writeProtectFlag(false),
       trackDirtyFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
-      syncFlag(false),
+      via2PortBInput(0xEF),
       motorUpdateCnt(0),
       shiftRegisterBitCnt(0),
       shiftRegisterBitCntFrac(0x0000),
@@ -617,6 +629,7 @@ namespace Plus4 {
       currentTrackStepperMotorPhase(0),
       spindleMotorSpeed(0),
       nTracks(0),
+      diskChangeCnt(15625),
       idCharacter1(0x41),
       idCharacter2(0x41),
       imageFile((std::FILE *) 0),
@@ -663,14 +676,15 @@ namespace Plus4 {
       imageFile = (std::FILE *) 0;
       nTracks = 0;
     }
-    writeProtectFlag = true;
+    writeProtectFlag = false;
     headLoadedFlag = false;
     prvByteWasFF = false;
-    syncFlag = false;
+    via2PortBInput &= uint8_t(0xEF);
     spindleMotorSpeed = 0;
+    diskChangeCnt = 15625;
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
     currentTrackStepperMotorPhase = 0;
-    via2.setPortB(uint8_t(syncFlag ? 0x6F : 0xEF));
+    via2.setPortB(via2PortBInput);
     if (fileName_.length() > 0) {
       bool    isReadOnly = false;
       imageFile = std::fopen(fileName_.c_str(), "r+b");
@@ -705,8 +719,11 @@ namespace Plus4 {
       (void) setCurrentTrack(18);       // FIXME: should report errors ?
       currentTrackStepperMotorPhase = 0;
     }
-    via2.setPortB(uint8_t((syncFlag ? 0x7F : 0xFF)
-                          & (writeProtectFlag ? 0xEF : 0xFF)));
+    // invert write protect sense input for 0.25 seconds so that the DOS can
+    // detect the disk change
+    via2PortBInput = uint8_t(writeProtectFlag ? (via2PortBInput | 0x10)
+                                                : (via2PortBInput & 0xEF));
+    via2.setPortB(via2PortBInput);
   }
 
   bool VC1541::haveDisk() const
@@ -744,7 +761,7 @@ namespace Plus4 {
         shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
         shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
         if (shiftRegisterBitCnt == 0) {
-          syncFlag = false;
+          bool    syncFlag = false;
           if (via2.getCB2()) {
             // read mode
             uint8_t readByte = 0x00;
@@ -765,8 +782,9 @@ namespace Plus4 {
             }
             prvByteWasFF = false;
           }
-          via2.setPortB(uint8_t((syncFlag ? 0x7F : 0xFF)
-                                & (writeProtectFlag ? 0xEF : 0xFF)));
+          via2PortBInput = uint8_t(syncFlag ? (via2PortBInput & 0x7F)
+                                              : (via2PortBInput | 0x80));
+          via2.setPortB(via2PortBInput);
           // set byte ready flag
           if (via2.getCA2() && !syncFlag) {
             cpu.setOverflowFlag();
