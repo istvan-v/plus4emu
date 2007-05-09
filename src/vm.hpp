@@ -70,6 +70,26 @@ namespace Plus4Emu {
     void            (*fileNameCallback)(void *userData, std::string& fileName);
     void            *fileNameCallbackUserData;
    public:
+    struct VMStatus {
+      bool      isRecordingDemo;
+      bool      isPlayingDemo;
+      bool      tapeReadOnly;
+      double    tapePosition;
+      double    tapeLength;
+      long      tapeSampleRate;
+      int       tapeSampleSize;
+      // floppy drive LED state is the sum of any of the following values:
+      //   0x00000001: drive 0 red LED is on
+      //   0x00000002: drive 0 green LED is on
+      //   0x00000100: drive 1 red LED is on
+      //   0x00000200: drive 1 green LED is on
+      //   0x00010000: drive 2 red LED is on
+      //   0x00020000: drive 2 green LED is on
+      //   0x01000000: drive 3 red LED is on
+      //   0x02000000: drive 3 green LED is on
+      uint32_t  floppyDriveLEDState;
+    };
+    // --------
     VirtualMachine(VideoDisplay& display_, AudioOutput& audioOutput_);
     virtual ~VirtualMachine();
     /*!
@@ -145,6 +165,12 @@ namespace Plus4Emu {
      * Set state of key 'keyCode' (0 to 127).
      */
     virtual void setKeyboardState(int keyCode, bool isPressed);
+    /*!
+     * Returns status information about the emulated machine (see also
+     * struct VMStatus above, and the comments for functions that return
+     * individual status values).
+     */
+    virtual void getVMStatus(VMStatus& vmStatus_);
     // -------------------------- DISK AND FILE I/O ---------------------------
     /*!
      * Load disk image for drive 'n' (counting from zero); an empty file
@@ -152,6 +178,19 @@ namespace Plus4Emu {
      */
     virtual void setDiskImageFile(int n, const std::string& fileName_,
                                   int driveType = 0);
+    /*!
+     * Returns the current state of the floppy drive LEDs, which is the sum
+     * of any of the following values:
+     *   0x00000001: drive 0 red LED is on
+     *   0x00000002: drive 0 green LED is on
+     *   0x00000100: drive 1 red LED is on
+     *   0x00000200: drive 1 green LED is on
+     *   0x00010000: drive 2 red LED is on
+     *   0x00020000: drive 2 green LED is on
+     *   0x01000000: drive 3 red LED is on
+     *   0x02000000: drive 3 green LED is on
+     */
+    virtual uint32_t getFloppyDriveLEDState() const;
     /*!
      * Set if the emulated machine should be allowed to access files in the
      * working directory.

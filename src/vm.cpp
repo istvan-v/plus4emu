@@ -313,12 +313,29 @@ namespace Plus4Emu {
     (void) isPressed;
   }
 
+  void VirtualMachine::getVMStatus(VMStatus& vmStatus_)
+  {
+    vmStatus_.tapeReadOnly = getIsTapeReadOnly();
+    vmStatus_.tapePosition = getTapePosition();
+    vmStatus_.tapeLength = getTapeLength();
+    vmStatus_.tapeSampleRate = getTapeSampleRate();
+    vmStatus_.tapeSampleSize = getTapeSampleSize();
+    vmStatus_.floppyDriveLEDState = getFloppyDriveLEDState();
+    vmStatus_.isPlayingDemo = getIsPlayingDemo();
+    vmStatus_.isRecordingDemo = getIsRecordingDemo();
+  }
+
   void VirtualMachine::setDiskImageFile(int n, const std::string& fileName_,
                                         int driveType)
   {
     (void) n;
     (void) fileName_;
     (void) driveType;
+  }
+
+  uint32_t VirtualMachine::getFloppyDriveLEDState() const
+  {
+    return 0U;
   }
 
   void VirtualMachine::setEnableFileIO(bool isEnabled)

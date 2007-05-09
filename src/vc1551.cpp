@@ -862,8 +862,7 @@ namespace Plus4 {
 
   uint8_t VC1551::getLEDState() const
   {
-    // TODO: implement this
-    return uint8_t(0x00);
+    return uint8_t(((memory_ram[0x0001] ^ 0xFF) & 0x08) >> 2);
   }
 
   void VC1551::saveState(Plus4Emu::File::Buffer& buf)

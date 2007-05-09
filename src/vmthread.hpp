@@ -29,6 +29,32 @@ namespace Plus4Emu {
   class VMThread : private Thread {
    public:
     VirtualMachine& vm;
+    struct VMThreadStatus {
+      // 'threadStatus' is zero if the emulation thread is running,
+      // and non-zero if it has terminated (negative if the termination
+      // occured due to an error).
+      int       threadStatus;
+      bool      isPaused;
+      bool      isRecordingDemo;
+      bool      isPlayingDemo;
+      bool      tapeReadOnly;
+      double    tapePosition;
+      double    tapeLength;
+      long      tapeSampleRate;
+      int       tapeSampleSize;
+      // floppy drive LED state is the sum of any of the following values:
+      //   0x00000001: drive 0 red LED is on
+      //   0x00000002: drive 0 green LED is on
+      //   0x00000100: drive 1 red LED is on
+      //   0x00000200: drive 1 green LED is on
+      //   0x00010000: drive 2 red LED is on
+      //   0x00020000: drive 2 green LED is on
+      //   0x01000000: drive 3 red LED is on
+      //   0x02000000: drive 3 green LED is on
+      uint32_t  floppyDriveLEDState;
+      // --------
+      VMThreadStatus(VMThread& vmThread_);
+    };
    private:
     class Message;
     Mutex           mutex_;
@@ -50,20 +76,13 @@ namespace Plus4Emu {
     double          tapeLength;
     long            tapeSampleRate;
     int             tapeSampleSize;
+    uint32_t        floppyDriveLEDState;
     void            *userData;
     void            (*errorCallback)(void *userData_, const char *msg);
     bool            keyboardState[128];
    public:
     VMThread(VirtualMachine& vm_, void *userData_ = (void *) 0);
     virtual ~VMThread();
-    // Get status information about the virtual machine. Return value is
-    // zero if the emulation thread is running, and non-zero if it has
-    // terminated (negative if the termination occured due to an error).
-    int getStatus(bool& isPaused_,
-                  bool& isRecordingDemo_, bool& isPlayingDemo_,
-                  bool& tapeReadOnly_,
-                  double& tapePosition_, double& tapeLength_,
-                  long& tapeSampleRate_, int& tapeSampleSize_);
     // Block the execution of the emulation thread, so that the main thread
     // can safely access the virtual machine object. Returns zero on success,
     // a positive value if the emulation thread did not respond after 't'

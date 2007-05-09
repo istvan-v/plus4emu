@@ -151,6 +151,12 @@ namespace Plus4 {
      * Set state of key 'keyCode' (0 to 127).
      */
     virtual void setKeyboardState(int keyCode, bool isPressed);
+    /*!
+     * Returns status information about the emulated machine (see also
+     * struct VMStatus above, and the comments for functions that return
+     * individual status values).
+     */
+    virtual void getVMStatus(VirtualMachine::VMStatus& vmStatus_);
     // -------------------------- DISK AND FILE I/O ---------------------------
     /*!
      * Load disk image for drive 'n' (counting from zero); an empty file
@@ -160,6 +166,19 @@ namespace Plus4 {
      */
     virtual void setDiskImageFile(int n, const std::string& fileName_,
                                   int driveType = 0);
+    /*!
+     * Returns the current state of the floppy drive LEDs, which is the sum
+     * of any of the following values:
+     *   0x00000001: drive 0 red LED is on
+     *   0x00000002: drive 0 green LED is on
+     *   0x00000100: drive 1 red LED is on
+     *   0x00000200: drive 1 green LED is on
+     *   0x00010000: drive 2 red LED is on
+     *   0x00020000: drive 2 green LED is on
+     *   0x01000000: drive 3 red LED is on
+     *   0x02000000: drive 3 green LED is on
+     */
+    virtual uint32_t getFloppyDriveLEDState() const;
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape

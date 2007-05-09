@@ -58,6 +58,7 @@ namespace Plus4Emu {
       tapeLength(-1.0),
       tapeSampleRate(0L),
       tapeSampleSize(0),
+      floppyDriveLEDState(0U),
       userData(userData_),
       errorCallback(&defaultErrorCallback)
   {
@@ -95,6 +96,7 @@ namespace Plus4Emu {
     tapeLength = -1.0;
     tapeSampleRate = 0L;
     tapeSampleSize = 0;
+    floppyDriveLEDState = 0U;
     while (messageQueue) {
       Message *m = messageQueue;
       messageQueue = m->nextMessage;
@@ -175,13 +177,16 @@ namespace Plus4Emu {
     // update status information
     mutex_.lock();
     try {
-      isRecordingDemo = vm.getIsRecordingDemo();
-      isPlayingDemo = vm.getIsPlayingDemo();
-      tapeReadOnly = vm.getIsTapeReadOnly();
-      tapePosition = vm.getTapePosition();
-      tapeLength = vm.getTapeLength();
-      tapeSampleRate = vm.getTapeSampleRate();
-      tapeSampleSize = vm.getTapeSampleSize();
+      VirtualMachine::VMStatus  vmStatus;
+      vm.getVMStatus(vmStatus);
+      isRecordingDemo = vmStatus.isRecordingDemo;
+      isPlayingDemo = vmStatus.isPlayingDemo;
+      tapeReadOnly = vmStatus.tapeReadOnly;
+      tapePosition = vmStatus.tapePosition;
+      tapeLength = vmStatus.tapeLength;
+      tapeSampleRate = vmStatus.tapeSampleRate;
+      tapeSampleSize = vmStatus.tapeSampleSize;
+      floppyDriveLEDState = vmStatus.floppyDriveLEDState;
     }
     catch (...) {
       errorFlag = true;
@@ -209,26 +214,22 @@ namespace Plus4Emu {
     this->cleanup();
   }
 
-  int VMThread::getStatus(bool& isPaused_,
-                          bool& isRecordingDemo_, bool& isPlayingDemo_,
-                          bool& tapeReadOnly_,
-                          double& tapePosition_, double& tapeLength_,
-                          long& tapeSampleRate_, int& tapeSampleSize_)
+  VMThread::VMThreadStatus::VMThreadStatus(VMThread& vmThread_)
+    : threadStatus(0)
   {
-    int     retval = 0;
-    mutex_.lock();
-    isPaused_ = pauseFlag;
-    isRecordingDemo_ = isRecordingDemo;
-    isPlayingDemo_ = isPlayingDemo;
-    tapeReadOnly_ = tapeReadOnly;
-    tapePosition_ = tapePosition;
-    tapeLength_ = tapeLength;
-    tapeSampleRate_ = tapeSampleRate;
-    tapeSampleSize_ = tapeSampleSize;
-    if (exitFlag)
-      retval = (errorFlag ? -1 : 1);
-    mutex_.unlock();
-    return retval;
+    vmThread_.mutex_.lock();
+    isPaused = vmThread_.pauseFlag;
+    isRecordingDemo = vmThread_.isRecordingDemo;
+    isPlayingDemo = vmThread_.isPlayingDemo;
+    tapeReadOnly = vmThread_.tapeReadOnly;
+    tapePosition = vmThread_.tapePosition;
+    tapeLength = vmThread_.tapeLength;
+    tapeSampleRate = vmThread_.tapeSampleRate;
+    tapeSampleSize = vmThread_.tapeSampleSize;
+    floppyDriveLEDState = vmThread_.floppyDriveLEDState;
+    if (vmThread_.exitFlag)
+      threadStatus = (vmThread_.errorFlag ? -1 : 1);
+    vmThread_.mutex_.unlock();
   }
 
   int VMThread::lock(size_t t)

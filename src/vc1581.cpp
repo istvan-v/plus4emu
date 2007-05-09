@@ -397,8 +397,8 @@ namespace Plus4 {
 
   uint8_t VC1581::getLEDState() const
   {
-    // TODO: implement this
-    return uint8_t(0x00);
+    uint8_t n = cia.getPortA() & uint8_t(0x40);
+    return uint8_t((n >> 5) | (n >> 6));
   }
 
   void VC1581::saveState(Plus4Emu::File::Buffer& buf)

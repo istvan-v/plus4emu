@@ -54,6 +54,7 @@ void Plus4EmuGUI::init_()
   oldPauseFlag = true;
   oldTapeSampleRate = -1L;
   oldTapeSampleSize = -1;
+  oldFloppyDriveLEDState = 0U;
   oldTapeReadOnlyFlag = false;
   oldTapePosition = -2L;
   functionKeyState = 0U;
@@ -70,6 +71,7 @@ void Plus4EmuGUI::init_()
   windowToShow = (Fl_Window *) 0;
   diskConfigWindow = (Plus4EmuGUI_DiskConfigWindow *) 0;
   displaySettingsWindow = (Plus4EmuGUI_DisplayConfigWindow *) 0;
+  keyboardConfigWindow = (Plus4EmuGUI_KbdConfigWindow *) 0;
   soundSettingsWindow = (Plus4EmuGUI_SoundConfigWindow *) 0;
   machineConfigWindow = (Plus4EmuGUI_MachineConfigWindow *) 0;
   debugWindow = (Plus4EmuGUI_DebugWindow *) 0;
@@ -134,21 +136,10 @@ void Plus4EmuGUI::updateDisplay(double t)
   updateDisplayEntered = true;
   int     newWindowWidth = mainWindow->w();
   int     newWindowHeight = mainWindow->h();
-  bool    isPaused_ = false;
-  bool    isRecordingDemo_ = false;
-  bool    isPlayingDemo_ = false;
-  bool    tapeReadOnly_ = false;
-  double  tapePosition_ = 0.0;
-  double  tapeLength_ = 0.0;
-  long    tapeSampleRate_ = 0L;
-  int     tapeSampleSize_ = 0;
-  int   vmThreadStatus = vmThread.getStatus(isPaused_, isRecordingDemo_,
-                                            isPlayingDemo_, tapeReadOnly_,
-                                            tapePosition_, tapeLength_,
-                                            tapeSampleRate_, tapeSampleSize_);
-  if (vmThreadStatus != 0) {
+  Plus4Emu::VMThread::VMThreadStatus  vmThreadStatus(vmThread);
+  if (vmThreadStatus.threadStatus != 0) {
     exitFlag = true;
-    if (vmThreadStatus < 0)
+    if (vmThreadStatus.threadStatus < 0)
       errorFlag = true;
   }
   if (displayMode != oldDisplayMode) {
@@ -165,18 +156,21 @@ void Plus4EmuGUI::updateDisplay(double t)
     newWindowWidth = mainWindow->w();
     newWindowHeight = mainWindow->h();
     if ((displayMode & 1) == 0) {
-      if (newWindowWidth >= 700)
+      if (newWindowWidth >= 745)
         statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
       else
         statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
                                    360, 30);
       statusDisplayGroup->show();
-      mainMenuBar->resize(0, 0, 340, 30);
+      mainMenuBar->resize(0, 0, 300, 30);
       mainMenuBar->show();
+      diskStatusDisplayGroup->resize(345, 0, 30, 30);
+      diskStatusDisplayGroup->show();
     }
     else {
       statusDisplayGroup->hide();
       mainMenuBar->hide();
+      diskStatusDisplayGroup->hide();
     }
     oldWindowWidth = -1;
     oldWindowHeight = -1;
@@ -187,24 +181,26 @@ void Plus4EmuGUI::updateDisplay(double t)
       emulatorWindow->cursor(FL_CURSOR_NONE);
     mainWindow->redraw();
     mainMenuBar->redraw();
+    diskStatusDisplayGroup->redraw();
     statusDisplayGroup->redraw();
   }
   else if (newWindowWidth != oldWindowWidth ||
            newWindowHeight != oldWindowHeight) {
     if ((displayMode & 1) == 0) {
-      int   h = newWindowHeight - (newWindowWidth >= 700 ? 30 : 60);
+      int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
       emulatorWindowGroup->resize(0, 30, newWindowWidth, h);
       emulatorWindow->resize(0, 30, newWindowWidth, h);
       if ((displayMode & 2) == 0) {
         config.display.width = newWindowWidth;
         config.display.height = h;
       }
-      if (newWindowWidth >= 700)
+      if (newWindowWidth >= 745)
         statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
       else
         statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
                                    360, 30);
-      mainMenuBar->resize(0, 0, 340, 30);
+      mainMenuBar->resize(0, 0, 300, 30);
+      diskStatusDisplayGroup->resize(345, 0, 30, 30);
     }
     else {
       emulatorWindowGroup->resize(0, 0, newWindowWidth, newWindowHeight);
@@ -218,16 +214,18 @@ void Plus4EmuGUI::updateDisplay(double t)
     oldWindowHeight = newWindowHeight;
     mainWindow->redraw();
     mainMenuBar->redraw();
+    diskStatusDisplayGroup->redraw();
     statusDisplayGroup->redraw();
   }
-  if (isPaused_ != oldPauseFlag) {
-    oldPauseFlag = isPaused_;
-    if (isPaused_)
+  if (vmThreadStatus.isPaused != oldPauseFlag) {
+    oldPauseFlag = vmThreadStatus.isPaused;
+    if (vmThreadStatus.isPaused)
       mainWindow->label("plus4emu 1.0.1 beta (paused)");
     else
       mainWindow->label("plus4emu 1.0.1 beta");
   }
-  int   newDemoStatus = (isRecordingDemo_ ? 2 : (isPlayingDemo_ ? 1 : 0));
+  int   newDemoStatus = (vmThreadStatus.isRecordingDemo ?
+                         2 : (vmThreadStatus.isPlayingDemo ? 1 : 0));
   if (newDemoStatus != oldDemoStatus) {
     const Fl_Menu_Item *m = mainMenuBar->find_item("File/Stop demo (Ctrl+F12)");
     if (newDemoStatus == 0) {
@@ -253,19 +251,19 @@ void Plus4EmuGUI::updateDisplay(double t)
     oldDemoStatus = newDemoStatus;
     mainWindow->redraw();
   }
-  if (tapeSampleRate_ != oldTapeSampleRate ||
-      tapeSampleSize_ != oldTapeSampleSize ||
-      tapeReadOnly_ != oldTapeReadOnlyFlag) {
-    oldTapeSampleRate = tapeSampleRate_;
-    oldTapeSampleSize = tapeSampleSize_;
-    oldTapeReadOnlyFlag = tapeReadOnly_;
+  if (vmThreadStatus.tapeSampleRate != oldTapeSampleRate ||
+      vmThreadStatus.tapeSampleSize != oldTapeSampleSize ||
+      vmThreadStatus.tapeReadOnly != oldTapeReadOnlyFlag) {
+    oldTapeSampleRate = vmThreadStatus.tapeSampleRate;
+    oldTapeSampleSize = vmThreadStatus.tapeSampleSize;
+    oldTapeReadOnlyFlag = vmThreadStatus.tapeReadOnly;
     char  tmpBuf[256];
-    if (tapeSampleRate_ < 1L || tapeSampleSize_ < 1)
+    if (vmThreadStatus.tapeSampleRate < 1L || vmThreadStatus.tapeSampleSize < 1)
       std::sprintf(&(tmpBuf[0]), "Tape: none");
     else {
       std::sprintf(&(tmpBuf[0]), "Tape: %ldHz %dbit %s",
-                   tapeSampleRate_, tapeSampleSize_,
-                   (tapeReadOnly_ ? "RO" : "RW"));
+                   vmThreadStatus.tapeSampleRate, vmThreadStatus.tapeSampleSize,
+                   (vmThreadStatus.tapeReadOnly ? "RO" : "RW"));
     }
     tapeInfoDisplay->value(&(tmpBuf[0]));
     mainWindow->redraw();
@@ -288,7 +286,7 @@ void Plus4EmuGUI::updateDisplay(double t)
     }
     tapeStatusDisplayGroup->redraw();
   }
-  long  newTapePosition = long(tapePosition_ * 10.0 + 0.25);
+  long  newTapePosition = long(vmThreadStatus.tapePosition * 10.0 + 0.25);
   newTapePosition = (newTapePosition >= 0L ? newTapePosition : -1L);
   if (newTapePosition != oldTapePosition) {
     oldTapePosition = newTapePosition;
@@ -305,6 +303,19 @@ void Plus4EmuGUI::updateDisplay(double t)
       std::sprintf(&(tmpBuf[0]), " -:--:--.-");
     tapePositionDisplay->value(&(tmpBuf[0]));
     tapeStatusDisplayGroup->redraw();
+  }
+  if (vmThreadStatus.floppyDriveLEDState != oldFloppyDriveLEDState) {
+    uint32_t  tmp = vmThreadStatus.floppyDriveLEDState;
+    oldFloppyDriveLEDState = tmp;
+    Fl_Color  ledColors_[4] = { FL_BLACK, FL_RED, FL_GREEN, FL_YELLOW };
+    driveAStatusDisplay->color(ledColors_[tmp & 3U]);
+    driveAStatusDisplay->redraw();
+    driveBStatusDisplay->color(ledColors_[(tmp >> 8) & 3U]);
+    driveBStatusDisplay->redraw();
+    driveCStatusDisplay->color(ledColors_[(tmp >> 16) & 3U]);
+    driveCStatusDisplay->redraw();
+    driveDStatusDisplay->color(ledColors_[(tmp >> 24) & 3U]);
+    driveDStatusDisplay->redraw();
   }
   Fl::wait(t);
   updateDisplayEntered = false;
@@ -479,6 +490,8 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FloppyRpD, (void *) this);
   mainMenuBar->add("Options/Floppy/Replace disk/All drives",
                    (char *) 0, &menuCallback_Options_FloppyRpl, (void *) this);
+  mainMenuBar->add("Options/Keyboard map",
+                   (char *) 0, &menuCallback_Options_KbdConfig, (void *) this);
   mainMenuBar->add("Options/Set working directory",
                    (char *) 0, &menuCallback_Options_FileIODir, (void *) this);
   mainMenuBar->add("Debug/Start debugger (Alt+M)",
@@ -563,7 +576,7 @@ void Plus4EmuGUI::resizeWindow(int w, int h)
     config.display.width = w;
     config.display.height = h;
     if ((displayMode & 1) == 0)
-      h += (w >= 700 ? 30 : 60);
+      h += (w >= 745 ? 30 : 60);
     mainWindow->resize(mainWindow->x(), mainWindow->y(), w, h);
     if ((displayMode & 1) == 0)
       mainWindow->size_range(384, 348, 1536, 1182);
@@ -2154,6 +2167,13 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v)
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
   }
+}
+
+void Plus4EmuGUI::menuCallback_Options_KbdConfig(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  gui_.keyboardConfigWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Options_FileIODir(Fl_Widget *o, void *v)

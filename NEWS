@@ -2,8 +2,11 @@ Changes in version 1.0.1
 ------------------------
 
   * implemented 1551 drive emulation
+  * added floppy drive LED display to the GUI (1541 is red, 1551 is
+    green, and 1581 is yellow)
   * the debugger now allows for debugging floppy drives; the drives are
     also mapped to the physical address range $180000-$1BFFFF
+  * keyboard map can be configured with the GUI
   * blank video output is generated when the TED is disabled by setting
     bit 5 of $FF07
   * reduced horizontal texture resolution to 384 in OpenGL mode when the

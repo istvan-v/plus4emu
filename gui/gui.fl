@@ -41,6 +41,8 @@ class Plus4EmuGUI {open
   }
   decl {friend class Plus4EmuGUI_DisplayConfigWindow;} {public
   }
+  decl {friend class Plus4EmuGUI_KbdConfigWindow;} {public
+  }
   decl {friend class Plus4EmuGUI_SoundConfigWindow;} {public
   }
   decl {friend class Plus4EmuGUI_MachineConfigWindow;} {public
@@ -67,6 +69,7 @@ class Plus4EmuGUI {open
   decl {bool oldPauseFlag;} {}
   decl {long oldTapeSampleRate;} {}
   decl {int oldTapeSampleSize;} {}
+  decl {uint32_t oldFloppyDriveLEDState;} {}
   decl {bool oldTapeReadOnlyFlag;} {}
   decl {long oldTapePosition;} {}
   decl {uint32_t functionKeyState;} {}
@@ -95,6 +98,7 @@ class Plus4EmuGUI {open
   decl {Plus4Emu::ConfigurationDB guiConfig;} {}
   decl {Plus4EmuGUI_DiskConfigWindow *diskConfigWindow;} {}
   decl {Plus4EmuGUI_DisplayConfigWindow *displaySettingsWindow;} {}
+  decl {Plus4EmuGUI_KbdConfigWindow *keyboardConfigWindow;} {}
   decl {Plus4EmuGUI_SoundConfigWindow *soundSettingsWindow;} {}
   decl {Plus4EmuGUI_MachineConfigWindow *machineConfigWindow;} {}
   decl {Plus4EmuGUI_DebugWindow *debugWindow;} {}
@@ -188,6 +192,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FloppyRpC(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRpD(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_KbdConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Help_About(Fl_Widget *o, void *v);} {}
@@ -201,8 +206,25 @@ class Plus4EmuGUI {open
       xywh {248 54 400 360} type Single color 37 selection_color 0 resizable size_range {384 348 1536 1182} visible
     } {
       Fl_Menu_Bar mainMenuBar {open
-        xywh {0 0 340 30} box FLAT_BOX color 37 selection_color 236 labelcolor 52 textcolor 52
+        xywh {0 0 300 30} box FLAT_BOX color 37 selection_color 236 labelcolor 52 textcolor 52
       } {}
+      Fl_Group diskStatusDisplayGroup {
+        label {Disk: } open
+        xywh {345 0 30 30} box PLASTIC_THIN_UP_BOX color 0 labelsize 12 labelcolor 52 align 4
+      } {
+        Fl_Box driveAStatusDisplay {
+          xywh {351 2 18 5} box THIN_DOWN_BOX color 0
+        }
+        Fl_Box driveBStatusDisplay {
+          xywh {351 9 18 5} box THIN_DOWN_BOX color 0
+        }
+        Fl_Box driveCStatusDisplay {
+          xywh {351 16 18 5} box THIN_DOWN_BOX color 0
+        }
+        Fl_Box driveDStatusDisplay {
+          xywh {351 23 18 5} box THIN_DOWN_BOX color 0
+        }
+      }
       Fl_Group emulatorWindowGroup {open
         xywh {0 30 400 300} color 0
         code0 {o->add(emulatorWindow);}
@@ -254,6 +276,7 @@ class Plus4EmuGUI {open
     code {{
   diskConfigWindow = new Plus4EmuGUI_DiskConfigWindow(*this);
   displaySettingsWindow = new Plus4EmuGUI_DisplayConfigWindow(*this);
+  keyboardConfigWindow = new Plus4EmuGUI_KbdConfigWindow(*this);
   soundSettingsWindow = new Plus4EmuGUI_SoundConfigWindow(*this);
   machineConfigWindow = new Plus4EmuGUI_MachineConfigWindow(*this);
   debugWindow = new Plus4EmuGUI_DebugWindow(*this);
@@ -269,6 +292,7 @@ class Plus4EmuGUI {open
   browseFileWindow->hide();
   diskConfigWindow->hide();
   displaySettingsWindow->hide();
+  keyboardConfigWindow->hide();
   soundSettingsWindow->hide();
   machineConfigWindow->hide();
   aboutWindow->hide();
@@ -280,6 +304,7 @@ class Plus4EmuGUI {open
   delete browseFileWindow;
   delete diskConfigWindow;
   delete displaySettingsWindow;
+  delete keyboardConfigWindow;
   delete soundSettingsWindow;
   delete machineConfigWindow;
   delete debugWindow;

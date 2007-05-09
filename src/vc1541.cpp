@@ -858,8 +858,7 @@ namespace Plus4 {
 
   uint8_t VC1541::getLEDState() const
   {
-    // TODO: implement this
-    return uint8_t(0x00);
+    return uint8_t((via2.getPortB() & 0x08) >> 3);
   }
 
   void VC1541::saveState(Plus4Emu::File::Buffer& buf)

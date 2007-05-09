@@ -715,6 +715,26 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::getVMStatus(VMStatus& vmStatus_)
+  {
+    vmStatus_.tapeReadOnly = getIsTapeReadOnly();
+    vmStatus_.tapePosition = getTapePosition();
+    vmStatus_.tapeLength = getTapeLength();
+    vmStatus_.tapeSampleRate = getTapeSampleRate();
+    vmStatus_.tapeSampleSize = getTapeSampleSize();
+    uint32_t  n = 0U;
+    for (int i = 3; i >= 0; i--) {
+      n = n << 8;
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        n |= uint32_t(floppyDrives[i]->getLEDState() & 0xFF);
+    }
+    vmStatus_.floppyDriveLEDState = n;
+    vmStatus_.isPlayingDemo = isPlayingDemo;
+    if (demoFile != (Plus4Emu::File *) 0 && !isRecordingDemo)
+      stopDemoRecording(true);
+    vmStatus_.isRecordingDemo = isRecordingDemo;
+  }
+
   void Plus4VM::setDiskImageFile(int n, const std::string& fileName_,
                                  int driveType)
   {
@@ -792,6 +812,17 @@ namespace Plus4 {
       }
       floppyDrives[n]->setDiskImageFile(fileName_);
     }
+  }
+
+  uint32_t Plus4VM::getFloppyDriveLEDState() const
+  {
+    uint32_t  n = 0U;
+    for (int i = 3; i >= 0; i--) {
+      n = n << 8;
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        n |= uint32_t(floppyDrives[i]->getLEDState() & 0xFF);
+    }
+    return n;
   }
 
   void Plus4VM::setTapeFileName(const std::string& fileName)
