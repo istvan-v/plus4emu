@@ -2201,13 +2201,13 @@ void Plus4EmuGUI::menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   if (!gui_.debugWindow->shown()) {
-    if (!gui_.debugWindowShowFlag) {
-      if (gui_.lockVMThread()) {
-        gui_.debugWindowOpenFlag = true;
-        gui_.debugWindow->show();
-      }
-    }
+    if (gui_.debugWindowShowFlag)
+      return;
+    if (!gui_.lockVMThread())
+      return;
+    gui_.debugWindowOpenFlag = true;
   }
+  gui_.debugWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Help_About(Fl_Widget *o, void *v)
