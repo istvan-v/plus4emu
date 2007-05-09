@@ -71,7 +71,6 @@ class Plus4EmuGUI_DiskConfigWindow {open
             callback {{
   try {
     gui.config["floppy.a.driveType"] = o->value();
-    gui.applyEmulatorConfiguration();
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());
@@ -130,7 +129,6 @@ class Plus4EmuGUI_DiskConfigWindow {open
             callback {{
   try {
     gui.config["floppy.b.driveType"] = o->value();
-    gui.applyEmulatorConfiguration();
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());
