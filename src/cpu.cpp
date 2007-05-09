@@ -1182,6 +1182,8 @@ namespace Plus4 {
     }
     if (value == 0x20)
       singleStepModeNextAddr = (addr + 3) & 0xFFFF;
+    else if ((value & 0x1F) == 0x10)
+      singleStepModeNextAddr = (addr + 2) & 0xFFFF;
     else
       singleStepModeNextAddr = int32_t(-1);
     if (breakPointTable != (uint8_t *) 0) {
