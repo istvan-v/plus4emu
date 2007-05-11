@@ -61,7 +61,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
   }
   window->hide();
 }} open
-      xywh {135 144 620 255} type Double color 37 visible
+      xywh {135 144 515 395} type Double color 37 visible
     } {
       Fl_Group {} {open
         xywh {10 10 495 200} box THIN_UP_BOX color 38
@@ -536,84 +536,146 @@ class Plus4EmuGUI_KbdConfigWindow {open
           xywh {465 185 15 15} box ROUND_UP_BOX color 50 labelsize 11
         }
       }
+      Fl_Group {} {open
+        xywh {10 220 265 130} box THIN_UP_BOX color 38
+      } {
+        Fl_Light_Button joystickEnableValuator {
+          label {Enable joystick}
+          callback {{
+  gui.config.joystick.enableJoystick = (o->value() != 0);
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Check to enable use of external joysticks and gamepads} xywh {20 230 115 20} color 39 labelsize 12 labelcolor 52
+        }
+        Fl_Value_Slider joystickThresholdValuator {
+          callback {{
+  gui.config.joystick.axisThreshold = o->value();
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Joystick threshold (controls sensitivity)} xywh {145 230 120 20} type {Horz Knob} color 36 selection_color 45 labelsize 12 labelcolor 52 align 4 minimum 0.01 maximum 0.99 value 0.5 textcolor 52
+        }
+        Fl_Light_Button joystickEnablePWMValuator {
+          label {Enable PWM}
+          callback {{
+  gui.config.joystick.enablePWM = (o->value() != 0);
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Emulate analogue joystick by pulse width modulation} xywh {20 260 115 20} color 39 labelsize 12 labelcolor 52
+        }
+        Fl_Value_Slider joystickPWMFrequencyValuator {
+          callback {{
+  gui.config.joystick.pwmFrequency = o->value();
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Pulse width modulation frequency in Hz} xywh {145 260 120 20} type {Horz Knob} color 36 selection_color 45 labelsize 12 labelcolor 52 align 4 minimum 1 maximum 100 step 0.5 value 17.5 textcolor 52
+        }
+        Fl_Light_Button joystickEnableAutoFireValuator {
+          label {Enable auto fire}
+          callback {{
+  gui.config.joystick.enableAutoFire = (o->value() != 0);
+  gui.config.joystickSettingsChanged = true;
+}}
+          xywh {20 290 115 20} color 39 labelsize 12 labelcolor 52
+        }
+        Fl_Value_Slider joystickAutoFireFreqValuator {
+          callback {{
+  gui.config.joystick.autoFireFrequency = o->value();
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Auto fire frequency in Hz} xywh {145 290 120 20} type {Horz Knob} color 36 selection_color 45 labelsize 12 labelcolor 52 align 4 minimum 0.5 maximum 50 step 0.5 value 8 textcolor 52
+        }
+        Fl_Value_Slider joystickAutoFirePWValuator {
+          callback {{
+  gui.config.joystick.autoFirePulseWidth = o->value();
+  gui.config.joystickSettingsChanged = true;
+}}
+          tooltip {Auto fire pulse width} xywh {145 320 120 20} type {Horz Knob} color 36 selection_color 45 labelsize 12 labelcolor 52 align 4 minimum 0.01 maximum 0.99 value 0.5 textcolor 52
+        }
+      }
       Fl_Group {} {
         label {Joystick 1} open
-        xywh {515 25 95 95} box OVAL_BOX color 38 labelcolor 52
+        xywh {285 220 105 130} box THIN_UP_BOX color 38 labelcolor 52 align 17
       } {
+        Fl_Box {} {
+          xywh {290 245 95 95} box OVAL_FRAME color 0
+        }
         Fl_Button {} {
           label {@>}
           callback {{
   defineKey(0x53, "Joy 1 right");
 }}
-          xywh {580 63 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {355 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@8>}
           callback {{
   defineKey(0x50, "Joy 1 up");
 }}
-          xywh {553 35 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {328 255 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@4>}
           callback {{
   defineKey(0x52, "Joy 1 left");
 }}
-          xywh {525 63 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {300 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@2>}
           callback {{
   defineKey(0x51, "Joy 1 down");
 }}
-          xywh {553 90 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {328 310 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label Fire
           callback {{
   defineKey(0x56, "Joy 1 fire");
 }}
-          xywh {550 60 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
+          xywh {325 280 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
         }
       }
       Fl_Group {} {
         label {Joystick 2} open
-        xywh {515 145 95 95} box OVAL_BOX color 38 labelcolor 52
+        xywh {400 220 105 130} box THIN_UP_BOX color 38 labelcolor 52 align 17
       } {
+        Fl_Box {} {
+          xywh {405 245 95 95} box OVAL_FRAME color 0
+        }
         Fl_Button {} {
           label {@>}
           callback {{
   defineKey(0x4B, "Joy 2 right");
 }}
-          xywh {580 183 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {470 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@8>}
           callback {{
   defineKey(0x48, "Joy 2 up");
 }}
-          xywh {553 155 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {443 255 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@4>}
           callback {{
   defineKey(0x4A, "Joy 2 left");
 }}
-          xywh {525 183 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {415 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@2>}
           callback {{
   defineKey(0x49, "Joy 2 down");
 }}
-          xywh {553 210 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {443 310 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label Fire
           callback {{
   defineKey(0x4F, "Joy 2 fire");
 }}
-          xywh {550 180 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
+          xywh {440 280 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
         }
       }
       Fl_Button {} {
@@ -626,7 +688,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-        xywh {15 220 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {15 360 60 25} color 38 selection_color 39 labelcolor 52
       }
       Fl_Button {} {
         label OK
@@ -639,7 +701,53 @@ class Plus4EmuGUI_KbdConfigWindow {open
   }
   window->hide();
 }}
-        xywh {85 220 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {85 360 60 25} color 38 selection_color 39 labelcolor 52
+      }
+      Fl_Button {} {
+        label Save
+        callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.configDirectory,
+                       "Configuration files (*.cfg)",
+                       Fl_File_Chooser::CREATE,
+                       "Save keyboard configuration as ASCII text file")) {
+      Plus4Emu::ConfigurationDB tmpCfg;
+      char    cvName[16];
+      for (int i = 0; i < 256; i++) {
+        std::sprintf(&(cvName[0]), "keyboard.%02X.%d",
+                     (unsigned int) (i >> 1), int(i & 1));
+        tmpCfg.createKey(&(cvName[0]), gui.config.keyboard[i >> 1][i & 1]);
+      }
+      tmpCfg.createKey("joystick.enableJoystick",
+                       gui.config.joystick.enableJoystick);
+      tmpCfg.createKey("joystick.enablePWM",
+                       gui.config.joystick.enablePWM);
+      tmpCfg.createKey("joystick.enableAutoFire",
+                       gui.config.joystick.enableAutoFire);
+      tmpCfg.createKey("joystick.axisThreshold",
+                       gui.config.joystick.axisThreshold);
+      tmpCfg.createKey("joystick.pwmFrequency",
+                       gui.config.joystick.pwmFrequency);
+      tmpCfg.createKey("joystick.autoFireFrequency",
+                       gui.config.joystick.autoFireFrequency);
+      tmpCfg.createKey("joystick.autoFirePulseWidth",
+                       gui.config.joystick.autoFirePulseWidth);
+      tmpCfg.saveState(tmp.c_str(), false);
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+        xywh {215 360 60 25} color 38 selection_color 39 labelcolor 52
+      }
+      Fl_Button {} {
+        label Load
+        callback {{
+  gui.menuCallback_File_LoadConfig(o, (void *) &gui);
+}}
+        xywh {285 360 60 25} color 38 selection_color 39 labelcolor 52
       }
       Fl_Button {} {
         label {Clear all}
@@ -647,12 +755,12 @@ class Plus4EmuGUI_KbdConfigWindow {open
   for (int i = 0; i < 256; i++)
     setKeyMap(i, -1);
 }}
-        xywh {420 220 80 25} color 38 selection_color 39 labelcolor 52
+        xywh {420 360 80 25} color 38 selection_color 39 labelcolor 52
       }
     }
     Fl_Window defineKeyWindow {
       label {Define key} open
-      xywh {175 452 220 120} type Double color 37
+      xywh {182 585 220 120} type Double color 37
       class Plus4EmuGUI_KbdDefineWindow visible
     } {
       Fl_Box {} {
@@ -673,6 +781,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
       window->hide();
     Fl::wait(0.0);
   }
+  gui.disableJoystickInput = false;
   delete defineKeyWindow;
   delete window;
 }} {}
@@ -680,7 +789,15 @@ class Plus4EmuGUI_KbdConfigWindow {open
   Function {show()} {open return_type void
   } {
     code {{
+  if (!window->shown())
+    updateWindow();
   window->show();
+}} {}
+  }
+  Function {shown()} {open return_type bool
+  } {
+    code {{
+  return bool(window->shown());
 }} {}
   }
   Function {hide()} {open return_type void
@@ -690,6 +807,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
     defineKeyWindow->hide();
   if (window->shown())
     window->hide();
+  gui.disableJoystickInput = false;
 }} {}
   }
   Function {setKeyMap(int n, int keyCode)} {open private return_type void
@@ -720,9 +838,15 @@ class Plus4EmuGUI_KbdConfigWindow {open
   defineKeyWindow->set_modal();
   defineKeyWindow->show();
   defineKeyWindow->keyCode_ = -1;
+  gui.disableJoystickInput = true;
+  gui.joystickInput.flushEvents();
   do {
     Fl::wait(0.05);
+    int   tmp = gui.joystickInput.getEvent();
+    if (tmp > 0)
+      defineKeyWindow->keyCode_ = tmp;
   } while (defineKeyWindow->keyCode_ < 0 && defineKeyWindow->shown());
+  gui.disableJoystickInput = false;
   if (!defineKeyWindow->shown())
     return;
   if (defineKeyWindow->keyCode_ == (FL_F + 12)) {
@@ -739,9 +863,15 @@ class Plus4EmuGUI_KbdConfigWindow {open
                "F11 to keep the original key, or F12 to close this window", keyName);
   defineKeyWindowText->label(&(buf[0]));
   defineKeyWindow->keyCode_ = -1;
+  gui.disableJoystickInput = true;
+  gui.joystickInput.flushEvents();
   do {
     Fl::wait(0.05);
+    int   tmp = gui.joystickInput.getEvent();
+    if (tmp > 0)
+      defineKeyWindow->keyCode_ = tmp;
   } while (defineKeyWindow->keyCode_ < 0 && defineKeyWindow->shown());
+  gui.disableJoystickInput = false;
   if (!defineKeyWindow->shown())
     return;
   if (defineKeyWindow->keyCode_ == (FL_F + 12)) {
@@ -754,6 +884,18 @@ class Plus4EmuGUI_KbdConfigWindow {open
              defineKeyWindow->keyCode_ == (FL_F + 11)))
     setKeyMap((n << 1) + 1, defineKeyWindow->keyCode_);
   defineKeyWindow->hide();
+}} {}
+  }
+  Function {updateWindow()} {open return_type void
+  } {
+    code {{
+  joystickEnableValuator->value(gui.config.joystick.enableJoystick ? 1 : 0);
+  joystickThresholdValuator->value(gui.config.joystick.axisThreshold);
+  joystickEnablePWMValuator->value(gui.config.joystick.enablePWM ? 1 : 0);
+  joystickPWMFrequencyValuator->value(gui.config.joystick.pwmFrequency);
+  joystickEnableAutoFireValuator->value(gui.config.joystick.enableAutoFire ? 1 : 0);
+  joystickAutoFireFreqValuator->value(gui.config.joystick.autoFireFrequency);
+  joystickAutoFirePWValuator->value(gui.config.joystick.autoFirePulseWidth);
 }} {}
   }
 } 

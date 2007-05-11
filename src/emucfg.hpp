@@ -125,6 +125,18 @@ namespace Plus4Emu {
     int           keyboard[128][2];
     bool          keyboardMapChanged;
     // --------
+    struct JoystickConfiguration {
+      bool        enableJoystick;
+      bool        enablePWM;
+      bool        enableAutoFire;
+      double      axisThreshold;
+      double      pwmFrequency;
+      double      autoFireFrequency;
+      double      autoFirePulseWidth;
+    };
+    JoystickConfiguration joystick;
+    bool          joystickSettingsChanged;
+    // --------
     struct FloppyDriveSettings {
       std::string imageFile;
       int         driveType;

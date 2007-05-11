@@ -71,12 +71,15 @@ if not configure.CheckCHeader('GL/gl.h'):
 haveDotconf = configure.CheckCHeader('dotconf.h')
 if configure.CheckCHeader('stdint.h'):
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_STDINT_H'])
+haveSDL = configure.CheckCHeader('SDL/SDL.h')
 configure.Finish()
 
 if not havePortAudioV19:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DUSING_OLD_PORTAUDIO_API'])
 if haveDotconf:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_DOTCONF_H'])
+if haveSDL:
+    plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_SDL_H'])
 
 plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
@@ -106,6 +109,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/fileio.cpp
     src/fldisp.cpp
     src/gldisp.cpp
+    src/joystick.cpp
     src/memory.cpp
     src/plus4vm.cpp
     src/render.cpp
@@ -158,6 +162,8 @@ plus4emuEnvironment.Append(CPPPATH = ['./gui'])
 plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 if haveDotconf:
     plus4emuEnvironment.Append(LIBS = ['dotconf'])
+if haveSDL:
+    plus4emuEnvironment.Append(LIBS = ['SDL'])
 plus4emuEnvironment.Append(LIBS = ['portaudio', 'sndfile'])
 if not win32CrossCompile:
     if sys.platform[:5] == 'linux':
@@ -190,6 +196,8 @@ makecfgEnvironment.Append(CPPPATH = ['./installer'])
 makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
 if haveDotconf:
     makecfgEnvironment.Append(LIBS = ['dotconf'])
+if haveSDL:
+    makecfgEnvironment.Append(LIBS = ['SDL'])
 makecfgEnvironment.Append(LIBS = ['sndfile'])
 if not win32CrossCompile:
     makecfgEnvironment.Append(LIBS = ['pthread'])

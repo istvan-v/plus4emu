@@ -237,6 +237,28 @@ namespace Plus4Emu {
       }
     }
     // ----------------
+    defineConfigurationVariable(*this, "joystick.enableJoystick",
+                                joystick.enableJoystick, true,
+                                joystickSettingsChanged);
+    defineConfigurationVariable(*this, "joystick.enablePWM",
+                                joystick.enablePWM, false,
+                                joystickSettingsChanged);
+    defineConfigurationVariable(*this, "joystick.enableAutoFire",
+                                joystick.enableAutoFire, false,
+                                joystickSettingsChanged);
+    defineConfigurationVariable(*this, "joystick.axisThreshold",
+                                joystick.axisThreshold, 0.5,
+                                joystickSettingsChanged, 0.01, 0.99);
+    defineConfigurationVariable(*this, "joystick.pwmFrequency",
+                                joystick.pwmFrequency, 17.5,
+                                joystickSettingsChanged, 1.0, 100.0);
+    defineConfigurationVariable(*this, "joystick.autoFireFrequency",
+                                joystick.autoFireFrequency, 8.0,
+                                joystickSettingsChanged, 0.5, 50.0);
+    defineConfigurationVariable(*this, "joystick.autoFirePulseWidth",
+                                joystick.autoFirePulseWidth, 0.5,
+                                joystickSettingsChanged, 0.01, 0.99);
+    // ----------------
     for (int i = 0; i < 4; i++) {
       FloppyDriveSettings *floppy_ = (FloppyDriveSettings *) 0;
       bool                *floppyChanged_ = (bool *) 0;
@@ -397,6 +419,9 @@ namespace Plus4Emu {
         }
       }
       keyboardMapChanged = false;
+    }
+    if (joystickSettingsChanged) {
+      joystickSettingsChanged = false;
     }
     if (floppyAChanged) {
       try {

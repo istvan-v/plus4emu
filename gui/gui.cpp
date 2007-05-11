@@ -76,6 +76,7 @@ void Plus4EmuGUI::init_()
   machineConfigWindow = (Plus4EmuGUI_MachineConfigWindow *) 0;
   debugWindow = (Plus4EmuGUI_DebugWindow *) 0;
   aboutWindow = (Plus4EmuGUI_AboutWindow *) 0;
+  disableJoystickInput = false;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
   demoDirectory = defaultDir_;
@@ -881,6 +882,8 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
           diskConfigWindow->updateWindow();
         if (displaySettingsWindow->shown())
           displaySettingsWindow->updateWindow();
+        if (keyboardConfigWindow->shown())
+          keyboardConfigWindow->updateWindow();
         if (soundSettingsWindow->shown())
           soundSettingsWindow->updateWindow();
         if (machineConfigWindow->shown())
@@ -936,6 +939,18 @@ void Plus4EmuGUI::fltkCheckCallback(void *userData)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
   try {
+    if (!gui_.disableJoystickInput) {
+      while (true) {
+        int     e = gui_.joystickInput.getEvent(gui_.config.joystick);
+        if (!e)
+          break;
+        int     keyCode = (e > 0 ? e : (-e));
+        bool    isKeyPress = (e > 0);
+        int     n = gui_.config.convertKeyCode(keyCode);
+        if (n >= 0)
+          gui_.vmThread.setKeyboardState(uint8_t(n), isKeyPress);
+      }
+    }
     if (gui_.flDisplay->checkEvents())
       gui_.emulatorWindow->redraw();
   }

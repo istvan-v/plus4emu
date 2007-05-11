@@ -103,6 +103,8 @@ class Plus4EmuGUI {open
   decl {Plus4EmuGUI_MachineConfigWindow *machineConfigWindow;} {}
   decl {Plus4EmuGUI_DebugWindow *debugWindow;} {}
   decl {Plus4EmuGUI_AboutWindow *aboutWindow;} {}
+  decl {Plus4Emu::JoystickInput joystickInput;} {}
+  decl {bool disableJoystickInput;} {}
   decl {void init_();} {}
   decl {void updateDisplay(double t = 0.025);} {public
   }
@@ -196,7 +198,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Help_About(Fl_Widget *o, void *v);} {}
-  Function {Plus4EmuGUI(Plus4Emu::VideoDisplay& display_, Plus4Emu::AudioOutput& audioOutput_, Plus4Emu::VirtualMachine& vm_, Plus4Emu::VMThread& vmThread_, Plus4Emu::EmulatorConfiguration& config_) : display(display_), audioOutput(audioOutput_), vm(vm_), vmThread(vmThread_), config(config_)} {open
+  Function {Plus4EmuGUI(Plus4Emu::VideoDisplay& display_, Plus4Emu::AudioOutput& audioOutput_, Plus4Emu::VirtualMachine& vm_, Plus4Emu::VMThread& vmThread_, Plus4Emu::EmulatorConfiguration& config_) : display(display_), audioOutput(audioOutput_), vm(vm_), vmThread(vmThread_), config(config_), joystickInput(true)} {open
   } {
     code {{
   this->init_();

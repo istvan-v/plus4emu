@@ -26,6 +26,7 @@
 #include "display.hpp"
 #include "fldisp.hpp"
 #include "gldisp.hpp"
+#include "joystick.hpp"
 #include "soundio.hpp"
 #include "vm.hpp"
 #include "vmthread.hpp"
