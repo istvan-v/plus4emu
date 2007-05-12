@@ -79,57 +79,98 @@ namespace Plus4Emu {
     uint32_t        floppyDriveLEDState;
     void            *userData;
     void            (*errorCallback)(void *userData_, const char *msg);
+    void            (*processCallback)(void *userData_);
     bool            keyboardState[128];
    public:
     VMThread(VirtualMachine& vm_, void *userData_ = (void *) 0);
     virtual ~VMThread();
-    // Block the execution of the emulation thread, so that the main thread
-    // can safely access the virtual machine object. Returns zero on success,
-    // a positive value if the emulation thread did not respond after 't'
-    // milliseconds, and a negative value if the thread has terminated for
-    // some reason.
+    /*!
+     * Block the execution of the emulation thread, so that the main thread
+     * can safely access the virtual machine object. Returns zero on success,
+     * a positive value if the emulation thread did not respond after 't'
+     * milliseconds, and a negative value if the thread has terminated for
+     * some reason.
+     */
     int lock(size_t t);
-    // Allow the emulation thread to resume execution after a previous
-    // successful call to lock().
+    /*!
+     * Allow the emulation thread to resume execution after a previous
+     * successful call to lock().
+     */
     void unlock();
-    // Run emulation (or just wait if paused) for a short period of time,
-    // and update status information. This can be called by the main thread
-    // after lock() in a loop for single-threaded emulation.
-    // Returns false after quit() was called or a fatal error occured.
+    /*!
+     * Run emulation (or just wait if paused) for a short period of time,
+     * and update status information. This can be called by the main thread
+     * after lock() in a loop for single-threaded emulation.
+     * Returns false after quit() was called or a fatal error occured.
+     */
     bool process();
-    // Pause emulation if 'n' is true, or continue if 'n' is false.
-    // NOTE: the initial state is pause=true.
+    /*!
+     * Pause emulation if 'n' is true, or continue if 'n' is false.
+     * NOTE: the initial state is pause=true.
+     */
     void pause(bool n);
-    // Terminate emulation thread. If 'waitFlag_' is true, it will also
-    // wait until the thread has actually stopped, and status information
-    // is updated.
+    /*!
+     * Terminate emulation thread. If 'waitFlag_' is true, it will also
+     * wait until the thread has actually stopped, and status information
+     * is updated.
+     */
     void quit(bool waitFlag_ = false);
-    // Set pointer to be passed to callback functions.
+    /*!
+     * Set pointer to be passed to callback functions.
+     */
     void setUserData(void *userData_);
-    // Set function to be called to print an error message on non-fatal
-    // exceptions.
+    /*!
+     * Set function to be called to print an error message on non-fatal
+     * exceptions.
+     */
     void setErrorCallback(void (*func)(void *userData_, const char *msg_));
-    // Reset emulated machine.
+    /*!
+     * Reset emulated machine.
+     */
     void reset(bool isColdReset_ = false);
-    // Set amplitude scale for audio output.
+    /*!
+     * Set amplitude scale for audio output.
+     */
     void setAudioOutputVolume(double ampScale_);
-    // Set state of key 'keyCode_' (0 to 127).
+    /*!
+     * Set state of key 'keyCode_' (0 to 127).
+     */
     void setKeyboardState(uint8_t keyCode_, bool isPressed_);
-    // Set state of all keys to released.
+    /*!
+     * Set state of all keys to released.
+     */
     void resetKeyboard();
-    // Start tape playback.
+    /*!
+     * Start tape playback.
+     */
     void tapePlay();
-    // Start tape recording.
+    /*!
+     * Start tape recording.
+     */
     void tapeRecord();
-    // Stop tape playback or recording.
+    /*!
+     * Stop tape playback or recording.
+     */
     void tapeStop();
-    // Set tape position to the specified time (in seconds).
+    /*!
+     * Set tape position to the specified time (in seconds).
+     */
     void tapeSeek(double seekTime_);
-    // Seek forward (if isForward = true) or backward (if isForward = false)
-    // to the nearest cue point, or by 't' seconds if no cue point is found.
+    /*!
+     * Seek forward (if isForward = true) or backward (if isForward = false)
+     * to the nearest cue point, or by 't' seconds if no cue point is found.
+     */
     void tapeSeekToCuePoint(bool isForward = true, double t = 10.0);
-    // Stop playing or recording demo.
+    /*!
+     * Stop playing or recording demo.
+     */
     void stopDemo();
+    /*!
+     * Set function to be called by the emulation thread at an interval of
+     * a few milliseconds. This function may throw an std::exception, in which
+     * case the error callback will be called to display the error message.
+     */
+    void setProcessCallback(void (*func)(void *userData_));
   // --------------------------------------------------------------------------
    private:
     virtual void run();

@@ -60,7 +60,8 @@ namespace Plus4Emu {
       tapeSampleSize(0),
       floppyDriveLEDState(0U),
       userData(userData_),
-      errorCallback(&defaultErrorCallback)
+      errorCallback(&defaultErrorCallback),
+      processCallback((void (*)(void *)) 0)
   {
     for (int i = 0; i < 128; i++)
       keyboardState[i] = false;
@@ -154,26 +155,29 @@ namespace Plus4Emu {
     }
     mutex_.unlock();
     // run emulation, or wait if paused
-    if (!pauseFlag) {
-      try {
+    try {
+      if (processCallback)
+        processCallback(userData);
+      if (!pauseFlag) {
         vm.run(2000);
       }
-      catch (Exception& e) {
-        mutex_.lock();
-        pauseFlag = true;
-        mutex_.unlock();
-        errorCallback(userData, e.what());
-      }
-      catch (...) {
-        mutex_.lock();
-        errorFlag = true;
-        mutex_.unlock();
-        this->cleanup();
-        return false;
+      else {
+        Timer::wait(0.01);
       }
     }
-    else
-      Timer::wait(0.01);
+    catch (Exception& e) {
+      mutex_.lock();
+      pauseFlag = true;
+      mutex_.unlock();
+      errorCallback(userData, e.what());
+    }
+    catch (...) {
+      mutex_.lock();
+      errorFlag = true;
+      mutex_.unlock();
+      this->cleanup();
+      return false;
+    }
     // update status information
     mutex_.lock();
     try {
@@ -361,6 +365,11 @@ namespace Plus4Emu {
   void VMThread::stopDemo()
   {
     queueMessage(allocateMessage<Message_StopDemo>());
+  }
+
+  void VMThread::setProcessCallback(void (*func)(void *userData_))
+  {
+    processCallback = func;
   }
 
   VMThread::Message * VMThread::allocateMessage_()
