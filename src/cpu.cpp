@@ -47,6 +47,7 @@ namespace Plus4 {
       reg_TMP(0),
       reg_L(0),
       reg_H(0),
+      breakOnInvalidOpcode(false),
       memoryReadCallbacks((MemoryReadFunc *) 0),
       memoryWriteCallbacks((MemoryWriteFunc *) 0),
       memoryCallbackUserData((void *) 0),
@@ -1049,8 +1050,11 @@ namespace Plus4 {
               if (!this->systemCallback(reg_TMP))
                 nn++;
             }
-            if (nn)
+            if (nn) {
+              reg_PC = (reg_PC - 3) & 0xFFFF;
               currentOpcode = &(opcodeTable[size_t(0x02) << 4]);
+              continue;
+            }
           }
           else
             currentOpcode--;
@@ -1118,11 +1122,27 @@ namespace Plus4 {
             currentOpcode--;
           break;
         case CPU_OP_INVALID_OPCODE:
-          (void) readMemory(0xFFFF);
-          if (!resetFlag)
-            currentOpcode--;
-          else
-            currentOpcode = &(opcodeTable[size_t(0x0101) << 4]);
+          if (breakOnInvalidOpcode) {
+            uint16_t  tmp = (reg_PC - 1) & 0xFFFF;
+            uint8_t   tmp2 = readMemory(tmp);
+            if (haltFlag) {
+              currentOpcode--;
+              break;
+            }
+            if (!(singleStepModeEnabled || breakPointPriorityThreshold >= 16)) {
+              reg_PC = tmp;
+              breakPointCallback(false, tmp, tmp2);
+              reg_PC = (reg_PC + 1) & 0xFFFF;
+            }
+            currentOpcode = &(opcodeTable[0x0FFF]);
+          }
+          else {
+            (void) readMemory(0xFFFF);
+            if (!resetFlag)
+              currentOpcode--;
+            else
+              currentOpcode = &(opcodeTable[size_t(0x0101) << 4]);
+          }
           break;
         }
         break;

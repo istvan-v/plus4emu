@@ -807,6 +807,7 @@ namespace Plus4 {
         if (p) {
           p->setBreakPointPriorityThreshold(
               ted->getBreakPointPriorityThreshold());
+          p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
         }
         floppyDrives[n]->setNoBreakOnDataRead(noBreakOnDataRead);
       }
@@ -945,6 +946,18 @@ namespace Plus4 {
     M7501   *p = getDebugCPU();
     if (p)
       p->setSingleStepMode(isEnabled, stepOverFlag);
+  }
+
+  void Plus4VM::setBreakOnInvalidOpcode(bool isEnabled)
+  {
+    ted->setBreakOnInvalidOpcode(isEnabled);
+    for (int i = 0; i < 4; i++) {
+      M7501   *p = (M7501 *) 0;
+      if (floppyDrives[i] != (FloppyDrive *) 0)
+        p = floppyDrives[i]->getCPU();
+      if (p)
+        p->setBreakOnInvalidOpcode(isEnabled);
+    }
   }
 
   void Plus4VM::setBreakPointCallback(void (*breakPointCallback_)(
@@ -1173,7 +1186,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010001); // version 1.0.1
+    demoBuffer.writeUInt32(0x00010100); // version 1.1.0
     demoFile = &f;
     isRecordingDemo = true;
     demoTimeCnt = 0U;
@@ -1266,7 +1279,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010001) {
+    if (version != 0x00010100) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }

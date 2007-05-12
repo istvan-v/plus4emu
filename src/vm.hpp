@@ -327,6 +327,11 @@ namespace Plus4Emu {
      */
     virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
     /*!
+     * Set if invalid CPU opcodes should be interpreted as NOPs with
+     * a breakpoint set (priority = 3).
+     */
+    virtual void setBreakOnInvalidOpcode(bool isEnabled);
+    /*!
      * Set function to be called when a breakpoint is triggered.
      */
     virtual void setBreakPointCallback(void (*breakPointCallback_)(

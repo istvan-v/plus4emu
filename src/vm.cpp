@@ -537,6 +537,11 @@ namespace Plus4Emu {
     (void) stepOverFlag;
   }
 
+  void VirtualMachine::setBreakOnInvalidOpcode(bool isEnabled)
+  {
+    (void) isEnabled;
+  }
+
   void VirtualMachine::setBreakPointCallback(void (*breakPointCallback_)(
                                                  void *userData,
                                                  int debugContext_,

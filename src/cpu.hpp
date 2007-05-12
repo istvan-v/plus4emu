@@ -149,6 +149,7 @@ namespace Plus4 {
     uint8_t     reg_TMP;
     uint8_t     reg_L;
     uint8_t     reg_H;
+    bool        breakOnInvalidOpcode;
     typedef uint8_t (*MemoryReadFunc)(void *userData, uint16_t addr);
     typedef void (*MemoryWriteFunc)(void *userData,
                                     uint16_t addr, uint8_t value);
@@ -219,6 +220,14 @@ namespace Plus4 {
     int getBreakPointPriorityThreshold() const;
     Plus4Emu::BreakPointList getBreakPointList();
     void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
+    inline void setBreakOnInvalidOpcode(bool isEnabled)
+    {
+      this->breakOnInvalidOpcode = isEnabled;
+    }
+    inline bool getIsBreakOnInvalidOpcode() const
+    {
+      return (this->breakOnInvalidOpcode);
+    }
     void saveState(Plus4Emu::File::Buffer&);
     void saveState(Plus4Emu::File&);
     void loadState(Plus4Emu::File::Buffer&);
