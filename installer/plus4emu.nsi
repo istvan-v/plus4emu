@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.0.1.exe"
+  OutFile "plus4emu-1.1.0.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -66,6 +66,7 @@ Section "plus4emu" SecMain
   File "..\COPYING"
   File /nonfatal "..\LICENSE.FLTK"
   File /nonfatal "..\LICENSE.PortAudio"
+  File /nonfatal "..\LICENSE.SDL"
   File /nonfatal "..\LICENSE.dotconf"
   File /nonfatal "..\LICENSE.libsndfile"
   File "/oname=news.txt" "..\NEWS"
@@ -174,13 +175,20 @@ Section "Source code" SecSrc
 
 SectionEnd
 
-Section "Associate .prg files with plus4emu" SecAssoc
+Section "Associate .prg, .d64, and .d81 files with plus4emu" SecAssoc
 
   WriteRegStr HKCR ".prg" "" "Plus4Emu.PRGFile"
   WriteRegStr HKCR "Plus4Emu.PRGFile" "" "Plus/4 program"
   WriteRegStr HKCR "Plus4Emu.PRGFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,0"
   WriteRegStr HKCR "Plus4Emu.PRGFile\shell" "" "open"
   WriteRegStr HKCR "Plus4Emu.PRGFile\shell\open\command" "" '"$INSTDIR\plus4emu.exe" -prg "%1"'
+
+  WriteRegStr HKCR ".d64" "" "Plus4Emu.DiskFile"
+  WriteRegStr HKCR ".d81" "" "Plus4Emu.DiskFile"
+  WriteRegStr HKCR "Plus4Emu.DiskFile" "" "Plus/4 disk image"
+  WriteRegStr HKCR "Plus4Emu.DiskFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,0"
+  WriteRegStr HKCR "Plus4Emu.DiskFile\shell" "" "open"
+  WriteRegStr HKCR "Plus4Emu.DiskFile\shell\open\command" "" '"$INSTDIR\plus4emu.exe" -disk "%1"'
 
 SectionEnd
 
@@ -219,7 +227,7 @@ SectionEnd
   ;Language strings
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
   LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
-  LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg files with plus4emu"
+  LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg, .d64, and .d81 files with plus4emu"
   LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
 
   ;Assign language strings to sections
@@ -238,6 +246,7 @@ Section "Uninstall"
   Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\LICENSE.FLTK"
   Delete "$INSTDIR\LICENSE.PortAudio"
+  Delete "$INSTDIR\LICENSE.SDL"
   Delete "$INSTDIR\LICENSE.dotconf"
   Delete "$INSTDIR\LICENSE.libsndfile"
   Delete "$INSTDIR\news.txt"
