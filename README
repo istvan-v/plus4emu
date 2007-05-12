@@ -1,4 +1,4 @@
-plus4emu 1.0.1
+plus4emu 1.1.0
 ==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
@@ -42,6 +42,9 @@ General
     16 bit CPU (affected by current paging and includes memory mapped
     I/O registers) or 22 bit physical (all ROM and RAM data can be
     accessed, regardless of memory paging) addresses.
+  * configurable keyboard map for the emulated machine; it is also
+    possible to use external game controller devices like joysticks and
+    gamepads
 
 Plus/4 emulation
 ----------------
@@ -67,7 +70,8 @@ Plus/4 emulation
   * experimental hardware level emulation of the 1541, 1551, and 1581
     floppy disk drives, with support for D64 and D81 files
   * load and automatically start .PRG file on start-up
-  * .PRG files can be associated with plus4emu on Windows
+  * .PRG, .D64, and .D81 files can be associated with plus4emu on
+    Windows
   * SID chip (MOS 8580) emulation using version 0.16 of the reSID
     library written by Dag Lem
   * optional extension ROM (p4fileio.rom) for direct access to .PRG
@@ -143,6 +147,10 @@ Command line options
     settings
   -prg <FILENAME>
     load and run program file on startup
+  -disk <FILENAME>
+    load and automatically start disk image on startup
+  -snapshot <FILENAME>
+    load snapshot or demo file on startup
   -opengl
     use OpenGL video driver (this is the default, and is recommended
     when hardware accelerated OpenGL is available)
