@@ -22,11 +22,23 @@
 
 #include "plus4emu.hpp"
 #include "system.hpp"
-#include "emucfg.hpp"
+#include "cfg_db.hpp"
 
 namespace Plus4Emu {
 
   class JoystickInput {
+   public:
+    struct JoystickConfiguration {
+      bool        enableJoystick;
+      bool        enablePWM;
+      bool        enableAutoFire;
+      double      axisThreshold;
+      double      pwmFrequency;
+      double      autoFireFrequency;
+      double      autoFirePulseWidth;
+      JoystickConfiguration();
+      void registerConfigurationVariables(ConfigurationDB& config_);
+    };
    private:
     struct Axis_ {
       int     devNum;
@@ -54,11 +66,15 @@ namespace Plus4Emu {
     int     axisCnt;
     int     buttonCnt;
     int     hatCnt;
+    Timer   updateTimer;
     Timer   pwmTimer;
     Timer   autoFireTimer;
+    Mutex   mutex_;
     void    *sdlDevices[2];
     bool    haveJoystick;
+    bool    lockFlag;
     bool    sdlInitialized;
+    JoystickConfiguration config;
    public:
     static const int  keyCodeBase = 0xC000;
     JoystickInput(bool sdlInitFlag = false);
@@ -100,9 +116,15 @@ namespace Plus4Emu {
      *   keyCodeBase + 30:  POV hat 2 left
      *   keyCodeBase + 31:  POV hat 2 down
      */
-    int getEvent(EmulatorConfiguration::JoystickConfiguration& config);
-    int getEvent();
+    int getEvent(bool ignoreConfig = false, bool checkLock = true);
     void flushEvents();
+    void lock();
+    void unlock();
+    void setConfiguration(const JoystickConfiguration& config_);
+    inline const JoystickConfiguration& getConfiguration() const
+    {
+      return this->config;
+    }
   };
 
 }       // namespace Plus4Emu

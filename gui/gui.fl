@@ -104,7 +104,6 @@ class Plus4EmuGUI {open
   decl {Plus4EmuGUI_DebugWindow *debugWindow;} {}
   decl {Plus4EmuGUI_AboutWindow *aboutWindow;} {}
   decl {Plus4Emu::JoystickInput joystickInput;} {}
-  decl {bool disableJoystickInput;} {}
   decl {void init_();} {}
   decl {void updateDisplay(double t = 0.025);} {public
   }
@@ -129,6 +128,7 @@ class Plus4EmuGUI {open
   decl {static void fltkCheckCallback(void *userData);} {}
   decl {static void breakPointCallback(void *userData, int debugContext_, bool isIO, bool isWrite, uint16_t addr, uint8_t value);} {}
   decl {static void screenshotCallback(void *userData, const unsigned char *buf, int w_, int h_);} {}
+  decl {static void pollJoystickInput(void *userData);} {}
   decl {bool closeDemoFile(bool stopDemo_);} {}
   decl {void saveQuickConfig(int n);} {}
   decl {static void menuCallback_File_LoadFile(Fl_Widget *o, void *v);} {}

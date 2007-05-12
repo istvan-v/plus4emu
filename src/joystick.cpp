@@ -19,7 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "system.hpp"
-#include "emucfg.hpp"
+#include "cfg_db.hpp"
 #include "joystick.hpp"
 
 #include <SDL/SDL.h>
@@ -27,16 +27,47 @@
 
 namespace Plus4Emu {
 
+  JoystickInput::JoystickConfiguration::JoystickConfiguration()
+    : enableJoystick(true),
+      enablePWM(false),
+      enableAutoFire(false),
+      axisThreshold(0.5),
+      pwmFrequency(17.5),
+      autoFireFrequency(8.0),
+      autoFirePulseWidth(0.5)
+  {
+  }
+
+  void JoystickInput::JoystickConfiguration::registerConfigurationVariables(
+      ConfigurationDB& config_)
+  {
+    config_.createKey("joystick.enableJoystick", enableJoystick);
+    config_.createKey("joystick.enablePWM", enablePWM);
+    config_.createKey("joystick.enableAutoFire", enableAutoFire);
+    config_.createKey("joystick.axisThreshold", axisThreshold);
+    config_["joystick.axisThreshold"].setRange(0.01, 0.99);
+    config_.createKey("joystick.pwmFrequency", pwmFrequency);
+    config_["joystick.pwmFrequency"].setRange(1.0, 100.0);
+    config_.createKey("joystick.autoFireFrequency", autoFireFrequency);
+    config_["joystick.autoFireFrequency"].setRange(0.5, 50.0);
+    config_.createKey("joystick.autoFirePulseWidth", autoFirePulseWidth);
+    config_["joystick.autoFirePulseWidth"].setRange(0.01, 0.99);
+  }
+
   JoystickInput::JoystickInput(bool sdlInitFlag)
     : eventCnt(0),
       eventIndex(0),
       axisCnt(0),
       buttonCnt(0),
       hatCnt(0),
+      updateTimer(),
       pwmTimer(),
       autoFireTimer(),
+      mutex_(),
       haveJoystick(false),
-      sdlInitialized(false)
+      lockFlag(false),
+      sdlInitialized(false),
+      config()
   {
     sdlDevices[0] = (void *) 0;
     sdlDevices[1] = (void *) 0;
@@ -137,179 +168,16 @@ namespace Plus4Emu {
 #endif
   }
 
-  int JoystickInput::getEvent(EmulatorConfiguration::JoystickConfiguration&
-                                  config)
-  {
-#ifdef HAVE_SDL_H
-    if (!(haveJoystick && config.enableJoystick))
-      return 0;
-    if (eventIndex < eventCnt) {
-      // consume any buffered events first
-      int     retval = events[eventIndex];
-      if (++eventIndex == eventCnt) {
-        eventCnt = 0;
-        eventIndex = 0;
-      }
-      return retval;
-    }
-    SDL_JoystickUpdate();
-    eventCnt = 0;
-    eventIndex = 0;
-    int     thresholdInt = int(config.axisThreshold * 32767.0 + 0.5);
-    bool    autoFireState = false;
-    double  pwmPhase = 0.0;
-    if (config.enablePWM) {
-      double  tt = 1.0 / config.pwmFrequency;
-      double  t = pwmTimer.getRealTime();
-      if (t >= tt) {
-        t = std::fmod(t, tt);
-        pwmTimer.reset(t);
-      }
-      pwmPhase = t * config.pwmFrequency;
-      pwmPhase *= (1.0 - config.axisThreshold);
-      pwmPhase += (config.axisThreshold * 0.5);
-    }
-    if (config.enableAutoFire) {
-      double  tt = 1.0 / config.autoFireFrequency;
-      double  t = autoFireTimer.getRealTime();
-      if (t >= tt) {
-        t = std::fmod(t, tt);
-        autoFireTimer.reset(t);
-      }
-      autoFireState = (t < (tt * config.autoFirePulseWidth));
-    }
-    for (int i = 0; i < axisCnt; i++) {
-      int     newState =
-          int(SDL_JoystickGetAxis(reinterpret_cast<SDL_Joystick *>(
-                                      sdlDevices[axes[i].devNum]),
-                                  axes[i].axisNum));
-      if (!config.enablePWM) {
-        if (newState > axes[i].prvInputState) {
-          if (newState >= (-thresholdInt)) {
-            if (axes[i].prvOutputState < 0)
-              events[eventCnt++] = -(keyCodeBase + (i << 1));
-            if (newState >= thresholdInt) {
-              if (axes[i].prvOutputState <= 0)
-                events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
-              axes[i].prvOutputState = 1;
-            }
-            else
-              axes[i].prvOutputState = 0;
-          }
-        }
-        else if (newState < axes[i].prvInputState) {
-          if (newState < thresholdInt) {
-            if (axes[i].prvOutputState > 0)
-              events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
-            if (newState < (-thresholdInt)) {
-              if (axes[i].prvOutputState >= 0)
-                events[eventCnt++] = (keyCodeBase + (i << 1));
-              axes[i].prvOutputState = -1;
-            }
-            else
-              axes[i].prvOutputState = 0;
-          }
-        }
-      }
-      else {
-        int     newOutputState = 0;
-        if (newState > 0) {
-          if ((double(newState) * (1.0 / 32768.0)) >= pwmPhase)
-            newOutputState = 1;
-        }
-        else if (newState < 0) {
-          if ((double(newState) * (-1.0 / 32768.0)) > pwmPhase)
-            newOutputState = -1;
-        }
-        if (newOutputState != axes[i].prvOutputState) {
-          if (axes[i].prvOutputState < 0)
-            events[eventCnt++] = -(keyCodeBase + (i << 1));
-          else if (axes[i].prvOutputState > 0)
-            events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
-          if (newOutputState < 0)
-            events[eventCnt++] = (keyCodeBase + (i << 1));
-          else if (newOutputState > 0)
-            events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
-          axes[i].prvOutputState = newOutputState;
-        }
-      }
-      axes[i].prvInputState = newState;
-    }
-    for (int i = 0; i < buttonCnt; i++) {
-      bool    newState =
-          bool(SDL_JoystickGetButton(reinterpret_cast<SDL_Joystick *>(
-                                         sdlDevices[buttons[i].devNum]),
-                                     buttons[i].buttonNum));
-      if (config.enableAutoFire) {
-        if (newState && !buttons[i].prvInputState) {
-          autoFireState = true;
-          autoFireTimer.reset();
-        }
-        buttons[i].prvInputState = newState;
-        newState = newState && autoFireState;
-      }
-      else
-        buttons[i].prvInputState = newState;
-      if (newState != buttons[i].prvOutputState) {
-        if (newState)
-          events[eventCnt++] = (keyCodeBase + 16 + i);
-        else
-          events[eventCnt++] = -(keyCodeBase + 16 + i);
-        buttons[i].prvOutputState = newState;
-      }
-    }
-    for (int i = 0; i < hatCnt; i++) {
-      int     newState =
-          int(SDL_JoystickGetHat(reinterpret_cast<SDL_Joystick *>(
-                                     sdlDevices[povHats[i].devNum]),
-                                 povHats[i].hatNum));
-      int     changeMask = newState ^ povHats[i].prvState;
-      if (changeMask) {
-        if (changeMask & int(SDL_HAT_RIGHT)) {
-          if (newState & int(SDL_HAT_RIGHT))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2));
-          else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2));
-        }
-        if (changeMask & int(SDL_HAT_UP)) {
-          if (newState & int(SDL_HAT_UP))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 1);
-          else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 1);
-        }
-        if (changeMask & int(SDL_HAT_LEFT)) {
-          if (newState & int(SDL_HAT_LEFT))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 2);
-          else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 2);
-        }
-        if (changeMask & int(SDL_HAT_DOWN)) {
-          if (newState & int(SDL_HAT_DOWN))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 3);
-          else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 3);
-        }
-        povHats[i].prvState = newState;
-      }
-    }
-    if (eventCnt) {
-      // return first event from buffer
-      int     retval = events[0];
-      if (++eventIndex == eventCnt) {
-        eventCnt = 0;
-        eventIndex = 0;
-      }
-      return retval;
-    }
-#endif  // HAVE_SDL_H
-    return 0;
-  }
-
-  int JoystickInput::getEvent()
+  int JoystickInput::getEvent(bool ignoreConfig, bool checkLock)
   {
 #ifdef HAVE_SDL_H
     if (!haveJoystick)
       return 0;
+    mutex_.lock();
+    if ((!ignoreConfig && !config.enableJoystick) || (checkLock && lockFlag)) {
+      mutex_.unlock();
+      return 0;
+    }
     if (eventIndex < eventCnt) {
       // consume any buffered events first
       int     retval = events[eventIndex];
@@ -317,56 +185,173 @@ namespace Plus4Emu {
         eventCnt = 0;
         eventIndex = 0;
       }
+      mutex_.unlock();
       return retval;
     }
+    if (updateTimer.getRealTime() < 0.005) {
+      // poll joystick input at at least 5 ms intervals
+      mutex_.unlock();
+      return 0;
+    }
+    updateTimer.reset();
     SDL_JoystickUpdate();
     eventCnt = 0;
     eventIndex = 0;
-    for (int i = 0; i < axisCnt; i++) {
-      int     newState =
-          int(SDL_JoystickGetAxis(reinterpret_cast<SDL_Joystick *>(
-                                      sdlDevices[axes[i].devNum]),
-                                  axes[i].axisNum));
-      if (newState > axes[i].prvInputState) {
-        if (newState >= -8192) {
-          if (axes[i].prvOutputState < 0)
-            events[eventCnt++] = -(keyCodeBase + (i << 1));
-          if (newState >= 24576) {
-            if (axes[i].prvOutputState <= 0)
-              events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
-            axes[i].prvOutputState = 1;
-          }
-          else if (newState < 8192)
-            axes[i].prvOutputState = 0;
+    if (!ignoreConfig) {
+      int     thresholdInt = int(config.axisThreshold * 32767.0 + 0.5);
+      bool    autoFireState = false;
+      double  pwmPhase = 0.0;
+      if (config.enablePWM) {
+        double  tt = 1.0 / config.pwmFrequency;
+        double  t = pwmTimer.getRealTime();
+        if (t >= tt) {
+          t = std::fmod(t, tt);
+          pwmTimer.reset(t);
         }
+        pwmPhase = t * config.pwmFrequency;
+        pwmPhase *= (1.0 - config.axisThreshold);
+        pwmPhase += (config.axisThreshold * 0.5);
       }
-      else if (newState < axes[i].prvInputState) {
-        if (newState < 8192) {
-          if (axes[i].prvOutputState > 0)
-            events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
-          if (newState < -24576) {
-            if (axes[i].prvOutputState >= 0)
+      if (config.enableAutoFire) {
+        double  tt = 1.0 / config.autoFireFrequency;
+        double  t = autoFireTimer.getRealTime();
+        if (t >= tt) {
+          t = std::fmod(t, tt);
+          autoFireTimer.reset(t);
+        }
+        autoFireState = (t < (tt * config.autoFirePulseWidth));
+      }
+      for (int i = 0; i < axisCnt; i++) {
+        int     newState =
+            int(SDL_JoystickGetAxis(reinterpret_cast<SDL_Joystick *>(
+                                        sdlDevices[axes[i].devNum]),
+                                    axes[i].axisNum));
+        if (!config.enablePWM) {
+          if (newState > axes[i].prvInputState) {
+            if (newState >= (-thresholdInt)) {
+              if (axes[i].prvOutputState < 0)
+                events[eventCnt++] = -(keyCodeBase + (i << 1));
+              if (newState >= thresholdInt) {
+                if (axes[i].prvOutputState <= 0)
+                  events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
+                axes[i].prvOutputState = 1;
+              }
+              else
+                axes[i].prvOutputState = 0;
+            }
+          }
+          else if (newState < axes[i].prvInputState) {
+            if (newState < thresholdInt) {
+              if (axes[i].prvOutputState > 0)
+                events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
+              if (newState < (-thresholdInt)) {
+                if (axes[i].prvOutputState >= 0)
+                  events[eventCnt++] = (keyCodeBase + (i << 1));
+                axes[i].prvOutputState = -1;
+              }
+              else
+                axes[i].prvOutputState = 0;
+            }
+          }
+        }
+        else {
+          int     newOutputState = 0;
+          if (newState > 0) {
+            if ((double(newState) * (1.0 / 32768.0)) >= pwmPhase)
+              newOutputState = 1;
+          }
+          else if (newState < 0) {
+            if ((double(newState) * (-1.0 / 32768.0)) > pwmPhase)
+              newOutputState = -1;
+          }
+          if (newOutputState != axes[i].prvOutputState) {
+            if (axes[i].prvOutputState < 0)
+              events[eventCnt++] = -(keyCodeBase + (i << 1));
+            else if (axes[i].prvOutputState > 0)
+              events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
+            if (newOutputState < 0)
               events[eventCnt++] = (keyCodeBase + (i << 1));
-            axes[i].prvOutputState = -1;
+            else if (newOutputState > 0)
+              events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
+            axes[i].prvOutputState = newOutputState;
           }
-          else if (newState >= -8192)
-            axes[i].prvOutputState = 0;
+        }
+        axes[i].prvInputState = newState;
+      }
+      for (int i = 0; i < buttonCnt; i++) {
+        bool    newState =
+            bool(SDL_JoystickGetButton(reinterpret_cast<SDL_Joystick *>(
+                                           sdlDevices[buttons[i].devNum]),
+                                       buttons[i].buttonNum));
+        if (config.enableAutoFire) {
+          if (newState && !buttons[i].prvInputState) {
+            autoFireState = true;
+            autoFireTimer.reset();
+          }
+          buttons[i].prvInputState = newState;
+          newState = newState && autoFireState;
+        }
+        else
+          buttons[i].prvInputState = newState;
+        if (newState != buttons[i].prvOutputState) {
+          if (newState)
+            events[eventCnt++] = (keyCodeBase + 16 + i);
+          else
+            events[eventCnt++] = -(keyCodeBase + 16 + i);
+          buttons[i].prvOutputState = newState;
         }
       }
-      axes[i].prvInputState = newState;
     }
-    for (int i = 0; i < buttonCnt; i++) {
-      bool    newState =
-          bool(SDL_JoystickGetButton(reinterpret_cast<SDL_Joystick *>(
-                                         sdlDevices[buttons[i].devNum]),
-                                     buttons[i].buttonNum));
-      if (newState != buttons[i].prvInputState) {
-        if (newState)
-          events[eventCnt++] = (keyCodeBase + 16 + i);
-        else
-          events[eventCnt++] = -(keyCodeBase + 16 + i);
-        buttons[i].prvInputState = newState;
-        buttons[i].prvOutputState = newState;
+    else {
+      // special mode with high threshold and hysteresis, no pulse width
+      // modulation and auto fire; used when defining the keyboard map, as
+      // stable input is required
+      for (int i = 0; i < axisCnt; i++) {
+        int     newState =
+            int(SDL_JoystickGetAxis(reinterpret_cast<SDL_Joystick *>(
+                                        sdlDevices[axes[i].devNum]),
+                                    axes[i].axisNum));
+        if (newState > axes[i].prvInputState) {
+          if (newState >= -8192) {
+            if (axes[i].prvOutputState < 0)
+              events[eventCnt++] = -(keyCodeBase + (i << 1));
+            if (newState >= 24576) {
+              if (axes[i].prvOutputState <= 0)
+                events[eventCnt++] = (keyCodeBase + (i << 1) + 1);
+              axes[i].prvOutputState = 1;
+            }
+            else if (newState < 8192)
+              axes[i].prvOutputState = 0;
+          }
+        }
+        else if (newState < axes[i].prvInputState) {
+          if (newState < 8192) {
+            if (axes[i].prvOutputState > 0)
+              events[eventCnt++] = -(keyCodeBase + (i << 1) + 1);
+            if (newState < -24576) {
+              if (axes[i].prvOutputState >= 0)
+                events[eventCnt++] = (keyCodeBase + (i << 1));
+              axes[i].prvOutputState = -1;
+            }
+            else if (newState >= -8192)
+              axes[i].prvOutputState = 0;
+          }
+        }
+        axes[i].prvInputState = newState;
+      }
+      for (int i = 0; i < buttonCnt; i++) {
+        bool    newState =
+            bool(SDL_JoystickGetButton(reinterpret_cast<SDL_Joystick *>(
+                                           sdlDevices[buttons[i].devNum]),
+                                       buttons[i].buttonNum));
+        if (newState != buttons[i].prvInputState) {
+          if (newState)
+            events[eventCnt++] = (keyCodeBase + 16 + i);
+          else
+            events[eventCnt++] = -(keyCodeBase + 16 + i);
+          buttons[i].prvInputState = newState;
+          buttons[i].prvOutputState = newState;
+        }
       }
     }
     for (int i = 0; i < hatCnt; i++) {
@@ -403,23 +388,57 @@ namespace Plus4Emu {
         povHats[i].prvState = newState;
       }
     }
+    int     retval = 0;
     if (eventCnt) {
       // return first event from buffer
-      int     retval = events[0];
+      retval = events[0];
       if (++eventIndex == eventCnt) {
         eventCnt = 0;
         eventIndex = 0;
       }
-      return retval;
     }
-#endif  // HAVE_SDL_H
+    mutex_.unlock();
+    return retval;
+#else
+    (void) ignoreConfig;
+    (void) checkLock;
     return 0;
+#endif  // HAVE_SDL_H
   }
 
   void JoystickInput::flushEvents()
   {
+    mutex_.lock();
     eventCnt = 0;
     eventIndex = 0;
+    mutex_.unlock();
+  }
+
+  void JoystickInput::lock()
+  {
+    mutex_.lock();
+    lockFlag = true;
+    mutex_.unlock();
+  }
+
+  void JoystickInput::unlock()
+  {
+    mutex_.lock();
+    lockFlag = false;
+    mutex_.unlock();
+  }
+
+  void JoystickInput::setConfiguration(const JoystickConfiguration& config_)
+  {
+    mutex_.lock();
+    config.enableJoystick = config_.enableJoystick;
+    config.enablePWM = config_.enablePWM;
+    config.enableAutoFire = config_.enableAutoFire;
+    config.axisThreshold = config_.axisThreshold;
+    config.pwmFrequency = config_.pwmFrequency;
+    config.autoFireFrequency = config_.autoFireFrequency;
+    config.autoFirePulseWidth = config_.autoFirePulseWidth;
+    mutex_.unlock();
   }
 
 }       // namespace Plus4Emu

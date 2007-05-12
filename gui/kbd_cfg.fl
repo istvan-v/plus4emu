@@ -781,7 +781,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
       window->hide();
     Fl::wait(0.0);
   }
-  gui.disableJoystickInput = false;
+  gui.joystickInput.unlock();
   delete defineKeyWindow;
   delete window;
 }} {}
@@ -807,7 +807,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
     defineKeyWindow->hide();
   if (window->shown())
     window->hide();
-  gui.disableJoystickInput = false;
+  gui.joystickInput.unlock();
 }} {}
   }
   Function {setKeyMap(int n, int keyCode)} {open private return_type void
@@ -838,15 +838,15 @@ class Plus4EmuGUI_KbdConfigWindow {open
   defineKeyWindow->set_modal();
   defineKeyWindow->show();
   defineKeyWindow->keyCode_ = -1;
-  gui.disableJoystickInput = true;
+  gui.joystickInput.lock();
   gui.joystickInput.flushEvents();
   do {
     Fl::wait(0.05);
-    int   tmp = gui.joystickInput.getEvent();
+    int   tmp = gui.joystickInput.getEvent(true, false);
     if (tmp > 0)
       defineKeyWindow->keyCode_ = tmp;
   } while (defineKeyWindow->keyCode_ < 0 && defineKeyWindow->shown());
-  gui.disableJoystickInput = false;
+  gui.joystickInput.unlock();
   if (!defineKeyWindow->shown())
     return;
   if (defineKeyWindow->keyCode_ == (FL_F + 12)) {
@@ -863,15 +863,15 @@ class Plus4EmuGUI_KbdConfigWindow {open
                "F11 to keep the original key, or F12 to close this window", keyName);
   defineKeyWindowText->label(&(buf[0]));
   defineKeyWindow->keyCode_ = -1;
-  gui.disableJoystickInput = true;
+  gui.joystickInput.lock();
   gui.joystickInput.flushEvents();
   do {
     Fl::wait(0.05);
-    int   tmp = gui.joystickInput.getEvent();
+    int   tmp = gui.joystickInput.getEvent(true, false);
     if (tmp > 0)
       defineKeyWindow->keyCode_ = tmp;
   } while (defineKeyWindow->keyCode_ < 0 && defineKeyWindow->shown());
-  gui.disableJoystickInput = false;
+  gui.joystickInput.unlock();
   if (!defineKeyWindow->shown())
     return;
   if (defineKeyWindow->keyCode_ == (FL_F + 12)) {

@@ -23,6 +23,7 @@
 #include "plus4emu.hpp"
 #include "cfg_db.hpp"
 #include "display.hpp"
+#include "joystick.hpp"
 #include "soundio.hpp"
 #include "vm.hpp"
 
@@ -125,16 +126,7 @@ namespace Plus4Emu {
     int           keyboard[128][2];
     bool          keyboardMapChanged;
     // --------
-    struct JoystickConfiguration {
-      bool        enableJoystick;
-      bool        enablePWM;
-      bool        enableAutoFire;
-      double      axisThreshold;
-      double      pwmFrequency;
-      double      autoFireFrequency;
-      double      autoFirePulseWidth;
-    };
-    JoystickConfiguration joystick;
+    JoystickInput::JoystickConfiguration  joystick;
     bool          joystickSettingsChanged;
     // --------
     struct FloppyDriveSettings {
@@ -177,6 +169,7 @@ namespace Plus4Emu {
     struct {
       int         bpPriorityThreshold;
       bool        noBreakOnDataRead;
+      bool        breakOnInvalidOpcode;
     } debug;
     bool          debugSettingsChanged;
     // ----------------

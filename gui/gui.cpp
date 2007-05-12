@@ -76,7 +76,6 @@ void Plus4EmuGUI::init_()
   machineConfigWindow = (Plus4EmuGUI_MachineConfigWindow *) 0;
   debugWindow = (Plus4EmuGUI_DebugWindow *) 0;
   aboutWindow = (Plus4EmuGUI_AboutWindow *) 0;
-  disableJoystickInput = false;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
   demoDirectory = defaultDir_;
@@ -221,9 +220,9 @@ void Plus4EmuGUI::updateDisplay(double t)
   if (vmThreadStatus.isPaused != oldPauseFlag) {
     oldPauseFlag = vmThreadStatus.isPaused;
     if (vmThreadStatus.isPaused)
-      mainWindow->label("plus4emu 1.0.1 beta (paused)");
+      mainWindow->label("plus4emu 1.1.0 beta (paused)");
     else
-      mainWindow->label("plus4emu 1.0.1 beta");
+      mainWindow->label("plus4emu 1.1.0 beta");
   }
   int   newDemoStatus = (vmThreadStatus.isRecordingDemo ?
                          2 : (vmThreadStatus.isPlayingDemo ? 1 : 0));
@@ -521,8 +520,10 @@ void Plus4EmuGUI::run()
   vmThread.lock(0x7FFFFFFF);
   vmThread.setUserData((void *) this);
   vmThread.setErrorCallback(&errorMessageCallback);
+  vmThread.setProcessCallback(&pollJoystickInput);
   vm.setFileNameCallback(&fileNameCallback, (void *) this);
   vm.setBreakPointCallback(&breakPointCallback, (void *) this);
+  applyEmulatorConfiguration();
   vmThread.unlock();
   // run emulation
   vmThread.pause(false);
@@ -877,6 +878,10 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
     try {
       bool    updateMenuFlag_ = config.soundSettingsChanged;
       config.applySettings();
+      if (config.joystickSettingsChanged) {
+        joystickInput.setConfiguration(config.joystick);
+        config.joystickSettingsChanged = false;
+      }
       if (updateWindowFlag_) {
         if (diskConfigWindow->shown())
           diskConfigWindow->updateWindow();
@@ -939,18 +944,6 @@ void Plus4EmuGUI::fltkCheckCallback(void *userData)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
   try {
-    if (!gui_.disableJoystickInput) {
-      while (true) {
-        int     e = gui_.joystickInput.getEvent(gui_.config.joystick);
-        if (!e)
-          break;
-        int     keyCode = (e > 0 ? e : (-e));
-        bool    isKeyPress = (e > 0);
-        int     n = gui_.config.convertKeyCode(keyCode);
-        if (n >= 0)
-          gui_.vmThread.setKeyboardState(uint8_t(n), isKeyPress);
-      }
-    }
     if (gui_.flDisplay->checkEvents())
       gui_.emulatorWindow->redraw();
   }
@@ -1093,6 +1086,25 @@ void Plus4EmuGUI::screenshotCallback(void *userData,
   }
   if (f)
     std::fclose(f);
+}
+
+void Plus4EmuGUI::pollJoystickInput(void *userData)
+{
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
+  while (true) {
+    int     e = gui_.joystickInput.getEvent();
+    if (!e)
+      break;
+    int     keyCode = (e > 0 ? e : (-e));
+    bool    isKeyPress = (e > 0);
+    // NOTE: since this function is called from the emulation thread, it
+    // could be unsafe to access the configuration from here; however, the
+    // emulation thread is locked while the keyboard map is updated (see
+    // applyEmulatorConfiguration())
+    int     n = gui_.config.convertKeyCode(keyCode);
+    if (n >= 0)
+      gui_.vm.setKeyboardState(uint8_t(n), isKeyPress);
+  }
 }
 
 bool Plus4EmuGUI::closeDemoFile(bool stopDemo_)

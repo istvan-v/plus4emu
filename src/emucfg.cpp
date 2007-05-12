@@ -237,27 +237,22 @@ namespace Plus4Emu {
       }
     }
     // ----------------
-    defineConfigurationVariable(*this, "joystick.enableJoystick",
-                                joystick.enableJoystick, true,
-                                joystickSettingsChanged);
-    defineConfigurationVariable(*this, "joystick.enablePWM",
-                                joystick.enablePWM, false,
-                                joystickSettingsChanged);
-    defineConfigurationVariable(*this, "joystick.enableAutoFire",
-                                joystick.enableAutoFire, false,
-                                joystickSettingsChanged);
-    defineConfigurationVariable(*this, "joystick.axisThreshold",
-                                joystick.axisThreshold, 0.5,
-                                joystickSettingsChanged, 0.01, 0.99);
-    defineConfigurationVariable(*this, "joystick.pwmFrequency",
-                                joystick.pwmFrequency, 17.5,
-                                joystickSettingsChanged, 1.0, 100.0);
-    defineConfigurationVariable(*this, "joystick.autoFireFrequency",
-                                joystick.autoFireFrequency, 8.0,
-                                joystickSettingsChanged, 0.5, 50.0);
-    defineConfigurationVariable(*this, "joystick.autoFirePulseWidth",
-                                joystick.autoFirePulseWidth, 0.5,
-                                joystickSettingsChanged, 0.01, 0.99);
+    joystickSettingsChanged = true;
+    joystick.registerConfigurationVariables(*this);
+    (*this)["joystick.enableJoystick"].setCallback(
+        &configChangeCallback<bool>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.enablePWM"].setCallback(
+        &configChangeCallback<bool>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.enableAutoFire"].setCallback(
+        &configChangeCallback<bool>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.axisThreshold"].setCallback(
+        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.pwmFrequency"].setCallback(
+        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.autoFireFrequency"].setCallback(
+        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+    (*this)["joystick.autoFirePulseWidth"].setCallback(
+        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
     // ----------------
     for (int i = 0; i < 4; i++) {
       FloppyDriveSettings *floppy_ = (FloppyDriveSettings *) 0;
@@ -312,6 +307,9 @@ namespace Plus4Emu {
                                 debugSettingsChanged, 0.0, 4.0);
     defineConfigurationVariable(*this, "debug.noBreakOnDataRead",
                                 debug.noBreakOnDataRead, false,
+                                debugSettingsChanged);
+    defineConfigurationVariable(*this, "debug.breakOnInvalidOpcode",
+                                debug.breakOnInvalidOpcode, false,
                                 debugSettingsChanged);
   }
 
@@ -420,9 +418,6 @@ namespace Plus4Emu {
       }
       keyboardMapChanged = false;
     }
-    if (joystickSettingsChanged) {
-      joystickSettingsChanged = false;
-    }
     if (floppyAChanged) {
       try {
         vm_.setDiskImageFile(0, floppy.a.imageFile, floppy.a.driveType);
@@ -508,6 +503,7 @@ namespace Plus4Emu {
     if (debugSettingsChanged) {
       vm_.setBreakPointPriorityThreshold(debug.bpPriorityThreshold);
       vm_.setNoBreakOnDataRead(debug.noBreakOnDataRead);
+      vm_.setBreakOnInvalidOpcode(debug.breakOnInvalidOpcode);
       debugSettingsChanged = false;
     }
   }
