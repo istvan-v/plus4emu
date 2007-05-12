@@ -42,6 +42,8 @@ int main(int argc, char **argv)
   bool      glEnabled = true;
   const char  *cfgFileName = "plus4cfg.dat";
   int       prgNameIndex = 0;
+  int       diskNameIndex = 0;
+  int       snapshotNameIndex = 0;
   int       retval = 0;
   bool      configLoaded = false;
 
@@ -51,7 +53,13 @@ int main(int argc, char **argv)
       if (std::strcmp(argv[i], "-cfg") == 0 && i < (argc - 1)) {
         i++;
       }
-      if (std::strcmp(argv[i], "-prg") == 0 && i < (argc - 1)) {
+      else if (std::strcmp(argv[i], "-prg") == 0 && i < (argc - 1)) {
+        i++;
+      }
+      else if (std::strcmp(argv[i], "-disk") == 0 && i < (argc - 1)) {
+        i++;
+      }
+      else if (std::strcmp(argv[i], "-snapshot") == 0 && i < (argc - 1)) {
         i++;
       }
       else if (std::strcmp(argv[i], "-plus4") == 0) {
@@ -74,6 +82,11 @@ int main(int argc, char **argv)
                      "load ASCII format configuration file" << std::endl;
         std::cerr << "    -prg <FILENAME>     "
                      "load program file on startup" << std::endl;
+        std::cerr << "    -disk <FILENAME>    "
+                     "load and automatically start disk image on startup"
+                  << std::endl;
+        std::cerr << "    -snapshot <FNAME>   "
+                     "load snapshot or demo file on startup" << std::endl;
         std::cerr << "    -opengl             "
                      "use OpenGL video driver (this is the default)"
                   << std::endl;
@@ -126,6 +139,16 @@ int main(int argc, char **argv)
           throw Plus4Emu::Exception("missing program file name");
         prgNameIndex = i;
       }
+      else if (std::strcmp(argv[i], "-disk") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing disk image file name");
+        diskNameIndex = i;
+      }
+      else if (std::strcmp(argv[i], "-snapshot") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing snapshot file name");
+        snapshotNameIndex = i;
+      }
       else {
         const char  *s = argv[i];
         if (*s == '-')
@@ -147,8 +170,15 @@ int main(int argc, char **argv)
       }
     }
     config->applySettings();
-    if (prgNameIndex >= 1) {
-      vm->run(400000);
+    if (snapshotNameIndex >= 1) {
+      Plus4Emu::File  f(argv[snapshotNameIndex], false);
+      vm->registerChunkTypes(f);
+      f.processAllChunks();
+    }
+    else if (prgNameIndex >= 1) {
+      vm->setEnableDisplay(false);
+      vm->setEnableAudioOutput(false);
+      vm->run(600000);
       dynamic_cast<Plus4::Plus4VM *>(vm)->loadProgram(argv[prgNameIndex]);
       uint32_t  tmp = 0x01271E11U;      // RUN + RETURN
       for (int i = 0; i < 8; i++) {
@@ -157,6 +187,22 @@ int main(int argc, char **argv)
         if (i & 1)
           tmp = tmp >> 8;
       }
+      vm->setEnableDisplay(config->display.enabled);
+      vm->setEnableAudioOutput(config->sound.enabled);
+    }
+    else if (diskNameIndex >= 1) {
+      (*config)["floppy.a.imageFile"] = argv[diskNameIndex];
+      config->applySettings();
+      vm->setEnableDisplay(false);
+      vm->setEnableAudioOutput(false);
+      vm->run(2450000);
+      vm->setKeyboardState(0x3D, true); // C=
+      vm->setKeyboardState(0x3F, true); // Run/Stop
+      vm->run(50000);
+      vm->setKeyboardState(0x3D, false);
+      vm->setKeyboardState(0x3F, false);
+      vm->setEnableDisplay(config->display.enabled);
+      vm->setEnableAudioOutput(config->sound.enabled);
     }
     vmThread = new Plus4Emu::VMThread(*vm);
     gui_ = new Plus4EmuGUI(*(dynamic_cast<Plus4Emu::VideoDisplay *>(w)),
