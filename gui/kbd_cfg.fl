@@ -719,20 +719,7 @@ class Plus4EmuGUI_KbdConfigWindow {open
                      (unsigned int) (i >> 1), int(i & 1));
         tmpCfg.createKey(&(cvName[0]), gui.config.keyboard[i >> 1][i & 1]);
       }
-      tmpCfg.createKey("joystick.enableJoystick",
-                       gui.config.joystick.enableJoystick);
-      tmpCfg.createKey("joystick.enablePWM",
-                       gui.config.joystick.enablePWM);
-      tmpCfg.createKey("joystick.enableAutoFire",
-                       gui.config.joystick.enableAutoFire);
-      tmpCfg.createKey("joystick.axisThreshold",
-                       gui.config.joystick.axisThreshold);
-      tmpCfg.createKey("joystick.pwmFrequency",
-                       gui.config.joystick.pwmFrequency);
-      tmpCfg.createKey("joystick.autoFireFrequency",
-                       gui.config.joystick.autoFireFrequency);
-      tmpCfg.createKey("joystick.autoFirePulseWidth",
-                       gui.config.joystick.autoFirePulseWidth);
+      gui.config.joystick.registerConfigurationVariables(tmpCfg);
       tmpCfg.saveState(tmp.c_str(), false);
     }
   }
