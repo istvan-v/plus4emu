@@ -37,7 +37,7 @@
 #endif
 
 static int keyboardMap_P4[256] = {
-  0xFF08,     -1, 0xFF0D,     -1, 0xFFFF,     -1, 0xFFC1,     -1,
+  0xFF08,     -1, 0xFF0D, 0xFF8D, 0xFFFF,     -1, 0xFFC1,     -1,
   0xFFBE,     -1, 0xFFBF,     -1, 0xFFC0,     -1, 0x002D,     -1,
   0x0033,     -1, 0x0077,     -1, 0x0061,     -1, 0x0034,     -1,
   0x007A,     -1, 0x0073,     -1, 0x0065,     -1, 0xFFE1, 0xFFE2,
@@ -55,10 +55,10 @@ static int keyboardMap_P4[256] = {
   0x0020,     -1, 0xFFE3,     -1, 0x0071,     -1, 0xFF61, 0xFF09,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
-  0xFFB8,     -1, 0xFFB2,     -1, 0xFFB4,     -1, 0xFFB6,     -1,
-      -1,     -1,     -1,     -1,     -1,     -1, 0xFF8D, 0xFFB0,
-  0xFFAF,     -1, 0xFFB5,     -1, 0xFFB7,     -1, 0xFFB9,     -1,
-      -1,     -1,     -1,     -1, 0xFFAB,     -1,     -1,     -1,
+  0xFFB8, 0xC006, 0xFFB2, 0xC007, 0xFFB4, 0xC004, 0xFFB6, 0xC005,
+      -1,     -1,     -1,     -1,     -1,     -1, 0xFFB0, 0xC011,
+  0xFFAF, 0xC002, 0xFFB5, 0xC003, 0xFFB7, 0xC000, 0xFFB9, 0xC001,
+      -1,     -1,     -1,     -1, 0xFFAB, 0xC010,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
@@ -74,7 +74,7 @@ static int keyboardMap_P4[256] = {
 #ifndef WIN32
 
 static int keyboardMap_P4_HU[256] = {
-  0xFF08,     -1, 0xFF0D,     -1, 0xFFFF,     -1, 0xFFC1,     -1,
+  0xFF08,     -1, 0xFF0D, 0xFF8D, 0xFFFF,     -1, 0xFFC1,     -1,
   0xFFBE,     -1, 0xFFBF,     -1, 0xFFC0,     -1, 0x00FC,     -1,
   0x0033,     -1, 0x0077,     -1, 0x0061,     -1, 0x0034,     -1,
   0x0079,     -1, 0x0073,     -1, 0x0065,     -1, 0xFFE1, 0xFFE2,
@@ -92,10 +92,10 @@ static int keyboardMap_P4_HU[256] = {
   0x0020,     -1, 0xFFE3,     -1, 0x0071,     -1, 0xFF61, 0xFF09,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
-  0xFFB8,     -1, 0xFFB2,     -1, 0xFFB4,     -1, 0xFFB6,     -1,
-      -1,     -1,     -1,     -1,     -1,     -1, 0xFF8D, 0xFFB0,
-  0xFFAF,     -1, 0xFFB5,     -1, 0xFFB7,     -1, 0xFFB9,     -1,
-      -1,     -1,     -1,     -1, 0xFFAB,     -1,     -1,     -1,
+  0xFFB8, 0xC006, 0xFFB2, 0xC007, 0xFFB4, 0xC004, 0xFFB6, 0xC005,
+      -1,     -1,     -1,     -1,     -1,     -1, 0xFFB0, 0xC011,
+  0xFFAF, 0xC002, 0xFFB5, 0xC003, 0xFFB7, 0xC000, 0xFFB9, 0xC001,
+      -1,     -1,     -1,     -1, 0xFFAB, 0xC010,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
@@ -111,7 +111,7 @@ static int keyboardMap_P4_HU[256] = {
 #else   // WIN32
 
 static int keyboardMap_P4_HU[256] = {
-  0xFF08,     -1, 0xFF0D,     -1, 0xFFFF,     -1, 0xFFC1,     -1,
+  0xFF08,     -1, 0xFF0D, 0xFF8D, 0xFFFF,     -1, 0xFFC1,     -1,
   0xFFBE,     -1, 0xFFBF,     -1, 0xFFC0,     -1, 0x002F,     -1,
   0x0033,     -1, 0x0077,     -1, 0x0061,     -1, 0x0034,     -1,
   0x0079,     -1, 0x0073,     -1, 0x0065,     -1, 0xFFE1, 0xFFE2,
@@ -129,10 +129,10 @@ static int keyboardMap_P4_HU[256] = {
   0x0020,     -1, 0xFFE3,     -1, 0x0071,     -1, 0xFF61, 0xFF09,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
-  0xFFB8,     -1, 0xFFB2,     -1, 0xFFB4,     -1, 0xFFB6,     -1,
-      -1,     -1,     -1,     -1,     -1,     -1, 0xFF8D, 0xFFB0,
-  0xFFAF,     -1, 0xFFB5,     -1, 0xFFB7,     -1, 0xFFB9,     -1,
-      -1,     -1,     -1,     -1, 0xFFAB,     -1,     -1,     -1,
+  0xFFB8, 0xC006, 0xFFB2, 0xC007, 0xFFB4, 0xC004, 0xFFB6, 0xC005,
+      -1,     -1,     -1,     -1,     -1,     -1, 0xFFB0, 0xC011,
+  0xFFAF, 0xC002, 0xFFB5, 0xC003, 0xFFB7, 0xC000, 0xFFB9, 0xC001,
+      -1,     -1,     -1,     -1, 0xFFAB, 0xC010,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
       -1,     -1,     -1,     -1,     -1,     -1,     -1,     -1,
