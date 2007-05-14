@@ -1544,7 +1544,8 @@ void Plus4EmuGUI::menuCallback_Machine_OpenTape(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.tapeImageDirectory, "Tape files (*.tap)",
+    if (gui_.browseFile(tmp, gui_.tapeImageDirectory,
+                        "Tape files (*.{tap,wav,aif,aiff,au,snd})",
                         Fl_File_Chooser::CREATE, "Select tape image file")) {
       Plus4EmuGUI::menuCallback_Machine_TapeStop(o, v);
       gui_.config["tape.imageFile"] = tmp;

@@ -19,6 +19,9 @@ Changes in version 1.1.0
   * added new command line options for loading disk image, snapshot, and
     demo files on start-up; on Windows, D64 and D81 files are also
     optionally associated with the emulator
+  * it is now possible to use WAV, AIFF, and other sound file formats as
+    tape images; these files can be read and written, however, new files
+    are created in plus4emu format
   * blank video output is generated when the TED is disabled by setting
     bit 5 of $FF07
   * reduced horizontal texture resolution to 384 in OpenGL mode when the

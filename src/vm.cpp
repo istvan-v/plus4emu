@@ -118,6 +118,10 @@ namespace Plus4Emu {
       tape((Tape *) 0),
       tapeFileName(""),
       defaultTapeSampleRate(24000L),
+      tapeSoundFileChannel(0),
+      tapeEnableSoundFileFilter(false),
+      tapeSoundFileFilterMinFreq(500.0f),
+      tapeSoundFileFilterMaxFreq(5000.0f),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
       currentDebugContext(0),
@@ -497,6 +501,31 @@ namespace Plus4Emu {
     fastTapeModeEnabled = isEnabled;
   }
 
+  void VirtualMachine::setTapeSoundFileParameters(int requestedChannel_,
+                                                  bool enableFilter_,
+                                                  float filterMinFreq_,
+                                                  float filterMaxFreq_)
+  {
+    if (requestedChannel_ == tapeSoundFileChannel &&
+        enableFilter_ == tapeEnableSoundFileFilter &&
+        filterMinFreq_ == tapeSoundFileFilterMinFreq &&
+        filterMaxFreq_ == tapeSoundFileFilterMaxFreq)
+      return;
+    tapeSoundFileChannel = requestedChannel_;
+    tapeEnableSoundFileFilter = enableFilter_;
+    tapeSoundFileFilterMinFreq = filterMinFreq_;
+    tapeSoundFileFilterMaxFreq = filterMaxFreq_;
+    if (tape) {
+      if (typeid(*tape) == typeid(Tape_SoundFile)) {
+        Tape_SoundFile& tape_ = *(dynamic_cast<Tape_SoundFile *>(tape));
+        tape_.setParameters(tapeSoundFileChannel,
+                            tapeEnableSoundFileFilter,
+                            tapeSoundFileFilterMinFreq,
+                            tapeSoundFileFilterMaxFreq);
+      }
+    }
+  }
+
   void VirtualMachine::setDebugContext(int n)
   {
     (void) n;
@@ -679,6 +708,13 @@ namespace Plus4Emu {
     tape = openTapeFile(fileName.c_str(), 0,
                         defaultTapeSampleRate, bitsPerSample);
     tapeFileName = fileName;
+    if (typeid(*tape) == typeid(Tape_SoundFile)) {
+      Tape_SoundFile& tape_ = *(dynamic_cast<Tape_SoundFile *>(tape));
+      tape_.setParameters(tapeSoundFileChannel,
+                          tapeEnableSoundFileFilter,
+                          tapeSoundFileFilterMinFreq,
+                          tapeSoundFileFilterMaxFreq);
+    }
     if (tapeRecordOn)
       tape->record();
     else if (tapePlaybackOn)

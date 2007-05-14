@@ -66,7 +66,8 @@ Plus/4 emulation
     format which is PCM audio data with 1 to 8 bits of sample resolution
     and variable sample rate, and header including the table of markers;
     there is also limited (read only) support for the commonly used C16
-    tape files
+    tape files, as well as read-write (although without markers) support
+    for sound files like WAV, AIFF, etc.
   * experimental hardware level emulation of the 1541, 1551, and 1581
     floppy disk drives, with support for D64 and D81 files
   * load and automatically start .PRG file on start-up

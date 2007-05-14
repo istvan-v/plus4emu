@@ -186,6 +186,7 @@ Depends(plus4emu, residLib)
 
 tapconvEnvironment = plus4emuLibEnvironment.Copy()
 tapconvEnvironment.Prepend(LIBS = ['plus4emu'])
+tapconvEnvironment.Append(LIBS = ['sndfile'])
 tapconv = tapconvEnvironment.Program('tapconv', ['util/tapconv.cpp'])
 Depends(tapconv, plus4emuLib)
 

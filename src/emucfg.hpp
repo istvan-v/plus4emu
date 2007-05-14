@@ -154,11 +154,16 @@ namespace Plus4Emu {
       std::string imageFile;
       int         defaultSampleRate;
       bool        fastMode;
+      int         soundFileChannel;
+      bool        enableSoundFileFilter;
+      double      soundFileFilterMinFreq;
+      double      soundFileFilterMaxFreq;
     };
     TapeConfiguration_    tape;
     bool          tapeSettingsChanged;
     bool          tapeDefaultSampleRateChanged;
     bool          fastTapeModeChanged;
+    bool          tapeSoundFileSettingsChanged;
     // --------
     struct FileIOConfiguration_ {
       std::string workingDirectory;

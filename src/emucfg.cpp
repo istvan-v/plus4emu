@@ -297,6 +297,21 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "tape.fastMode",
                                 tape.fastMode, false,
                                 fastTapeModeChanged);
+    defineConfigurationVariable(*this, "tape.soundFileChannel",
+                                tape.soundFileChannel, int(0),
+                                tapeSoundFileSettingsChanged,
+                                0.0, 15.0);
+    defineConfigurationVariable(*this, "tape.enableSoundFileFilter",
+                                tape.enableSoundFileFilter, false,
+                                tapeSoundFileSettingsChanged);
+    defineConfigurationVariable(*this, "tape.soundFileFilterMinFreq",
+                                tape.soundFileFilterMinFreq, 500.0,
+                                tapeSoundFileSettingsChanged,
+                                0.0, 2000.0);
+    defineConfigurationVariable(*this, "tape.soundFileFilterMaxFreq",
+                                tape.soundFileFilterMaxFreq, 5000.0,
+                                tapeSoundFileSettingsChanged,
+                                1000.0, 20000.0);
     // ----------------
     defineConfigurationVariable(*this, "fileio.workingDirectory",
                                 fileio.workingDirectory, std::string("."),
@@ -484,6 +499,13 @@ namespace Plus4Emu {
     if (fastTapeModeChanged) {
       vm_.setEnableFastTapeMode(tape.fastMode);
       fastTapeModeChanged = false;
+    }
+    if (tapeSoundFileSettingsChanged) {
+      vm_.setTapeSoundFileParameters(tape.soundFileChannel,
+                                     tape.enableSoundFileFilter,
+                                     float(tape.soundFileFilterMinFreq),
+                                     float(tape.soundFileFilterMaxFreq));
+      tapeSoundFileSettingsChanged = false;
     }
     if (fileioSettingsChanged) {
       try {

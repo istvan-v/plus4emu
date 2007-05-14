@@ -56,6 +56,10 @@ namespace Plus4Emu {
     Tape            *tape;
     std::string     tapeFileName;
     long            defaultTapeSampleRate;
+    int             tapeSoundFileChannel;
+    bool            tapeEnableSoundFileFilter;
+    float           tapeSoundFileFilterMinFreq;
+    float           tapeSoundFileFilterMaxFreq;
    protected:
     void            (*breakPointCallback)(void *userData,
                                           int debugContext_,
@@ -287,6 +291,13 @@ namespace Plus4Emu {
      * to run faster than real time.
      */
     virtual void setEnableFastTapeMode(bool isEnabled);
+    /*!
+     * Set parameters for tape sound file I/O.
+     */
+    virtual void setTapeSoundFileParameters(int requestedChannel_,
+                                            bool enableFilter_,
+                                            float filterMinFreq_,
+                                            float filterMaxFreq_);
     // ------------------------------ DEBUGGING -------------------------------
     /*!
      * Set the debugging context (CPU number).
