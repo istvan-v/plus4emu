@@ -128,7 +128,7 @@ namespace Plus4Emu {
       int   hatCnt_ = SDL_JoystickNumHats(joy_);
       if (j == 0 && nDevices > 1) {
         axisCnt_ = (axisCnt_ < 4 ? axisCnt_ : 4);
-        buttonCnt_ = (buttonCnt_ < 4 ? buttonCnt_ : 4);
+        buttonCnt_ = (buttonCnt_ < 8 ? buttonCnt_ : 8);
         hatCnt_ = (hatCnt_ < 1 ? hatCnt_ : 1);
       }
       for (int i = 0; i < axisCnt_ && axisCnt < 8; i++) {
@@ -138,7 +138,7 @@ namespace Plus4Emu {
         axes[axisCnt].prvOutputState = 0;
         axisCnt++;
       }
-      for (int i = 0; i < buttonCnt_ && buttonCnt < 8; i++) {
+      for (int i = 0; i < buttonCnt_ && buttonCnt < 16; i++) {
         buttons[buttonCnt].devNum = j;
         buttons[buttonCnt].buttonNum = i;
         buttons[buttonCnt].prvInputState = false;
@@ -188,12 +188,15 @@ namespace Plus4Emu {
       mutex_.unlock();
       return retval;
     }
-    if (updateTimer.getRealTime() < 0.005) {
-      // poll joystick input at at least 5 ms intervals
-      mutex_.unlock();
-      return 0;
+    {
+      double  t = updateTimer.getRealTime();
+      if (t < 0.005) {
+        mutex_.unlock();
+        return 0;
+      }
+      // poll joystick input at 5 ms intervals
+      updateTimer.reset((t - 0.005) * 0.5);
     }
-    updateTimer.reset();
     SDL_JoystickUpdate();
     eventCnt = 0;
     eventIndex = 0;
@@ -363,27 +366,27 @@ namespace Plus4Emu {
       if (changeMask) {
         if (changeMask & int(SDL_HAT_RIGHT)) {
           if (newState & int(SDL_HAT_RIGHT))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2));
+            events[eventCnt++] = (keyCodeBase + 32 + (i << 2));
           else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2));
+            events[eventCnt++] = -(keyCodeBase + 32 + (i << 2));
         }
         if (changeMask & int(SDL_HAT_UP)) {
           if (newState & int(SDL_HAT_UP))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 1);
+            events[eventCnt++] = (keyCodeBase + 32 + (i << 2) + 1);
           else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 1);
+            events[eventCnt++] = -(keyCodeBase + 32 + (i << 2) + 1);
         }
         if (changeMask & int(SDL_HAT_LEFT)) {
           if (newState & int(SDL_HAT_LEFT))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 2);
+            events[eventCnt++] = (keyCodeBase + 32 + (i << 2) + 2);
           else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 2);
+            events[eventCnt++] = -(keyCodeBase + 32 + (i << 2) + 2);
         }
         if (changeMask & int(SDL_HAT_DOWN)) {
           if (newState & int(SDL_HAT_DOWN))
-            events[eventCnt++] = (keyCodeBase + 24 + (i << 2) + 3);
+            events[eventCnt++] = (keyCodeBase + 32 + (i << 2) + 3);
           else
-            events[eventCnt++] = -(keyCodeBase + 24 + (i << 2) + 3);
+            events[eventCnt++] = -(keyCodeBase + 32 + (i << 2) + 3);
         }
         povHats[i].prvState = newState;
       }
