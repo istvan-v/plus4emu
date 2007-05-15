@@ -153,6 +153,8 @@ namespace Plus4Emu {
       }
     }
     haveJoystick = (axisCnt > 0 || buttonCnt > 0 || hatCnt > 0);
+#else
+    (void) sdlInitFlag;
 #endif  // HAVE_SDL_H
   }
 

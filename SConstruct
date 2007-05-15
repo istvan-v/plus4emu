@@ -3,9 +3,10 @@
 import sys
 
 win32CrossCompile = 0
+disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 
 compilerFlags = Split('''
-    -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
+    -Wall -W -ansi -pedantic -Wno-long-long -O2
 ''')
 
 fltkConfig = 'fltk-config'
@@ -71,7 +72,10 @@ if not configure.CheckCHeader('GL/gl.h'):
 haveDotconf = configure.CheckCHeader('dotconf.h')
 if configure.CheckCHeader('stdint.h'):
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_STDINT_H'])
-haveSDL = configure.CheckCHeader('SDL/SDL.h')
+if not disableSDL:
+    haveSDL = configure.CheckCHeader('SDL/SDL.h')
+else:
+    haveSDL = 0
 configure.Finish()
 
 if not havePortAudioV19:
