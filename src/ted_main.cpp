@@ -436,15 +436,12 @@ namespace Plus4 {
     horiz_scroll = tedRegisters[0x07] & 0x07;
     // bitmap fetches and rendering display are done on even cycle counts
     if (videoShiftRegisterEnabled) {
-      currentAttribute = nextAttribute;
       currentCharacter = nextCharacter;
-      currentBitmap = nextBitmap;
-      nextBitmap = 0x00;
-      cursorFlag = nextCursorFlag;
+      nextCharacter.bitmap_() = 0x00;
     }
     if (renderingDisplay) {
-      nextAttribute = attr_buf[character_column];
-      nextCharacter = char_buf[character_column];
+      nextCharacter.attr_() = attr_buf[character_column] & uint8_t(0x7F);
+      nextCharacter.char_() = char_buf[character_column];
       // read bitmap data from memory
       if (!bitmapAddressDisableFlags) {
         uint16_t  addr_ = uint16_t(character_line);
@@ -454,7 +451,8 @@ namespace Plus4 {
                               | (character_position << 3));
           else
             addr_ |= uint16_t(charset_base_addr
-                              | (int(nextCharacter & characterMask) << 3));
+                              | (int(nextCharacter.char_() & characterMask)
+                                 << 3));
         }
         else {
           // IC test mode (FF06 bit 7 set)
@@ -475,8 +473,21 @@ namespace Plus4 {
         (void) readMemory(0xFFFF);
       }
       memoryReadMap = cpuMemoryReadMap;
-      nextBitmap = dataBusState;
-      nextCursorFlag = (character_position == cursor_position);
+      nextCharacter.bitmap_() = dataBusState;
+      nextCharacter.cursor_() =
+          (character_position == cursor_position ? 0xFF : 0x00);
+      if (!(videoMode & 0x70)) {
+        if (attr_buf[character_column] & 0x80) {
+          // FIXME: this should probably be done when loading the bitmap
+          // shift register in the render functions
+          if (!flashState && !nextCharacter.cursor_())
+            nextCharacter.bitmap_() = 0x00;
+        }
+        if (!(videoMode & 0x80)) {
+          if (nextCharacter.char_() & 0x80)
+            nextCharacter.bitmap_() ^= uint8_t(0xFF);
+        }
+      }
       attr_buf[character_column] = attr_buf_tmp[character_column];
       if (!bitmapAddressDisableFlags)
         character_position = (character_position + 1) & 0x03FF;

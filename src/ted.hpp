@@ -39,13 +39,47 @@ namespace Plus4 {
   class TED7360 : public M7501 {
    private:
     struct RenderTables {
-      uint16_t  mcmBitmapConversionTable[256];
       uint8_t   colorTable_NTSC[256];
       uint8_t   colorTable_InvPhase[256];
       uint8_t   colorTable_NTSC_InvPhase[256];
       uint8_t   colorTable_HalfInvPhase[256];
       uint8_t   colorTable_NTSC_HalfInvPhase[256];
       RenderTables();
+    };
+    class VideoShiftRegisterCharacter {
+     private:
+      uint32_t  buf_;
+     public:
+      VideoShiftRegisterCharacter()
+      {
+        this->buf_ = 0U;
+      }
+      VideoShiftRegisterCharacter(const VideoShiftRegisterCharacter& r)
+      {
+        this->buf_ = r.buf_;
+      }
+      inline VideoShiftRegisterCharacter&
+          operator=(const VideoShiftRegisterCharacter& r)
+      {
+        this->buf_ = r.buf_;
+        return (*this);
+      }
+      inline unsigned char& attr_()
+      {
+        return (((unsigned char *) &(this->buf_))[0]);
+      }
+      inline unsigned char& char_()
+      {
+        return (((unsigned char *) &(this->buf_))[1]);
+      }
+      inline unsigned char& bitmap_()
+      {
+        return (((unsigned char *) &(this->buf_))[2]);
+      }
+      inline unsigned char& cursor_()
+      {
+        return (((unsigned char *) &(this->buf_))[3]);
+      }
     };
     // memory and register read functions
     static uint8_t  read_memory_0000_to_0FFF(void *userData, uint16_t addr);
@@ -178,8 +212,7 @@ namespace Plus4 {
     static REGPARM void render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_BMM_multicolor(TED7360& ted,
                                               uint8_t *bufp, int offs);
-    static REGPARM void render_char_128(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM void render_char_256(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM void render_char_std(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_char_ECM(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_invalid_mode(TED7360& ted,
@@ -284,21 +317,12 @@ namespace Plus4 {
     uint8_t     line_buf[480];
     int         line_buf_pos;
     bool        videoShiftRegisterEnabled;
-    uint8_t     bitmapHShiftRegister;
-    uint16_t    bitmapMShiftRegister;
     // horizontal scroll (0 to 7)
     uint8_t     horiz_scroll;
-    uint8_t     shiftRegisterAttribute;
-    uint8_t     shiftRegisterCharacter;
-    bool        shiftRegisterCursorFlag;
-    uint8_t     currentAttribute;
-    uint8_t     currentCharacter;
-    uint8_t     currentBitmap;
-    bool        cursorFlag;
-    uint8_t     nextAttribute;
-    uint8_t     nextCharacter;
-    uint8_t     nextBitmap;
-    bool        nextCursorFlag;
+    uint8_t     videoMode;      // FF06 bit 5, 6 OR FF07 bit 4, 7
+    VideoShiftRegisterCharacter shiftRegisterCharacter;
+    VideoShiftRegisterCharacter currentCharacter;
+    VideoShiftRegisterCharacter nextCharacter;
     bool        bitmapMode;
     uint8_t     characterMask;
     bool        dmaEnabled;

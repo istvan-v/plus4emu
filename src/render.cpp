@@ -38,14 +38,11 @@ namespace Plus4 {
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     if (nextCharCnt == 0) {
-      uint8_t b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << 4;
-      ted.bitmapMShiftRegister = renderTables.mcmBitmapConversionTable[b] >> 8;
-      uint8_t a = ted.currentAttribute;
-      uint8_t c = ted.currentCharacter;
-      ted.shiftRegisterAttribute = a;
-      ted.shiftRegisterCharacter = c;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
+      ted.shiftRegisterCharacter = ted.currentCharacter;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      ted.shiftRegisterCharacter.bitmap_() = b << 4;
+      uint8_t c = ted.shiftRegisterCharacter.char_();
       uint8_t c0 = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
       uint8_t c1 = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
       bufp[0] = ((b & uint8_t(0x80)) ? c1 : c0);
@@ -54,23 +51,19 @@ namespace Plus4 {
       bufp[3] = ((b & uint8_t(0x10)) ? c1 : c0);
     }
     else {
-      uint8_t b = ted.bitmapHShiftRegister;
-      uint8_t a = ted.shiftRegisterAttribute;
-      uint8_t c = ted.shiftRegisterCharacter;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t c = ted.shiftRegisterCharacter.char_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
       uint8_t c0 = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
       uint8_t c1 = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
       switch (nextCharCnt) {
       case 1:
         bufp[0] = ((b & uint8_t(0x80)) ? c1 : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 3;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 6;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 3;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
         c1 = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         bufp[1] = ((b & uint8_t(0x80)) ? c1 : c0);
@@ -80,15 +73,11 @@ namespace Plus4 {
       case 2:
         bufp[0] = ((b & uint8_t(0x80)) ? c1 : c0);
         bufp[1] = ((b & uint8_t(0x40)) ? c1 : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 2;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 4;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
         c1 = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         bufp[2] = ((b & uint8_t(0x80)) ? c1 : c0);
@@ -98,15 +87,11 @@ namespace Plus4 {
         bufp[0] = ((b & uint8_t(0x80)) ? c1 : c0);
         bufp[1] = ((b & uint8_t(0x40)) ? c1 : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? c1 : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 1;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 2;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 1;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
         c1 = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         bufp[3] = ((b & uint8_t(0x80)) ? c1 : c0);
@@ -116,8 +101,8 @@ namespace Plus4 {
         bufp[1] = ((b & uint8_t(0x40)) ? c1 : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? c1 : c0);
         bufp[3] = ((b & uint8_t(0x10)) ? c1 : c0);
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+        ted.shiftRegisterCharacter.bitmap_() =
+            ted.shiftRegisterCharacter.bitmap_() << 4;
         break;
       }
     }
@@ -133,118 +118,97 @@ namespace Plus4 {
     c_[3] = (!(ted.tedRegisterWriteMask & 0x00400000U) ?
              ted.tedRegisters[0x16] : uint8_t(0x7F));
     if (nextCharCnt == 0) {
-      ted.bitmapHShiftRegister = ted.currentBitmap << 4;
-      uint16_t  b = renderTables.mcmBitmapConversionTable[ted.currentBitmap];
-      ted.bitmapMShiftRegister = b >> 8;
-      uint8_t a = ted.currentAttribute;
-      uint8_t c = ted.currentCharacter;
-      ted.shiftRegisterAttribute = a;
-      ted.shiftRegisterCharacter = c;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
+      ted.shiftRegisterCharacter = ted.currentCharacter;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      ted.shiftRegisterCharacter.bitmap_() = b << 4;
+      uint8_t c = ted.shiftRegisterCharacter.char_();
       c_[1] = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
       c_[2] = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
-      bufp[0] = c_[b & 3];
+      bufp[0] = c_[(b >> 6) & 3];
       c_[0] = ted.tedRegisters[0x15];
       c_[3] = ted.tedRegisters[0x16];
-      bufp[1] = c_[(b >> 2) & 3];
-      bufp[2] = c_[(b >> 4) & 3];
-      bufp[3] = c_[(b >> 6) & 3];
+      bufp[1] = c_[(b >> 6) & 3];
+      bufp[3] = bufp[2] = c_[(b >> 4) & 3];
     }
     else {
-      uint16_t  b = ted.bitmapMShiftRegister;
-      uint8_t   a = ted.shiftRegisterAttribute;
-      uint8_t   c = ted.shiftRegisterCharacter;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t c = ted.shiftRegisterCharacter.char_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
       c_[1] = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
       c_[2] = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
       switch (nextCharCnt) {
       case 1:
-        bufp[0] = c_[b & 3];
-        ted.bitmapHShiftRegister = ted.currentBitmap << 3;
-        b = renderTables.mcmBitmapConversionTable[ted.currentBitmap];
-        ted.bitmapMShiftRegister = b >> 6;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        bufp[0] = c_[(b >> 6) & 3];
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
+        c = ted.shiftRegisterCharacter.char_();
         c_[0] = ted.tedRegisters[0x15];
         c_[1] = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         c_[2] = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
         c_[3] = ted.tedRegisters[0x16];
-        bufp[1] = c_[b & 3];
-        bufp[2] = c_[(b >> 2) & 3];
+        bufp[2] = bufp[1] = c_[(b >> 6) & 3];
         bufp[3] = c_[(b >> 4) & 3];
         break;
       case 2:
-        bufp[0] = c_[b & 3];
+        bufp[0] = c_[(b >> 6) & 3];
         c_[0] = ted.tedRegisters[0x15];
         c_[3] = ted.tedRegisters[0x16];
-        bufp[1] = c_[(b >> 2) & 3];
-        ted.bitmapHShiftRegister = ted.currentBitmap << 2;
-        b = renderTables.mcmBitmapConversionTable[ted.currentBitmap];
-        ted.bitmapMShiftRegister = b >> 4;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        bufp[1] = c_[(b >> 6) & 3];
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
+        c = ted.shiftRegisterCharacter.char_();
         c_[1] = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         c_[2] = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
-        bufp[2] = c_[b & 3];
-        bufp[3] = c_[(b >> 2) & 3];
+        bufp[3] = bufp[2] = c_[(b >> 6) & 3];
         break;
       case 3:
-        bufp[0] = c_[b & 3];
+        bufp[0] = c_[(b >> 6) & 3];
         c_[0] = ted.tedRegisters[0x15];
         c_[3] = ted.tedRegisters[0x16];
-        bufp[1] = c_[(b >> 2) & 3];
-        bufp[2] = c_[(b >> 4) & 3];
-        ted.bitmapHShiftRegister = ted.currentBitmap << 1;
-        b = renderTables.mcmBitmapConversionTable[ted.currentBitmap];
-        ted.bitmapMShiftRegister = b >> 2;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        bufp[2] = bufp[1] = c_[(b >> 4) & 3];
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        c = ted.shiftRegisterCharacter.char_();
+        b = ted.shiftRegisterCharacter.bitmap_();
         c_[1] = ((a & uint8_t(0x07)) << 4) | ((c & uint8_t(0xF0)) >> 4);
         c_[2] = (a & uint8_t(0x70)) | (c & uint8_t(0x0F));
-        bufp[3] = c_[b & 3];
-        break;
-      default:
-        bufp[0] = c_[b & 3];
-        c_[0] = ted.tedRegisters[0x15];
-        c_[3] = ted.tedRegisters[0x16];
-        bufp[1] = c_[(b >> 2) & 3];
-        bufp[2] = c_[(b >> 4) & 3];
         bufp[3] = c_[(b >> 6) & 3];
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+        break;
+      default:
+        bufp[0] = c_[(b >> 6) & 3];
+        c_[0] = ted.tedRegisters[0x15];
+        c_[3] = ted.tedRegisters[0x16];
+        if (!(nextCharCnt & 1)) {
+          bufp[1] = c_[(b >> 6) & 3];
+          bufp[3] = bufp[2] = c_[(b >> 4) & 3];
+        }
+        else {
+          bufp[2] = bufp[1] = c_[(b >> 4) & 3];
+          bufp[3] = c_[(b >> 2) & 3];
+        }
+        ted.shiftRegisterCharacter.bitmap_() =
+            ted.shiftRegisterCharacter.bitmap_() << 4;
         break;
       }
     }
   }
 
-  REGPARM void TED7360::render_char_128(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_char_std(TED7360& ted, uint8_t *bufp, int offs)
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     uint8_t c0 = (!(ted.tedRegisterWriteMask & 0x00200000U) ?
                   ted.tedRegisters[0x15] : uint8_t(0x7F));
     if (nextCharCnt == 0) {
-      uint8_t b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << 4;
-      ted.bitmapMShiftRegister = renderTables.mcmBitmapConversionTable[b] >> 8;
-      uint8_t a = ted.currentAttribute;
-      ted.shiftRegisterAttribute = a;
       ted.shiftRegisterCharacter = ted.currentCharacter;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
-      if (ted.shiftRegisterCursorFlag)
-        b = b ^ ted.flashState;
-      else if (a & uint8_t(0x80))
-        b = b & ted.flashState;
-      if (ted.shiftRegisterCharacter & uint8_t(0x80))
-        b = b ^ uint8_t(0xFF);
-      a &= uint8_t(0x7F);
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      ted.shiftRegisterCharacter.bitmap_() = b << 4;
+      b = b ^ (ted.shiftRegisterCharacter.cursor_() & ted.flashState);
       bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
       c0 = ted.tedRegisters[0x15];
       bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
@@ -252,33 +216,17 @@ namespace Plus4 {
       bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
     }
     else {
-      uint8_t b = ted.bitmapHShiftRegister;
-      uint8_t a = ted.shiftRegisterAttribute;
-      if (ted.shiftRegisterCursorFlag)
-        b = b ^ ted.flashState;
-      else if (a & uint8_t(0x80))
-        b = b & ted.flashState;
-      if (ted.shiftRegisterCharacter & uint8_t(0x80))
-        b = b ^ uint8_t(0xFF);
-      a &= uint8_t(0x7F);
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      b = b ^ (ted.shiftRegisterCharacter.cursor_() & ted.flashState);
       switch (nextCharCnt) {
       case 1:
         bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 3;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 6;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        if (ted.shiftRegisterCharacter & uint8_t(0x80))
-          b = b ^ uint8_t(0xFF);
-        a &= uint8_t(0x7F);
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 3;
+        b = b ^ (ted.shiftRegisterCharacter.cursor_() & ted.flashState);
         c0 = ted.tedRegisters[0x15];
         bufp[1] = ((b & uint8_t(0x80)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x40)) ? a : c0);
@@ -288,21 +236,11 @@ namespace Plus4 {
         bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
         c0 = ted.tedRegisters[0x15];
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 2;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 4;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        if (ted.shiftRegisterCharacter & uint8_t(0x80))
-          b = b ^ uint8_t(0xFF);
-        a &= uint8_t(0x7F);
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
+        b = b ^ (ted.shiftRegisterCharacter.cursor_() & ted.flashState);
         bufp[2] = ((b & uint8_t(0x80)) ? a : c0);
         bufp[3] = ((b & uint8_t(0x40)) ? a : c0);
         break;
@@ -311,21 +249,11 @@ namespace Plus4 {
         c0 = ted.tedRegisters[0x15];
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 1;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 2;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        if (ted.shiftRegisterCharacter & uint8_t(0x80))
-          b = b ^ uint8_t(0xFF);
-        a &= uint8_t(0x7F);
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 1;
+        b = b ^ (ted.shiftRegisterCharacter.cursor_() & ted.flashState);
         bufp[3] = ((b & uint8_t(0x80)) ? a : c0);
         break;
       default:
@@ -334,114 +262,8 @@ namespace Plus4 {
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
         bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
-        break;
-      }
-    }
-  }
-
-  REGPARM void TED7360::render_char_256(TED7360& ted, uint8_t *bufp, int offs)
-  {
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
-    uint8_t c0 = (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                  ted.tedRegisters[0x15] : uint8_t(0x7F));
-    if (nextCharCnt == 0) {
-      uint8_t b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << 4;
-      ted.bitmapMShiftRegister = renderTables.mcmBitmapConversionTable[b] >> 8;
-      uint8_t a = ted.currentAttribute;
-      ted.shiftRegisterAttribute = a;
-      ted.shiftRegisterCharacter = ted.currentCharacter;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
-      if (ted.shiftRegisterCursorFlag)
-        b = b ^ ted.flashState;
-      else if (a & uint8_t(0x80))
-        b = b & ted.flashState;
-      a &= uint8_t(0x7F);
-      bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-      c0 = ted.tedRegisters[0x15];
-      bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-      bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
-      bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
-    }
-    else {
-      uint8_t b = ted.bitmapHShiftRegister;
-      uint8_t a = ted.shiftRegisterAttribute;
-      if (ted.shiftRegisterCursorFlag)
-        b = b ^ ted.flashState;
-      else if (a & uint8_t(0x80))
-        b = b & ted.flashState;
-      a &= uint8_t(0x7F);
-      switch (nextCharCnt) {
-      case 1:
-        bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 3;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 6;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        a &= uint8_t(0x7F);
-        c0 = ted.tedRegisters[0x15];
-        bufp[1] = ((b & uint8_t(0x80)) ? a : c0);
-        bufp[2] = ((b & uint8_t(0x40)) ? a : c0);
-        bufp[3] = ((b & uint8_t(0x20)) ? a : c0);
-        break;
-      case 2:
-        bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        c0 = ted.tedRegisters[0x15];
-        bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 2;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 4;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        a &= uint8_t(0x7F);
-        bufp[2] = ((b & uint8_t(0x80)) ? a : c0);
-        bufp[3] = ((b & uint8_t(0x40)) ? a : c0);
-        break;
-      case 3:
-        bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        c0 = ted.tedRegisters[0x15];
-        bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-        bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 1;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 2;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (ted.shiftRegisterCursorFlag)
-          b = b ^ ted.flashState;
-        else if (a & uint8_t(0x80))
-          b = b & ted.flashState;
-        a &= uint8_t(0x7F);
-        bufp[3] = ((b & uint8_t(0x80)) ? a : c0);
-        break;
-      default:
-        bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        c0 = ted.tedRegisters[0x15];
-        bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-        bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
-        bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+        ted.shiftRegisterCharacter.bitmap_() =
+            ted.shiftRegisterCharacter.bitmap_() << 4;
         break;
       }
     }
@@ -451,16 +273,11 @@ namespace Plus4 {
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     if (nextCharCnt == 0) {
-      uint8_t b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << 4;
-      ted.bitmapMShiftRegister = renderTables.mcmBitmapConversionTable[b] >> 8;
-      uint8_t a = ted.currentAttribute;
-      uint8_t c = ted.currentCharacter;
-      ted.shiftRegisterAttribute = a;
-      ted.shiftRegisterCharacter = c;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
-      a &= uint8_t(0x7F);
-      c = (c >> 6) + uint8_t(0x15);
+      ted.shiftRegisterCharacter = ted.currentCharacter;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      ted.shiftRegisterCharacter.bitmap_() = b << 4;
+      uint8_t c = (ted.shiftRegisterCharacter.char_() >> 6) + uint8_t(0x15);
       uint8_t c0 = (!(ted.tedRegisterWriteMask & (1U << c)) ?
                     ted.tedRegisters[c] : uint8_t(0x7F));
       bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
@@ -470,24 +287,19 @@ namespace Plus4 {
       bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
     }
     else {
-      uint8_t b = ted.bitmapHShiftRegister;
-      uint8_t a = ted.shiftRegisterAttribute & uint8_t(0x7F);
-      uint8_t c = (ted.shiftRegisterCharacter >> 6) + uint8_t(0x15);
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      uint8_t c = (ted.shiftRegisterCharacter.char_() >> 6) + uint8_t(0x15);
       uint8_t c0 = (!(ted.tedRegisterWriteMask & (1U << c)) ?
                     ted.tedRegisters[c] : uint8_t(0x7F));
       switch (nextCharCnt) {
       case 1:
         bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 3;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 6;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        a &= uint8_t(0x7F);
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 3;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = ted.tedRegisters[(c >> 6) + uint8_t(0x15)];
         bufp[1] = ((b & uint8_t(0x80)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x40)) ? a : c0);
@@ -497,16 +309,11 @@ namespace Plus4 {
         bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
         c0 = ted.tedRegisters[c];
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 2;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 4;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        a &= uint8_t(0x7F);
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = ted.tedRegisters[(c >> 6) + uint8_t(0x15)];
         bufp[2] = ((b & uint8_t(0x80)) ? a : c0);
         bufp[3] = ((b & uint8_t(0x40)) ? a : c0);
@@ -516,16 +323,11 @@ namespace Plus4 {
         c0 = ted.tedRegisters[c];
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 1;
-        ted.bitmapMShiftRegister =
-            renderTables.mcmBitmapConversionTable[b] >> 2;
-        a = ted.currentAttribute;
-        c = ted.currentCharacter;
-        ted.shiftRegisterAttribute = a;
-        ted.shiftRegisterCharacter = c;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        a &= uint8_t(0x7F);
+        ted.shiftRegisterCharacter = ted.currentCharacter;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 1;
+        c = ted.shiftRegisterCharacter.char_();
         c0 = ted.tedRegisters[(c >> 6) + uint8_t(0x15)];
         bufp[3] = ((b & uint8_t(0x80)) ? a : c0);
         break;
@@ -535,8 +337,8 @@ namespace Plus4 {
         bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
         bufp[2] = ((b & uint8_t(0x20)) ? a : c0);
         bufp[3] = ((b & uint8_t(0x10)) ? a : c0);
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+        ted.shiftRegisterCharacter.bitmap_() =
+            ted.shiftRegisterCharacter.bitmap_() << 4;
         break;
       }
     }
@@ -550,43 +352,37 @@ namespace Plus4 {
     c_[1] = ted.tedRegisters[0x16];
     c_[2] = ted.tedRegisters[0x17];
     if (nextCharCnt == 0) {
-      uint8_t   b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << 4;
-      uint16_t  b2 = renderTables.mcmBitmapConversionTable[b];
-      ted.bitmapMShiftRegister = b2 >> 8;
-      uint8_t   a = ted.currentAttribute;
-      ted.shiftRegisterAttribute = a;
-      c_[3] = a & uint8_t(0x77);
       ted.shiftRegisterCharacter = ted.currentCharacter;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      ted.shiftRegisterCharacter.bitmap_() = b << 4;
       if (a & uint8_t(0x08)) {
-        int     tmp = b2 & 3;
+        c_[3] = a & uint8_t(0x77);
+        int     tmp = (b >> 6) & 3;
         if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
           bufp[0] = c_[tmp];
         else
           bufp[0] = uint8_t(0x7F);
-        bufp[1] = c_[(b2 >> 2) & 3];
-        bufp[2] = c_[(b2 >> 4) & 3];
-        bufp[3] = c_[(b2 >> 6) & 3];
+        bufp[1] = c_[tmp];
+        bufp[3] = bufp[2] = c_[(b >> 4) & 3];
       }
       else {
         bufp[0] = ((b & uint8_t(0x80)) ?
-                   c_[3] : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                            c_[0] : uint8_t(0x7F)));
-        bufp[1] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
-        bufp[2] = ((b & uint8_t(0x20)) ? c_[3] : c_[0]);
-        bufp[3] = ((b & uint8_t(0x10)) ? c_[3] : c_[0]);
+                   a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
+                        c_[0] : uint8_t(0x7F)));
+        bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
+        bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
+        bufp[3] = ((b & uint8_t(0x10)) ? a : c_[0]);
       }
     }
     else {
-      uint8_t   b = ted.bitmapHShiftRegister;
-      uint16_t  b2 = ted.bitmapMShiftRegister;
-      uint8_t   a = ted.shiftRegisterAttribute;
+      uint8_t a = ted.shiftRegisterCharacter.attr_();
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
       c_[3] = a & uint8_t(0x77);
       switch (nextCharCnt) {
       case 1:
         if (a & uint8_t(0x08)) {
-          int     tmp = b2 & 3;
+          int     tmp = (b >> 6) & 3;
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
@@ -594,114 +390,107 @@ namespace Plus4 {
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
-                     c_[3] : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                              c_[0] : uint8_t(0x7F)));
+                     a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
+                          c_[0] : uint8_t(0x7F)));
         }
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 3;
-        b2 = renderTables.mcmBitmapConversionTable[b];
-        ted.bitmapMShiftRegister = b2 >> 6;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        c_[3] = a & uint8_t(0x77);
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
         if (a & uint8_t(0x08)) {
-          bufp[1] = c_[b2 & 3];
-          bufp[2] = c_[(b2 >> 2) & 3];
-          bufp[3] = c_[(b2 >> 4) & 3];
+          ted.shiftRegisterCharacter.bitmap_() = b << 2;
+          c_[3] = a & uint8_t(0x77);
+          bufp[2] = bufp[1] = c_[(b >> 6) & 3];
+          bufp[3] = c_[(b >> 4) & 3];
         }
         else {
-          bufp[1] = ((b & uint8_t(0x80)) ? c_[3] : c_[0]);
-          bufp[2] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
-          bufp[3] = ((b & uint8_t(0x20)) ? c_[3] : c_[0]);
+          ted.shiftRegisterCharacter.bitmap_() = b << 3;
+          bufp[1] = ((b & uint8_t(0x80)) ? a : c_[0]);
+          bufp[2] = ((b & uint8_t(0x40)) ? a : c_[0]);
+          bufp[3] = ((b & uint8_t(0x20)) ? a : c_[0]);
         }
         break;
       case 2:
         if (a & uint8_t(0x08)) {
-          int     tmp = b2 & 3;
+          int     tmp = (b >> 6) & 3;
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
             bufp[0] = uint8_t(0x7F);
-          bufp[1] = c_[(b2 >> 2) & 3];
+          bufp[1] = c_[tmp];
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
-                     c_[3] : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                              c_[0] : uint8_t(0x7F)));
-          bufp[1] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
+                     a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
+                          c_[0] : uint8_t(0x7F)));
+          bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
         }
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 2;
-        b2 = renderTables.mcmBitmapConversionTable[b];
-        ted.bitmapMShiftRegister = b2 >> 4;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        c_[3] = a & uint8_t(0x77);
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        ted.shiftRegisterCharacter.bitmap_() = b << 2;
         if (a & uint8_t(0x08)) {
-          bufp[2] = c_[b2 & 3];
-          bufp[3] = c_[(b2 >> 2) & 3];
+          c_[3] = a & uint8_t(0x77);
+          bufp[3] = bufp[2] = c_[(b >> 6) & 3];
         }
         else {
-          bufp[2] = ((b & uint8_t(0x80)) ? c_[3] : c_[0]);
-          bufp[3] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
+          bufp[2] = ((b & uint8_t(0x80)) ? a : c_[0]);
+          bufp[3] = ((b & uint8_t(0x40)) ? a : c_[0]);
         }
         break;
       case 3:
         if (a & uint8_t(0x08)) {
-          int     tmp = b2 & 3;
+          int     tmp = (b >> 6) & 3;
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
             bufp[0] = uint8_t(0x7F);
-          bufp[1] = c_[(b2 >> 2) & 3];
-          bufp[2] = c_[(b2 >> 4) & 3];
+          bufp[2] = bufp[1] = c_[(b >> 4) & 3];
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
-                     c_[3] : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                              c_[0] : uint8_t(0x7F)));
-          bufp[1] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
-          bufp[2] = ((b & uint8_t(0x20)) ? c_[3] : c_[0]);
+                     a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
+                          c_[0] : uint8_t(0x7F)));
+          bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
+          bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
         }
-        b = ted.currentBitmap;
-        ted.bitmapHShiftRegister = b << 1;
-        b2 = renderTables.mcmBitmapConversionTable[b];
-        ted.bitmapMShiftRegister = b2 >> 2;
-        a = ted.currentAttribute;
-        ted.shiftRegisterAttribute = a;
-        c_[3] = a & uint8_t(0x77);
         ted.shiftRegisterCharacter = ted.currentCharacter;
-        ted.shiftRegisterCursorFlag = ted.cursorFlag;
-        if (a & uint8_t(0x08))
-          bufp[3] = c_[b2 & 3];
-        else
-          bufp[3] = ((b & uint8_t(0x80)) ? c_[3] : c_[0]);
+        a = ted.shiftRegisterCharacter.attr_();
+        b = ted.shiftRegisterCharacter.bitmap_();
+        if (a & uint8_t(0x08)) {
+          c_[3] = a & uint8_t(0x77);
+          bufp[3] = c_[(b >> 6) & 3];
+        }
+        else {
+          ted.shiftRegisterCharacter.bitmap_() = b << 1;
+          bufp[3] = ((b & uint8_t(0x80)) ? a : c_[0]);
+        }
         break;
       default:
         if (a & uint8_t(0x08)) {
-          int     tmp = b2 & 3;
+          int     tmp = (b >> 6) & 3;
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
             bufp[0] = uint8_t(0x7F);
-          bufp[1] = c_[(b2 >> 2) & 3];
-          bufp[2] = c_[(b2 >> 4) & 3];
-          bufp[3] = c_[(b2 >> 6) & 3];
+          if (!(nextCharCnt & 1)) {
+            bufp[1] = c_[tmp];
+            bufp[3] = bufp[2] = c_[(b >> 4) & 3];
+          }
+          else {
+            bufp[2] = bufp[1] = c_[(b >> 4) & 3];
+            bufp[3] = c_[(b >> 2) & 3];
+          }
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
-                     c_[3] : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                              c_[0] : uint8_t(0x7F)));
-          bufp[1] = ((b & uint8_t(0x40)) ? c_[3] : c_[0]);
-          bufp[2] = ((b & uint8_t(0x20)) ? c_[3] : c_[0]);
-          bufp[3] = ((b & uint8_t(0x10)) ? c_[3] : c_[0]);
+                     a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
+                          c_[0] : uint8_t(0x7F)));
+          bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
+          bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
+          bufp[3] = ((b & uint8_t(0x10)) ? a : c_[0]);
         }
-        ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-        ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+        ted.shiftRegisterCharacter.bitmap_() =
+            ted.shiftRegisterCharacter.bitmap_() << 4;
         break;
       }
     }
@@ -712,34 +501,28 @@ namespace Plus4 {
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     if ((unsigned int) nextCharCnt < 4U) {
-      uint8_t b = ted.currentBitmap;
-      ted.bitmapHShiftRegister = b << (4 - nextCharCnt);
-      ted.bitmapMShiftRegister =
-          renderTables.mcmBitmapConversionTable[b] >> ((4 - nextCharCnt) << 1);
-      ted.shiftRegisterAttribute = ted.currentAttribute;
       ted.shiftRegisterCharacter = ted.currentCharacter;
-      ted.shiftRegisterCursorFlag = ted.cursorFlag;
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      if (!(ted.videoMode & 0x10))
+        ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
+      else
+        ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
     }
     else {
-      ted.bitmapHShiftRegister = ted.bitmapHShiftRegister << 4;
-      ted.bitmapMShiftRegister = ted.bitmapMShiftRegister >> 8;
+      ted.shiftRegisterCharacter.bitmap_() =
+          ted.shiftRegisterCharacter.bitmap_() << 4;
     }
     if (bufp) {
-      bufp[0] = uint8_t(0x00);
-      bufp[1] = uint8_t(0x00);
-      bufp[2] = uint8_t(0x00);
-      bufp[3] = uint8_t(0x00);
+      bufp[3] = bufp[2] = bufp[1] = bufp[0] = uint8_t(0x00);
     }
   }
 
   void TED7360::selectRenderer()
   {
-    uint8_t mode =   (tedRegisters[0x06] & uint8_t(0x60))
-                   | (tedRegisters[0x07] & uint8_t(0x90));
-    switch (mode) {
+    switch (videoMode) {
     case 0x00:
       bitmapMode = false;
-      render_func = &render_char_128;
+      render_func = &render_char_std;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xFC)) << 8;
       characterMask = uint8_t(0x7F);
       break;
@@ -787,7 +570,7 @@ namespace Plus4 {
       break;
     case 0x80:
       bitmapMode = false;
-      render_func = &render_char_256;
+      render_func = &render_char_std;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0xFF);
       break;
@@ -927,11 +710,6 @@ namespace Plus4 {
 
   TED7360::RenderTables::RenderTables()
   {
-    for (unsigned int i = 0x00U; i <= 0xFFU; i++) {
-      unsigned int  tmp = ((i & 0x03U) << 12) | ((i & 0x0CU) << 6)
-                          | (i & 0x30U) | ((i & 0xC0U) >> 6);
-      mcmBitmapConversionTable[i] = uint16_t(tmp | (tmp << 2));
-    }
     float   colorTable_U[32];
     float   colorTable_V[32];
     for (uint8_t i = 0x00; i <= 0x1F; i++) {

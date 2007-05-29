@@ -149,6 +149,7 @@ namespace Plus4 {
     ted.dataBusState = value;
     uint8_t   bitsChanged = ted.tedRegisters[0x06] ^ value;
     ted.tedRegisters[0x06] = value;
+    ted.videoMode = (ted.videoMode & uint8_t(0x90)) | (value & uint8_t(0x60));
     bool      dmaCheckFlag = bool(bitsChanged & uint8_t(0x07));
     if (bitsChanged & uint8_t(0x18)) {
       // display enabled or number of rows has changed
@@ -239,7 +240,8 @@ namespace Plus4 {
     ted.dataBusState = value;
     uint8_t   bitsChanged = value ^ ted.tedRegisters[0x07];
     ted.tedRegisters[0x07] = value;
-    ted.ted_disabled = !!(value & uint8_t(0x20));
+    ted.ted_disabled = bool(value & uint8_t(0x20));
+    ted.videoMode = (ted.videoMode & uint8_t(0x60)) | (value & uint8_t(0x90));
     if (bitsChanged & uint8_t(0x60)) {
       if (bitsChanged & uint8_t(0x20)) {
         if (ted.ted_disabled) {
@@ -251,7 +253,7 @@ namespace Plus4 {
         }
       }
       if (bitsChanged & uint8_t(0x40))
-        ted.ntscModeChangeCallback(!!(value & uint8_t(0x40)));
+        ted.ntscModeChangeCallback(bool(value & uint8_t(0x40)));
     }
     ted.selectRenderer();
   }

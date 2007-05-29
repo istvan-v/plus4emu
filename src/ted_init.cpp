@@ -25,6 +25,7 @@ namespace Plus4 {
 
   TED7360::TED7360() : M7501()
   {
+    tedRegisters[0x07] = uint8_t(0x00);         // default to PAL mode
     // create initial memory map
     ramSegments = 0;
     for (int i = 0; i < 256; i++)
@@ -163,7 +164,6 @@ namespace Plus4 {
     tape_read_state = false;
     tape_button_state = false;
     // set internal TED registers
-    tedRegisters[0x07] = uint8_t(0x00);     // default to PAL mode
     this->initRegisters();
     cpu_clock_multiplier = 1;
     for (int i = 0; i < 16; i++)                // keyboard matrix
@@ -245,20 +245,8 @@ namespace Plus4 {
       line_buf[i] = uint8_t(0x00);
     line_buf_pos = 1000;
     videoShiftRegisterEnabled = false;
-    bitmapHShiftRegister = 0x00;
-    bitmapMShiftRegister = 0x0000;
     horiz_scroll = 0;
-    shiftRegisterAttribute = 0x00;
-    shiftRegisterCharacter = 0x00;
-    shiftRegisterCursorFlag = false;
-    currentAttribute = 0x00;
-    currentCharacter = 0x00;
-    currentBitmap = 0x00;
-    cursorFlag = false;
-    nextAttribute = 0x00;
-    nextCharacter = 0x00;
-    nextBitmap = 0x00;
-    nextCursorFlag = false;
+    videoMode = 0x00;
     bitmapMode = false;
     characterMask = uint8_t(0xFF);
     dmaEnabled = false;

@@ -156,7 +156,7 @@ namespace Plus4 {
   void TED7360::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000000);        // version number
+    buf.writeUInt32(0x01000001);        // version number
     uint8_t   romBitmap = 0;
     for (uint8_t i = 0; i < 8; i++) {
       // find non-empty ROM segments
@@ -222,20 +222,19 @@ namespace Plus4 {
     buf.writeByte(sound_channel_2_noise_state);
     buf.writeByte(sound_channel_2_noise_output);
     buf.writeBoolean(videoShiftRegisterEnabled);
-    buf.writeByte(bitmapHShiftRegister);
-    buf.writeUInt32(bitmapMShiftRegister);
+    buf.writeByte(shiftRegisterCharacter.bitmap_());
     buf.writeByte(horiz_scroll);
-    buf.writeByte(shiftRegisterAttribute);
-    buf.writeByte(shiftRegisterCharacter);
-    buf.writeBoolean(shiftRegisterCursorFlag);
-    buf.writeByte(currentAttribute);
-    buf.writeByte(currentCharacter);
-    buf.writeByte(currentBitmap);
-    buf.writeBoolean(cursorFlag);
-    buf.writeByte(nextAttribute);
-    buf.writeByte(nextCharacter);
-    buf.writeByte(nextBitmap);
-    buf.writeBoolean(nextCursorFlag);
+    buf.writeByte(shiftRegisterCharacter.attr_());
+    buf.writeByte(shiftRegisterCharacter.char_());
+    buf.writeBoolean(shiftRegisterCharacter.cursor_() != 0x00);
+    buf.writeByte(currentCharacter.attr_());
+    buf.writeByte(currentCharacter.char_());
+    buf.writeByte(currentCharacter.bitmap_());
+    buf.writeBoolean(currentCharacter.cursor_() != 0x00);
+    buf.writeByte(nextCharacter.attr_());
+    buf.writeByte(nextCharacter.char_());
+    buf.writeByte(nextCharacter.bitmap_());
+    buf.writeBoolean(nextCharacter.cursor_() != 0x00);
     buf.writeBoolean(dmaEnabled);
     buf.writeByte(prvSingleClockModeFlags);
     buf.writeBoolean(!!(singleClockModeFlags & uint8_t(0x01)));
@@ -268,7 +267,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000) {
+    if (version != 0x01000000 && version != 0x01000001) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible Plus/4 snapshot format");
     }
@@ -356,20 +355,21 @@ namespace Plus4 {
       sound_channel_2_noise_output =
           uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       videoShiftRegisterEnabled = buf.readBoolean();
-      bitmapHShiftRegister = buf.readByte();
-      bitmapMShiftRegister = uint16_t(buf.readUInt32() & 0xFFFF);
+      shiftRegisterCharacter.bitmap_() = buf.readByte();
+      if (version == 0x01000000)
+        (void) buf.readUInt32();        // was bitmapMShiftRegister
       horiz_scroll = buf.readByte() & 7;
-      shiftRegisterAttribute = buf.readByte();
-      shiftRegisterCharacter = buf.readByte();
-      shiftRegisterCursorFlag = buf.readBoolean();
-      currentAttribute = buf.readByte();
-      currentCharacter = buf.readByte();
-      currentBitmap = buf.readByte();
-      cursorFlag = buf.readBoolean();
-      nextAttribute = buf.readByte();
-      nextCharacter = buf.readByte();
-      nextBitmap = buf.readByte();
-      nextCursorFlag = buf.readBoolean();
+      shiftRegisterCharacter.attr_() = buf.readByte();
+      shiftRegisterCharacter.char_() = buf.readByte();
+      shiftRegisterCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
+      currentCharacter.attr_() = buf.readByte();
+      currentCharacter.char_() = buf.readByte();
+      currentCharacter.bitmap_() = buf.readByte();
+      currentCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
+      nextCharacter.attr_() = buf.readByte();
+      nextCharacter.char_() = buf.readByte();
+      nextCharacter.bitmap_() = buf.readByte();
+      nextCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
       dmaEnabled = buf.readBoolean();
       prvSingleClockModeFlags = buf.readByte() & 0x03;
       singleClockModeFlags &= uint8_t(0x02);
