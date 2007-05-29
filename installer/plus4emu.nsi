@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.1.0.exe"
+  OutFile "plus4emu-1.1.1.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -126,6 +126,7 @@ Section "Source code" SecSrc
   File "..\NEWS"
   File "..\README"
   File "..\SConstruct"
+  File "..\*.patch"
 
   SetOutPath "$INSTDIR\src\config"
 
@@ -147,6 +148,12 @@ Section "Source code" SecSrc
   File "..\installer\*.nsi"
   File "..\installer\*.fl"
   File "..\installer\makecfg.cpp"
+
+  SetOutPath "$INSTDIR\src\msvc"
+
+  SetOutPath "$INSTDIR\src\msvc\include"
+
+  File "..\msvc\include\*.h"
 
   SetOutPath "$INSTDIR\src\resid"
 
