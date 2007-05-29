@@ -16,6 +16,8 @@ fltkConfig = 'fltk-config'
 plus4emuLibEnvironment = Environment()
 plus4emuLibEnvironment.Append(CCFLAGS = compilerFlags)
 plus4emuLibEnvironment.Append(CPPPATH = ['.', './src', '/usr/local/include'])
+if sys.platform[:6] == 'darwin':
+    plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
 plus4emuLibEnvironment.Append(LINKFLAGS = ['-L.'])
 if win32CrossCompile:
     plus4emuLibEnvironment['AR'] = 'wine D:/MinGW/bin/ar.exe'
@@ -185,6 +187,10 @@ plus4emu = plus4emuEnvironment.Program('plus4emu',
     + ['gui/main.cpp'])
 Depends(plus4emu, plus4emuLib)
 Depends(plus4emu, residLib)
+
+if sys.platform[:6] == 'darwin':
+    Command('plus4emu.app/Contents/MacOS/plus4emu', 'plus4emu',
+            'mkdir -p plus4emu.app/Contents/MacOS ; cp -af $SOURCES $TARGET')
 
 # -----------------------------------------------------------------------------
 
