@@ -130,6 +130,7 @@ namespace Plus4Emu {
     static void decodeLine(unsigned char *outBuf,
                            const unsigned char *inBuf, size_t nBytes);
     void checkScreenshotCallback();
+    void frameDone();
     // ----------------
     Message       *messageQueue;
     Message       *lastMessage;
@@ -140,11 +141,12 @@ namespace Plus4Emu {
     int           curLine;
     int           lineCnt;      // nr. of lines received so far in this frame
     int           prvLineCnt;
-    float         avgLineCnt;
-    int           lineReload;
+    int           vsyncCnt;
     int           framesPending;
     bool          skippingFrame;
     bool          vsyncState;
+    bool          ntscMode;
+    bool          oddFrame;
     volatile bool videoResampleEnabled;
     volatile bool exitFlag;
     DisplayParameters   displayParameters;

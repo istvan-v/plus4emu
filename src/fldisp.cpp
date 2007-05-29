@@ -143,11 +143,12 @@ namespace Plus4Emu {
       curLine(0),
       lineCnt(0),
       prvLineCnt(312),
-      avgLineCnt(312.0f),
-      lineReload(-40),
+      vsyncCnt(0),
       framesPending(0),
       skippingFrame(false),
       vsyncState(false),
+      ntscMode(false),
+      oddFrame(false),
       videoResampleEnabled(false),
       exitFlag(false),
       displayParameters(),
@@ -212,11 +213,6 @@ namespace Plus4Emu {
 
   void FLTKDisplay_::setDisplayParameters(const DisplayParameters& dp)
   {
-    if (dp.displayQuality != savedDisplayParameters.displayQuality ||
-        dp.bufferingMode != savedDisplayParameters.bufferingMode) {
-      vsyncStateChange(true, 8);
-      vsyncStateChange(false, 28);
-    }
     Message_SetParameters *m = allocateMessage<Message_SetParameters>();
     m->dp = dp;
     savedDisplayParameters = dp;
@@ -240,53 +236,38 @@ namespace Plus4Emu {
       }
     }
     curLine += 2;
-    if (++lineCnt >= 500) {
-      lineCnt = 312;
-      vsyncState = false;
-      vsyncStateChange(true, 8);
-      vsyncStateChange(false, 28);
+    lineCnt++;
+    if (!ntscMode) {
+      if (vsyncCnt >= (!vsyncState ? 322 : 276))
+        vsyncCnt = -16;
     }
+    else {
+      if (vsyncCnt >= (!vsyncState ? 272 : 252))
+        vsyncCnt = 0;
+    }
+    if (vsyncCnt == 0) {
+      curLine = (!ntscMode ? -6 : 12) + (!oddFrame ? 0 : 1);
+      frameDone();
+    }
+    vsyncCnt++;
   }
 
   void FLTKDisplay_::vsyncStateChange(bool newState, unsigned int currentSlot_)
   {
     (void) currentSlot_;
-    if (newState == vsyncState || (newState && lineCnt < 100))
+    if (newState == vsyncState)
       return;
     vsyncState = newState;
     if (newState) {
-      avgLineCnt = (avgLineCnt * 0.95f) + (float(prvLineCnt) * 0.05f);
-      int   tmp = int(avgLineCnt + 0.5f);
-      tmp = (savedDisplayParameters.displayQuality == 0 ? 272 : 274) - tmp;
-      if (lineCnt == (prvLineCnt + 1))
-        lineReload = lineReload | 1;
-      else
-        lineReload = lineReload & (~(int(1)));
-      if (tmp != lineReload) {
-        if (tmp > lineReload)
-          tmp = lineReload + ((((tmp - lineReload) >> 1) + 1) & (~(int(1))));
-        else
-          tmp = lineReload - ((((lineReload - tmp) >> 1) + 1) & (~(int(1))));
-        lineReload = tmp;
+      if (vsyncCnt >= (!ntscMode ? 276 : 252))
+        vsyncCnt = (!ntscMode ? -16 : 0);
+      if (!(lineCnt == 0 || lineCnt == 1)) {
+        oddFrame = (lineCnt == (prvLineCnt + 1));
+        ntscMode = (lineCnt <= 280 && prvLineCnt <= 280);
+        prvLineCnt = lineCnt;
+        lineCnt = 0;
       }
-      curLine = lineReload;
-      prvLineCnt = lineCnt;
-      lineCnt = 0;
-      return;
     }
-    messageQueueMutex.lock();
-    bool    skippedFrame = skippingFrame;
-    if (!skippedFrame)
-      framesPending++;
-    skippingFrame = (framesPending > 3);    // should this be configurable ?
-    messageQueueMutex.unlock();
-    if (skippedFrame) {
-      Fl::awake();
-      threadLock.wait(1);
-      return;
-    }
-    Message *m = allocateMessage<Message_FrameDone>();
-    queueMessage(m);
   }
 
   void FLTKDisplay_::setScreenshotCallback(void (*func)(void *,
@@ -365,6 +346,23 @@ namespace Plus4Emu {
       delete[] imageBuf_;
   }
 
+  void FLTKDisplay_::frameDone()
+  {
+    messageQueueMutex.lock();
+    bool    skippedFrame = skippingFrame;
+    if (!skippedFrame)
+      framesPending++;
+    skippingFrame = (framesPending > 3);    // should this be configurable ?
+    messageQueueMutex.unlock();
+    if (skippedFrame) {
+      Fl::awake();
+      threadLock.wait(1);
+      return;
+    }
+    Message *m = allocateMessage<Message_FrameDone>();
+    queueMessage(m);
+  }
+
   // --------------------------------------------------------------------------
 
   FLTKDisplay::Colormap::Colormap()
@@ -441,8 +439,8 @@ namespace Plus4Emu {
     savedDisplayParameters.displayQuality = 0;
     savedDisplayParameters.bufferingMode = 0;
     try {
-      linesChanged = new uint8_t[576];
-      for (size_t n = 0; n < 576; n++)
+      linesChanged = new uint8_t[578];
+      for (size_t n = 0; n < 578; n++)
         linesChanged[n] = 0x00;
     }
     catch (...) {
@@ -513,7 +511,7 @@ namespace Plus4Emu {
                                       sizeof(unsigned char));
     int   lineNumbers_[5];
     if (pixelBuf_) {
-      int   curLine_ = 0;
+      int   curLine_ = 2;
       int   fracY_ = 0;
       bool  skippingLines_ = true;
       lineNumbers_[3] = -2;
@@ -713,14 +711,14 @@ namespace Plus4Emu {
           fracY_ += 576;
           while (fracY_ >= displayHeight_) {
             fracY_ -= displayHeight_;
-            curLine_ = (curLine_ < 575 ? (curLine_ + 1) : curLine_);
+            curLine_ = (curLine_ < 577 ? (curLine_ + 1) : curLine_);
           }
         }
         else {
           fracY_ += 288;
           while (fracY_ >= displayHeight_) {
             fracY_ -= displayHeight_;
-            curLine_ = (curLine_ < 573 ? (curLine_ + 2) : curLine_);
+            curLine_ = (curLine_ < 575 ? (curLine_ + 2) : curLine_);
           }
         }
       }
@@ -730,7 +728,7 @@ namespace Plus4Emu {
     // make sure that all lines are updated at a slow rate
     if (!screenshotCallbackCnt) {
       if (forceUpdateLineMask) {
-        for (size_t yc = 0; yc < 576; yc++) {
+        for (size_t yc = 0; yc < 578; yc++) {
           if (linesChanged[yc] & 0x01) {
             linesChanged[yc] = 0x00;
             continue;
@@ -749,11 +747,11 @@ namespace Plus4Emu {
         forceUpdateLineMask = 0;
       }
       else {
-        std::memset(linesChanged, 0x00, 576);
+        std::memset(linesChanged, 0x00, 578);
       }
     }
     else {
-      std::memset(linesChanged, 0x00, 576);
+      std::memset(linesChanged, 0x00, 578);
       checkScreenshotCallback();
     }
 
@@ -792,7 +790,7 @@ namespace Plus4Emu {
       if (typeid(*m) == typeid(Message_LineData)) {
         Message_LineData  *msg;
         msg = static_cast<Message_LineData *>(m);
-        if (msg->lineNum >= 0 && msg->lineNum < 576) {
+        if (msg->lineNum >= 0 && msg->lineNum < 578) {
           // check if this line has changed
           if (lineBuffers[msg->lineNum] != (Message_LineData *) 0) {
             if (*(lineBuffers[msg->lineNum]) == *msg) {
@@ -830,7 +828,7 @@ namespace Plus4Emu {
         DisplayParameters tmp_dp(displayParameters);
         tmp_dp.blendScale1 = 0.5;
         colormap.setParams(tmp_dp);
-        for (size_t n = 0; n < 576; n++)
+        for (size_t n = 0; n < 578; n++)
           linesChanged[n] |= uint8_t(0x80);
       }
       deleteMessage(m);
