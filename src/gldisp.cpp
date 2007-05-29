@@ -221,36 +221,47 @@ namespace Plus4Emu {
     }
   }
 
+  void OpenGLDisplay::decodeLine_quality0(uint16_t *outBuf,
+                                          Message_LineData **lineBuffers_,
+                                          size_t lineNum)
+  {
+    const unsigned char *bufp = (unsigned char *) 0;
+    size_t  nBytes = 0;
+    if (lineNum < 578) {
+      if (lineBuffers_[lineNum + 0] != (Message_LineData *) 0)
+        lineBuffers_[lineNum + 0]->getLineData(bufp, nBytes);
+      else if (lineBuffers_[lineNum + 1] != (Message_LineData *) 0)
+        lineBuffers_[lineNum + 1]->getLineData(bufp, nBytes);
+    }
+    if (!bufp)
+      nBytes = 0;
+    size_t  xc = 0;
+    if (nBytes <= 384) {
+      for ( ; xc < nBytes; xc++)
+        outBuf[xc] = colormap(bufp[xc]);
+    }
+    else {
+      size_t  n = (nBytes < 768 ? nBytes : 768);
+      for ( ; xc < n; xc += 2)
+        outBuf[xc >> 1] = colormap(bufp[xc], bufp[xc + 1]);
+      xc = xc >> 1;
+    }
+    for ( ; xc < 384; xc++)
+      outBuf[xc] = colormap(0);
+  }
+
   void OpenGLDisplay::drawFrame_quality0(Message_LineData **lineBuffers_,
                                          double x0, double y0,
                                          double x1, double y1)
   {
-    unsigned char lineBuf1[768];
-    unsigned char *curLine_ = &(lineBuf1[0]);
     // half horizontal resolution, no interlace (384x288)
     // no texture filtering or effects
     for (size_t yc = 0; yc < 288; yc += 8) {
       for (size_t offs = 0; offs < 8; offs++) {
-        linesChanged[yc + offs] = false;
-        // decode video data
-        const unsigned char *bufp = (unsigned char *) 0;
-        size_t  nBytes = 0;
-        size_t  lineNum = (yc + offs) << 1;
-        if (lineBuffers_[lineNum + 0] != (Message_LineData *) 0) {
-          lineBuffers_[lineNum + 0]->getLineData(bufp, nBytes);
-          decodeLine(curLine_, bufp, nBytes);
-        }
-        else if (lineBuffers_[lineNum + 1] != (Message_LineData *) 0) {
-          lineBuffers_[lineNum + 1]->getLineData(bufp, nBytes);
-          decodeLine(curLine_, bufp, nBytes);
-        }
-        else
-          std::memset(curLine_, 0, 768);
-        // build 16-bit texture:
-        // half horizontal resolution, no interlace (384x8)
-        uint16_t  *txtp = &(textureBuffer[offs * 384]);
-        for (size_t xc = 0; xc < 768; xc += 2)
-          txtp[xc >> 1] = colormap(curLine_[xc], curLine_[xc + 1]);
+        linesChanged[yc + offs + 1] = false;
+        // decode video data, and build 16-bit texture
+        decodeLine_quality0(&(textureBuffer[offs * 384]),
+                            lineBuffers_, (yc + offs + 1) << 1);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
@@ -278,33 +289,12 @@ namespace Plus4Emu {
                                          double x0, double y0,
                                          double x1, double y1)
   {
-    unsigned char lineBuf1[768];
-    unsigned char *curLine_ = &(lineBuf1[0]);
     // half horizontal resolution, no interlace (384x288)
     for (size_t yc = 0; yc < 588; yc += 28) {
       for (size_t offs = 0; offs < 32; offs += 2) {
-        // decode video data
-        const unsigned char *bufp = (unsigned char *) 0;
-        size_t  nBytes = 0;
-        bool    haveLineData = false;
-        if ((yc + offs) < 578) {
-          if (lineBuffers_[yc + offs] != (Message_LineData *) 0) {
-            lineBuffers_[yc + offs]->getLineData(bufp, nBytes);
-            haveLineData = true;
-          }
-          else if (lineBuffers_[yc + offs + 1] != (Message_LineData *) 0) {
-            lineBuffers_[yc + offs + 1]->getLineData(bufp, nBytes);
-            haveLineData = true;
-          }
-        }
-        if (haveLineData)
-          decodeLine(curLine_, bufp, nBytes);
-        else
-          std::memset(curLine_, 0, 768);
-        // build 16-bit texture
-        uint16_t  *txtp = &(textureBuffer[(offs >> 1) * 384]);
-        for (size_t xc = 0; xc < 768; xc += 2)
-          txtp[xc >> 1] = colormap(curLine_[xc], curLine_[xc + 1]);
+        // decode video data, and build 16-bit texture
+        decodeLine_quality0(&(textureBuffer[(offs >> 1) * 384]),
+                            lineBuffers_, yc + offs);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 16,
@@ -551,39 +541,21 @@ namespace Plus4Emu {
       // half horizontal resolution, no interlace (384x288)
       // no texture filtering or effects
       glDisable(GL_BLEND);
-      unsigned char lineBuf1[768];
-      unsigned char *curLine_ = &(lineBuf1[0]);
       for (size_t yc = 0; yc < 288; yc += 8) {
         size_t  offs;
         // quality=0 with single buffered display is special case: only those
         // lines are updated that have changed since the last frame
         for (offs = 0; offs < 8; offs++) {
-          if (linesChanged[yc + offs])
+          if (linesChanged[yc + offs + 1])
             break;
         }
         if (offs == 8)
           continue;
         for (offs = 0; offs < 8; offs++) {
-          linesChanged[yc + offs] = false;
-          // decode video data
-          const unsigned char *bufp = (unsigned char *) 0;
-          size_t  nBytes = 0;
-          size_t  lineNum = (yc + offs) << 1;
-          if (lineBuffers[lineNum + 0] != (Message_LineData *) 0) {
-            lineBuffers[lineNum + 0]->getLineData(bufp, nBytes);
-            decodeLine(curLine_, bufp, nBytes);
-          }
-          else if (lineBuffers[lineNum + 1] != (Message_LineData *) 0) {
-            lineBuffers[lineNum + 1]->getLineData(bufp, nBytes);
-            decodeLine(curLine_, bufp, nBytes);
-          }
-          else
-            std::memset(curLine_, 0, 768);
-          // build 16-bit texture:
-          // half horizontal resolution, no interlace (384x8)
-          uint16_t  *txtp = &(textureBuffer[offs * 384]);
-          for (size_t xc = 0; xc < 768; xc += 2)
-            txtp[xc >> 1] = colormap(curLine_[xc], curLine_[xc + 1]);
+          linesChanged[yc + offs + 1] = false;
+          // decode video data, and build 16-bit texture
+          decodeLine_quality0(&(textureBuffer[offs * 384]),
+                              lineBuffers, (yc + offs + 1) << 1);
         }
         // load texture
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,

@@ -51,6 +51,8 @@ namespace Plus4Emu {
     };
     // ----------------
     void displayFrame();
+    void decodeLine_quality0(uint16_t *outBuf,
+                             Message_LineData **lineBuffers_, size_t lineNum);
     void drawFrame_quality0(Message_LineData **lineBuffers_,
                             double x0, double y0, double x1, double y1);
     void drawFrame_quality1(Message_LineData **lineBuffers_,
