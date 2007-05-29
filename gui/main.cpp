@@ -151,6 +151,10 @@ int main(int argc, char **argv)
       }
       else {
         const char  *s = argv[i];
+#ifdef __APPLE__
+        if (std::strncmp(s, "-psn_", 5) == 0)
+          continue;
+#endif
         if (*s == '-')
           s++;
         if (*s == '-')
