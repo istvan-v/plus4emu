@@ -1,9 +1,9 @@
-plus4emu 1.1.0
+plus4emu 1.1.1
 ==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
-(32 bit Windows, and 32 and 64 bit Linux have been tested).
+(32 bit Windows, 32 and 64 bit Linux, and MacOS X have been tested).
 It implements accurate, high quality hardware emulation, however, the
 system requirements are higher than that of most other emulators.
 
@@ -97,10 +97,13 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
   * SCons (http://www.scons.org/)
   * Python interpreter for running SCons
   * FLTK 1.1.x (http://www.fltk.org/software.php?VERSION=1.1.7)
-    NOTE: this library should be compiled with the --enable-threads
-    'configure' option - many Linux distributions include binaries of
-    the FLTK library built without --enable-threads, so you may need to
-    compile it from sources
+    NOTES:
+      * this library should be compiled with the --enable-threads
+        'configure' option - many Linux distributions include binaries
+        of the FLTK library built without --enable-threads, so you may
+        need to compile it from sources
+      * on MacOS X, FLTK 1.1.7 needs to be patched with the included
+        fltk-1.1.7-MacOSX.patch file
   * PortAudio (http://www.portaudio.com/download.html), version 18 and
     19 are supported, but v19 is recommended
   * libsndfile (http://www.mega-nerd.com/libsndfile/#Download)
@@ -431,5 +434,5 @@ Credits
 -------
 
 Thanks to Hársfalvi Levente for testing the emulator and providing some
-hardware information.
+hardware information, and MagerValp for testing on MacOS X.
 

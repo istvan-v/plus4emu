@@ -1,3 +1,12 @@
+Changes in version 1.1.1
+------------------------
+
+  * more accurate emulation of television vertical synchronization
+  * MacOS X build fixes; also added patch for FLTK 1.1.7 which fixes the
+    check callback on OS X
+  * improvements and fixes in TED video shift register emulation
+  * minor optimizations
+
 Changes in version 1.1.0
 ------------------------
 
