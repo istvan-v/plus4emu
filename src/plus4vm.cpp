@@ -1186,7 +1186,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010100); // version 1.1.0
+    demoBuffer.writeUInt32(0x00010101); // version 1.1.1
     demoFile = &f;
     isRecordingDemo = true;
     demoTimeCnt = 0U;
@@ -1279,7 +1279,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010100) {
+    if (version != 0x00010101) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }

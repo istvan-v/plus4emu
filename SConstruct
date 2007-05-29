@@ -6,7 +6,7 @@ win32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 
 compilerFlags = Split('''
-    -Wall -W -ansi -pedantic -Wno-long-long -O2
+    -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
 ''')
 
 fltkConfig = 'fltk-config'
