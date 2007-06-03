@@ -117,13 +117,19 @@ Once these are installed, you can edit the file 'SConstruct' in the top
 level source directory for setting compiler flags etc., and run the
 command 'scons' for building the emulator. The resulting executable
 files (plus4emu and tapconv) can be copied to any directory that is in
-the PATH, but when installing the first time, you also need to set up
-configuration files and ROM images:
+the PATH; on MacOS X, an .app package is created in 'plus4emu.app'.
+When installing the first time, you also need to set up configuration
+files and ROM images:
 
-  * run './makecfg ~/.plus4emu' to create the initial configuration
-    files
   * download http://www.sharemation.com/IstvanV/roms/plus4emu_roms.zip,
-    and extract it to ~/.plus4emu/roms
+    and extract it to ~/.plus4emu/roms (or, in the case of MacOS X,
+    ~/Library/Application Support/plus4emu/roms)
+  * after installing the ROM images, run 'plus4emu', and click OK to the
+    windows that pop up asking for the base directory of configuration
+    and data files, and if configuration files should be installed
+
+It is possible to reinstall configuration files later by running the
+'makecfg' utility.
 
 Windows
 -------

@@ -1,10 +1,16 @@
 Changes in version 1.1.1
 ------------------------
 
+  * added 1541 timing hack that fixes some programs that previously did
+    not load, at the expense of somewhat higher CPU usage; it can be
+    enabled in the floppy configuration dialog
   * more accurate emulation of television vertical synchronization
   * MacOS X build fixes; also added patch for FLTK 1.1.7 which fixes the
     check callback on OS X
   * improvements and fixes in TED video shift register emulation
+  * the ROM package now includes the 1541 DOS, rather than the 1541-II,
+    as the latter breaks some demos; the 1541-II can still be used by
+    loading dos15412.rom to ROM segment 10 in the machine configuration
   * minor optimizations
 
 Changes in version 1.1.0
