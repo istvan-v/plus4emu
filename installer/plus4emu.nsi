@@ -155,6 +155,19 @@ Section "Source code" SecSrc
 
   File "..\msvc\include\*.h"
 
+  SetOutPath "$INSTDIR\src\plus4emu.app"
+
+  SetOutPath "$INSTDIR\src\plus4emu.app\Contents"
+
+  File "..\plus4emu.app\Contents\Info.plist"
+  File "..\plus4emu.app\Contents\PkgInfo"
+
+  SetOutPath "$INSTDIR\src\plus4emu.app\Contents\MacOS"
+
+  SetOutPath "$INSTDIR\src\plus4emu.app\Contents\Resources"
+
+  File "..\plus4emu.app\Contents\Resources\plus4emu.icns"
+
   SetOutPath "$INSTDIR\src\resid"
 
   File "..\resid\AUTHORS"
@@ -210,6 +223,7 @@ Section "Download ROM images" SecDLRoms
   Push "p4_basic.rom"
   Push "dos1581.rom"
   Push "dos1551.rom"
+  Push "dos15412.rom"
   Push "dos1541.rom"
   Push "3plus1lo.rom"
   Push "3plus1hi.rom"
@@ -292,6 +306,7 @@ Section "Uninstall"
   Delete "$INSTDIR\roms\3plus1hi.rom"
   Delete "$INSTDIR\roms\3plus1lo.rom"
   Delete "$INSTDIR\roms\dos1541.rom"
+  Delete "$INSTDIR\roms\dos15412.rom"
   Delete "$INSTDIR\roms\dos1551.rom"
   Delete "$INSTDIR\roms\dos1581.rom"
   Delete "$INSTDIR\roms\p4_basic.rom"
