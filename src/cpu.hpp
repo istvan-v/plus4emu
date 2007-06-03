@@ -195,6 +195,14 @@ namespace Plus4 {
     {
       memoryCallbackUserData = userData;
     }
+    inline MemoryReadFunc getMemoryReadCallback(uint16_t addr_) const
+    {
+      return memoryReadCallbacks[addr_];
+    }
+    inline MemoryWriteFunc getMemoryWriteCallback(uint16_t addr_) const
+    {
+      return memoryWriteCallbacks[addr_];
+    }
     void run(int nCycles = 1);
     inline void interruptRequest()
     {
