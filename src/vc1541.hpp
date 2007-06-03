@@ -56,9 +56,9 @@ namespace Plus4 {
     uint8_t     trackBuffer_GCR[8192];
     uint8_t     trackBuffer_D64[5376];  // for 21 256-byte sectors
     uint8_t     deviceNumber;
-    uint8_t     diskID;
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
+    uint8_t     via1PortBOutput;        // for serial bus delay
     bool        interruptRequestFlag;
     bool        writeProtectFlag;
     bool        trackDirtyFlag;
@@ -79,6 +79,7 @@ namespace Plus4 {
     int         nTracks;                // number of tracks (35, 40, or zero
                                         // if there is no disk image file)
     int         diskChangeCnt;          // decrements from 15625 to 0
+    uint8_t     diskID;
     uint8_t     idCharacter1;
     uint8_t     idCharacter2;
     std::FILE   *imageFile;

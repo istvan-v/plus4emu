@@ -610,9 +610,9 @@ namespace Plus4 {
       via2(*this),
       memory_rom((uint8_t *) 0),
       deviceNumber(uint8_t(driveNum_)),
-      diskID(0x00),
       dataBusState(0x00),
       via1PortBInput(0xFF),
+      via1PortBOutput(0x00),
       interruptRequestFlag(false),
       writeProtectFlag(false),
       trackDirtyFlag(false),
@@ -630,6 +630,7 @@ namespace Plus4 {
       spindleMotorSpeed(0),
       nTracks(0),
       diskChangeCnt(15625),
+      diskID(0x00),
       idCharacter1(0x41),
       idCharacter2(0x41),
       imageFile((std::FILE *) 0),
@@ -734,15 +735,16 @@ namespace Plus4 {
   void VC1541::run(SerialBus& serialBus_, size_t t)
   {
     {
-      uint8_t atnAck1 = via1.getPortB() & 0x10;
+      uint8_t atnAck1 = via1PortBOutput & 0x10;
       uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
       serialBus_.setDATA(deviceNumber,
-                         !((via1.getPortB() & 0x02) | (atnAck1 ^ atnAck2)));
-      serialBus_.setCLK(deviceNumber, !(via1.getPortB() & 0x08));
+                         !((via1PortBOutput & 0x02) | (atnAck1 ^ atnAck2)));
+      serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
       via1.setCA1(!(serialBus_.getATN()));
       via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
                             | (serialBus_.getCLK() & 0x04)
                             | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
+      via1PortBOutput = via1.getPortB();
     }
     while (t--) {
       via1.run(1);
@@ -813,6 +815,7 @@ namespace Plus4 {
     cpu.reset();
     via1.setPortA(0xFE);
     via1PortBInput = uint8_t(0x9F | ((deviceNumber & 0x03) << 5));
+    via1PortBOutput = 0x00;
     via1.setPortB(via1PortBInput);
   }
 
