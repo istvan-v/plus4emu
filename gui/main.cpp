@@ -18,6 +18,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "gui.hpp"
+#include "system.hpp"
 
 #include <iostream>
 #include <cstdio>
@@ -115,12 +116,35 @@ int main(int argc, char **argv)
         *vm, *(dynamic_cast<Plus4Emu::VideoDisplay *>(w)), *audioOutput);
     config->setErrorCallback(&cfgErrorFunc, (void *) 0);
     // load base configuration (if available)
-    try {
-      Plus4Emu::File  f(cfgFileName, true);
-      config->registerChunkType(f);
-      f.processAllChunks();
-    }
-    catch (...) {
+    {
+      Plus4Emu::File  *f = (Plus4Emu::File *) 0;
+      try {
+        try {
+          f = new Plus4Emu::File(cfgFileName, true);
+        }
+        catch (Plus4Emu::Exception& e) {
+          std::string cmdLine = argv[0];
+          size_t  i = cmdLine.length();
+          while (i > 0) {
+            i--;
+            if (cmdLine[i] == '/' || cmdLine[i] == '\\') {
+              i++;
+              break;
+            }
+          }
+          cmdLine.resize(i);
+          cmdLine += "makecfg";
+          std::system(cmdLine.c_str());
+          f = new Plus4Emu::File(cfgFileName, true);
+        }
+        config->registerChunkType(*f);
+        f->processAllChunks();
+        delete f;
+      }
+      catch (...) {
+        if (f)
+          delete f;
+      }
     }
     configLoaded = true;
     // check command line for any additional configuration
