@@ -33,8 +33,8 @@ namespace Plus4 {
     uint8_t   atnState;
    public:
     SerialBus()
-      : clkStateMask(0xFFFF),
-        dataStateMask(0xFFFF),
+      : clkStateMask(0x0000),
+        dataStateMask(0x0000),
         clkState(0xFF),
         dataState(0xFF),
         atnState(0xFF)
@@ -60,11 +60,11 @@ namespace Plus4 {
     {
       uint16_t  mask_ = uint16_t(1) << n;
       if (newState) {
-        clkStateMask |= mask_;
-        clkState = uint8_t(clkStateMask == 0xFFFF ? 0xFF : 0x00);
+        clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
+        clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
       }
       else {
-        clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
+        clkStateMask |= mask_;
         clkState = uint8_t(0x00);
       }
     }
@@ -73,11 +73,11 @@ namespace Plus4 {
     {
       uint16_t  mask_ = uint16_t(1) << n;
       if (newState) {
-        dataStateMask |= mask_;
-        dataState = uint8_t(dataStateMask == 0xFFFF ? 0xFF : 0x00);
+        dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
+        dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
       }
       else {
-        dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
+        dataStateMask |= mask_;
         dataState = uint8_t(0x00);
       }
     }
@@ -89,20 +89,20 @@ namespace Plus4 {
     // remove device 'n' (0 to 15) from the bus, setting its outputs to high
     inline void removeDevice(int n)
     {
-      uint16_t  mask_ = uint16_t(1) << n;
-      clkStateMask |= mask_;
-      dataStateMask |= mask_;
-      clkState = uint8_t(clkStateMask == 0xFFFF ? 0xFF : 0x00);
-      dataState = uint8_t(dataStateMask == 0xFFFF ? 0xFF : 0x00);
+      uint16_t  mask_ = (uint16_t(1) << n) ^ uint16_t(0xFFFF);
+      clkStateMask &= mask_;
+      dataStateMask &= mask_;
+      clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
+      dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
     }
     // remove devices defined by 'mask_' (bit N of 'mask_' corresponds to
     // device N) from the bus
     inline void removeDevices(uint16_t mask_)
     {
-      clkStateMask |= mask_;
-      dataStateMask |= mask_;
-      clkState = uint8_t(clkStateMask == 0xFFFF ? 0xFF : 0x00);
-      dataState = uint8_t(dataStateMask == 0xFFFF ? 0xFF : 0x00);
+      clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
+      dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
+      clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
+      dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
     }
   };
 

@@ -81,6 +81,13 @@ namespace Plus4 {
 
     // 16-bit output (AUDIO OUT).
     int output();
+
+    // fast inline version with no 1/11 scaling and -32768 to 32767 clipping
+    inline int fast_output()
+    {
+      return (this->extfilt.output());
+    }
+
     // n-bit output.
     int output(int bits);
 
