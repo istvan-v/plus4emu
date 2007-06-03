@@ -313,6 +313,7 @@ class Plus4EmuGUI {open
   delete aboutWindow;
   delete mainWindow;
   config.sound.file = "";
+  config.tape.imageFile = "";
 }} {}
   }
 } 
