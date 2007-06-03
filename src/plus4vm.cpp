@@ -65,8 +65,13 @@ namespace Plus4 {
   Plus4VM::TED7360_::TED7360_(Plus4VM& vm_)
     : TED7360(),
       vm(vm_),
-      lineCnt_(0)
+      lineCnt_(0),
+      serialPort()
   {
+    savedMemoryRead0001Callback = getMemoryReadCallback(0x0001);
+    savedMemoryWrite0001Callback = getMemoryWriteCallback(0x0001);
+    setMemoryReadCallback(0x0001, memoryRead0001Callback);
+    setMemoryWriteCallback(0x0001, memoryWrite0001Callback);
     for (uint16_t i = 0x00; i <= 0x1F; i++) {
       setMemoryReadCallback(uint16_t(0xFD40) + i, &sidRegisterRead);
       setMemoryWriteCallback(uint16_t(0xFD40) + i, &sidRegisterWrite);
@@ -85,9 +90,13 @@ namespace Plus4 {
 
   void Plus4VM::TED7360_::playSample(int16_t sampleValue)
   {
-    int32_t tmp = vm.soundOutputAccumulator + 16777216;
-    tmp = ((tmp >> 3) + (tmp >> 4) - 3145728) + int32_t(sampleValue);
-    vm.soundOutputAccumulator = 0;
+    int32_t tmp = vm.soundOutputAccumulator;
+    if (tmp != 0) {
+      vm.soundOutputAccumulator = 0;
+      tmp = (tmp * int32_t(3)) / int32_t(176);
+      tmp = (tmp >= -24576 ? (tmp < 24576 ? tmp : 24576) : -24576);
+    }
+    tmp += int32_t(sampleValue);
     vm.sendMonoAudioOutput(tmp);
   }
 
@@ -232,6 +241,15 @@ namespace Plus4 {
                           0, false, isWrite, addr, value);
   }
 
+  void Plus4VM::TED7360_::reset(bool cold_reset)
+  {
+    if (cold_reset) {
+      serialPort.removeDevices(0xFFFF);
+      serialPort.setATN(true);
+    }
+    TED7360::reset(cold_reset);
+  }
+
   uint8_t Plus4VM::TED7360_::sidRegisterRead(void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
@@ -247,7 +265,10 @@ namespace Plus4 {
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
-    ted.vm.sidEnabled = true;
+    if (!ted.vm.sidEnabled) {
+      ted.vm.sidEnabled = true;
+      ted.setCallback(&(ted.vm.sidCallback), &(ted.vm), 1);
+    }
     ted.vm.sid_->write(uint8_t(addr) & uint8_t(0x1F), value);
   }
 
@@ -256,10 +277,10 @@ namespace Plus4 {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
       for (int i = 0; i < 2; i++) {
-        if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
-          if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
-            VC1551& vc1551 =
-                *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+        FloppyDrive *p = ted.vm.floppyDrives[i].floppyDrive;
+        if (p != (FloppyDrive *) 0) {
+          if (typeid(*p) == typeid(VC1551)) {
+            VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
             if (vc1551.parallelIECRead(addr, ted.dataBusState))
               break;
           }
@@ -276,13 +297,87 @@ namespace Plus4 {
     ted.dataBusState = value;
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
       for (int i = 0; i < 2; i++) {
-        if (ted.vm.floppyDrives[i] != (FloppyDrive *) 0) {
-          if (typeid(*(ted.vm.floppyDrives[i])) == typeid(VC1551)) {
-            VC1551& vc1551 =
-                *(reinterpret_cast<VC1551 *>(ted.vm.floppyDrives[i]));
+        FloppyDrive *p = ted.vm.floppyDrives[i].floppyDrive;
+        if (p != (FloppyDrive *) 0) {
+          if (typeid(*p) == typeid(VC1551)) {
+            VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
             if (vc1551.parallelIECWrite(addr, ted.dataBusState))
               break;
           }
+        }
+      }
+    }
+  }
+
+  uint8_t Plus4VM::TED7360_::memoryRead0001Callback(void *userData,
+                                                    uint16_t addr)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    ted.dataBusState = ted.ioRegister_0001;
+    if (ted.savedMemoryRead0001Callback)
+      ted.dataBusState = ted.savedMemoryRead0001Callback(userData, addr);
+    if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
+      ted.dataBusState &= uint8_t(0x3F);
+      ted.dataBusState |= (ted.serialPort.getCLK() & uint8_t(0x40));
+      ted.dataBusState |= (ted.serialPort.getDATA() & uint8_t(0x80));
+    }
+    return ted.dataBusState;
+  }
+
+  void Plus4VM::TED7360_::memoryWrite0001Callback(void *userData,
+                                                  uint16_t addr, uint8_t value)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    ted.dataBusState = value;
+    if (ted.savedMemoryWrite0001Callback)
+      ted.savedMemoryWrite0001Callback(userData, addr, value);
+    if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
+      ted.serialPort.setDATA(0, !(value & uint8_t(0x01)));
+      ted.serialPort.setCLK(0, !(value & uint8_t(0x02)));
+      ted.serialPort.setATN(!(value & uint8_t(0x04)));
+    }
+  }
+
+  void Plus4VM::TED7360_::floppyCallback(void *userData)
+  {
+    Plus4VM::FloppyDrive_&  floppyDrive =
+        *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
+    TED7360_& ted = *(floppyDrive.ted);
+    Plus4VM&  vm = ted.vm;
+    floppyDrive.timeRemaining += vm.tedTimesliceLength;
+    while (floppyDrive.timeRemaining > 0) {
+      // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
+      // on drive type)
+      floppyDrive.timeRemaining -= (int64_t(1) << 32);
+      floppyDrive.floppyDrive->run(ted.serialPort);
+    }
+  }
+
+  void Plus4VM::TED7360_::floppy1541Callback(void *userData)
+  {
+    Plus4VM::FloppyDrive_&  floppyDrive =
+        *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
+    TED7360_& ted = *(floppyDrive.ted);
+    Plus4VM&  vm = ted.vm;
+    if (((ted.tedRegisters[0x06] & 0x10)
+         | (ted.tedRegisters[0x07] & 0x20)
+         | (ted.tedRegisters[0x13] & 0x02)) != 0) {
+      floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
+      while (floppyDrive.timeRemaining > 0) {
+        // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
+        // on drive type)
+        floppyDrive.timeRemaining -= (int64_t(1) << 32);
+        floppyDrive.floppyDrive->run(ted.serialPort);
+      }
+    }
+    else {
+      // hack to get some fast loaders working
+      if (!(ted.video_column >= 75 && ted.video_column < 85 &&
+            (ted.video_column & 1) == 0)) {
+        floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
+        while (floppyDrive.timeRemaining > 0) {
+          floppyDrive.timeRemaining -= ((int64_t(1) << 32) * 109 / 114);
+          floppyDrive.floppyDrive->run(ted.serialPort);
         }
       }
     }
@@ -294,6 +389,7 @@ namespace Plus4 {
   {
     if (isPlayingDemo) {
       isPlayingDemo = false;
+      ted->setCallback(&demoPlayCallback, this, 0);
       demoTimeCnt = 0U;
       demoBuffer.clear();
       // tape button state sensing is disabled while recording or playing demo
@@ -306,7 +402,10 @@ namespace Plus4 {
 
   void Plus4VM::stopDemoRecording(bool writeFile_)
   {
-    isRecordingDemo = false;
+    if (isRecordingDemo) {
+      isRecordingDemo = false;
+      ted->setCallback(&demoRecordCallback, this, 0);
+    }
     // tape button state sensing is disabled while recording or playing demo
     ted->setTapeButtonState(!isPlayingDemo && getTapeButtonState() != 0);
     if (writeFile_ && demoFile != (Plus4Emu::File *) 0) {
@@ -353,23 +452,107 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::addFloppyCallback(int n)
+  {
+    n = n & 3;
+    if (enable1541TimingHack &&
+        typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1541))
+      ted->setCallback(&TED7360_::floppy1541Callback, &(floppyDrives[n]), 3);
+    else
+      ted->setCallback(&TED7360_::floppyCallback, &(floppyDrives[n]), 1);
+  }
+
+  void Plus4VM::removeFloppyCallback(int n)
+  {
+    n = n & 3;
+    ted->setCallback(&TED7360_::floppyCallback, &(floppyDrives[n]), 0);
+    ted->setCallback(&TED7360_::floppy1541Callback, &(floppyDrives[n]), 0);
+  }
+
   void Plus4VM::resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_)
   {
     for (int i = 0; i < 4; i++) {
       if (driveMask_ & 0x01) {
-        if (floppyDrives[i]) {
-          if (floppyDrives[i]->haveDisk() || !deleteUnusedDrives_)
-            floppyDrives[i]->reset();
+        if (floppyDrives[i].floppyDrive) {
+          if (floppyDrives[i].floppyDrive->haveDisk() || !deleteUnusedDrives_)
+            floppyDrives[i].floppyDrive->reset();
           else {
             // "garbage collect" unused floppy drives to improve performance
-            delete floppyDrives[i];
-            floppyDrives[i] = (FloppyDrive *) 0;
-            ted->getSerialPort().removeDevice(i + 8);
+            delete floppyDrives[i].floppyDrive;
+            floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
+            ted->serialPort.removeDevice(i + 8);
+            removeFloppyCallback(i);
           }
         }
       }
       driveMask_ = driveMask_ >> 1;
     }
+  }
+
+  void Plus4VM::tapeCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.tapeTimeRemaining += vm.tedTimesliceLength;
+    if (vm.tapeTimeRemaining > 0) {
+      // assume tape sample rate < single clock frequency
+      vm.tapeTimeRemaining -= vm.tapeTimesliceLength;
+      vm.setTapeMotorState(vm.ted->getTapeMotorState());
+      vm.ted->setTapeInput(vm.runTape(vm.ted->getTapeOutput() ? 1 : 0) > 0);
+    }
+  }
+
+  void Plus4VM::sidCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.sid_->clock();
+    vm.soundOutputAccumulator += int32_t(vm.sid_->fast_output());
+  }
+
+  void Plus4VM::demoPlayCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    while (!vm.demoTimeCnt) {
+      if (vm.haveTape() &&
+          vm.getIsTapeMotorOn() && vm.getTapeButtonState() != 0)
+        vm.stopDemoPlayback();
+      try {
+        uint8_t evtType = vm.demoBuffer.readByte();
+        uint8_t evtBytes = vm.demoBuffer.readByte();
+        uint8_t evtData = 0;
+        while (evtBytes) {
+          evtData = vm.demoBuffer.readByte();
+          evtBytes--;
+        }
+        switch (evtType) {
+        case 0x00:
+          vm.stopDemoPlayback();
+          break;
+        case 0x01:
+          vm.ted->setKeyState(evtData, true);
+          break;
+        case 0x02:
+          vm.ted->setKeyState(evtData, false);
+          break;
+        }
+        vm.demoTimeCnt = readDemoTimeCnt(vm.demoBuffer);
+      }
+      catch (...) {
+        vm.stopDemoPlayback();
+      }
+      if (!vm.isPlayingDemo) {
+        vm.demoBuffer.clear();
+        vm.demoTimeCnt = 0U;
+        break;
+      }
+    }
+    if (vm.demoTimeCnt)
+      vm.demoTimeCnt--;
+  }
+
+  void Plus4VM::demoRecordCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.demoTimeCnt++;
   }
 
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
@@ -383,7 +566,6 @@ namespace Plus4 {
       tedTimeRemaining(0),
       tapeTimesliceLength(0),
       tapeTimeRemaining(0),
-      floppyTimeRemaining(0),
       demoFile((Plus4Emu::File *) 0),
       demoBuffer(),
       isRecordingDemo(false),
@@ -393,19 +575,25 @@ namespace Plus4 {
       sid_((SID *) 0),
       soundOutputAccumulator(0),
       sidEnabled(false),
+      tapeCallbackFlag(false),
+      enable1541TimingHack(false),
       floppyROM_1541((uint8_t *) 0),
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
       floppyROM_1581_1((uint8_t *) 0)
   {
-    for (int i = 0; i < 4; i++)
-      floppyDrives[i] = (FloppyDrive *) 0;
     sid_ = new SID();
     try {
       sid_->set_chip_model(MOS8580);
       sid_->enable_external_filter(false);
       sid_->reset();
       ted = new TED7360_(*this);
+      for (int i = 0; i < 4; i++) {
+        floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
+        floppyDrives[i].ted = ted;
+        floppyDrives[i].timeRemaining = int64_t(0);
+        floppyDrives[i].deviceNumber = i + 8;
+      }
       updateTimingParameters(false);
       // reset
       ted->reset(true);
@@ -432,9 +620,9 @@ namespace Plus4 {
     catch (...) {
     }
     for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i]) {
-        delete floppyDrives[i];
-        floppyDrives[i] = (FloppyDrive *) 0;
+      if (floppyDrives[i].floppyDrive) {
+        delete floppyDrives[i].floppyDrive;
+        floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
       }
     }
     if (floppyROM_1541)
@@ -461,91 +649,15 @@ namespace Plus4 {
           ted->setKeyState(i, false);
       }
     }
-    bool    haveFloppy = false;
-    for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i])
-        haveFloppy = true;
+    bool    newTapeCallbackFlag = (haveTape() && getTapeButtonState() != 0);
+    if (newTapeCallbackFlag != tapeCallbackFlag) {
+      tapeCallbackFlag = newTapeCallbackFlag;
+      ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
     tedTimeRemaining += (int64_t(microseconds) << 32);
     while (tedTimeRemaining > 0) {
-      if (isPlayingDemo) {
-        while (!demoTimeCnt) {
-          if (haveTape() && getIsTapeMotorOn() && getTapeButtonState() != 0)
-            stopDemoPlayback();
-          try {
-            uint8_t evtType = demoBuffer.readByte();
-            uint8_t evtBytes = demoBuffer.readByte();
-            uint8_t evtData = 0;
-            while (evtBytes) {
-              evtData = demoBuffer.readByte();
-              evtBytes--;
-            }
-            switch (evtType) {
-            case 0x00:
-              stopDemoPlayback();
-              break;
-            case 0x01:
-              ted->setKeyState(evtData, true);
-              break;
-            case 0x02:
-              ted->setKeyState(evtData, false);
-              break;
-            }
-            demoTimeCnt = readDemoTimeCnt(demoBuffer);
-          }
-          catch (...) {
-            stopDemoPlayback();
-          }
-          if (!isPlayingDemo) {
-            demoBuffer.clear();
-            demoTimeCnt = 0U;
-            break;
-          }
-        }
-        if (demoTimeCnt)
-          demoTimeCnt--;
-      }
-      if (haveTape()) {
-        tapeTimeRemaining += tedTimesliceLength;
-        if (tapeTimeRemaining > 0) {
-          // assume tape sample rate < single clock frequency
-          tapeTimeRemaining -= tapeTimesliceLength;
-          setTapeMotorState(ted->getTapeMotorState());
-          ted->setTapeInput(runTape(ted->getTapeOutput() ? 1 : 0) > 0);
-        }
-      }
       ted->runOneCycle();
-      if (sidEnabled) {
-        sid_->clock();
-        soundOutputAccumulator += int32_t(sid_->output());
-      }
-      if (haveFloppy) {
-        floppyTimeRemaining += tedTimesliceLength;
-        while (floppyTimeRemaining > 0) {
-          // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
-          // on drive type)
-          floppyTimeRemaining -= (int64_t(1) << 32);
-          if (!(isRecordingDemo || isPlayingDemo)) {
-            for (int i = 0; i < 4; i++) {
-              if (floppyDrives[i])
-                floppyDrives[i]->run(ted->getSerialPort());
-            }
-          }
-          else {
-            // disable floppy disk I/O while recording or playing a demo
-            for (int i = 0; i < 4; i++) {
-              if (floppyDrives[i]) {
-                ted->getSerialPort().removeDevices(0xFFFE);
-                floppyDrives[i]->run(ted->getSerialPort());
-              }
-            }
-            ted->getSerialPort().removeDevices(0xFFFE);
-          }
-        }
-      }
       tedTimeRemaining -= tedTimesliceLength;
-      if (isRecordingDemo)
-        demoTimeCnt++;
     }
   }
 
@@ -556,8 +668,10 @@ namespace Plus4 {
     ted->reset(isColdReset);
     setTapeMotorState(false);
     sid_->reset();
-    if (isColdReset)
+    if (isColdReset) {
       sidEnabled = false;
+      ted->setCallback(&sidCallback, this, 0);
+    }
     resetFloppyDrives(0x0F, isColdReset);
   }
 
@@ -569,9 +683,9 @@ namespace Plus4 {
       for (uint8_t n = 0; n < 8; n++)
         loadROMSegment(n, (char *) 0, 0);
       for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i]) {
+        if (floppyDrives[i].floppyDrive) {
           for (int n = 0; n < 3; n++)
-            floppyDrives[i]->setROMImage(n, (uint8_t *) 0);
+            floppyDrives[i].floppyDrive->setROMImage(n, (uint8_t *) 0);
         }
       }
       if (floppyROM_1541) {
@@ -638,8 +752,9 @@ namespace Plus4 {
     }
     else {
       for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i])
-          floppyDrives[i]->setROMImage(floppyROMSegment, (uint8_t *) 0);
+        if (floppyDrives[i].floppyDrive)
+          floppyDrives[i].floppyDrive->setROMImage(floppyROMSegment,
+                                                   (uint8_t *) 0);
       }
     }
     if (fileName == (char *) 0 || fileName[0] == '\0') {
@@ -669,8 +784,9 @@ namespace Plus4 {
       for (int i = 0; i < 16384; i++)
         (*floppyROMPtr)[i] = buf[i];
       for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i])
-          floppyDrives[i]->setROMImage(floppyROMSegment, (*floppyROMPtr));
+        if (floppyDrives[i].floppyDrive)
+          floppyDrives[i].floppyDrive->setROMImage(floppyROMSegment,
+                                                   (*floppyROMPtr));
       }
     }
   }
@@ -725,8 +841,8 @@ namespace Plus4 {
     uint32_t  n = 0U;
     for (int i = 3; i >= 0; i--) {
       n = n << 8;
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        n |= uint32_t(floppyDrives[i]->getLEDState() & 0xFF);
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
     }
     vmStatus_.floppyDriveLEDState = n;
     vmStatus_.isPlayingDemo = isPlayingDemo;
@@ -742,8 +858,8 @@ namespace Plus4 {
       throw Plus4Emu::Exception("invalid floppy drive number");
     if (fileName_.length() == 0) {
       // remove disk
-      if (floppyDrives[n])
-        floppyDrives[n]->setDiskImageFile(fileName_);
+      if (floppyDrives[n].floppyDrive)
+        floppyDrives[n].floppyDrive->setDiskImageFile(fileName_);
     }
     else {
       // insert or replace disk
@@ -770,48 +886,50 @@ namespace Plus4 {
       }
       else if (!(newDriveType == 0 || newDriveType == 4))
         throw Plus4Emu::Exception("invalid floppy drive type");
-      if (floppyDrives[n]) {
+      if (floppyDrives[n].floppyDrive) {
         int     oldDriveType = -1;
-        if (typeid(*(floppyDrives[n])) == typeid(VC1541))
+        if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1541))
           oldDriveType = 0;
-        else if (typeid(*(floppyDrives[n])) == typeid(VC1551))
+        else if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1551))
           oldDriveType = 1;
-        else if (typeid(*(floppyDrives[n])) == typeid(VC1581))
+        else if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1581))
           oldDriveType = 4;
         if (newDriveType != oldDriveType) {
           // need to change drive type
-          delete floppyDrives[n];
-          floppyDrives[n] = (FloppyDrive *) 0;
-          ted->getSerialPort().removeDevice(n + 8);
+          delete floppyDrives[n].floppyDrive;
+          floppyDrives[n].floppyDrive = (FloppyDrive *) 0;
+          ted->serialPort.removeDevice(n + 8);
+          removeFloppyCallback(n);
         }
       }
-      if (!floppyDrives[n]) {
+      if (!floppyDrives[n].floppyDrive) {
         switch (newDriveType) {
         case 0:
-          floppyDrives[n] = new VC1541(n + 8);
-          floppyDrives[n]->setROMImage(2, floppyROM_1541);
+          floppyDrives[n].floppyDrive = new VC1541(n + 8);
+          floppyDrives[n].floppyDrive->setROMImage(2, floppyROM_1541);
           break;
         case 1:
-          floppyDrives[n] = new VC1551(n + 8);
-          floppyDrives[n]->setROMImage(3, floppyROM_1551);
+          floppyDrives[n].floppyDrive = new VC1551(n + 8);
+          floppyDrives[n].floppyDrive->setROMImage(3, floppyROM_1551);
           break;
         case 4:
-          floppyDrives[n] = new VC1581(n + 8);
-          floppyDrives[n]->setROMImage(0, floppyROM_1581_0);
-          floppyDrives[n]->setROMImage(1, floppyROM_1581_1);
+          floppyDrives[n].floppyDrive = new VC1581(n + 8);
+          floppyDrives[n].floppyDrive->setROMImage(0, floppyROM_1581_0);
+          floppyDrives[n].floppyDrive->setROMImage(1, floppyROM_1581_1);
           break;
         }
-        floppyDrives[n]->setBreakPointCallback(breakPointCallback,
-                                               breakPointCallbackUserData);
-        M7501   *p = floppyDrives[n]->getCPU();
+        addFloppyCallback(n);
+        floppyDrives[n].floppyDrive->setBreakPointCallback(
+            breakPointCallback, breakPointCallbackUserData);
+        M7501   *p = floppyDrives[n].floppyDrive->getCPU();
         if (p) {
           p->setBreakPointPriorityThreshold(
               ted->getBreakPointPriorityThreshold());
           p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
         }
-        floppyDrives[n]->setNoBreakOnDataRead(noBreakOnDataRead);
+        floppyDrives[n].floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
       }
-      floppyDrives[n]->setDiskImageFile(fileName_);
+      floppyDrives[n].floppyDrive->setDiskImageFile(fileName_);
     }
   }
 
@@ -820,10 +938,25 @@ namespace Plus4 {
     uint32_t  n = 0U;
     for (int i = 3; i >= 0; i--) {
       n = n << 8;
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        n |= uint32_t(floppyDrives[i]->getLEDState() & 0xFF);
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
     }
     return n;
+  }
+
+  void Plus4VM::setEnableFloppyDriveTimingHack(bool isEnabled)
+  {
+    if (isEnabled == enable1541TimingHack)
+      return;
+    enable1541TimingHack = isEnabled;
+    for (int i = 0; i < 4; i++) {
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0) {
+        if (typeid(*(floppyDrives[i].floppyDrive)) == typeid(VC1541)) {
+          removeFloppyCallback(i);
+          addFloppyCallback(i);
+        }
+      }
+    }
   }
 
   void Plus4VM::setTapeFileName(const std::string& fileName)
@@ -873,8 +1006,8 @@ namespace Plus4 {
       if (i != currentDebugContext) {
         M7501   *p = (M7501 *) 0;
         if (i != 0) {
-          if (floppyDrives[i - 1] != (FloppyDrive *) 0)
-            p = floppyDrives[i - 1]->getCPU();
+          if (floppyDrives[i - 1].floppyDrive != (FloppyDrive *) 0)
+            p = floppyDrives[i - 1].floppyDrive->getCPU();
         }
         else
           p = ted;
@@ -925,8 +1058,8 @@ namespace Plus4 {
     ted->setBreakPointPriorityThreshold(n);
     for (int i = 0; i < 4; i++) {
       M7501   *p = (M7501 *) 0;
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        p = floppyDrives[i]->getCPU();
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        p = floppyDrives[i].floppyDrive->getCPU();
       if (p)
         p->setBreakPointPriorityThreshold(n);
     }
@@ -936,8 +1069,8 @@ namespace Plus4 {
   {
     noBreakOnDataRead = n;
     for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        floppyDrives[i]->setNoBreakOnDataRead(n);
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        floppyDrives[i].floppyDrive->setNoBreakOnDataRead(n);
     }
   }
 
@@ -953,8 +1086,8 @@ namespace Plus4 {
     ted->setBreakOnInvalidOpcode(isEnabled);
     for (int i = 0; i < 4; i++) {
       M7501   *p = (M7501 *) 0;
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        p = floppyDrives[i]->getCPU();
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        p = floppyDrives[i].floppyDrive->getCPU();
       if (p)
         p->setBreakOnInvalidOpcode(isEnabled);
     }
@@ -969,8 +1102,9 @@ namespace Plus4 {
   {
     VirtualMachine::setBreakPointCallback(breakPointCallback_, userData_);
     for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i] != (FloppyDrive *) 0)
-        floppyDrives[i]->setBreakPointCallback(breakPointCallback_, userData_);
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        floppyDrives[i].floppyDrive->setBreakPointCallback(breakPointCallback_,
+                                                           userData_);
     }
   }
 
@@ -978,7 +1112,8 @@ namespace Plus4 {
   {
     if (currentDebugContext == 0)
       return ted->getMemoryPage(n);
-    else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0) {
+    else if (floppyDrives[currentDebugContext - 1].floppyDrive
+             != (FloppyDrive *) 0) {
       // floppy drives are mapped to segments 60..6F
       return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
     }
@@ -992,7 +1127,8 @@ namespace Plus4 {
         return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
       }
       else {
-        const FloppyDrive *p = floppyDrives[currentDebugContext - 1];
+        const FloppyDrive *p =
+            floppyDrives[currentDebugContext - 1].floppyDrive;
         if (p)
           return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
       }
@@ -1033,7 +1169,7 @@ namespace Plus4 {
       case 0x6E:
       case 0x6F:
         {
-          const FloppyDrive *p = floppyDrives[(segment >> 2) & 3];
+          const FloppyDrive *p = floppyDrives[(segment >> 2) & 3].floppyDrive;
           if (p)
             return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
         }
@@ -1056,7 +1192,7 @@ namespace Plus4 {
         ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
       }
       else {
-        FloppyDrive *p = floppyDrives[currentDebugContext - 1];
+        FloppyDrive *p = floppyDrives[currentDebugContext - 1].floppyDrive;
         if (p)
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
@@ -1066,7 +1202,7 @@ namespace Plus4 {
         ted->writeMemoryRaw(addr & uint32_t(0x003FFFFF), value);
       }
       else {
-        FloppyDrive *p = floppyDrives[(addr >> 16) & 3U];
+        FloppyDrive *p = floppyDrives[(addr >> 16) & 3U].floppyDrive;
         if (p)
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
@@ -1178,7 +1314,7 @@ namespace Plus4 {
     ted->setTapeMotorState(false);
     ted->setTapeInput(false);
     setTapeMotorState(false);
-    ted->getSerialPort().removeDevices(0xFFFE);
+    ted->serialPort.removeDevices(0xFFFE);
     stopDemo();
     for (int i = 0; i < 128; i++)
       ted->setKeyState(i, false);
@@ -1189,6 +1325,7 @@ namespace Plus4 {
     demoBuffer.writeUInt32(0x00010101); // version 1.1.1
     demoFile = &f;
     isRecordingDemo = true;
+    ted->setCallback(&demoRecordCallback, this, 1);
     demoTimeCnt = 0U;
     // tape button state sensing is disabled while recording or playing demo
     ted->setTapeButtonState(false);
@@ -1236,6 +1373,7 @@ namespace Plus4 {
       (void) tmpTEDInputClockFrequency;
       (void) tmpSoundClockFrequency;
       sidEnabled = buf.readBoolean();
+      ted->setCallback(&sidCallback, this, (sidEnabled ? 1 : 0));
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "
                                   "plus4 snapshot data");
@@ -1290,13 +1428,14 @@ namespace Plus4 {
     ted->setTapeMotorState(false);
     ted->setTapeInput(false);
     setTapeMotorState(false);
-    ted->getSerialPort().removeDevices(0xFFFE);
+    ted->serialPort.removeDevices(0xFFFE);
     stopDemo();
     for (int i = 0; i < 128; i++)
       ted->setKeyState(i, false);
     // initialize time counter with first delta time
     demoTimeCnt = readDemoTimeCnt(buf);
     isPlayingDemo = true;
+    ted->setCallback(&demoPlayCallback, this, 1);
     // tape button state sensing is disabled while recording or playing demo
     ted->setTapeButtonState(false);
     // copy any remaining demo data to local buffer

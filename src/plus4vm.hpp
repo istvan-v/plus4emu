@@ -25,6 +25,7 @@
 #include "display.hpp"
 #include "soundio.hpp"
 #include "vm.hpp"
+#include "serial.hpp"
 #include "p4floppy.hpp"
 
 namespace Plus4 {
@@ -43,9 +44,18 @@ namespace Plus4 {
       static uint8_t parallelIECRead(void *userData, uint16_t addr);
       static void parallelIECWrite(void *userData,
                                    uint16_t addr, uint8_t value);
+      static uint8_t memoryRead0001Callback(void *userData, uint16_t addr);
+      static void memoryWrite0001Callback(void *userData,
+                                          uint16_t addr, uint8_t value);
+      uint8_t (*savedMemoryRead0001Callback)(void *, uint16_t);
+      void (*savedMemoryWrite0001Callback)(void *, uint16_t, uint8_t);
      public:
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
+      virtual void reset(bool cold_reset = false);
+      static void floppyCallback(void *userData);
+      static void floppy1541Callback(void *userData);
+      SerialBus serialPort;
      protected:
       virtual void playSample(int16_t sampleValue);
       virtual void drawLine(const uint8_t *buf, size_t nBytes);
@@ -64,7 +74,6 @@ namespace Plus4 {
     int64_t   tedTimeRemaining;         // -"-
     int64_t   tapeTimesliceLength;      // -"-
     int64_t   tapeTimeRemaining;        // -"-
-    int64_t   floppyTimeRemaining;      // -"-
     Plus4Emu::File  *demoFile;
     // contains demo data, which is the emulator version number as a 32-bit
     // integer ((MAJOR << 16) + (MINOR << 8) + PATCHLEVEL), followed by a
@@ -92,7 +101,15 @@ namespace Plus4 {
     SID       *sid_;
     int32_t   soundOutputAccumulator;
     bool      sidEnabled;
-    FloppyDrive *floppyDrives[4];
+    bool      tapeCallbackFlag;
+    bool      enable1541TimingHack;
+    struct FloppyDrive_ {
+      FloppyDrive *floppyDrive;
+      TED7360_    *ted;
+      int64_t     timeRemaining;
+      int         deviceNumber;
+    };
+    FloppyDrive_  floppyDrives[4];
     uint8_t   *floppyROM_1541;
     uint8_t   *floppyROM_1551;
     uint8_t   *floppyROM_1581_0;
@@ -101,23 +118,31 @@ namespace Plus4 {
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
     void updateTimingParameters(bool ntscMode_);
+    void addFloppyCallback(int n);
+    void removeFloppyCallback(int n);
     void resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_);
     inline M7501 * getDebugCPU()
     {
       if (currentDebugContext == 0)
         return ted;
-      else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1]->getCPU());
+      else if (floppyDrives[currentDebugContext - 1].floppyDrive
+               != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
       return (M7501 *) 0;
     }
     inline const M7501 * getDebugCPU() const
     {
       if (currentDebugContext == 0)
         return ted;
-      else if (floppyDrives[currentDebugContext - 1] != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1]->getCPU());
+      else if (floppyDrives[currentDebugContext - 1].floppyDrive
+               != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
       return (M7501 *) 0;
     }
+    static void tapeCallback(void *userData);
+    static void sidCallback(void *userData);
+    static void demoPlayCallback(void *userData);
+    static void demoRecordCallback(void *userData);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -179,6 +204,11 @@ namespace Plus4 {
      *   0x02000000: drive 3 green LED is on
      */
     virtual uint32_t getFloppyDriveLEDState() const;
+    /*!
+     * Set if the floppy drive emulation should use experimental code that
+     * may improve compatibility, but uses more CPU time.
+     */
+    virtual void setEnableFloppyDriveTimingHack(bool isEnabled);
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape
