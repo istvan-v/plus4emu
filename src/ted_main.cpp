@@ -25,6 +25,14 @@ namespace Plus4 {
 
   void TED7360::runOneCycle()
   {
+    {
+      TEDCallback *p = firstCallback0;
+      while (p) {
+        TEDCallback *nxt = p->nxt;
+        p->func(p->userData);
+        p = nxt;
+      }
+    }
     if (ted_disabled) {
       tedRegisterWriteMask = 0U;
       dmaCycleCounter = 0;
@@ -307,6 +315,14 @@ namespace Plus4 {
     }
 
     // -------- EVEN HALF-CYCLE (FF1E bit 1 == 0) --------
+    {
+      TEDCallback *p = firstCallback1;
+      while (p) {
+        TEDCallback *nxt = p->nxt;
+        p->func(p->userData);
+        p = nxt;
+      }
+    }
     switch (video_column) {
     case 70:                            // update DMA read position
       if (renderWindow && character_line == 6)

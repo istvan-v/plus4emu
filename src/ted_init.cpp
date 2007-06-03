@@ -26,6 +26,13 @@ namespace Plus4 {
   TED7360::TED7360() : M7501()
   {
     tedRegisters[0x07] = uint8_t(0x00);         // default to PAL mode
+    for (int i = 0; i < int(sizeof(callbacks) / sizeof(TEDCallback)); i++) {
+      callbacks[i].func = (void (*)(void *)) 0;
+      callbacks[i].userData = (void *) 0;
+      callbacks[i].nxt = (TEDCallback *) 0;
+    }
+    firstCallback0 = (TEDCallback *) 0;
+    firstCallback1 = (TEDCallback *) 0;
     // create initial memory map
     ramSegments = 0;
     for (int i = 0; i < 256; i++)
@@ -264,8 +271,6 @@ namespace Plus4 {
     keyboard_row_select_mask = 0xFFFF;
     tape_motor_state = false;
     tape_write_state = false;
-    serialPort.removeDevices(0xFFFF);
-    serialPort.setATN(true);
   }
 
   void TED7360::reset(bool cold_reset)

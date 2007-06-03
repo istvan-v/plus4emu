@@ -107,6 +107,95 @@ namespace Plus4 {
       keyboard_matrix[ndx] |= (uint8_t) mask;
   }
 
+  void TED7360::setCallback(void (*func)(void *userData), void *userData_,
+                            int flags_)
+  {
+    if (!func)
+      return;
+    flags_ = flags_ & 3;
+    int     ndx = -1;
+    for (size_t i = 0; i < (sizeof(callbacks) / sizeof(TEDCallback)); i++) {
+      if (callbacks[i].func == func && callbacks[i].userData == userData_) {
+        ndx = int(i);
+        break;
+      }
+    }
+    if (ndx >= 0) {
+      TEDCallback *prv = (TEDCallback *) 0;
+      TEDCallback *p = firstCallback0;
+      while (p) {
+        if (p == &(callbacks[ndx])) {
+          if (prv)
+            prv->nxt = p->nxt;
+          else
+            firstCallback0 = p->nxt;
+          break;
+        }
+        prv = p;
+        p = p->nxt;
+      }
+      prv = (TEDCallback *) 0;
+      p = firstCallback1;
+      while (p) {
+        if (p == &(callbacks[ndx])) {
+          if (prv)
+            prv->nxt = p->nxt;
+          else
+            firstCallback1 = p->nxt;
+          break;
+        }
+        prv = p;
+        p = p->nxt;
+      }
+      if (flags_ == 0) {
+        callbacks[ndx].func = (void (*)(void *)) 0;
+        callbacks[ndx].userData = (void *) 0;
+        callbacks[ndx].nxt = (TEDCallback *) 0;
+      }
+    }
+    if (flags_ == 0)
+      return;
+    if (ndx < 0) {
+      for (size_t i = 0; i < (sizeof(callbacks) / sizeof(TEDCallback)); i++) {
+        if (callbacks[i].func == (void (*)(void *)) 0) {
+          ndx = int(i);
+          break;
+        }
+      }
+      if (ndx < 0)
+        throw Plus4Emu::Exception("TED7360: too many callbacks");
+    }
+    callbacks[ndx].func = func;
+    callbacks[ndx].userData = userData_;
+    callbacks[ndx].nxt = (TEDCallback *) 0;
+    if (flags_ & 1) {
+      TEDCallback *prv = (TEDCallback *) 0;
+      TEDCallback *p = firstCallback0;
+      while (p) {
+        prv = p;
+        p = p->nxt;
+      }
+      p = &(callbacks[ndx]);
+      if (prv)
+        prv->nxt = p;
+      else
+        firstCallback0 = p;
+    }
+    if (flags_ & 2) {
+      TEDCallback *prv = (TEDCallback *) 0;
+      TEDCallback *p = firstCallback1;
+      while (p) {
+        prv = p;
+        p = p->nxt;
+      }
+      p = &(callbacks[ndx]);
+      if (prv)
+        prv->nxt = p;
+      else
+        firstCallback1 = p;
+    }
+  }
+
   // --------------------------------------------------------------------------
 
   class ChunkType_TED7360Snapshot : public Plus4Emu::File::ChunkTypeHandler {

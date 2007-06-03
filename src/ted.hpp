@@ -23,7 +23,6 @@
 #include "plus4emu.hpp"
 #include "fileio.hpp"
 #include "cpu.hpp"
-#include "serial.hpp"
 
 #ifdef REGPARM
 #  undef REGPARM
@@ -220,9 +219,11 @@ namespace Plus4 {
     void resampleAndDrawLine(uint8_t invertColors = 0);
     // -----------------------------------------------------------------
     static RenderTables renderTables;
+   protected:
     // CPU I/O registers
     uint8_t     ioRegister_0000;
     uint8_t     ioRegister_0001;
+   private:
     // number of RAM segments; can be one of the following values:
     //   1: 16K (segment FF)
     //   2: 32K (segments FE, FF)
@@ -244,9 +245,11 @@ namespace Plus4 {
     unsigned int  cpuMemoryReadMap;
     unsigned int  tedDMAReadMap;
     unsigned int  tedBitmapReadMap;
+   protected:
     // copy of TED registers at FF00 to FF1F
     uint32_t    tedRegisterWriteMask;
     uint8_t     tedRegisters[32];
+   private:
     // currently selected render function (depending on bits of FF06 and FF07)
     REGPARM void  (*render_func)(TED7360& ted, uint8_t *bufp, int offs);
     // delay mode changes by one cycle
@@ -255,8 +258,10 @@ namespace Plus4 {
     int         cpu_clock_multiplier;
     // TED cycle counter (0 to 3)
     uint8_t     cycle_count;
+   protected:
     // current video column (0 to 113, = (FF1E) / 2)
     uint8_t     video_column;
+   private:
     // current video line (0 to 311, = (FF1D, FF1C)
     int         video_line;
     // character sub-line (0 to 7, bits 0..2 of FF1F)
@@ -351,7 +356,6 @@ namespace Plus4 {
     bool        tape_read_state;
     bool        tape_write_state;
     bool        tape_button_state;
-    SerialBus   serialPort;
     // --------
     uint8_t     *segmentTable[256];
     // table of 4096 memory maps, indexed by a 12-bit value multiplied by 8:
@@ -372,6 +376,15 @@ namespace Plus4 {
     //   6: FD00-FEFF
     //   7: FF00-FFFF
     uint8_t     memoryMapTable[32768];
+    // --------
+    struct TEDCallback {
+      void        (*func)(void *);
+      void        *userData;
+      TEDCallback *nxt;
+    };
+    TEDCallback callbacks[16];
+    TEDCallback *firstCallback0;
+    TEDCallback *firstCallback1;
     // -----------------------------------------------------------------
     void selectRenderer();
     void initRegisters();
@@ -462,14 +475,16 @@ namespace Plus4 {
     {
       return !!(tedRegisters[0x07] & 0x40);
     }
-    inline SerialBus& getSerialPort()
-    {
-      return serialPort;
-    }
-    inline const SerialBus& getSerialPort() const
-    {
-      return serialPort;
-    }
+    // Set function to be called by runOneCycle(). 'flags_' can be one of
+    // the following values:
+    //   0: do not call the function (removes a previously set callback)
+    //   1: call function at single clock frequency, first phase
+    //   2: call function at single clock frequency, second phase
+    //   3: call the function at double clock frequency
+    // The functions are called in the order of being registered; up to 16
+    // callbacks can be set.
+    void setCallback(void (*func)(void *userData), void *userData_,
+                     int flags_ = 1);
     static void convertPixelToRGB(uint8_t color,
                                   float& red, float& green, float& blue);
     // save snapshot
