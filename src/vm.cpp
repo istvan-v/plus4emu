@@ -342,6 +342,11 @@ namespace Plus4Emu {
     return 0U;
   }
 
+  void VirtualMachine::setEnableFloppyDriveTimingHack(bool isEnabled)
+  {
+    (void) isEnabled;
+  }
+
   void VirtualMachine::setEnableFileIO(bool isEnabled)
   {
     fileIOEnabled = isEnabled;
