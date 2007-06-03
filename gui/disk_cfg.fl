@@ -225,6 +225,14 @@ class Plus4EmuGUI_DiskConfigWindow {open
           }
         }
       }
+      Fl_Light_Button floppyTimingHackValuator {
+        label {Enable 1541 timing hack}
+        callback {{
+  gui.config.floppy.enableTimingHack = (o->value() != 0);
+  gui.config.floppyTimingHackChanged = true;
+}}
+        tooltip {Use experimental 1541 timing code that may fix some fast loaders (enabling this increases CPU usage)} xywh {15 400 190 25} color 38 labelcolor 52
+      }
       Fl_Button {} {
         label Apply
         callback {{
@@ -288,6 +296,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   floppyBDriveTypeValuator->value(gui.config.floppy.b.driveType);
   floppyCImageFileValuator->value(gui.config.floppy.c.imageFile.c_str());
   floppyDImageFileValuator->value(gui.config.floppy.d.imageFile.c_str());
+  floppyTimingHackValuator->value(gui.config.floppy.enableTimingHack ? 1 : 0);
 }} {}
   }
 } 
