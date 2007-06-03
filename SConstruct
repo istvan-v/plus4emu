@@ -219,3 +219,7 @@ makecfg = makecfgEnvironment.Program('makecfg',
     ['installer/makecfg.cpp'] + fluidCompile(['installer/mkcfg.fl']))
 Depends(makecfg, plus4emuLib)
 
+if sys.platform[:6] == 'darwin':
+    Command('plus4emu.app/Contents/MacOS/makecfg', 'makecfg',
+            'mkdir -p plus4emu.app/Contents/MacOS ; cp -af $SOURCES $TARGET')
+
