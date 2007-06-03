@@ -376,10 +376,7 @@ int main(int argc, char **argv)
   else {
     std::string tmp = "";
 #ifndef WIN32
-    if (std::getenv("HOME") != (char *) 0) {
-      tmp = std::getenv("HOME");
-      tmp += "/.plus4emu";
-    }
+    tmp = Plus4Emu::getPlus4EmuHomeDirectory();
 #endif
     Fl_File_Chooser *w =
         new Fl_File_Chooser(tmp.c_str(), "*",
