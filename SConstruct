@@ -190,7 +190,7 @@ Depends(plus4emu, residLib)
 
 if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/plus4emu', 'plus4emu',
-            'mkdir -p plus4emu.app/Contents/MacOS ; cp -af $SOURCES $TARGET')
+            'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
 # -----------------------------------------------------------------------------
 
@@ -221,5 +221,5 @@ Depends(makecfg, plus4emuLib)
 
 if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/makecfg', 'makecfg',
-            'mkdir -p plus4emu.app/Contents/MacOS ; cp -af $SOURCES $TARGET')
+            'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
