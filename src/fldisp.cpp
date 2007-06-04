@@ -238,7 +238,7 @@ namespace Plus4Emu {
     curLine += 2;
     lineCnt++;
     if (!ntscMode) {
-      if (vsyncCnt >= (!vsyncState ? 322 : 276))
+      if (vsyncCnt >= (!vsyncState ? 338 : 264))
         vsyncCnt = -16;
     }
     else {
@@ -259,11 +259,11 @@ namespace Plus4Emu {
       return;
     vsyncState = newState;
     if (newState) {
-      if (vsyncCnt >= (!ntscMode ? 276 : 252))
+      if (vsyncCnt >= (!ntscMode ? 264 : 252))
         vsyncCnt = (!ntscMode ? -16 : 0);
       if (!(lineCnt == 0 || lineCnt == 1)) {
         oddFrame = (lineCnt == (prvLineCnt + 1));
-        ntscMode = (lineCnt <= 280 && prvLineCnt <= 280);
+        ntscMode = (lineCnt <= 276 && prvLineCnt <= 276);
         prvLineCnt = lineCnt;
         lineCnt = 0;
       }
