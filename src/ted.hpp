@@ -380,7 +380,8 @@ namespace Plus4 {
     struct TEDCallback {
       void        (*func)(void *);
       void        *userData;
-      TEDCallback *nxt;
+      TEDCallback *nxt0;
+      TEDCallback *nxt1;
     };
     TEDCallback callbacks[16];
     TEDCallback *firstCallback0;

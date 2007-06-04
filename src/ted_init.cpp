@@ -29,7 +29,8 @@ namespace Plus4 {
     for (int i = 0; i < int(sizeof(callbacks) / sizeof(TEDCallback)); i++) {
       callbacks[i].func = (void (*)(void *)) 0;
       callbacks[i].userData = (void *) 0;
-      callbacks[i].nxt = (TEDCallback *) 0;
+      callbacks[i].nxt0 = (TEDCallback *) 0;
+      callbacks[i].nxt1 = (TEDCallback *) 0;
     }
     firstCallback0 = (TEDCallback *) 0;
     firstCallback1 = (TEDCallback *) 0;

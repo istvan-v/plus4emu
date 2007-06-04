@@ -126,31 +126,32 @@ namespace Plus4 {
       while (p) {
         if (p == &(callbacks[ndx])) {
           if (prv)
-            prv->nxt = p->nxt;
+            prv->nxt0 = p->nxt0;
           else
-            firstCallback0 = p->nxt;
+            firstCallback0 = p->nxt0;
           break;
         }
         prv = p;
-        p = p->nxt;
+        p = p->nxt0;
       }
       prv = (TEDCallback *) 0;
       p = firstCallback1;
       while (p) {
         if (p == &(callbacks[ndx])) {
           if (prv)
-            prv->nxt = p->nxt;
+            prv->nxt1 = p->nxt1;
           else
-            firstCallback1 = p->nxt;
+            firstCallback1 = p->nxt1;
           break;
         }
         prv = p;
-        p = p->nxt;
+        p = p->nxt1;
       }
       if (flags_ == 0) {
         callbacks[ndx].func = (void (*)(void *)) 0;
         callbacks[ndx].userData = (void *) 0;
-        callbacks[ndx].nxt = (TEDCallback *) 0;
+        callbacks[ndx].nxt0 = (TEDCallback *) 0;
+        callbacks[ndx].nxt1 = (TEDCallback *) 0;
       }
     }
     if (flags_ == 0)
@@ -167,17 +168,18 @@ namespace Plus4 {
     }
     callbacks[ndx].func = func;
     callbacks[ndx].userData = userData_;
-    callbacks[ndx].nxt = (TEDCallback *) 0;
+    callbacks[ndx].nxt0 = (TEDCallback *) 0;
+    callbacks[ndx].nxt1 = (TEDCallback *) 0;
     if (flags_ & 1) {
       TEDCallback *prv = (TEDCallback *) 0;
       TEDCallback *p = firstCallback0;
       while (p) {
         prv = p;
-        p = p->nxt;
+        p = p->nxt0;
       }
       p = &(callbacks[ndx]);
       if (prv)
-        prv->nxt = p;
+        prv->nxt0 = p;
       else
         firstCallback0 = p;
     }
@@ -186,11 +188,11 @@ namespace Plus4 {
       TEDCallback *p = firstCallback1;
       while (p) {
         prv = p;
-        p = p->nxt;
+        p = p->nxt1;
       }
       p = &(callbacks[ndx]);
       if (prv)
-        prv->nxt = p;
+        prv->nxt1 = p;
       else
         firstCallback1 = p;
     }
