@@ -60,7 +60,7 @@ namespace Plus4 {
     uint8_t     via1PortBInput;
     uint8_t     via1PortBOutput;        // for serial bus delay
     bool        interruptRequestFlag;
-    bool        writeProtectFlag;
+    bool        halfCycleFlag;
     bool        trackDirtyFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
@@ -79,6 +79,7 @@ namespace Plus4 {
     int         nTracks;                // number of tracks (35, 40, or zero
                                         // if there is no disk image file)
     int         diskChangeCnt;          // decrements from 15625 to 0
+    bool        writeProtectFlag;
     uint8_t     diskID;
     uint8_t     idCharacter1;
     uint8_t     idCharacter2;
@@ -107,6 +108,7 @@ namespace Plus4 {
     bool readTrack(int trackNum = -1);
     bool flushTrack(int trackNum = -1);
     bool setCurrentTrack(int trackNum);
+    void updateHead();
    public:
     VC1541(int driveNum_ = 8);
     virtual ~VC1541();
@@ -132,9 +134,13 @@ namespace Plus4 {
      */
     virtual bool haveDisk() const;
     /*!
-     * Run floppy emulation for 't' microseconds.
+     * Run floppy emulation for one microsecond.
      */
-    virtual void run(SerialBus& serialBus_, size_t t = 1);
+    virtual void runOneCycle(SerialBus& serialBus_);
+    /*!
+     * Run floppy emulation for 0.5 microseconds.
+     */
+    virtual void runHalfCycle(SerialBus& serialBus_);
     /*!
      * Reset floppy drive.
      */

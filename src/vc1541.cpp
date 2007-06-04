@@ -601,6 +601,53 @@ namespace Plus4 {
     return retval;
   }
 
+  void VC1541::updateHead()
+  {
+    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
+    shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
+    if (shiftRegisterBitCnt == 0) {
+      bool    syncFlag = false;
+      if (via2.getCB2()) {
+        // read mode
+        uint8_t readByte = 0x00;
+        if (headLoadedFlag) {
+          readByte = trackBuffer_GCR[headPosition];
+          if (readByte == 0xFF)
+            syncFlag = prvByteWasFF;
+        }
+        prvByteWasFF = (readByte == 0xFF);
+        via2.setPortA(readByte);
+      }
+      else {
+        // write mode
+        via2.setPortA(0xFF);
+        if (headLoadedFlag && !writeProtectFlag) {
+          trackDirtyFlag = true;
+          trackBuffer_GCR[headPosition] = via2.getPortA();
+        }
+        prvByteWasFF = false;
+      }
+      via2PortBInput = uint8_t(syncFlag ? (via2PortBInput & 0x7F)
+                                          : (via2PortBInput | 0x80));
+      via2.setPortB(via2PortBInput);
+      // set byte ready flag
+      if (via2.getCA2() && !syncFlag) {
+        cpu.setOverflowFlag();
+        via2.setCA1(false);
+      }
+      // update head position
+      if (spindleMotorSpeed >= 32768) {
+        headPosition = headPosition + 1;
+        if (headPosition >= trackSizeTable[currentTrack])
+          headPosition = 0;
+      }
+    }
+    else if (shiftRegisterBitCnt == 1) {
+      // clear byte ready flag
+      via2.setCA1(true);
+    }
+  }
+
   // --------------------------------------------------------------------------
 
   VC1541::VC1541(int driveNum_)
@@ -614,7 +661,7 @@ namespace Plus4 {
       via1PortBInput(0xFF),
       via1PortBOutput(0x00),
       interruptRequestFlag(false),
-      writeProtectFlag(false),
+      halfCycleFlag(false),
       trackDirtyFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
@@ -630,6 +677,7 @@ namespace Plus4 {
       spindleMotorSpeed(0),
       nTracks(0),
       diskChangeCnt(15625),
+      writeProtectFlag(false),
       diskID(0x00),
       idCharacter1(0x41),
       idCharacter2(0x41),
@@ -732,8 +780,43 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1541::run(SerialBus& serialBus_, size_t t)
+  void VC1541::runOneCycle(SerialBus& serialBus_)
   {
+    {
+      via1PortBOutput = via1.getPortB();
+      uint8_t atnAck1 = via1PortBOutput & 0x10;
+      uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
+      serialBus_.setDATA(deviceNumber,
+                         !((via1PortBOutput & 0x02) | (atnAck1 ^ atnAck2)));
+      serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+      via1.setCA1(!(serialBus_.getATN()));
+      via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
+                            | (serialBus_.getCLK() & 0x04)
+                            | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
+    }
+    via1.run(1);
+    via2.run(1);
+    if (interruptRequestFlag)
+      cpu.interruptRequest();
+    cpu.run(1);
+    if (!motorUpdateCnt) {
+      motorUpdateCnt = 16;
+      headLoadedFlag = updateMotors();
+    }
+    motorUpdateCnt--;
+    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
+                              + trackSpeedTable[currentTrack];
+    if (shiftRegisterBitCntFrac >= 65536)
+      updateHead();
+  }
+
+  void VC1541::runHalfCycle(SerialBus& serialBus_)
+  {
+    halfCycleFlag = !halfCycleFlag;
+    if (halfCycleFlag) {
+      via1PortBOutput = via1.getPortB();
+      return;
+    }
     {
       uint8_t atnAck1 = via1PortBOutput & 0x10;
       uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
@@ -744,67 +827,21 @@ namespace Plus4 {
       via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
                             | (serialBus_.getCLK() & 0x04)
                             | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
-      via1PortBOutput = via1.getPortB();
     }
-    while (t--) {
-      via1.run(1);
-      via2.run(1);
-      if (interruptRequestFlag)
-        cpu.interruptRequest();
-      cpu.run(1);
-      if (!motorUpdateCnt) {
-        motorUpdateCnt = 16;
-        headLoadedFlag = updateMotors();
-      }
-      motorUpdateCnt--;
-      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
-                                + trackSpeedTable[currentTrack];
-      if (shiftRegisterBitCntFrac >= 65536) {
-        shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-        shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
-        if (shiftRegisterBitCnt == 0) {
-          bool    syncFlag = false;
-          if (via2.getCB2()) {
-            // read mode
-            uint8_t readByte = 0x00;
-            if (headLoadedFlag) {
-              readByte = trackBuffer_GCR[headPosition];
-              if (readByte == 0xFF)
-                syncFlag = prvByteWasFF;
-            }
-            prvByteWasFF = (readByte == 0xFF);
-            via2.setPortA(readByte);
-          }
-          else {
-            // write mode
-            via2.setPortA(0xFF);
-            if (headLoadedFlag && !writeProtectFlag) {
-              trackDirtyFlag = true;
-              trackBuffer_GCR[headPosition] = via2.getPortA();
-            }
-            prvByteWasFF = false;
-          }
-          via2PortBInput = uint8_t(syncFlag ? (via2PortBInput & 0x7F)
-                                              : (via2PortBInput | 0x80));
-          via2.setPortB(via2PortBInput);
-          // set byte ready flag
-          if (via2.getCA2() && !syncFlag) {
-            cpu.setOverflowFlag();
-            via2.setCA1(false);
-          }
-          // update head position
-          if (spindleMotorSpeed >= 32768) {
-            headPosition = headPosition + 1;
-            if (headPosition >= trackSizeTable[currentTrack])
-              headPosition = 0;
-          }
-        }
-        else if (shiftRegisterBitCnt == 1) {
-          // clear byte ready flag
-          via2.setCA1(true);
-        }
-      }
+    via1.run(1);
+    via2.run(1);
+    if (interruptRequestFlag)
+      cpu.interruptRequest();
+    cpu.run(1);
+    if (!motorUpdateCnt) {
+      motorUpdateCnt = 16;
+      headLoadedFlag = updateMotors();
     }
+    motorUpdateCnt--;
+    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
+                              + trackSpeedTable[currentTrack];
+    if (shiftRegisterBitCntFrac >= 65536)
+      updateHead();
   }
 
   void VC1541::reset()

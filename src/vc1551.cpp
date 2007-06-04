@@ -719,68 +719,72 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1551::run(SerialBus& serialBus_, size_t t)
+  void VC1551::runOneCycle(SerialBus& serialBus_)
   {
     (void) serialBus_;
-    while (t--) {
-      if (--interruptTimer < 0) {
-        if (interruptTimer <= -7)
-          interruptTimer = 8325;
-        cpu.interruptRequest();
-      }
-      cpu.run(2);
-      if (!motorUpdateCnt) {
-        motorUpdateCnt = 16;
-        headLoadedFlag = updateMotors();
-      }
-      motorUpdateCnt--;
-      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
-                                + trackSpeedTable[currentTrack];
-      if (shiftRegisterBitCntFrac >= 65536) {
-        shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-        shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
-        if (shiftRegisterBitCnt == 0) {
-          syncFlag = false;
-          if (tia6523Registers[2] & 0x10) {
-            // read mode
-            uint8_t readByte = 0x00;
-            if (headLoadedFlag) {
-              readByte = trackBuffer_GCR[headPosition];
-              if (readByte == 0xFF)
-                syncFlag = prvByteWasFF;
-            }
-            prvByteWasFF = (readByte == 0xFF);
-            tia6523Registers[1] = readByte;
+    if (--interruptTimer < 0) {
+      if (interruptTimer <= -7)
+        interruptTimer = 8325;
+      cpu.interruptRequest();
+    }
+    cpu.run(2);
+    if (!motorUpdateCnt) {
+      motorUpdateCnt = 16;
+      headLoadedFlag = updateMotors();
+    }
+    motorUpdateCnt--;
+    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
+                              + trackSpeedTable[currentTrack];
+    if (shiftRegisterBitCntFrac >= 65536) {
+      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
+      shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
+      if (shiftRegisterBitCnt == 0) {
+        syncFlag = false;
+        if (tia6523Registers[2] & 0x10) {
+          // read mode
+          uint8_t readByte = 0x00;
+          if (headLoadedFlag) {
+            readByte = trackBuffer_GCR[headPosition];
+            if (readByte == 0xFF)
+              syncFlag = prvByteWasFF;
           }
-          else {
-            // write mode
-            if (headLoadedFlag && !writeProtectFlag) {
-              trackDirtyFlag = true;
-              trackBuffer_GCR[headPosition] = tia6523Registers[1];
-            }
-            prvByteWasFF = false;
-          }
-          tia6523Registers[2] = uint8_t((tia6523Registers[2] & 0xBF)
-                                        | (syncFlag ? 0x00 : 0x40));
-          // set byte ready flag
-          if (!syncFlag) {
-            memory_ram[0x0001] |= uint8_t(0x80);
-          }
-          // update head position
-          if (spindleMotorSpeed >= 32768) {
-            headPosition = headPosition + 1;
-            if (headPosition >= trackSizeTable[currentTrack])
-              headPosition = 0;
-          }
+          prvByteWasFF = (readByte == 0xFF);
+          tia6523Registers[1] = readByte;
         }
-        else if (shiftRegisterBitCnt == 2) {
-          // clear byte ready flag
-          // FIXME: setting this for two bits is a hack
-          // to work around bytes getting lost sometimes
-          memory_ram[0x0001] &= uint8_t(0x7F);
+        else {
+          // write mode
+          if (headLoadedFlag && !writeProtectFlag) {
+            trackDirtyFlag = true;
+            trackBuffer_GCR[headPosition] = tia6523Registers[1];
+          }
+          prvByteWasFF = false;
         }
+        tia6523Registers[2] = uint8_t((tia6523Registers[2] & 0xBF)
+                                      | (syncFlag ? 0x00 : 0x40));
+        // set byte ready flag
+        if (!syncFlag) {
+          memory_ram[0x0001] |= uint8_t(0x80);
+        }
+        // update head position
+        if (spindleMotorSpeed >= 32768) {
+          headPosition = headPosition + 1;
+          if (headPosition >= trackSizeTable[currentTrack])
+            headPosition = 0;
+        }
+      }
+      else if (shiftRegisterBitCnt == 2) {
+        // clear byte ready flag
+        // FIXME: setting this for two bits is a hack
+        // to work around bytes getting lost sometimes
+        memory_ram[0x0001] &= uint8_t(0x7F);
       }
     }
+  }
+
+  void VC1551::runHalfCycle(SerialBus& serialBus_)
+  {
+    (void) serialBus_;
+    throw Plus4Emu::Exception("VC1551::runHalfCycle() is unimplemented");
   }
 
   void VC1551::reset()

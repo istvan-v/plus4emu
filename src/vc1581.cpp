@@ -266,7 +266,7 @@ namespace Plus4 {
     return wd177x.haveDisk();
   }
 
-  void VC1581::run(SerialBus& serialBus_, size_t t)
+  void VC1581::runOneCycle(SerialBus& serialBus_)
   {
     {
       uint8_t n = ciaPortBInput & uint8_t(0x7A);
@@ -276,25 +276,29 @@ namespace Plus4 {
       cia.setPortB(n ^ uint8_t(0x85));
     }
     cia.setFlagState(!!(serialBus_.getATN()));
-    while (t--) {
-      if (interruptRequestFlag)
-        cpu.interruptRequest();
-      cpu.run(2);
-      if (diskChangeCnt) {
-        diskChangeCnt--;
-        if (!diskChangeCnt)
-          ciaPortAInput = (ciaPortAInput | uint8_t(0x80)) & uint8_t(0xFD);
-      }
-      cia.setPortA(ciaPortAInput);
-      cia.run(2);
-      wd177x.setSide(cia.getPortA() & 0x01);
+    if (interruptRequestFlag)
+      cpu.interruptRequest();
+    cpu.run(2);
+    if (diskChangeCnt) {
+      diskChangeCnt--;
+      if (!diskChangeCnt)
+        ciaPortAInput = (ciaPortAInput | uint8_t(0x80)) & uint8_t(0xFD);
     }
+    cia.setPortA(ciaPortAInput);
+    cia.run(2);
+    wd177x.setSide(cia.getPortA() & 0x01);
     uint8_t n = cia.getPortB();
     serialBus_.setCLK(deviceNumber, !(n & uint8_t(0x08)));
     if (!(((serialBus_.getATN() ^ uint8_t(0xFF)) & n) & uint8_t(0x10)))
       serialBus_.setDATA(deviceNumber, !(n & uint8_t(0x02)));
     else
       serialBus_.setDATA(deviceNumber, false);
+  }
+
+  void VC1581::runHalfCycle(SerialBus& serialBus_)
+  {
+    (void) serialBus_;
+    throw Plus4Emu::Exception("VC1581::runHalfCycle() is unimplemented");
   }
 
   void VC1581::reset()

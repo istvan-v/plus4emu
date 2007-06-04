@@ -59,9 +59,13 @@ namespace Plus4 {
      */
     virtual bool haveDisk() const = 0;
     /*!
-     * Run floppy emulation for 't' microseconds.
+     * Run floppy emulation for one microsecond.
      */
-    virtual void run(SerialBus& serialBus_, size_t t = 1) = 0;
+    virtual void runOneCycle(SerialBus& serialBus_) = 0;
+    /*!
+     * Run floppy emulation for 0.5 microseconds.
+     */
+    virtual void runHalfCycle(SerialBus& serialBus_) = 0;
     /*!
      * Reset floppy drive.
      */
