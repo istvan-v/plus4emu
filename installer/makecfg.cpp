@@ -370,10 +370,29 @@ class Plus4EmuGUIConfiguration {
 int main(int argc, char **argv)
 {
   Fl::lock();
+  bool    forceInstallFlag = false;
   std::string installDirectory = "";
-  if (argc > 1)
-    installDirectory = argv[argc - 1];
-  else {
+  {
+    int     i = 0;
+    while (++i < argc) {
+      if (argv[i][0] == '-') {
+        if (argv[i][1] == '-' && argv[i][2] == '\0')
+          break;
+        if (argv[i][1] == 'f' && argv[i][2] == '\0') {
+          forceInstallFlag = true;
+          continue;
+        }
+      }
+      installDirectory = argv[i];
+    }
+    if (i < (argc - 1))
+      installDirectory = argv[argc - 1];
+  }
+#ifndef WIN32
+  if (installDirectory.length() == 0 && forceInstallFlag)
+    installDirectory = Plus4Emu::getPlus4EmuHomeDirectory();
+#endif
+  if (installDirectory.length() == 0) {
     std::string tmp = "";
 #ifndef WIN32
     tmp = Plus4Emu::getPlus4EmuHomeDirectory();
@@ -457,10 +476,14 @@ int main(int argc, char **argv)
   std::string romDirectory = installDirectory + "roms";
   romDirectory += c;
   Plus4EmuConfigInstallerGUI  *gui = new Plus4EmuConfigInstallerGUI();
-  gui->mainWindow->show();
-  do {
-    Fl::wait(0.05);
-  } while (gui->mainWindow->shown());
+  if (!forceInstallFlag) {
+    gui->mainWindow->show();
+    do {
+      Fl::wait(0.05);
+    } while (gui->mainWindow->shown());
+  }
+  else
+    gui->enableCfgInstall = true;
   try {
     Plus4Emu::ConfigurationDB     *config = (Plus4Emu::ConfigurationDB *) 0;
     Plus4EmuMachineConfiguration  *mCfg = (Plus4EmuMachineConfiguration *) 0;
