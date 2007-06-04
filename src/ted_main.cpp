@@ -28,7 +28,7 @@ namespace Plus4 {
     {
       TEDCallback *p = firstCallback0;
       while (p) {
-        TEDCallback *nxt = p->nxt;
+        TEDCallback *nxt = p->nxt0;
         p->func(p->userData);
         p = nxt;
       }
@@ -99,8 +99,8 @@ namespace Plus4 {
             if (tedRegisters[0x07] & 0x40)
               invColors = 0;
           }
-          if (line_buf_pos < 408 && !invColors)
-            drawLine(&(line_buf[0]), 384);
+          if (line_buf_pos <= 384 && !invColors)
+            drawLine(&(line_buf[0]), line_buf_pos);
           else
             resampleAndDrawLine(invColors);
           uint8_t tmp = (invertColorPhaseFlags ^ uint8_t(0xFF)) & uint8_t(0x04);
@@ -318,7 +318,7 @@ namespace Plus4 {
     {
       TEDCallback *p = firstCallback1;
       while (p) {
-        TEDCallback *nxt = p->nxt;
+        TEDCallback *nxt = p->nxt1;
         p->func(p->userData);
         p = nxt;
       }
