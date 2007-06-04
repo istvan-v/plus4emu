@@ -312,15 +312,19 @@ namespace Plus4 {
   uint8_t Plus4VM::TED7360_::memoryRead0001Callback(void *userData,
                                                     uint16_t addr)
   {
+    (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
-    ted.dataBusState = ted.ioRegister_0001;
+    uint8_t tmp = ted.ioRegister_0001;
     if (ted.savedMemoryRead0001Callback)
-      ted.dataBusState = ted.savedMemoryRead0001Callback(userData, addr);
+      tmp = ted.savedMemoryRead0001Callback(userData, 0x0001);
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      ted.dataBusState &= uint8_t(0x3F);
-      ted.dataBusState |= (ted.serialPort.getCLK() & uint8_t(0x40));
-      ted.dataBusState |= (ted.serialPort.getDATA() & uint8_t(0x80));
+      tmp &= uint8_t(0x3F);
+      tmp |= (ted.serialPort.getCLK() & uint8_t(0x40));
+      tmp |= (ted.serialPort.getDATA() & uint8_t(0x80));
+      tmp &= (ted.ioRegister_0000 ^ uint8_t(0xFF));
+      tmp |= (ted.ioRegister_0001 & ted.ioRegister_0000);
     }
+    ted.dataBusState = tmp;
     return ted.dataBusState;
   }
 
@@ -332,9 +336,10 @@ namespace Plus4 {
     if (ted.savedMemoryWrite0001Callback)
       ted.savedMemoryWrite0001Callback(userData, addr, value);
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      ted.serialPort.setDATA(0, !(value & uint8_t(0x01)));
-      ted.serialPort.setCLK(0, !(value & uint8_t(0x02)));
-      ted.serialPort.setATN(!(value & uint8_t(0x04)));
+      uint8_t tmp = value | (ted.ioRegister_0000 ^ uint8_t(0xFF));
+      ted.serialPort.setDATA(0, !(tmp & uint8_t(0x01)));
+      ted.serialPort.setCLK(0, !(tmp & uint8_t(0x02)));
+      ted.serialPort.setATN(!(tmp & uint8_t(0x04)));
     }
   }
 
@@ -349,7 +354,7 @@ namespace Plus4 {
       // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
       // on drive type)
       floppyDrive.timeRemaining -= (int64_t(1) << 32);
-      floppyDrive.floppyDrive->run(ted.serialPort);
+      floppyDrive.floppyDrive->runOneCycle(ted.serialPort);
     }
   }
 
@@ -364,10 +369,9 @@ namespace Plus4 {
          | (ted.tedRegisters[0x13] & 0x02)) != 0) {
       floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
       while (floppyDrive.timeRemaining > 0) {
-        // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
-        // on drive type)
-        floppyDrive.timeRemaining -= (int64_t(1) << 32);
-        floppyDrive.floppyDrive->run(ted.serialPort);
+        // use a timeslice of 500 ns length (0.5 cycles)
+        floppyDrive.timeRemaining -= (int64_t(1) << 31);
+        floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
       }
     }
     else {
@@ -376,8 +380,8 @@ namespace Plus4 {
             (ted.video_column & 1) == 0)) {
         floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
         while (floppyDrive.timeRemaining > 0) {
-          floppyDrive.timeRemaining -= ((int64_t(1) << 32) * 109 / 114);
-          floppyDrive.floppyDrive->run(ted.serialPort);
+          floppyDrive.timeRemaining -= ((int64_t(1) << 31) * 109 / 114);
+          floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
         }
       }
     }

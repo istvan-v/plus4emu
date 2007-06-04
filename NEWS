@@ -8,6 +8,7 @@ Changes in version 1.1.1
   * MacOS X build fixes; also added patch for FLTK 1.1.7 which fixes the
     check callback on OS X
   * improvements and fixes in TED video shift register emulation
+  * fixed CPU I/O port data direction register ($0000)
   * the ROM package now includes the 1541 DOS, rather than the 1541-II,
     as the latter breaks some demos; the 1541-II can still be used by
     loading dos15412.rom to ROM segment 10 in the machine configuration
