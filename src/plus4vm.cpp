@@ -370,26 +370,11 @@ namespace Plus4 {
         *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
     TED7360_& ted = *(floppyDrive.ted);
     Plus4VM&  vm = ted.vm;
-    if (((ted.tedRegisters[0x06] & 0x10)
-         | (ted.tedRegisters[0x07] & 0x20)
-         | (ted.tedRegisters[0x13] & 0x02)) != 0) {
-      floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
-      while (floppyDrive.timeRemaining > 0) {
-        // use a timeslice of 500 ns length (0.5 cycles)
-        floppyDrive.timeRemaining -= (int64_t(1) << 31);
-        floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
-      }
-    }
-    else {
-      // hack to get some fast loaders working
-      if (!(ted.video_column >= 75 && ted.video_column < 85 &&
-            (ted.video_column & 1) == 0)) {
-        floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
-        while (floppyDrive.timeRemaining > 0) {
-          floppyDrive.timeRemaining -= ((int64_t(1) << 31) * 109 / 114);
-          floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
-        }
-      }
+    floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
+    while (floppyDrive.timeRemaining > 0) {
+      // use a timeslice of 500 ns length (0.5 cycles)
+      floppyDrive.timeRemaining -= (int64_t(1) << 31);
+      floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
     }
   }
 
@@ -465,7 +450,7 @@ namespace Plus4 {
   void Plus4VM::addFloppyCallback(int n)
   {
     n = n & 3;
-    if (enable1541TimingHack &&
+    if (is1541HighAccuracy &&
         typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1541))
       ted->setCallback(&TED7360_::floppy1541Callback, &(floppyDrives[n]), 3);
     else
@@ -586,7 +571,7 @@ namespace Plus4 {
       soundOutputAccumulator(0),
       sidEnabled(false),
       tapeCallbackFlag(false),
-      enable1541TimingHack(false),
+      is1541HighAccuracy(true),
       floppyROM_1541((uint8_t *) 0),
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
@@ -954,11 +939,11 @@ namespace Plus4 {
     return n;
   }
 
-  void Plus4VM::setEnableFloppyDriveTimingHack(bool isEnabled)
+  void Plus4VM::setFloppyDriveHighAccuracy(bool isEnabled)
   {
-    if (isEnabled == enable1541TimingHack)
+    if (isEnabled == is1541HighAccuracy)
       return;
-    enable1541TimingHack = isEnabled;
+    is1541HighAccuracy = isEnabled;
     for (int i = 0; i < 4; i++) {
       if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0) {
         if (typeid(*(floppyDrives[i].floppyDrive)) == typeid(VC1541)) {

@@ -286,9 +286,9 @@ namespace Plus4Emu {
                                   floppy_->driveType, int(i == 1 ? 1 : 0),
                                   *floppyChanged_, 0.0, 1.0);
     }
-    defineConfigurationVariable(*this, "floppy.enableTimingHack",
-                                floppy.enableTimingHack, false,
-                                floppyTimingHackChanged);
+    defineConfigurationVariable(*this, "floppy.highTimingAccuracy",
+                                floppy.highTimingAccuracy, true,
+                                floppyTimingAccuracyChanged);
     // ----------------
     defineConfigurationVariable(*this, "tape.imageFile",
                                 tape.imageFile, std::string(""),
@@ -484,9 +484,9 @@ namespace Plus4Emu {
       }
       floppyDChanged = false;
     }
-    if (floppyTimingHackChanged) {
-      vm_.setEnableFloppyDriveTimingHack(floppy.enableTimingHack);
-      floppyTimingHackChanged = false;
+    if (floppyTimingAccuracyChanged) {
+      vm_.setFloppyDriveHighAccuracy(floppy.highTimingAccuracy);
+      floppyTimingAccuracyChanged = false;
     }
     if (tapeDefaultSampleRateChanged) {
       vm_.setDefaultTapeSampleRate(tape.defaultSampleRate);

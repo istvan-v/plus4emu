@@ -143,14 +143,14 @@ namespace Plus4Emu {
       FloppyDriveSettings b;
       FloppyDriveSettings c;
       FloppyDriveSettings d;
-      bool        enableTimingHack;
+      bool        highTimingAccuracy;
     };
     FloppyConfiguration_  floppy;
     bool          floppyAChanged;
     bool          floppyBChanged;
     bool          floppyCChanged;
     bool          floppyDChanged;
-    bool          floppyTimingHackChanged;
+    bool          floppyTimingAccuracyChanged;
     // --------
     struct TapeConfiguration_ {
       std::string imageFile;

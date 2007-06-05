@@ -196,10 +196,10 @@ namespace Plus4Emu {
      */
     virtual uint32_t getFloppyDriveLEDState() const;
     /*!
-     * Set if the floppy drive emulation should use experimental code that
-     * may improve compatibility, but uses more CPU time.
+     * Set if the floppy drive emulation should use higher timing resolution
+     * at the expense of increased CPU usage. The default is 'true'.
      */
-    virtual void setEnableFloppyDriveTimingHack(bool isEnabled);
+    virtual void setFloppyDriveHighAccuracy(bool isEnabled);
     /*!
      * Set if the emulated machine should be allowed to access files in the
      * working directory.

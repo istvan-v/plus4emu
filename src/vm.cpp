@@ -342,7 +342,7 @@ namespace Plus4Emu {
     return 0U;
   }
 
-  void VirtualMachine::setEnableFloppyDriveTimingHack(bool isEnabled)
+  void VirtualMachine::setFloppyDriveHighAccuracy(bool isEnabled)
   {
     (void) isEnabled;
   }

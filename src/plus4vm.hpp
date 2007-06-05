@@ -100,7 +100,7 @@ namespace Plus4 {
     int32_t   soundOutputAccumulator;
     bool      sidEnabled;
     bool      tapeCallbackFlag;
-    bool      enable1541TimingHack;
+    bool      is1541HighAccuracy;
     struct FloppyDrive_ {
       FloppyDrive *floppyDrive;
       TED7360_    *ted;
@@ -203,10 +203,10 @@ namespace Plus4 {
      */
     virtual uint32_t getFloppyDriveLEDState() const;
     /*!
-     * Set if the floppy drive emulation should use experimental code that
-     * may improve compatibility, but uses more CPU time.
+     * Set if the floppy drive emulation should use higher timing resolution
+     * at the expense of increased CPU usage. The default is 'true'.
      */
-    virtual void setEnableFloppyDriveTimingHack(bool isEnabled);
+    virtual void setFloppyDriveHighAccuracy(bool isEnabled);
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape

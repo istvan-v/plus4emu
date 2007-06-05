@@ -814,25 +814,23 @@ namespace Plus4 {
   {
     halfCycleFlag = !halfCycleFlag;
     if (halfCycleFlag) {
-      via1PortBOutput = via1.getPortB();
-      return;
-    }
-    {
       uint8_t atnAck1 = via1PortBOutput & 0x10;
       uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
       serialBus_.setDATA(deviceNumber,
                          !((via1PortBOutput & 0x02) | (atnAck1 ^ atnAck2)));
       serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
-      via1.setCA1(!(serialBus_.getATN()));
-      via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
-                            | (serialBus_.getCLK() & 0x04)
-                            | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
+      return;
     }
+    via1.setCA1(!(serialBus_.getATN()));
+    via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
+                          | (serialBus_.getCLK() & 0x04)
+                          | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
     via1.run(1);
     via2.run(1);
     if (interruptRequestFlag)
       cpu.interruptRequest();
     cpu.run(1);
+    via1PortBOutput = via1.getPortB();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
       headLoadedFlag = updateMotors();

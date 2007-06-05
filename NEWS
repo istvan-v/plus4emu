@@ -1,9 +1,9 @@
 Changes in version 1.1.1
 ------------------------
 
-  * added 1541 timing hack that fixes some programs that previously did
-    not load, at the expense of somewhat higher CPU usage; it can be
-    enabled in the floppy configuration dialog
+  * added new 1541 timing code that fixes some programs that previously
+    did not load, at the expense of higher CPU usage; it is enabled by
+    default, and can be turned on/off in the floppy configuration dialog
   * more accurate emulation of television vertical synchronization
   * MacOS X build fixes; also added patch for FLTK 1.1.7 which fixes the
     check callback on OS X
