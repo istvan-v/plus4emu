@@ -123,7 +123,8 @@ int main(int argc, char **argv)
           f = new Plus4Emu::File(cfgFileName, true);
         }
         catch (Plus4Emu::Exception& e) {
-          std::string cmdLine = argv[0];
+          std::string cmdLine = "\"";
+          cmdLine += argv[0];
           size_t  i = cmdLine.length();
           while (i > 0) {
             i--;
@@ -133,7 +134,10 @@ int main(int argc, char **argv)
             }
           }
           cmdLine.resize(i);
-          cmdLine += "makecfg";
+          cmdLine += "makecfg\"";
+#ifdef __APPLE__
+          cmdLine += " -f";
+#endif
           std::system(cmdLine.c_str());
           f = new Plus4Emu::File(cfgFileName, true);
         }
