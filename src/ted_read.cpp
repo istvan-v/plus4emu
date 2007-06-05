@@ -35,12 +35,13 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    uint8_t tmp = uint8_t(ted.tape_read_state ? 0x1F : 0x0F);
+    uint8_t tmp = ted.ioPortRead();
     uint8_t mask_ = ted.ioRegister_0000;
     uint8_t nmask_ = mask_ ^ uint8_t(0xFF);
-    uint8_t tmp2 = (ted.ioRegister_0001 | nmask_) ^ uint8_t(0xFF);
-    tmp = tmp | ((tmp2 & uint8_t(0x01)) << 7) | ((tmp2 & uint8_t(0x02)) << 5);
-    tmp = (tmp & nmask_) | (ted.ioRegister_0001 & mask_);
+    uint8_t tmp2 = ted.ioRegister_0001 | nmask_;
+    tmp2 = ((tmp2 & uint8_t(0x01)) << 7) | ((tmp2 & uint8_t(0x02)) << 5);
+    tmp &= ((tmp2 ^ uint8_t(0xFF)) & nmask_);
+    tmp |= (ted.ioRegister_0001 & mask_);
     ted.dataBusState = tmp;
     return ted.dataBusState;
   }

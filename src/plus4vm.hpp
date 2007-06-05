@@ -47,8 +47,6 @@ namespace Plus4 {
       static uint8_t memoryRead0001Callback(void *userData, uint16_t addr);
       static void memoryWrite0001Callback(void *userData,
                                           uint16_t addr, uint8_t value);
-      uint8_t (*savedMemoryRead0001Callback)(void *, uint16_t);
-      void (*savedMemoryWrite0001Callback)(void *, uint16_t, uint8_t);
      public:
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();

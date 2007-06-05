@@ -42,8 +42,9 @@ namespace Plus4 {
     ted.dataBusState = value;
     ted.ioRegister_0001 = value;
     uint8_t tmp = value | (ted.ioRegister_0000 ^ uint8_t(0xFF));
-    ted.tape_motor_state = ((tmp & uint8_t(0x08)) ? false : true);
-    ted.tape_write_state = ((tmp & uint8_t(0x02)) ? true : false);
+    uint8_t tmp2 = tmp ^ uint8_t(0xFF);
+    tmp |= uint8_t(((tmp2 & 0x80) >> 7) | ((tmp2 & 0x40) >> 5));
+    ted.ioPortWrite(tmp);
   }
 
   void TED7360::write_register_FD1x(void *userData,

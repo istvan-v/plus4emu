@@ -408,6 +408,15 @@ namespace Plus4 {
     {
       (void) isNTSC_;
     }
+    inline uint8_t ioPortRead() const
+    {
+      return uint8_t(tape_read_state ? 0xDF : 0xCF);
+    }
+    inline void ioPortWrite(uint8_t n)
+    {
+      tape_motor_state = !(n & uint8_t(0x08));
+      tape_write_state = bool(n & uint8_t(0x02));
+    }
    public:
     TED7360();
     virtual ~TED7360();

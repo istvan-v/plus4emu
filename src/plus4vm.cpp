@@ -68,8 +68,6 @@ namespace Plus4 {
       lineCnt_(0),
       serialPort()
   {
-    savedMemoryRead0001Callback = getMemoryReadCallback(0x0001);
-    savedMemoryWrite0001Callback = getMemoryWriteCallback(0x0001);
     setMemoryReadCallback(0x0001, memoryRead0001Callback);
     setMemoryWriteCallback(0x0001, memoryWrite0001Callback);
     for (uint16_t i = 0x00; i <= 0x1F; i++) {
@@ -314,16 +312,19 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
-    uint8_t tmp = ted.ioRegister_0001;
-    if (ted.savedMemoryRead0001Callback)
-      tmp = ted.savedMemoryRead0001Callback(userData, 0x0001);
+    uint8_t tmp = ted.ioPortRead();
+    uint8_t mask_ = ted.ioRegister_0000;
+    uint8_t nmask_ = mask_ ^ uint8_t(0xFF);
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      tmp &= uint8_t(0x3F);
-      tmp |= (ted.serialPort.getCLK() & uint8_t(0x40));
-      tmp |= (ted.serialPort.getDATA() & uint8_t(0x80));
-      tmp &= (ted.ioRegister_0000 ^ uint8_t(0xFF));
-      tmp |= (ted.ioRegister_0001 & ted.ioRegister_0000);
+      tmp &= (ted.serialPort.getCLK() | uint8_t(0xBF));
+      tmp &= (ted.serialPort.getDATA() | uint8_t(0x7F));
     }
+    else {
+      uint8_t tmp2 = ted.ioRegister_0001 | nmask_;
+      tmp2 = ((tmp2 & uint8_t(0x01)) << 7) | ((tmp2 & uint8_t(0x02)) << 5);
+      tmp &= (tmp2 ^ uint8_t(0xFF));
+    }
+    tmp = (tmp & nmask_) | (ted.ioRegister_0001 & mask_);
     ted.dataBusState = tmp;
     return ted.dataBusState;
   }
@@ -331,12 +332,17 @@ namespace Plus4 {
   void Plus4VM::TED7360_::memoryWrite0001Callback(void *userData,
                                                   uint16_t addr, uint8_t value)
   {
+    (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
-    if (ted.savedMemoryWrite0001Callback)
-      ted.savedMemoryWrite0001Callback(userData, addr, value);
+    ted.ioRegister_0001 = value;
+    uint8_t tmp = value | (ted.ioRegister_0000 ^ uint8_t(0xFF));
+    uint8_t tmp2 = tmp ^ uint8_t(0xFF);
+    tmp |= uint8_t(((tmp2 & 0x80) >> 7) | ((tmp2 & 0x40) >> 5));
+    // FIXME: tape output should also be affected by other devices on the
+    // serial bus
+    ted.ioPortWrite(tmp);
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      uint8_t tmp = value | (ted.ioRegister_0000 ^ uint8_t(0xFF));
       ted.serialPort.setDATA(0, !(tmp & uint8_t(0x01)));
       ted.serialPort.setCLK(0, !(tmp & uint8_t(0x02)));
       ted.serialPort.setATN(!(tmp & uint8_t(0x04)));
