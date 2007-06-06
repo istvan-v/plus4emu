@@ -781,12 +781,6 @@ namespace Plus4 {
     }
   }
 
-  void VC1551::runHalfCycle(SerialBus& serialBus_)
-  {
-    (void) serialBus_;
-    throw Plus4Emu::Exception("VC1551::runHalfCycle() is unimplemented");
-  }
-
   void VC1551::reset()
   {
     (void) flushTrack();        // FIXME: should report errors ?

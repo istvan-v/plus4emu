@@ -295,12 +295,6 @@ namespace Plus4 {
       serialBus_.setDATA(deviceNumber, false);
   }
 
-  void VC1581::runHalfCycle(SerialBus& serialBus_)
-  {
-    (void) serialBus_;
-    throw Plus4Emu::Exception("VC1581::runHalfCycle() is unimplemented");
-  }
-
   void VC1581::reset()
   {
     interruptRequestFlag = false;

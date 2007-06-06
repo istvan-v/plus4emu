@@ -112,10 +112,6 @@ namespace Plus4 {
      */
     virtual void runOneCycle(SerialBus& serialBus_);
     /*!
-     * Run floppy emulation for 0.5 microseconds.
-     */
-    virtual void runHalfCycle(SerialBus& serialBus_);
-    /*!
      * Reset floppy drive.
      */
     virtual void reset();
