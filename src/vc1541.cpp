@@ -660,8 +660,8 @@ namespace Plus4 {
       dataBusState(0x00),
       via1PortBInput(0xFF),
       via1PortBOutput(0x00),
+      cycleFracCnt(0),
       interruptRequestFlag(false),
-      halfCycleFlag(false),
       trackDirtyFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
@@ -784,18 +784,17 @@ namespace Plus4 {
   {
     {
       via1PortBOutput = via1.getPortB();
-      uint8_t atnAck1 = via1PortBOutput & 0x10;
-      uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
-      serialBus_.setDATA(deviceNumber,
-                         !((via1PortBOutput & 0x02) | (atnAck1 ^ atnAck2)));
+      uint8_t atnAck_ = via1PortBOutput ^ (serialBus_.getATN() ^ 0xFF);
+      atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
+      serialBus_.setDATA(deviceNumber, !(atnAck_));
       serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
       via1.setCA1(!(serialBus_.getATN()));
       via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
                             | (serialBus_.getCLK() & 0x04)
                             | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
     }
-    via1.run(1);
-    via2.run(1);
+    via1.runOneCycle();
+    via2.runOneCycle();
     if (interruptRequestFlag)
       cpu.interruptRequest();
     cpu.run(1);
@@ -810,23 +809,17 @@ namespace Plus4 {
       updateHead();
   }
 
-  void VC1541::runHalfCycle(SerialBus& serialBus_)
+  void VC1541::runOneCycle_(SerialBus& serialBus_)
   {
-    halfCycleFlag = !halfCycleFlag;
-    if (halfCycleFlag) {
-      uint8_t atnAck1 = via1PortBOutput & 0x10;
-      uint8_t atnAck2 = (serialBus_.getATN() ^ 0xFF) & 0x10;
-      serialBus_.setDATA(deviceNumber,
-                         !((via1PortBOutput & 0x02) | (atnAck1 ^ atnAck2)));
-      serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
-      return;
+    {
+      uint8_t serialBusInput = uint8_t((serialBus_.getDATA() & 0x01)
+                                       | (serialBus_.getCLK() & 0x04)
+                                       | (serialBus_.getATN() & 0x80));
+      via1.setCA1(!(serialBusInput & 0x80));
+      via1.setPortB(serialBusInput ^ via1PortBInput);
     }
-    via1.setCA1(!(serialBus_.getATN()));
-    via1.setPortB(uint8_t((serialBus_.getDATA() & 0x01)
-                          | (serialBus_.getCLK() & 0x04)
-                          | (serialBus_.getATN() & 0x80)) ^ via1PortBInput);
-    via1.run(1);
-    via2.run(1);
+    via1.runOneCycle();
+    via2.runOneCycle();
     if (interruptRequestFlag)
       cpu.interruptRequest();
     cpu.run(1);

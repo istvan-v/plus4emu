@@ -59,8 +59,8 @@ namespace Plus4 {
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
     uint8_t     via1PortBOutput;        // for serial bus delay
+    uint8_t     cycleFracCnt;
     bool        interruptRequestFlag;
-    bool        halfCycleFlag;
     bool        trackDirtyFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
@@ -109,6 +109,7 @@ namespace Plus4 {
     bool flushTrack(int trackNum = -1);
     bool setCurrentTrack(int trackNum);
     void updateHead();
+    void runOneCycle_(SerialBus& serialBus_);
    public:
     VC1541(int driveNum_ = 8);
     virtual ~VC1541();
@@ -138,9 +139,38 @@ namespace Plus4 {
      */
     virtual void runOneCycle(SerialBus& serialBus_);
     /*!
-     * Run floppy emulation for 0.5 microseconds.
+     * Run floppy emulation for at least 'timeRemaining' / 2^32 microseconds,
+     * or 166.7 nanoseconds, whichever is greater. Returns the remaining time
+     * (<= 0) in 2^-32 microseconds.
      */
-    virtual void runHalfCycle(SerialBus& serialBus_);
+    inline int64_t run(SerialBus& serialBus_, int64_t timeRemaining)
+    {
+      uint8_t c = cycleFracCnt;
+      do {
+        switch (c) {
+        case 0:
+          this->runOneCycle_(serialBus_);
+          c = 5;
+          break;
+        case 1:
+          {
+            uint8_t atnAck_ = via1PortBOutput ^ (serialBus_.getATN() ^ 0xFF);
+            atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
+            serialBus_.setDATA(deviceNumber, !(atnAck_));
+            serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+          }
+          c = 0;
+          break;
+        default:
+          c--;
+          break;
+        }
+        // use a timeslice of 166.7 ns length (1541 cycle time / 6)
+        timeRemaining -= int64_t(715827883);
+      } while (timeRemaining > int64_t(0));
+      cycleFracCnt = c;
+      return timeRemaining;
+    }
     /*!
      * Reset floppy drive.
      */

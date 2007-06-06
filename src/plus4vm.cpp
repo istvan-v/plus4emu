@@ -370,12 +370,12 @@ namespace Plus4 {
         *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
     TED7360_& ted = *(floppyDrive.ted);
     Plus4VM&  vm = ted.vm;
-    floppyDrive.timeRemaining += (vm.tedTimesliceLength >> 1);
-    while (floppyDrive.timeRemaining > 0) {
-      // use a timeslice of 500 ns length (0.5 cycles)
-      floppyDrive.timeRemaining -= (int64_t(1) << 31);
-      floppyDrive.floppyDrive->runHalfCycle(ted.serialPort);
-    }
+    // assume double clock frequency < 6 MHz
+    // (based on limits in setVideoFrequency())
+    floppyDrive.timeRemaining =
+        reinterpret_cast<VC1541 *>(floppyDrive.floppyDrive)->run(
+            ted.serialPort,
+            floppyDrive.timeRemaining + (vm.tedTimesliceLength >> 1));
   }
 
   // --------------------------------------------------------------------------
