@@ -76,20 +76,6 @@ namespace Plus4 {
     }
   }
 
-  void VIA6522::run(size_t nCycles)
-  {
-    while (nCycles--) {
-      updateTimer1();
-      if (!timer2PulseCountingMode)
-        updateTimer2();
-      bool    newIRQState = !!(viaRegisters[0x0D] & 0x80);
-      if (newIRQState != prvIRQState) {
-        prvIRQState = newIRQState;
-        irqStateChangeCallback(newIRQState);
-      }
-    }
-  }
-
   uint8_t VIA6522::readRegister(uint16_t addr)
   {
     addr = addr & 0x000F;
@@ -342,6 +328,21 @@ namespace Plus4 {
       break;
     }
     return value;
+  }
+
+  void VIA6522::timer1Underflow()
+  {
+    if (!timer1SingleShotMode || !timer1SingleShotModeDone) {
+      if (timer1SingleShotMode)
+        portBTimerOutput = 0x80;
+      else {
+        timer1Counter = timer1Latch;
+        portBTimerOutput = portBTimerOutput ^ 0x80;
+      }
+      viaRegisters[0x0D] = viaRegisters[0x0D] | 0x40;
+      updateInterruptFlags();
+    }
+    timer1SingleShotModeDone = true;
   }
 
   void VIA6522::irqStateChangeCallback(bool newState)

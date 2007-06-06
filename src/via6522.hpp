@@ -68,22 +68,12 @@ namespace Plus4 {
       if (viaRegisters[0x0D] & viaRegisters[0x0E])
         viaRegisters[0x0D] = viaRegisters[0x0D] | 0x80;
     }
+    void timer1Underflow();
     inline void updateTimer1()
     {
       timer1Counter = (timer1Counter - 1) & 0xFFFF;
-      if (!timer1Counter) {
-        if (!timer1SingleShotMode || !timer1SingleShotModeDone) {
-          if (timer1SingleShotMode)
-            portBTimerOutput = 0x80;
-          else {
-            timer1Counter = timer1Latch;
-            portBTimerOutput = portBTimerOutput ^ 0x80;
-          }
-          viaRegisters[0x0D] = viaRegisters[0x0D] | 0x40;
-          updateInterruptFlags();
-        }
-        timer1SingleShotModeDone = true;
-      }
+      if (!timer1Counter)
+        timer1Underflow();
     }
     inline void updateTimer2()
     {
@@ -100,7 +90,17 @@ namespace Plus4 {
     VIA6522();
     virtual ~VIA6522();
     void reset();
-    void run(size_t nCycles = 1);
+    inline void runOneCycle()
+    {
+      updateTimer1();
+      if (!timer2PulseCountingMode)
+        updateTimer2();
+      bool    newIRQState = !!(viaRegisters[0x0D] & 0x80);
+      if (newIRQState != prvIRQState) {
+        prvIRQState = newIRQState;
+        irqStateChangeCallback(newIRQState);
+      }
+    }
     uint8_t readRegister(uint16_t addr);
     void writeRegister(uint16_t addr, uint8_t value);
     uint8_t readRegisterDebug(uint16_t addr) const;
