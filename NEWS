@@ -1,3 +1,11 @@
+Changes in version 1.1.2
+------------------------
+
+  * fixed bug that caused the tape input signal to get stuck at high
+    level sometimes even after stopping or closing the tape
+  * optimized 1541 high timing accuracy mode
+  * adjusted reSID filter for different clock frequency in Plus/4
+
 Changes in version 1.1.1
 ------------------------
 
