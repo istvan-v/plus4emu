@@ -370,8 +370,6 @@ namespace Plus4 {
         *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
     TED7360_& ted = *(floppyDrive.ted);
     Plus4VM&  vm = ted.vm;
-    // assume double clock frequency < 6 MHz
-    // (based on limits in setVideoFrequency())
     floppyDrive.timeRemaining =
         reinterpret_cast<VC1541 *>(floppyDrive.floppyDrive)->run(
             ted.serialPort,
@@ -647,6 +645,8 @@ namespace Plus4 {
     bool    newTapeCallbackFlag = (haveTape() && getTapeButtonState() != 0);
     if (newTapeCallbackFlag != tapeCallbackFlag) {
       tapeCallbackFlag = newTapeCallbackFlag;
+      if (!tapeCallbackFlag)
+        ted->setTapeInput(false);
       ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
     tedTimeRemaining += (int64_t(microseconds) << 32);
@@ -1317,7 +1317,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010101); // version 1.1.1
+    demoBuffer.writeUInt32(0x00010102); // version 1.1.2
     demoFile = &f;
     isRecordingDemo = true;
     ted->setCallback(&demoRecordCallback, this, 1);
@@ -1412,7 +1412,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010101) {
+    if (version != 0x00010102) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }
