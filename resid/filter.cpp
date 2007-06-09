@@ -251,18 +251,20 @@ namespace Plus4 {
   {
     const double pi = 3.1415926535897932385;
 
-    // Multiply with 1.048576 to facilitate division by 1 000 000 by right-
-    // shifting 20 times (2 ^ 20 = 1048576).
-    w0 = static_cast<sound_sample>(2*pi*f0[fc]*1.048576);
+    // Multiply with 1048576/clock frequency to facilitate division by
+    // the clock frequency by right-shifting 20 times (2 ^ 20 = 1048576).
+    const double scaleFac = 1048576.0 / 940000.0;
+
+    w0 = static_cast<sound_sample>(2*pi*f0[fc]*scaleFac);
 
     // Limit f0 to 16kHz to keep 1 cycle filter stable.
     const sound_sample w0_max_1 =
-        static_cast<sound_sample>(2*pi*16000*1.048576);
+        static_cast<sound_sample>(2*pi*16000*scaleFac);
     w0_ceil_1 = w0 <= w0_max_1 ? w0 : w0_max_1;
 
     // Limit f0 to 4kHz to keep delta_t cycle filter stable.
     const sound_sample w0_max_dt =
-        static_cast<sound_sample>(2*pi*4000*1.048576);
+        static_cast<sound_sample>(2*pi*4000*scaleFac);
     w0_ceil_dt = w0 <= w0_max_dt ? w0 : w0_max_dt;
   }
 
