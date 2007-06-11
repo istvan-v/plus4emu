@@ -27,8 +27,7 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = ted.ioRegister_0000 & uint8_t(0xDF);
-    return ted.dataBusState;
+    return (ted.ioRegister_0000 & uint8_t(0xDF));
   }
 
   uint8_t TED7360::read_register_0001(void *userData, uint16_t addr)
@@ -42,8 +41,7 @@ namespace Plus4 {
     tmp2 = ((tmp2 & uint8_t(0x01)) << 7) | ((tmp2 & uint8_t(0x02)) << 5);
     tmp &= ((tmp2 ^ uint8_t(0xFF)) & nmask_);
     tmp |= (ted.ioRegister_0001 & mask_);
-    ted.dataBusState = tmp;
-    return ted.dataBusState;
+    return tmp;
   }
 
   uint8_t TED7360::read_register_FD0x(void *userData, uint16_t addr)

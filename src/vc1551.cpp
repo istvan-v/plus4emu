@@ -174,7 +174,6 @@ namespace Plus4 {
   {
     (void) addr;
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
-    vc1551.dataBusState = value & 0xFF;
     vc1551.memory_ram[0x0001] &= uint8_t(0x90);
     vc1551.memory_ram[0x0001] |= (value & uint8_t(0x6F));
   }
