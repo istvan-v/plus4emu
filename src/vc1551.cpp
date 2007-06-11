@@ -151,7 +151,7 @@ namespace Plus4 {
   uint8_t VC1551::readMemory_TIA(void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
-    vc1551.dataBusState = vc1551.tia6523Registers[addr & 0x0007];
+    vc1551.dataBusState = vc1551.tpi1.readRegister(addr);
     return vc1551.dataBusState;
   }
 
@@ -189,29 +189,8 @@ namespace Plus4 {
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = value & 0xFF;
-    addr = addr & 0x0007;
-    switch (addr) {
-    case 0:
-    case 1:
-      {
-        uint8_t mask_ = vc1551.tia6523Registers[addr + 3];
-        vc1551.tia6523Registers[addr] &= (mask_ ^ uint8_t(0xFF));
-        vc1551.tia6523Registers[addr] |= (value & mask_);
-      }
-      break;
-    case 2:
-      {
-        uint8_t mask_ = vc1551.tia6523Registers[addr + 3] & uint8_t(0x1F);
-        vc1551.tia6523Registers[addr] &= (mask_ ^ uint8_t(0xFF));
-        vc1551.tia6523Registers[addr] |= (value & mask_);
-      }
-      break;
-    case 3:
-    case 4:
-    case 5:
-      vc1551.tia6523Registers[addr] = vc1551.dataBusState;
-      break;
-    }
+    vc1551.tpi1.writeRegister(addr, vc1551.dataBusState);
+    vc1551.updateParallelInterface();
   }
 
   // --------------------------------------------------------------------------
@@ -601,6 +580,8 @@ namespace Plus4 {
     : FloppyDrive(driveNum_),
       cpu(*this),
       memory_rom((uint8_t *) 0),
+      tpi1(),
+      tpi2(),
       deviceNumber(uint8_t(driveNum_)),
       diskID(0x00),
       dataBusState(0x00),
@@ -628,8 +609,6 @@ namespace Plus4 {
       breakPointCallbackUserData((void *) 0),
       noBreakOnDataRead(false)
   {
-    for (int i = 0; i < 8; i++)
-      tia6523Registers[i] = 0xFF;
     // clear RAM and track buffers
     for (int i = 0; i < 2048; i++)
       memory_ram[i] = 0x00;
@@ -739,7 +718,7 @@ namespace Plus4 {
       shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
       if (shiftRegisterBitCnt == 0) {
         syncFlag = false;
-        if (tia6523Registers[2] & 0x10) {
+        if (tpi1.getPortCOutput() & 0x10) {
           // read mode
           uint8_t readByte = 0x00;
           if (headLoadedFlag) {
@@ -748,18 +727,18 @@ namespace Plus4 {
               syncFlag = prvByteWasFF;
           }
           prvByteWasFF = (readByte == 0xFF);
-          tia6523Registers[1] = readByte;
+          tpi1.setPortB(readByte);
         }
         else {
           // write mode
+          tpi1.setPortB(0xFF);
           if (headLoadedFlag && !writeProtectFlag) {
             trackDirtyFlag = true;
-            trackBuffer_GCR[headPosition] = tia6523Registers[1];
+            trackBuffer_GCR[headPosition] = tpi1.getPortBOutput();
           }
           prvByteWasFF = false;
         }
-        tia6523Registers[2] = uint8_t((tia6523Registers[2] & 0xBF)
-                                      | (syncFlag ? 0x00 : 0x40));
+        tpi1.setPortCBit(6, !syncFlag);
         // set byte ready flag
         if (!syncFlag) {
           memory_ram[0x0001] |= uint8_t(0x80);
@@ -784,10 +763,11 @@ namespace Plus4 {
   {
     (void) flushTrack();        // FIXME: should report errors ?
     cpu.reset();
-    for (int i = 0; i < 6; i++)
-      tia6523Registers[i] = 0x00;
+    tpi1.reset();
+    tpi2.reset();
     // set device number
-    tia6523Registers[2] = uint8_t(0xDF | ((deviceNumber & 0x01) << 5));
+    tpi1.setPortC(uint8_t(0xDF | ((deviceNumber & 0x01) << 5)));
+    updateParallelInterface();
   }
 
   M7501 * VC1551::getCPU()
@@ -825,7 +805,7 @@ namespace Plus4 {
       if (addr < 0x1000)
         return memory_ram[addr & 0x07FF];
       else if (addr >= 0x4000)
-        return tia6523Registers[addr & 0x0007];
+        return tpi1.readRegister(addr);
     }
     else if (addr >= 0xC000) {
       if (memory_rom)
@@ -846,29 +826,8 @@ namespace Plus4 {
       }
     }
     else if ((addr & 0xC000) == 0x4000) {
-      addr = addr & 0x0007;
-      switch (addr) {
-      case 0:
-      case 1:
-        {
-          uint8_t mask_ = tia6523Registers[addr + 3];
-          tia6523Registers[addr] &= (mask_ ^ uint8_t(0xFF));
-          tia6523Registers[addr] |= (value & mask_);
-        }
-        break;
-      case 2:
-        {
-          uint8_t mask_ = tia6523Registers[addr + 3] & uint8_t(0x1F);
-          tia6523Registers[addr] &= (mask_ ^ uint8_t(0xFF));
-          tia6523Registers[addr] |= (value & mask_);
-        }
-        break;
-      case 3:
-      case 4:
-      case 5:
-        tia6523Registers[addr] = value;
-        break;
-      }
+      tpi1.writeRegister(addr, value);
+      updateParallelInterface();
     }
   }
 
@@ -901,41 +860,38 @@ namespace Plus4 {
     (void) f;
   }
 
+  void VC1551::updateParallelInterface()
+  {
+    uint8_t tmp = tpi1.getPortAOutput() & tpi2.getPortAOutput();
+    tpi1.setPortA(tmp);
+    tpi2.setPortA(tmp);
+    uint8_t tmp2 = tpi1.getPortCOutput();
+    tmp = (tpi2.getPortBOutput() & tmp2) & uint8_t(0x03);
+    tpi1.setPortCBit(0, bool(tmp & 0x01));
+    tpi1.setPortCBit(1, bool(tmp & 0x02));
+    tpi2.setPortB(tmp);
+    tmp = tpi2.getPortCOutput();
+    tmp2 &= uint8_t(0x88);
+    tmp = uint8_t(((tmp & (tmp2 << 4)) | (tmp & (tmp2 >> 1))) & 0xC0);
+    tpi1.setPortCBit(3, bool(tmp & 0x80));
+    tpi1.setPortCBit(7, bool(tmp & 0x40));
+    tpi2.setPortC(tmp);
+  }
+
   bool VC1551::parallelIECRead(uint16_t addr, uint8_t& value)
   {
-    if ((addr & 0x0020) != (uint16_t(tia6523Registers[2] & 0x04) << 3))
+    if ((uint8_t(addr >> 3) ^ tpi1.getPortCOutput()) & uint8_t(0x04))
       return false;
-    switch (addr & 0x0007) {
-    case 0:
-      value = tia6523Registers[0];
-      break;
-    case 1:
-      value = tia6523Registers[2] & uint8_t(0x03);
-      break;
-    case 2:
-      value = (((tia6523Registers[2] >> 1) & uint8_t(0x40))
-               | ((tia6523Registers[2] << 4) & uint8_t(0x80)));
-      break;
-    default:
-      value = 0x00;
-    }
+    value = tpi2.readRegister(addr);
     return true;
   }
 
   bool VC1551::parallelIECWrite(uint16_t addr, uint8_t value)
   {
-    if ((addr & 0x0020) != (uint16_t(tia6523Registers[2] & 0x04) << 3))
+    if ((uint8_t(addr >> 3) ^ tpi1.getPortCOutput()) & uint8_t(0x04))
       return false;
-    switch (addr & 0x0007) {
-    case 0:
-      tia6523Registers[0] &= tia6523Registers[3];
-      tia6523Registers[0] |= (value & (tia6523Registers[3] ^ uint8_t(0xFF)));
-      break;
-    case 2:
-      tia6523Registers[2] &= uint8_t(0x7F);
-      tia6523Registers[2] |= ((value << 1) & uint8_t(0x80));
-      break;
-    }
+    tpi2.writeRegister(addr, value);
+    updateParallelInterface();
     return true;
   }
 

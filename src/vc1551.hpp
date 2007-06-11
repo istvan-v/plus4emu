@@ -27,6 +27,139 @@
 
 namespace Plus4 {
 
+  class TPI6523 {
+   private:
+    uint8_t portAInput;
+    uint8_t portAOutput;
+    uint8_t portADataDirection;     // NOTE: data directions are XOR'd by 0xFF
+    uint8_t portBInput;
+    uint8_t portBOutput;
+    uint8_t portBDataDirection;
+    uint8_t portCInput;
+    uint8_t portCOutput;
+    uint8_t portCDataDirection;
+   public:
+    TPI6523()
+    {
+      portAInput = 0xFF;
+      portAOutput = 0x00;
+      portADataDirection = 0xFF;
+      portBInput = 0xFF;
+      portBOutput = 0x00;
+      portBDataDirection = 0xFF;
+      portCInput = 0xFF;
+      portCOutput = 0x00;
+      portCDataDirection = 0xFF;
+    }
+    inline void reset()
+    {
+      portAOutput = 0x00;
+      portADataDirection = 0xFF;
+      portBOutput = 0x00;
+      portBDataDirection = 0xFF;
+      portCOutput = 0x00;
+      portCDataDirection = 0xFF;
+    }
+    inline void setPortA(uint8_t value)
+    {
+      portAInput = value;
+    }
+    inline void setPortABit(uint8_t n, bool value)
+    {
+      if (value)
+        portAInput |= uint8_t(1 << n);
+      else
+        portAInput &= uint8_t((1 << n) ^ 0xFF);
+    }
+    inline uint8_t getPortA() const
+    {
+      return (portAInput & (portAOutput | portADataDirection));
+    }
+    inline uint8_t getPortAOutput() const
+    {
+      return (portAOutput | portADataDirection);
+    }
+    inline void setPortB(uint8_t value)
+    {
+      portBInput = value;
+    }
+    inline void setPortBBit(uint8_t n, bool value)
+    {
+      if (value)
+        portBInput |= uint8_t(1 << n);
+      else
+        portBInput &= uint8_t((1 << n) ^ 0xFF);
+    }
+    inline uint8_t getPortB() const
+    {
+      return (portBInput & (portBOutput | portBDataDirection));
+    }
+    inline uint8_t getPortBOutput() const
+    {
+      return (portBOutput | portBDataDirection);
+    }
+    inline void setPortC(uint8_t value)
+    {
+      portCInput = value;
+    }
+    inline void setPortCBit(uint8_t n, bool value)
+    {
+      if (value)
+        portCInput |= uint8_t(1 << n);
+      else
+        portCInput &= uint8_t((1 << n) ^ 0xFF);
+    }
+    inline uint8_t getPortC() const
+    {
+      return (portCInput & (portCOutput | portCDataDirection));
+    }
+    inline uint8_t getPortCOutput() const
+    {
+      return (portCOutput | portCDataDirection);
+    }
+    inline void writeRegister(uint16_t addr, uint8_t value)
+    {
+      switch (addr & 0x0007) {
+      case 0:
+        portAOutput = value;
+        break;
+      case 1:
+        portBOutput = value;
+        break;
+      case 2:
+        portCOutput = value;
+        break;
+      case 3:
+        portADataDirection = value ^ uint8_t(0xFF);
+        break;
+      case 4:
+        portBDataDirection = value ^ uint8_t(0xFF);
+        break;
+      case 5:
+        portCDataDirection = value ^ uint8_t(0xFF);
+        break;
+      }
+    }
+    inline uint8_t readRegister(uint16_t addr) const
+    {
+      switch (addr & 0x0007) {
+      case 0:
+        return getPortA();
+      case 1:
+        return getPortB();
+      case 2:
+        return getPortC();
+      case 3:
+        return (portADataDirection ^ uint8_t(0xFF));
+      case 4:
+        return (portBDataDirection ^ uint8_t(0xFF));
+      case 5:
+        return (portCDataDirection ^ uint8_t(0xFF));
+      }
+      return uint8_t(0xFF);
+    }
+  };
+
   class VC1551 : public FloppyDrive {
    private:
     class M7501_ : public M7501 {
@@ -44,7 +177,8 @@ namespace Plus4 {
     uint8_t     memory_ram[2048];       // 2K RAM, 0000..0FFF
     uint8_t     trackBuffer_GCR[8192];
     uint8_t     trackBuffer_D64[5376];  // for 21 256-byte sectors
-    uint8_t     tia6523Registers[8];
+    TPI6523     tpi1;                   // disk controller (1551 4000..7FFF)
+    TPI6523     tpi2;                   // parallel port (Plus/4 FEC0..FEFF)
     uint8_t     deviceNumber;
     uint8_t     diskID;
     uint8_t     dataBusState;
@@ -95,6 +229,7 @@ namespace Plus4 {
     bool readTrack(int trackNum = -1);
     bool flushTrack(int trackNum = -1);
     bool setCurrentTrack(int trackNum);
+    void updateParallelInterface();
    public:
     VC1551(int driveNum_ = 8);
     virtual ~VC1551();
