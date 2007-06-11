@@ -273,6 +273,12 @@ namespace Plus4 {
   uint8_t Plus4VM::TED7360_::parallelIECRead(void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+#if 0
+    if (!(addr & 0x0007)) {
+      // work around kernal parallel interface test bug
+      ted.dataBusState |= uint8_t(0x02);
+    }
+#endif
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
       for (int i = 0; i < 2; i++) {
         FloppyDrive *p = ted.vm.floppyDrives[i].floppyDrive;
@@ -325,8 +331,7 @@ namespace Plus4 {
       tmp &= (tmp2 ^ uint8_t(0xFF));
     }
     tmp = (tmp & nmask_) | (ted.ioRegister_0001 & mask_);
-    ted.dataBusState = tmp;
-    return ted.dataBusState;
+    return tmp;
   }
 
   void Plus4VM::TED7360_::memoryWrite0001Callback(void *userData,
@@ -334,7 +339,6 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
-    ted.dataBusState = value;
     ted.ioRegister_0001 = value;
     uint8_t tmp = value | (ted.ioRegister_0000 ^ uint8_t(0xFF));
     uint8_t tmp2 = tmp ^ uint8_t(0xFF);
@@ -1317,7 +1321,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010102); // version 1.1.2
+    demoBuffer.writeUInt32(0x00010103); // version 1.1.3
     demoFile = &f;
     isRecordingDemo = true;
     ted->setCallback(&demoRecordCallback, this, 1);
@@ -1412,7 +1416,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010102) {
+    if (version != 0x00010103) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }
