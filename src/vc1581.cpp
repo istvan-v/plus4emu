@@ -214,7 +214,7 @@ namespace Plus4 {
     for (uint16_t i = 0; i < 8192; i++)
       memory_ram[i] = 0x00;
     // select drive number
-    ciaPortAInput = uint8_t((driveNum_ & 3) << 3) | uint8_t(0x02);
+    ciaPortAInput = uint8_t((driveNum_ & 3) << 3) | uint8_t(0x67);
     // configure WD177x emulation
     wd177x.setIsWD1773(false);
     wd177x.setEnableBusyFlagHack(true);

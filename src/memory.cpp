@@ -111,8 +111,12 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = ted.hannesRegister & ted.user_port_state;
-    ted.dataBusState &= (ted.tape_button_state ? uint8_t(0xFB) : uint8_t(0xFF));
+    if (ted.ramSegments < 16) {
+      ted.dataBusState = ted.user_port_state & (ted.tape_button_state ?
+                                                uint8_t(0xFB) : uint8_t(0xFF));
+    }
+    else
+      ted.dataBusState = ted.hannesRegister;
     return ted.dataBusState;
   }
 
@@ -159,8 +163,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 4]];
     ted.dataBusState = value;
-    if (p)
-      p[addr] = value;
+    p[addr] = value;
   }
 
   void TED7360::write_memory_1000_to_3FFF(void *userData,
@@ -169,8 +172,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap]];
     ted.dataBusState = value;
-    if (p)
-      p[addr] = value;
+    p[addr] = value;
   }
 
   void TED7360::write_memory_4000_to_7FFF(void *userData,
@@ -179,8 +181,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 1]];
     ted.dataBusState = value;
-    if (p)
-      p[addr & 0x3FFF] = value;
+    p[addr & 0x3FFF] = value;
   }
 
   void TED7360::write_memory_8000_to_BFFF(void *userData,
@@ -239,8 +240,8 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.user_port_state = value;
     if (ted.ramSegments < 16) {
+      ted.user_port_state = value;
       ted.hannesRegister = uint8_t(0xFF);
       ted.memoryReadMap |= 0x0678U;
       ted.memoryWriteMap |= 0x0678U;

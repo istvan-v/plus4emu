@@ -763,6 +763,8 @@ namespace Plus4 {
   {
     (void) flushTrack();        // FIXME: should report errors ?
     cpu.reset();
+    memory_ram[0x0000] = 0x00;
+    memory_ram[0x0001] &= uint8_t(0x90);
     tpi1.reset();
     tpi2.reset();
     // set device number

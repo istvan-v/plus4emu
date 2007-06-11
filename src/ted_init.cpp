@@ -299,6 +299,8 @@ namespace Plus4 {
       writeMemory(0x0508, 0x00);
     }
     // reset CPU
+    writeMemory(0x0000, 0x00);
+    writeMemory(0x0001, 0x00);
     M7501::reset(cold_reset);
   }
 

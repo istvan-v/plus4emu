@@ -57,8 +57,10 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = ted.user_port_state & (ted.tape_button_state ?
-                                              uint8_t(0xFB) : uint8_t(0xFF));
+    if (ted.ramSegments < 16 || !(addr & 0x000F)) {
+      ted.dataBusState = ted.user_port_state & (ted.tape_button_state ?
+                                                uint8_t(0xFB) : uint8_t(0xFF));
+    }
     return ted.dataBusState;
   }
 

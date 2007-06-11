@@ -305,8 +305,7 @@ namespace Plus4 {
         if (p != (FloppyDrive *) 0) {
           if (typeid(*p) == typeid(VC1551)) {
             VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
-            if (vc1551.parallelIECWrite(addr, ted.dataBusState))
-              break;
+            (void) vc1551.parallelIECWrite(addr, ted.dataBusState);
           }
         }
       }

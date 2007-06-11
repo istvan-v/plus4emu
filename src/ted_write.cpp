@@ -50,7 +50,8 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.user_port_state = value;
+    if (ted.ramSegments < 16 || !(addr & 0x000F))
+      ted.user_port_state = value;
   }
 
   void TED7360::write_register_FD3x(void *userData,
