@@ -111,14 +111,8 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    if (ted.ramSegments < 16) {
-      ted.dataBusState = ted.user_port_state & (ted.tape_button_state ?
-                                                uint8_t(0xFB) : uint8_t(0xFF));
-    }
-    else {
-      // FIXME: should still set tape button state bit ?
-      ted.dataBusState = ted.hannesRegister;
-    }
+    ted.dataBusState = ted.hannesRegister & ted.user_port_state;
+    ted.dataBusState &= (ted.tape_button_state ? uint8_t(0xFB) : uint8_t(0xFF));
     return ted.dataBusState;
   }
 
@@ -245,8 +239,8 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
+    ted.user_port_state = value;
     if (ted.ramSegments < 16) {
-      ted.user_port_state = value;
       ted.hannesRegister = uint8_t(0xFF);
       ted.memoryReadMap |= 0x0678U;
       ted.memoryWriteMap |= 0x0678U;
@@ -255,10 +249,10 @@ namespace Plus4 {
       ted.tedBitmapReadMap |= 0x0678U;
       return;
     }
-    // FIXME: should still write user port ?
-    ted.hannesRegister = value | uint8_t(ted.ramSegments < 64 ? 0x3C : 0x30);
+    ted.hannesRegister = value;
     unsigned int  tmp =
-        (unsigned int) (ted.hannesRegister & uint8_t(0xCF)) << 3;
+        (unsigned int) ((value | uint8_t(ted.ramSegments < 64 ? 0x3C : 0x30))
+                        & uint8_t(0xCF)) << 3;
     ted.memoryReadMap = (ted.memoryReadMap & 0x7980U) | tmp;
     ted.memoryWriteMap = (ted.memoryWriteMap & 0x7980U) | tmp;
     ted.cpuMemoryReadMap = (ted.cpuMemoryReadMap & 0x7980U) | tmp;
