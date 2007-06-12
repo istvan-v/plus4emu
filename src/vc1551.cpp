@@ -617,6 +617,11 @@ namespace Plus4 {
     for (int i = 0; i < 5376; i++)
       trackBuffer_D64[i] = 0x00;
     this->reset();
+    tpi2.writeRegister(2, 0x40);
+    tpi2.writeRegister(3, 0xFF);
+    tpi2.writeRegister(4, 0x00);
+    tpi2.writeRegister(5, 0x40);
+    updateParallelInterface();
   }
 
   VC1551::~VC1551()
@@ -738,7 +743,7 @@ namespace Plus4 {
           }
           prvByteWasFF = false;
         }
-        tpi1.setPortCBit(6, !syncFlag);
+        tpi1.setPortCBits(0x40, uint8_t(syncFlag ? 0x00 : 0x40));
         // set byte ready flag
         if (!syncFlag) {
           memory_ram[0x0001] |= uint8_t(0x80);
@@ -869,14 +874,12 @@ namespace Plus4 {
     tpi2.setPortA(tmp);
     uint8_t tmp2 = tpi1.getPortCOutput();
     tmp = (tpi2.getPortBOutput() & tmp2) & uint8_t(0x03);
-    tpi1.setPortCBit(0, bool(tmp & 0x01));
-    tpi1.setPortCBit(1, bool(tmp & 0x02));
+    tpi1.setPortCBits(0x03, tmp);
     tpi2.setPortB(tmp);
     tmp = tpi2.getPortCOutput();
     tmp2 &= uint8_t(0x88);
     tmp = uint8_t(((tmp & (tmp2 << 4)) | (tmp & (tmp2 >> 1))) & 0xC0);
-    tpi1.setPortCBit(3, bool(tmp & 0x80));
-    tpi1.setPortCBit(7, bool(tmp & 0x40));
+    tpi1.setPortCBits(0x88, uint8_t(((tmp & 0x80) >> 4) | ((tmp & 0x40) << 1)));
     tpi2.setPortC(tmp);
   }
 

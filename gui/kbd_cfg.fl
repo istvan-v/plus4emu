@@ -71,441 +71,441 @@ class Plus4EmuGUI_KbdConfigWindow {open
           callback {{
   defineKey(0x04, "F1/F4");
 }}
-          xywh {55 20 45 20} color 50 labelsize 11
+          xywh {55 20 45 20} color 50 selection_color 48 labelsize 11
         }
         Fl_Button {} {
           label {F2/F5}
           callback {{
   defineKey(0x05, "F2/F5");
 }}
-          xywh {115 20 45 20} color 50 labelsize 11
+          xywh {115 20 45 20} color 50 selection_color 48 labelsize 11
         }
         Fl_Button {} {
           label {F3/F6}
           callback {{
   defineKey(0x06, "F3/F6");
 }}
-          xywh {175 20 45 20} color 50 labelsize 11
+          xywh {175 20 45 20} color 50 selection_color 48 labelsize 11
         }
         Fl_Button {} {
           label {Help/F7}
           callback {{
   defineKey(0x03, "Help/F7");
 }}
-          xywh {235 20 45 20} color 50 labelsize 11
+          xywh {235 20 45 20} color 50 selection_color 48 labelsize 11
         }
         Fl_Button {} {
           label Esc
           callback {{
   defineKey(0x34, "Esc");
 }}
-          xywh {20 55 25 25} color 53 labelsize 11
+          xywh {20 55 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label 1
           callback {{
   defineKey(0x38, "1");
 }}
-          xywh {50 55 25 25} color 53
+          xywh {50 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 2
           callback {{
   defineKey(0x3B, "2");
 }}
-          xywh {80 55 25 25} color 53
+          xywh {80 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 3
           callback {{
   defineKey(0x08, "3");
 }}
-          xywh {110 55 25 25} color 53
+          xywh {110 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 4
           callback {{
   defineKey(0x0B, "4");
 }}
-          xywh {140 55 25 25} color 53
+          xywh {140 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 5
           callback {{
   defineKey(0x10, "5");
 }}
-          xywh {170 55 25 25} color 53
+          xywh {170 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 6
           callback {{
   defineKey(0x13, "6");
 }}
-          xywh {200 55 25 25} color 53
+          xywh {200 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 7
           callback {{
   defineKey(0x18, "7");
 }}
-          xywh {230 55 25 25} color 53
+          xywh {230 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 8
           callback {{
   defineKey(0x1B, "8");
 }}
-          xywh {260 55 25 25} color 53
+          xywh {260 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 9
           callback {{
   defineKey(0x20, "9");
 }}
-          xywh {290 55 25 25} color 53
+          xywh {290 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label 0
           callback {{
   defineKey(0x23, "0");
 }}
-          xywh {320 55 25 25} color 53
+          xywh {320 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {+}
           callback {{
   defineKey(0x36, "+");
 }}
-          xywh {350 55 25 25} color 53
+          xywh {350 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {-}
           callback {{
   defineKey(0x2E, "-");
 }}
-          xywh {380 55 25 25} color 53
+          xywh {380 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {=}
           callback {{
   defineKey(0x35, "=");
 }}
-          xywh {410 55 25 25} color 53
+          xywh {410 55 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label Hom
           callback {{
   defineKey(0x39, "Clear/Home");
 }}
-          xywh {440 55 25 25} color 53 labelsize 11
+          xywh {440 55 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Del
           callback {{
   defineKey(0x00, "Inst/Del");
 }}
-          xywh {470 55 25 25} color 53 labelsize 11
+          xywh {470 55 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Ctrl
           callback {{
   defineKey(0x3A, "Control");
 }}
-          xywh {20 85 40 25} color 53 labelsize 11
+          xywh {20 85 40 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Q
           callback {{
   defineKey(0x3E, "Q");
 }}
-          xywh {65 85 25 25} color 53
+          xywh {65 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label W
           callback {{
   defineKey(0x09, "W");
 }}
-          xywh {95 85 25 25} color 53
+          xywh {95 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label E
           callback {{
   defineKey(0x0E, "E");
 }}
-          xywh {125 85 25 25} color 53
+          xywh {125 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label R
           callback {{
   defineKey(0x11, "R");
 }}
-          xywh {155 85 25 25} color 53
+          xywh {155 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label T
           callback {{
   defineKey(0x16, "T");
 }}
-          xywh {185 85 25 25} color 53
+          xywh {185 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label Y
           callback {{
   defineKey(0x19, "Y");
 }}
-          xywh {215 85 25 25} color 53
+          xywh {215 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label U
           callback {{
   defineKey(0x1E, "U");
 }}
-          xywh {245 85 25 25} color 53
+          xywh {245 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label I
           callback {{
   defineKey(0x21, "I");
 }}
-          xywh {275 85 25 25} color 53
+          xywh {275 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label O
           callback {{
   defineKey(0x26, "O");
 }}
-          xywh {305 85 25 25} color 53
+          xywh {305 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label P
           callback {{
   defineKey(0x29, "P");
 }}
-          xywh {335 85 25 25} color 53
+          xywh {335 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {@@}
           callback {{
   defineKey(0x07, "@@");
 }}
-          xywh {365 85 25 25} color 53
+          xywh {365 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {£}
           callback {{
   defineKey(0x02, "£");
 }}
-          xywh {395 85 25 25} color 53
+          xywh {395 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {*}
           callback {{
   defineKey(0x31, "*");
 }}
-          xywh {425 85 25 25} color 53
+          xywh {425 85 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label Ctrl
           callback {{
   defineKey(0x3A, "Control");
 }}
-          xywh {455 85 40 25} color 53 labelsize 11
+          xywh {455 85 40 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label RS
           callback {{
   defineKey(0x3F, "Run/Stop");
 }}
-          xywh {20 115 25 25} color 53 labelsize 11
+          xywh {20 115 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Shf
           callback {{
   defineKey(0x0F, "Shift");
 }}
-          xywh {50 115 25 25} color 53 labelsize 11
+          xywh {50 115 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label A
           callback {{
   defineKey(0x0A, "A");
 }}
-          xywh {80 115 25 25} color 53
+          xywh {80 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label S
           callback {{
   defineKey(0x0D, "S");
 }}
-          xywh {110 115 25 25} color 53
+          xywh {110 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label D
           callback {{
   defineKey(0x12, "D");
 }}
-          xywh {140 115 25 25} color 53
+          xywh {140 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label F
           callback {{
   defineKey(0x15, "F");
 }}
-          xywh {170 115 25 25} color 53
+          xywh {170 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label G
           callback {{
   defineKey(0x1A, "G");
 }}
-          xywh {200 115 25 25} color 53
+          xywh {200 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label H
           callback {{
   defineKey(0x1D, "H");
 }}
-          xywh {230 115 25 25} color 53
+          xywh {230 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label J
           callback {{
   defineKey(0x22, "J");
 }}
-          xywh {260 115 25 25} color 53
+          xywh {260 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label K
           callback {{
   defineKey(0x25, "K");
 }}
-          xywh {290 115 25 25} color 53
+          xywh {290 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label L
           callback {{
   defineKey(0x2A, "L");
 }}
-          xywh {320 115 25 25} color 53
+          xywh {320 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {:}
           callback {{
   defineKey(0x2D, ":");
 }}
-          xywh {350 115 25 25} color 53
+          xywh {350 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {;}
           callback {{
   defineKey(0x32, ";");
 }}
-          xywh {380 115 25 25} color 53
+          xywh {380 115 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label Return
           callback {{
   defineKey(0x01, "Return");
 }}
-          xywh {410 115 55 25} color 53 labelsize 11
+          xywh {410 115 55 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label {C=}
           callback {{
   defineKey(0x3D, "C=");
 }}
-          xywh {20 145 25 25} color 53 labelsize 11
+          xywh {20 145 25 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Shift
           callback {{
   defineKey(0x0F, "Shift");
 }}
-          xywh {50 145 40 25} color 53 labelsize 11
+          xywh {50 145 40 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Z
           callback {{
   defineKey(0x0C, "Z");
 }}
-          xywh {95 145 25 25} color 53
+          xywh {95 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label X
           callback {{
   defineKey(0x17, "X");
 }}
-          xywh {125 145 25 25} color 53
+          xywh {125 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label C
           callback {{
   defineKey(0x14, "C");
 }}
-          xywh {155 145 25 25} color 53
+          xywh {155 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label V
           callback {{
   defineKey(0x1F, "V");
 }}
-          xywh {185 145 25 25} color 53
+          xywh {185 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label B
           callback {{
   defineKey(0x1C, "B");
 }}
-          xywh {215 145 25 25} color 53
+          xywh {215 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label N
           callback {{
   defineKey(0x27, "N");
 }}
-          xywh {245 145 25 25} color 53
+          xywh {245 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label M
           callback {{
   defineKey(0x24, "M");
 }}
-          xywh {275 145 25 25} color 53
+          xywh {275 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {,}
           callback {{
   defineKey(0x2F, ",");
 }}
-          xywh {305 145 25 25} color 53
+          xywh {305 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {.}
           callback {{
   defineKey(0x2C, ".");
 }}
-          xywh {335 145 25 25} color 53
+          xywh {335 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {/}
           callback {{
   defineKey(0x37, "/");
 }}
-          xywh {365 145 25 25} color 53
+          xywh {365 145 25 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label Shift
           callback {{
   defineKey(0x0F, "Shift");
 }}
-          xywh {395 145 40 25} color 53 labelsize 11
+          xywh {395 145 40 25} color 53 selection_color 51 labelsize 11
         }
         Fl_Button {} {
           label Space
           callback {{
   defineKey(0x3C, "Space");
 }}
-          xywh {125 175 265 25} color 53
+          xywh {125 175 265 25} color 53 selection_color 51
         }
         Fl_Button {} {
           label {@>}
@@ -604,35 +604,35 @@ class Plus4EmuGUI_KbdConfigWindow {open
           callback {{
   defineKey(0x53, "Joy 1 right");
 }}
-          xywh {355 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {355 283 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@8>}
           callback {{
   defineKey(0x50, "Joy 1 up");
 }}
-          xywh {328 255 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {328 255 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@4>}
           callback {{
   defineKey(0x52, "Joy 1 left");
 }}
-          xywh {300 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {300 283 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@2>}
           callback {{
   defineKey(0x51, "Joy 1 down");
 }}
-          xywh {328 310 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {328 310 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label Fire
           callback {{
   defineKey(0x56, "Joy 1 fire");
 }}
-          xywh {325 280 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
+          xywh {325 280 25 25} box ROUND_UP_BOX color 80 selection_color 88 labelsize 11 labelcolor 55
         }
       }
       Fl_Group {} {
@@ -647,35 +647,35 @@ class Plus4EmuGUI_KbdConfigWindow {open
           callback {{
   defineKey(0x4B, "Joy 2 right");
 }}
-          xywh {470 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {470 283 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@8>}
           callback {{
   defineKey(0x48, "Joy 2 up");
 }}
-          xywh {443 255 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {443 255 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@4>}
           callback {{
   defineKey(0x4A, "Joy 2 left");
 }}
-          xywh {415 283 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {415 283 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label {@2>}
           callback {{
   defineKey(0x49, "Joy 2 down");
 }}
-          xywh {443 310 20 20} box ROUND_UP_BOX color 39 labelsize 12 labelcolor 52
+          xywh {443 310 20 20} box ROUND_UP_BOX color 39 selection_color 41 labelsize 12 labelcolor 52
         }
         Fl_Button {} {
           label Fire
           callback {{
   defineKey(0x4F, "Joy 2 fire");
 }}
-          xywh {440 280 25 25} box ROUND_UP_BOX color 80 labelsize 11 labelcolor 55
+          xywh {440 280 25 25} box ROUND_UP_BOX color 80 selection_color 88 labelsize 11 labelcolor 55
         }
       }
       Fl_Button {} {

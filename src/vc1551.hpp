@@ -64,12 +64,9 @@ namespace Plus4 {
     {
       portAInput = value;
     }
-    inline void setPortABit(uint8_t n, bool value)
+    inline void setPortABits(uint8_t mask_, uint8_t value)
     {
-      if (value)
-        portAInput |= uint8_t(1 << n);
-      else
-        portAInput &= uint8_t((1 << n) ^ 0xFF);
+      portAInput = (portAInput & (mask_ ^ uint8_t(0xFF))) | value;
     }
     inline uint8_t getPortA() const
     {
@@ -83,12 +80,9 @@ namespace Plus4 {
     {
       portBInput = value;
     }
-    inline void setPortBBit(uint8_t n, bool value)
+    inline void setPortBBits(uint8_t mask_, uint8_t value)
     {
-      if (value)
-        portBInput |= uint8_t(1 << n);
-      else
-        portBInput &= uint8_t((1 << n) ^ 0xFF);
+      portBInput = (portBInput & (mask_ ^ uint8_t(0xFF))) | value;
     }
     inline uint8_t getPortB() const
     {
@@ -102,12 +96,9 @@ namespace Plus4 {
     {
       portCInput = value;
     }
-    inline void setPortCBit(uint8_t n, bool value)
+    inline void setPortCBits(uint8_t mask_, uint8_t value)
     {
-      if (value)
-        portCInput |= uint8_t(1 << n);
-      else
-        portCInput &= uint8_t((1 << n) ^ 0xFF);
+      portCInput = (portCInput & (mask_ ^ uint8_t(0xFF))) | value;
     }
     inline uint8_t getPortC() const
     {

@@ -307,7 +307,9 @@ void Plus4EmuGUI::updateDisplay(double t)
   if (vmThreadStatus.floppyDriveLEDState != oldFloppyDriveLEDState) {
     uint32_t  tmp = vmThreadStatus.floppyDriveLEDState;
     oldFloppyDriveLEDState = tmp;
-    Fl_Color  ledColors_[4] = { FL_BLACK, FL_RED, FL_GREEN, FL_YELLOW };
+    Fl_Color  ledColors_[4] = {
+      FL_BLACK, Fl_Color(128), FL_GREEN, Fl_Color(87)
+    };
     driveAStatusDisplay->color(ledColors_[tmp & 3U]);
     driveAStatusDisplay->redraw();
     driveBStatusDisplay->color(ledColors_[(tmp >> 8) & 3U]);
