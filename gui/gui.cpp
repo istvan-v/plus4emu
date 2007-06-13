@@ -218,9 +218,9 @@ void Plus4EmuGUI::updateDisplay(double t)
   if (vmThreadStatus.isPaused != oldPauseFlag) {
     oldPauseFlag = vmThreadStatus.isPaused;
     if (vmThreadStatus.isPaused)
-      mainWindow->label("plus4emu 1.1.3 beta (paused)");
+      mainWindow->label("plus4emu 1.1.3 (paused)");
     else
-      mainWindow->label("plus4emu 1.1.3 beta");
+      mainWindow->label("plus4emu 1.1.3");
   }
   int   newDemoStatus = (vmThreadStatus.isRecordingDemo ?
                          2 : (vmThreadStatus.isPlayingDemo ? 1 : 0));
