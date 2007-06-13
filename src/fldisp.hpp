@@ -152,6 +152,8 @@ namespace Plus4Emu {
     DisplayParameters   displayParameters;
     DisplayParameters   savedDisplayParameters;
     ThreadLock    threadLock;
+    int           (*fltkEventCallback)(void *, int);
+    void          *fltkEventCallbackUserData;
     void          (*screenshotCallback)(void *,
                                         const unsigned char *, int, int);
     void          *screenshotCallbackUserData;
@@ -182,6 +184,9 @@ namespace Plus4Emu {
                                                     const unsigned char *buf,
                                                     int w_, int h_),
                                        void *userData_);
+    // Set function to be called by handle().
+    virtual void setFLTKEventCallback(int (*func)(void *userData, int event),
+                                      void *userData_ = (void *) 0);
    protected:
     virtual void draw();
    public:

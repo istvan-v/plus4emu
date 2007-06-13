@@ -83,7 +83,7 @@ class Plus4EmuConfigInstallerGUI {open
   } {
     code {{
   if (msg)
-    errorMessageText->label(msg);
+    errorMessageText->copy_label(msg);
   else
     errorMessageText->label("");
   errorWindow->set_modal();
@@ -91,6 +91,7 @@ class Plus4EmuConfigInstallerGUI {open
   do {
     Fl::wait(0.05);
   } while (errorWindow->shown());
+  errorMessageText->label("");
 }} {}
   }
 } 

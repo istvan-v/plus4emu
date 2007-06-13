@@ -994,8 +994,7 @@ namespace Plus4Emu {
 
   int OpenGLDisplay::handle(int event)
   {
-    (void) event;
-    return 0;
+    return fltkEventCallback(fltkEventCallbackUserData, event);
   }
 
 }       // namespace Plus4Emu

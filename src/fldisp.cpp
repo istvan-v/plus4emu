@@ -29,6 +29,13 @@
 
 #include "fldisp.hpp"
 
+static int defaultFLTKEventCallback(void *userData, int event)
+{
+  (void) userData;
+  (void) event;
+  return 0;
+}
+
 namespace Plus4Emu {
 
   void FLTKDisplay_::decodeLine(unsigned char *outBuf,
@@ -153,6 +160,8 @@ namespace Plus4Emu {
       exitFlag(false),
       displayParameters(),
       savedDisplayParameters(),
+      fltkEventCallback(&defaultFLTKEventCallback),
+      fltkEventCallbackUserData((void *) 0),
       screenshotCallback((void (*)(void *, const unsigned char *, int, int)) 0),
       screenshotCallbackUserData((void *) 0),
       screenshotCallbackCnt(0)
@@ -207,8 +216,7 @@ namespace Plus4Emu {
 
   int FLTKDisplay_::handle(int event)
   {
-    (void) event;
-    return 0;
+    return fltkEventCallback(fltkEventCallbackUserData, event);
   }
 
   void FLTKDisplay_::setDisplayParameters(const DisplayParameters& dp)
@@ -286,6 +294,17 @@ namespace Plus4Emu {
         screenshotCallbackCnt = 0;
       }
     }
+  }
+
+  void FLTKDisplay_::setFLTKEventCallback(int (*func)(void *userData,
+                                                      int event),
+                                          void *userData_)
+  {
+    if (func)
+      fltkEventCallback = func;
+    else
+      fltkEventCallback = &defaultFLTKEventCallback;
+    fltkEventCallbackUserData = userData_;
   }
 
   void FLTKDisplay_::checkScreenshotCallback()
@@ -861,8 +880,7 @@ namespace Plus4Emu {
 
   int FLTKDisplay::handle(int event)
   {
-    (void) event;
-    return 0;
+    return fltkEventCallback(fltkEventCallbackUserData, event);
   }
 
   void FLTKDisplay::setDisplayParameters(const DisplayParameters& dp)

@@ -188,7 +188,6 @@ void Plus4EmuGUI::updateDisplay(double t)
            newWindowHeight != oldWindowHeight) {
     if ((displayMode & 1) == 0) {
       int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
-      emulatorWindowGroup->resize(0, 30, newWindowWidth, h);
       emulatorWindow->resize(0, 30, newWindowWidth, h);
       if ((displayMode & 2) == 0) {
         config.display.width = newWindowWidth;
@@ -203,7 +202,6 @@ void Plus4EmuGUI::updateDisplay(double t)
       diskStatusDisplayGroup->resize(345, 0, 30, 30);
     }
     else {
-      emulatorWindowGroup->resize(0, 0, newWindowWidth, newWindowHeight);
       emulatorWindow->resize(0, 0, newWindowWidth, newWindowHeight);
       if ((displayMode & 2) == 0) {
         config.display.width = newWindowWidth;
@@ -239,12 +237,12 @@ void Plus4EmuGUI::updateDisplay(double t)
       demoStatusDisplay1->show();
       demoStatusDisplay2->show();
       if (newDemoStatus == 1) {
-        demoStatusDisplay2->textcolor(247);
-        demoStatusDisplay2->value("P");
+        demoStatusDisplay2->labelcolor(247);
+        demoStatusDisplay2->label("P");
       }
       else {
-        demoStatusDisplay2->textcolor(FL_RED);
-        demoStatusDisplay2->value("R");
+        demoStatusDisplay2->labelcolor(FL_RED);
+        demoStatusDisplay2->label("R");
       }
       const_cast<Fl_Menu_Item *>(m)->activate();
     }
@@ -257,31 +255,31 @@ void Plus4EmuGUI::updateDisplay(double t)
     oldTapeSampleRate = vmThreadStatus.tapeSampleRate;
     oldTapeSampleSize = vmThreadStatus.tapeSampleSize;
     oldTapeReadOnlyFlag = vmThreadStatus.tapeReadOnly;
-    char  tmpBuf[256];
     if (vmThreadStatus.tapeSampleRate < 1L || vmThreadStatus.tapeSampleSize < 1)
-      std::sprintf(&(tmpBuf[0]), "Tape: none");
+      tapeInfoDisplay->label("Tape: none");
     else {
+      char  tmpBuf[256];
       std::sprintf(&(tmpBuf[0]), "Tape: %ldHz %dbit %s",
                    vmThreadStatus.tapeSampleRate, vmThreadStatus.tapeSampleSize,
                    (vmThreadStatus.tapeReadOnly ? "RO" : "RW"));
+      tapeInfoDisplay->copy_label(&(tmpBuf[0]));
     }
-    tapeInfoDisplay->value(&(tmpBuf[0]));
     mainWindow->redraw();
   }
   if (tapeButtonState != oldTapeButtonState) {
     oldTapeButtonState = tapeButtonState;
     switch (tapeButtonState) {
     case 1:
-      tapeStatusDisplay->textcolor(247);
-      tapeStatusDisplay->value(" P");
+      tapeStatusDisplay->labelcolor(247);
+      tapeStatusDisplay->label("P");
       break;
     case 2:
-      tapeStatusDisplay->textcolor(FL_RED);
-      tapeStatusDisplay->value(" R");
+      tapeStatusDisplay->labelcolor(FL_RED);
+      tapeStatusDisplay->label("R");
       break;
     default:
-      tapeStatusDisplay->textcolor(247);
-      tapeStatusDisplay->value("");
+      tapeStatusDisplay->labelcolor(247);
+      tapeStatusDisplay->label("");
       break;
     }
     tapeStatusDisplayGroup->redraw();
@@ -290,18 +288,18 @@ void Plus4EmuGUI::updateDisplay(double t)
   newTapePosition = (newTapePosition >= 0L ? newTapePosition : -1L);
   if (newTapePosition != oldTapePosition) {
     oldTapePosition = newTapePosition;
-    char  tmpBuf[256];
     if (newTapePosition >= 0L) {
+      char  tmpBuf[256];
       int   h, m, s, ds;
       ds = int(newTapePosition % 10L);
       s = int((newTapePosition / 10L) % 60L);
       m = int((newTapePosition / 600L) % 60L);
       h = int((newTapePosition / 36000L) % 100L);
       std::sprintf(&(tmpBuf[0]), "%2d:%02d:%02d.%d", h, m, s, ds);
+      tapePositionDisplay->copy_label(&(tmpBuf[0]));
     }
     else
-      std::sprintf(&(tmpBuf[0]), " -:--:--.-");
-    tapePositionDisplay->value(&(tmpBuf[0]));
+      tapePositionDisplay->label("-:--:--.-");
     tapeStatusDisplayGroup->redraw();
   }
   if (vmThreadStatus.floppyDriveLEDState != oldFloppyDriveLEDState) {
@@ -332,7 +330,7 @@ void Plus4EmuGUI::errorMessage(const char *msg)
     Fl::lock();
   }
   if (msg)
-    errorMessageText->label(msg);
+    errorMessageText->copy_label(msg);
   else
     errorMessageText->label("");
   errorMessageWindow->set_modal();
@@ -357,8 +355,8 @@ void Plus4EmuGUI::run()
 {
   config.setErrorCallback(&errorMessageCallback, (void *) this);
   // set initial window size from saved configuration
+  flDisplay->setFLTKEventCallback(&handleFLTKEvent, (void *) this);
   mainWindow->resizable((Fl_Widget *) 0);
-  emulatorWindowGroup->resizable((Fl_Widget *) 0);
   emulatorWindow->color(36, 36);
   resizeWindow(config.display.width, config.display.height);
   // create menu bar
@@ -593,19 +591,26 @@ void Plus4EmuGUI::resizeWindow(int w, int h)
     emulatorWindow->cursor(FL_CURSOR_NONE);
 }
 
-int Plus4EmuGUI::handleFLTKEvent(int event)
+int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
 {
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
   switch (event) {
   case FL_FOCUS:
     return 1;
   case FL_UNFOCUS:
-    functionKeyState = 0U;
+    gui_.functionKeyState = 0U;
     try {
-      vmThread.resetKeyboard();
+      gui_.vmThread.resetKeyboard();
     }
     catch (std::exception& e) {
-      errorMessage(e.what());
+      gui_.errorMessage(e.what());
     }
+    return 1;
+  case FL_PUSH:
+  case FL_DRAG:
+    gui_.emulatorWindow->take_focus();
+    return 1;
+  case FL_RELEASE:
     return 1;
   case FL_KEYUP:
   case FL_KEYDOWN:
@@ -613,31 +618,31 @@ int Plus4EmuGUI::handleFLTKEvent(int event)
       int   keyCode = Fl::event_key();
       bool  isKeyPress = (event == FL_KEYDOWN);
       if (!(keyCode >= (FL_F + 9) && keyCode <= (FL_F + 12))) {
-        int   n = config.convertKeyCode(keyCode);
-        if (n >= 0 && (functionKeyState == 0U || !isKeyPress)) {
+        int   n = gui_.config.convertKeyCode(keyCode);
+        if (n >= 0 && (gui_.functionKeyState == 0U || !isKeyPress)) {
           try {
-#if 0
+#if 0 && defined(WIN32)
             if (keyCode == FL_Shift_L || keyCode == FL_Shift_R) {
               // work around FLTK bug
-              int   tmp = config.convertKeyCode(FL_Shift_L);
+              int   tmp = gui_.config.convertKeyCode(FL_Shift_L);
               if (tmp >= 0)
-                vmThread.setKeyboardState(uint8_t(tmp),
-                                          (GetKeyState(VK_LSHIFT) < 0));
-              tmp = config.convertKeyCode(FL_Shift_R);
+                gui_.vmThread.setKeyboardState(uint8_t(tmp),
+                                               (GetKeyState(VK_LSHIFT) < 0));
+              tmp = gui_.config.convertKeyCode(FL_Shift_R);
               if (tmp >= 0)
-                vmThread.setKeyboardState(uint8_t(tmp),
-                                          (GetKeyState(VK_RSHIFT) < 0));
+                gui_.vmThread.setKeyboardState(uint8_t(tmp),
+                                               (GetKeyState(VK_RSHIFT) < 0));
             }
             else
 #endif
             {
-              vmThread.setKeyboardState(uint8_t(n), isKeyPress);
+              gui_.vmThread.setKeyboardState(uint8_t(n), isKeyPress);
             }
           }
           catch (std::exception& e) {
-            errorMessage(e.what());
+            gui_.errorMessage(e.what());
           }
-          if (functionKeyState == 0U || isKeyPress)
+          if (gui_.functionKeyState == 0U || isKeyPress)
             return 1;
         }
       }
@@ -687,91 +692,91 @@ int Plus4EmuGUI::handleFLTKEvent(int event)
       }
       if (n >= 0) {
         uint32_t  bitMask = 1U << n;
-        bool      wasPressed = !!(functionKeyState & bitMask);
+        bool      wasPressed = !!(gui_.functionKeyState & bitMask);
         if (isKeyPress != wasPressed) {
           if (isKeyPress)
-            functionKeyState |= bitMask;
+            gui_.functionKeyState |= bitMask;
           else
-            functionKeyState &= (bitMask ^ uint32_t(0xFFFFFFFFU));
+            gui_.functionKeyState &= (bitMask ^ uint32_t(0xFFFFFFFFU));
           if (isKeyPress) {
             switch (n) {
             case 0:                                     // F5:
-              menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapePlay((Fl_Widget *) 0, userData);
               break;
             case 1:                                     // F6:
-              menuCallback_Machine_OpenTape((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_OpenTape((Fl_Widget *) 0, userData);
               break;
             case 2:                                     // F7:
-              menuCallback_File_LoadFile((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_LoadFile((Fl_Widget *) 0, userData);
               break;
             case 3:                                     // F8:
-              menuCallback_File_LoadPRG((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_LoadPRG((Fl_Widget *) 0, userData);
               break;
             case 4:                                     // F9:
-              menuCallback_Options_DpyMode((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Options_DpyMode((Fl_Widget *) 0, userData);
               break;
             case 5:                                     // F10:
-              menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_Pause((Fl_Widget *) 0, userData);
               break;
             case 6:                                     // F11:
-              menuCallback_Machine_Reset((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_Reset((Fl_Widget *) 0, userData);
               break;
             case 7:                                     // F12:
-              menuCallback_Machine_TapeNxtCP((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapeNxtCP((Fl_Widget *) 0, userData);
               break;
             case 8:                                     // Shift + F5:
-              menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapeStop((Fl_Widget *) 0, userData);
               break;
             case 9:                                     // Shift + F6:
-              menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapeRecord((Fl_Widget *) 0, userData);
               break;
             case 10:                                    // Shift + F7:
-              menuCallback_File_SaveSnapshot((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_SaveSnapshot((Fl_Widget *) 0, userData);
               break;
             case 11:                                    // Shift + F8:
-              menuCallback_File_SavePRG((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_SavePRG((Fl_Widget *) 0, userData);
               break;
             case 12:                                    // Shift + F9:
-              menuCallback_Machine_TapePlay((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapePlay((Fl_Widget *) 0, userData);
               break;
             case 13:                                    // Shift + F10:
-              menuCallback_Machine_TapeStop((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapeStop((Fl_Widget *) 0, userData);
               break;
             case 14:                                    // Shift + F11:
-              menuCallback_Machine_ResetAll((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_ResetAll((Fl_Widget *) 0, userData);
               break;
             case 15:                                    // Shift + F12:
-              menuCallback_Machine_TapeRecord((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_TapeRecord((Fl_Widget *) 0, userData);
               break;
             case 20:                                    // Ctrl + F9:
-              menuCallback_File_QSSave((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_QSSave((Fl_Widget *) 0, userData);
               break;
             case 21:                                    // Ctrl + F10:
-              menuCallback_File_QSLoad((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_QSLoad((Fl_Widget *) 0, userData);
               break;
             case 22:                                    // Ctrl + F11:
-              menuCallback_Machine_ColdReset((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_ColdReset((Fl_Widget *) 0, userData);
               break;
             case 23:                                    // Ctrl + F12:
-              menuCallback_File_StopDemo((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_File_StopDemo((Fl_Widget *) 0, userData);
               break;
             case 24:                                    // Alt + D:
-              menuCallback_Options_FloppyCfg((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Options_FloppyCfg((Fl_Widget *) 0, userData);
               break;
             case 25:                                    // Alt + M:
-              menuCallback_Debug_OpenDebugger((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Debug_OpenDebugger((Fl_Widget *) 0, userData);
               break;
             case 26:                                    // Alt + W:
-              menuCallback_Machine_FullSpeed((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_FullSpeed((Fl_Widget *) 0, userData);
               break;
             case 27:                                    // Pause:
-              menuCallback_Machine_Pause((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_Pause((Fl_Widget *) 0, userData);
               break;
             case 30:                                    // PageDown:
-              menuCallback_Machine_QuickCfgL1((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_QuickCfgL1((Fl_Widget *) 0, userData);
               break;
             case 31:                                    // PageUp:
-              menuCallback_Machine_QuickCfgL2((Fl_Widget *) 0, (void *) this);
+              gui_.menuCallback_Machine_QuickCfgL2((Fl_Widget *) 0, userData);
               break;
             }
           }
