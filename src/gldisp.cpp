@@ -656,15 +656,15 @@ namespace Plus4Emu {
                            * (y1 - y0));
       double  ycf1 = y0 + ((double(int(yc + 30)) * (1.0 / 576.0))
                            * (y1 - y0));
-      double  txtycf1 = 14.75 / 16.0;
+      double  txtycf1 = 15.0 / 16.0;
       if (yc == 568) {
         ycf1 -= ((y1 - y0) * (20.0 / 576.0));
         txtycf1 -= (10.0 / 16.0);
       }
       glBegin(GL_QUADS);
-      glTexCoord2f(GLfloat(0.0), GLfloat(1.75 / 16.0));
+      glTexCoord2f(GLfloat(0.0), GLfloat(2.0 / 16.0));
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(1.75 / 16.0));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(2.0 / 16.0));
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
       glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf1));
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
