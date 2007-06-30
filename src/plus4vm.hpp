@@ -56,8 +56,7 @@ namespace Plus4 {
       SerialBus serialPort;
      protected:
       virtual void playSample(int16_t sampleValue);
-      virtual void drawLine(const uint8_t *buf, size_t nBytes);
-      virtual void verticalSync(bool newState_, unsigned int currentSlot_);
+      virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes);
       virtual void ntscModeChangeCallback(bool isNTSC_);
       virtual bool systemCallback(uint8_t n);
       virtual void breakPointCallback(bool isWrite,

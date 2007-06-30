@@ -38,59 +38,12 @@ static int defaultFLTKEventCallback(void *userData, int event)
 
 namespace Plus4Emu {
 
-  void FLTKDisplay_::decodeLine(unsigned char *outBuf,
-                                const unsigned char *inBuf, size_t nBytes)
-  {
-    if (!inBuf)
-      nBytes = 0;
-    if (nBytes <= 384) {
-      const unsigned char *bufp = inBuf;
-      size_t  n = nBytes << 1;
-      size_t  i = 0;
-      for ( ; i < n; i += 2) {
-        unsigned char c = *(bufp++);
-        outBuf[i] = c;
-        outBuf[i + 1] = c;
-      }
-      for ( ; i < 768; i += 2) {
-        outBuf[i] = 0;
-        outBuf[i + 1] = 0;
-      }
-    }
-    else {
-      size_t  n = (nBytes < 768 ? nBytes : 768);
-      std::memcpy(outBuf, inBuf, n);
-      if (n < 768)
-        std::memset(&(outBuf[n]), 0, 768 - n);
-    }
-  }
-
-  // --------------------------------------------------------------------------
-
   FLTKDisplay_::Message::~Message()
   {
   }
 
   FLTKDisplay_::Message_LineData::~Message_LineData()
   {
-  }
-
-  void FLTKDisplay_::Message_LineData::copyLine(const uint8_t *buf,
-                                                size_t nBytes)
-  {
-    unsigned char *p = reinterpret_cast<unsigned char *>(&(buf_[0]));
-    size_t  i = 0;
-    if (nBytes & 1) {
-      p[0] = buf[0];
-      i++;
-    }
-    for ( ; i < nBytes; i += 2) {
-      p[i] = buf[i];
-      p[i + 1] = buf[i + 1];
-    }
-    nBytes_ = i;
-    for ( ; (i & 3) != 0; i++)
-      p[i] = 0;
   }
 
   FLTKDisplay_::Message_FrameDone::~Message_FrameDone()
@@ -147,15 +100,27 @@ namespace Plus4Emu {
       freeMessageStack((Message *) 0),
       messageQueueMutex(),
       lineBuffers((Message_LineData **) 0),
+      nextLine((Message_LineData *) 0),
       curLine(0),
-      lineCnt(0),
-      prvLineCnt(312),
       vsyncCnt(0),
       framesPending(0),
       skippingFrame(false),
-      vsyncState(false),
-      ntscMode(false),
       oddFrame(false),
+      burstValue(0x28),
+      prvSyncState(0x00),
+      hsyncCnt(0U),
+      hsyncCntInc(0U),
+      hsyncPeriodCnt(0U),
+      hsyncPeriodLength(570U),
+      lineLengthCnt(0U),
+      lineLength(570U),
+      lineLengthMin(513U),
+      lineLengthMax(627U),
+      lineStart(75U),
+      vsyncThreshold1(338),
+      vsyncThreshold2(264),
+      vsyncReload(-16),
+      lineReload(-6),
       videoResampleEnabled(false),
       exitFlag(false),
       displayParameters(),
@@ -170,6 +135,7 @@ namespace Plus4Emu {
       lineBuffers = new Message_LineData*[578];
       for (size_t n = 0; n < 578; n++)
         lineBuffers[n] = (Message_LineData *) 0;
+      nextLine = allocateMessage<Message_LineData>();
     }
     catch (...) {
       if (lineBuffers)
@@ -208,6 +174,12 @@ namespace Plus4Emu {
       }
     }
     delete[] lineBuffers;
+    if (nextLine) {
+      Message *m = nextLine;
+      nextLine = (Message_LineData *) 0;
+      m->~Message();
+      std::free(m);
+    }
   }
 
   void FLTKDisplay_::draw()
@@ -223,6 +195,44 @@ namespace Plus4Emu {
   {
     Message_SetParameters *m = allocateMessage<Message_SetParameters>();
     m->dp = dp;
+    if (dp.ntscMode != savedDisplayParameters.ntscMode) {
+      deleteMessage(nextLine);
+      nextLine = allocateMessage<Message_LineData>();
+      if (!dp.ntscMode) {
+        burstValue = 0x28;
+        prvSyncState = 0x00;
+        hsyncCnt = 0U;
+        hsyncCntInc = 0U;
+        hsyncPeriodCnt = 0U;
+        hsyncPeriodLength = 570U;
+        lineLengthCnt = 0U;
+        lineLength = 570U;
+        lineLengthMin = 513U;
+        lineLengthMax = 627U;
+        lineStart = 75U;
+        vsyncThreshold1 = 338;
+        vsyncThreshold2 = 264;
+        vsyncReload = -16;
+        lineReload = -6;
+      }
+      else {
+        burstValue = 0x29;
+        prvSyncState = 0x00;
+        hsyncCnt = 0U;
+        hsyncCntInc = 0U;
+        hsyncPeriodCnt = 0U;
+        hsyncPeriodLength = 456U;
+        lineLengthCnt = 0U;
+        lineLength = 456U;
+        lineLengthMin = 399U;
+        lineLengthMax = 513U;
+        lineStart = 60U;
+        vsyncThreshold1 = 292;
+        vsyncThreshold2 = 242;
+        vsyncReload = 0;
+        lineReload = 12;
+      }
+    }
     savedDisplayParameters = dp;
     queueMessage(m);
   }
@@ -233,49 +243,101 @@ namespace Plus4Emu {
     return savedDisplayParameters;
   }
 
-  void FLTKDisplay_::drawLine(const uint8_t *buf, size_t nBytes)
+  void FLTKDisplay_::lineDone()
   {
+    lineLengthCnt = lineLengthCnt - lineLength;
+    if (hsyncCnt != 0U || lineLength != hsyncPeriodLength) {
+      unsigned int  l = (savedDisplayParameters.ntscMode ? 4U : 5U);
+      if (lineLength > (hsyncPeriodLength + l) ||
+          lineLength < (hsyncPeriodLength - l)) {
+        lineLength = (lineLength + hsyncPeriodLength) >> 1;
+      }
+      else if (hsyncCnt != 0U) {
+        if (int(hsyncCnt) < (int(hsyncPeriodLength) - int(hsyncCnt)))
+          lineLength--;
+        else
+          lineLength++;
+      }
+      else
+        lineLength = hsyncPeriodLength;
+      if (lineLength > lineLengthMax)
+        lineLength = lineLengthMax;
+      else if (lineLength < lineLengthMin)
+        lineLength = lineLengthMin;
+    }
+    hsyncCntInc = 0U;
     if (!skippingFrame) {
       if (curLine >= 0 && curLine < 578) {
-        Message_LineData  *m = allocateMessage<Message_LineData>();
+        Message_LineData  *m = nextLine;
+        nextLine = (Message_LineData *) 0;
         m->lineNum = curLine;
-        m->copyLine(buf, nBytes);
         queueMessage(m);
       }
     }
-    curLine += 2;
-    lineCnt++;
-    if (!ntscMode) {
-      if (vsyncCnt >= (!vsyncState ? 338 : 264))
-        vsyncCnt = -16;
+    if (nextLine) {
+      Message_LineData  *m = nextLine;
+      nextLine = (Message_LineData *) 0;
+      deleteMessage(m);
     }
-    else {
-      if (vsyncCnt >= (!vsyncState ? 272 : 252))
-        vsyncCnt = 0;
+    nextLine = allocateMessage<Message_LineData>();
+    curLine += 2;
+    if (vsyncCnt >= vsyncThreshold1) {
+      vsyncCnt = vsyncReload;
+      oddFrame = false;
     }
     if (vsyncCnt == 0) {
-      curLine = (!ntscMode ? -6 : 12) + (!oddFrame ? 0 : 1);
+      curLine = lineReload + (!oddFrame ? 0 : 1);
       frameDone();
     }
     vsyncCnt++;
   }
 
-  void FLTKDisplay_::vsyncStateChange(bool newState, unsigned int currentSlot_)
+  void FLTKDisplay_::sendVideoOutput(const uint8_t *buf, size_t nBytes)
   {
-    (void) currentSlot_;
-    if (newState == vsyncState)
-      return;
-    vsyncState = newState;
-    if (newState) {
-      if (vsyncCnt >= (!ntscMode ? 264 : 252))
-        vsyncCnt = (!ntscMode ? -16 : 0);
-      if (!(lineCnt == 0 || lineCnt == 1)) {
-        oddFrame = (lineCnt == (prvLineCnt + 1));
-        ntscMode = (lineCnt <= 276 && prvLineCnt <= 276);
-        prvLineCnt = lineCnt;
-        lineCnt = 0;
+    const uint8_t *bufp = buf;
+    const uint8_t *startp = bufp;
+    const uint8_t *endp = buf + nBytes;
+    while (bufp < endp) {
+      uint8_t       c = *bufp;
+      unsigned int  l = ((unsigned int) c & 0x01U) ^ 0x05U;
+      if ((c ^ prvSyncState) & 0xC0) {                  // hsync or vsync
+        if ((c & 0x80) > (prvSyncState & 0x80)) {       // hsync start
+          hsyncCnt = 0U;
+          hsyncCntInc = 255U;
+          if (hsyncPeriodCnt >= 350U) {
+            hsyncPeriodLength = hsyncPeriodCnt;
+            hsyncPeriodCnt = 0U;
+          }
+        }
+        if (c & 0x40) {                                 // vsync
+          if (vsyncCnt >= vsyncThreshold2) {
+            vsyncCnt = vsyncReload;
+            oddFrame = (lineLengthCnt > ((lineLength >> 2) + 25) &&
+                        lineLengthCnt < (lineLength - (lineLength >> 2)));
+          }
+        }
+        prvSyncState = c;
       }
+      {
+        uint8_t tmp = (c & uint8_t(0x29)) ^ burstValue;
+        nextLine->flags |= (tmp | ((tmp - uint8_t(1)) & uint8_t(0x80)));
+      }
+      bufp = bufp + size_t((c & 0x02) ? 5 : 2);
+      if (lineLengthCnt < lineStart) {
+        startp = bufp;
+        nextLine->lineLength = lineLengthCnt + l;
+      }
+      lineLengthCnt = lineLengthCnt + l;
+      if (lineLengthCnt >= lineLength) {
+        nextLine->lineLength = size_t(lineLengthCnt) - nextLine->lineLength;
+        nextLine->appendData(startp, size_t(bufp - startp));
+        startp = bufp;
+        lineDone();
+      }
+      hsyncCnt = hsyncCnt + (hsyncCntInc & l);
+      hsyncPeriodCnt = hsyncPeriodCnt + l;
     }
+    nextLine->appendData(startp, size_t(bufp - startp));
   }
 
   void FLTKDisplay_::setScreenshotCallback(void (*func)(void *,
@@ -323,7 +385,7 @@ namespace Plus4Emu {
       return;
     unsigned char *imageBuf_ = (unsigned char *) 0;
     try {
-      imageBuf_ = new unsigned char[768 * 576 + 768];
+ /*   imageBuf_ = new unsigned char[768 * 576 + 768];
       unsigned char *p = imageBuf_;
       for (int c = 0; c <= 255; c++) {
         float   r, g, b;
@@ -354,7 +416,7 @@ namespace Plus4Emu {
           p = p + 768;
         }
       }
-      func(userData_, imageBuf_, 768, 576);
+      func(userData_, imageBuf_, 768, 576); */
     }
     catch (...) {
       if (imageBuf_)
@@ -380,66 +442,6 @@ namespace Plus4Emu {
     }
     Message *m = allocateMessage<Message_FrameDone>();
     queueMessage(m);
-  }
-
-  // --------------------------------------------------------------------------
-
-  FLTKDisplay::Colormap::Colormap()
-  {
-    palette = new uint32_t[256];
-    try {
-      palette2 = new uint32_t[65536];
-    }
-    catch (...) {
-      delete[] palette;
-      throw;
-    }
-    DisplayParameters dp;
-    setParams(dp);
-  }
-
-  FLTKDisplay::Colormap::~Colormap()
-  {
-    delete[] palette;
-    delete[] palette2;
-  }
-
-  void FLTKDisplay::Colormap::setParams(const DisplayParameters& dp)
-  {
-    float   rTbl[256];
-    float   gTbl[256];
-    float   bTbl[256];
-    for (size_t i = 0; i < 256; i++) {
-      float   r = float(uint8_t(i)) / 255.0f;
-      float   g = float(uint8_t(i)) / 255.0f;
-      float   b = float(uint8_t(i)) / 255.0f;
-      if (dp.indexToRGBFunc)
-        dp.indexToRGBFunc(uint8_t(i), r, g, b);
-      dp.applyColorCorrection(r, g, b);
-      rTbl[i] = r;
-      gTbl[i] = g;
-      bTbl[i] = b;
-    }
-    for (size_t i = 0; i < 256; i++) {
-      palette[i] = pixelConv(rTbl[i], gTbl[i], bTbl[i]);
-    }
-    for (size_t i = 0; i < 256; i++) {
-      for (size_t j = 0; j < 256; j++) {
-        double  r = (rTbl[i] + rTbl[j]) * dp.blendScale1;
-        double  g = (gTbl[i] + gTbl[j]) * dp.blendScale1;
-        double  b = (bTbl[i] + bTbl[j]) * dp.blendScale1;
-        palette2[(i << 8) + j] = pixelConv(r, g, b);
-      }
-    }
-  }
-
-  uint32_t FLTKDisplay::Colormap::pixelConv(double r, double g, double b)
-  {
-    unsigned int  ri, gi, bi;
-    ri = (r > 0.0 ? (r < 1.0 ? (unsigned int) (r * 255.0 + 0.5) : 255U) : 0U);
-    gi = (g > 0.0 ? (g < 1.0 ? (unsigned int) (g * 255.0 + 0.5) : 255U) : 0U);
-    bi = (b > 0.0 ? (b < 1.0 ? (unsigned int) (b * 255.0 + 0.5) : 255U) : 0U);
-    return ((uint32_t(ri) << 16) + (uint32_t(gi) << 8) + uint32_t(bi));
   }
 
   // --------------------------------------------------------------------------
@@ -524,15 +526,16 @@ namespace Plus4Emu {
     if (displayWidth_ <= 0 || displayHeight_ <= 0)
       return;
 
-    unsigned char lineBuf_[768];
     unsigned char *pixelBuf_ =
         (unsigned char *) std::calloc(size_t(displayWidth_ * 4 * 3),
                                       sizeof(unsigned char));
-    int   lineNumbers_[5];
     if (pixelBuf_) {
-      int   curLine_ = 2;
-      int   fracY_ = 0;
-      bool  skippingLines_ = true;
+      int     curLine_ = 2;
+      int     fracY_ = 0;
+      bool    skippingLines_ = true;
+      size_t  pixelSample1p = 495 * size_t(displayWidth_);
+      size_t  pixelSample1n = 396 * size_t(displayWidth_);
+      int     lineNumbers_[5];
       lineNumbers_[3] = -2;
       for (int yc = 0; yc < displayHeight_; yc++) {
         int   ycAnd3 = yc & 3;
@@ -577,147 +580,56 @@ namespace Plus4Emu {
                   continue;
                 }
               }
+              int     xc = 0;
               if (lineNumbers_[yTmp] >= 0) {
-                // decode video data
+                // decode video data and convert to RGB
                 const unsigned char *bufp = (unsigned char *) 0;
-                size_t  nBytes = 0;
-                lineBuffers[lineNumbers_[yTmp]]->getLineData(bufp, nBytes);
-                decodeLine(&(lineBuf_[0]), bufp, nBytes);
-                // convert to RGB
-                bufp = &(lineBuf_[0]);
-                switch (displayWidth_) {
-                case 384:
-                  do {
-                    uint32_t  tmp = colormap(bufp[0], bufp[1]);
-                    p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    bufp = bufp + 2;
-                    p = p + 3;
-                  } while (bufp < &(lineBuf_[768]));
-                  break;
-                case 768:
-                  do {
-                    uint32_t  tmp = colormap(bufp[0]);
-                    p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = colormap(bufp[1]);
-                    p[5] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[4] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[3] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    bufp = bufp + 2;
-                    p = p + 6;
-                  } while (bufp < &(lineBuf_[768]));
-                  break;
-                case 1152:
-                  do {
-                    uint32_t  tmp = colormap(bufp[0]);
-                    p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = colormap(bufp[0], bufp[1]);
-                    p[5] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[4] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[3] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = colormap(bufp[1]);
-                    p[8] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[7] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[6] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    bufp = bufp + 2;
-                    p = p + 9;
-                  } while (bufp < &(lineBuf_[768]));
-                  break;
-                case 1536:
-                  do {
-                    uint32_t  tmp = colormap(*bufp);
-                    p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    p[5] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    p[4] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    tmp = tmp >> 8;
-                    p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    p[3] = (unsigned char) tmp & (unsigned char) 0xFF;
-                    bufp++;
-                    p = p + 6;
-                  } while (bufp < &(lineBuf_[768]));
-                  break;
-                default:
-                  {
-                    int       fracX_ = displayWidth_;
-                    uint32_t  c = 0U;
-                    if (!halfResolutionX_) {
-                      fracX_ = (fracX_ >= 768 ? fracX_ : 768);
-                      while (true) {
-                        if (fracX_ >= displayWidth_) {
-                          if (bufp >= &(lineBuf_[768]))
-                            break;
-                          do {
-                            c = colormap(*bufp);
-                            fracX_ -= displayWidth_;
-                            bufp++;
-                          } while (fracX_ >= displayWidth_);
-                        }
-                        {
-                          uint32_t  tmp = c;
-                          p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                          tmp = tmp >> 8;
-                          p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                          tmp = tmp >> 8;
-                          p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                        }
-                        fracX_ += 768;
-                        p += 3;
-                      }
-                    }
-                    else {
-                      fracX_ = (fracX_ >= 384 ? fracX_ : 384);
-                      while (true) {
-                        if (fracX_ >= displayWidth_) {
-                          if (bufp >= &(lineBuf_[768]))
-                            break;
-                          do {
-                            c = colormap(bufp[0], bufp[1]);
-                            fracX_ -= displayWidth_;
-                            bufp += 2;
-                          } while (fracX_ >= displayWidth_);
-                        }
-                        {
-                          uint32_t  tmp = c;
-                          p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                          tmp = tmp >> 8;
-                          p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                          tmp = tmp >> 8;
-                          p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                        }
-                        fracX_ += 384;
-                        p += 3;
-                      }
-                    }
+                size_t    nBytes = 0;
+                int       lineNum = lineNumbers_[yTmp];
+                Message_LineData    *l = lineBuffers[lineNum];
+                l->getLineData(bufp, nBytes);
+                uint32_t  tmpBuf[4];
+                size_t    bufPos = 0;
+                uint8_t   videoFlags =
+                    uint8_t((lineNum & 2) | ((l->flags & 0x80) >> 2));
+                size_t    pixelSample2 = l->lineLength * 384;
+                if (displayParameters.ntscMode)
+                  videoFlags = videoFlags | 0x10;
+                size_t    pixelSample1 = pixelSample1p;
+                size_t    pixelSampleCnt = 0;
+                uint8_t   readPos = 4;
+                do {
+                  if (readPos >= 4) {
+                    if (bufPos >= nBytes)
+                      break;
+                    pixelSample1 = ((bufp[bufPos] & 0x01) ?
+                                    pixelSample1n : pixelSample1p);
+                    size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                           &(bufp[bufPos]),
+                                                           videoFlags);
+                    bufPos += n;
+                    readPos = readPos & 3;
                   }
-                }
-              }
-              else {
-                uint32_t  c = colormap(0x00);
-                for (int xc = 0; xc < displayWidth_; xc++) {
-                  p[0] = (unsigned char) ((c >> 16) & 0xFF);
-                  p[1] = (unsigned char) ((c >> 8) & 0xFF);
-                  p[2] = (unsigned char) (c & 0xFF);
+                  uint32_t  tmp = tmpBuf[readPos];
+                  p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
+                  tmp = tmp >> 8;
+                  p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
+                  tmp = tmp >> 8;
+                  p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
                   p = p + 3;
-                }
+                  pixelSampleCnt += pixelSample2;
+                  while (pixelSampleCnt >= pixelSample1) {
+                    pixelSampleCnt -= pixelSample1;
+                    readPos++;
+                  }
+                  xc++;
+                } while (xc < displayWidth_);
+              }
+              for ( ; xc < displayWidth_; xc++) {
+                p[0] = 0x00;
+                p[1] = 0x00;
+                p[2] = 0x00;
+                p = p + 3;
               }
             }
             fl_draw_image(pixelBuf_, x0, y0 + (yc & (~(int(3)))),
@@ -846,7 +758,7 @@ namespace Plus4Emu {
         displayParameters = msg->dp;
         DisplayParameters tmp_dp(displayParameters);
         tmp_dp.blendScale1 = 0.5;
-        colormap.setParams(tmp_dp);
+        colormap.setDisplayParameters(tmp_dp);
         for (size_t n = 0; n < 578; n++)
           linesChanged[n] |= uint8_t(0x80);
       }
@@ -869,7 +781,7 @@ namespace Plus4Emu {
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
     }
-    else if (forceUpdateTimer.getRealTime() >= 0.125) {
+    else if (forceUpdateTimer.getRealTime() >= 0.085) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);

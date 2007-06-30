@@ -32,8 +32,6 @@
 
 namespace Plus4 {
 
-  TED7360::RenderTables TED7360::renderTables;
-
   REGPARM void TED7360::render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs)
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
@@ -114,9 +112,9 @@ namespace Plus4 {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     uint8_t c_[4];
     c_[0] = (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-             ted.tedRegisters[0x15] : uint8_t(0x7F));
+             ted.tedRegisters[0x15] : uint8_t(0xFF));
     c_[3] = (!(ted.tedRegisterWriteMask & 0x00400000U) ?
-             ted.tedRegisters[0x16] : uint8_t(0x7F));
+             ted.tedRegisters[0x16] : uint8_t(0xFF));
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -202,7 +200,7 @@ namespace Plus4 {
   {
     int     nextCharCnt = int(ted.horiz_scroll) - offs;
     uint8_t c0 = (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                  ted.tedRegisters[0x15] : uint8_t(0x7F));
+                  ted.tedRegisters[0x15] : uint8_t(0xFF));
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -279,7 +277,7 @@ namespace Plus4 {
       ted.shiftRegisterCharacter.bitmap_() = b << 4;
       uint8_t c = (ted.shiftRegisterCharacter.char_() >> 6) + uint8_t(0x15);
       uint8_t c0 = (!(ted.tedRegisterWriteMask & (1U << c)) ?
-                    ted.tedRegisters[c] : uint8_t(0x7F));
+                    ted.tedRegisters[c] : uint8_t(0xFF));
       bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
       c0 = ted.tedRegisters[c];
       bufp[1] = ((b & uint8_t(0x40)) ? a : c0);
@@ -291,7 +289,7 @@ namespace Plus4 {
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();
       uint8_t c = (ted.shiftRegisterCharacter.char_() >> 6) + uint8_t(0x15);
       uint8_t c0 = (!(ted.tedRegisterWriteMask & (1U << c)) ?
-                    ted.tedRegisters[c] : uint8_t(0x7F));
+                    ted.tedRegisters[c] : uint8_t(0xFF));
       switch (nextCharCnt) {
       case 1:
         bufp[0] = ((b & uint8_t(0x80)) ? a : c0);
@@ -362,14 +360,14 @@ namespace Plus4 {
         if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
           bufp[0] = c_[tmp];
         else
-          bufp[0] = uint8_t(0x7F);
+          bufp[0] = uint8_t(0xFF);
         bufp[1] = c_[tmp];
         bufp[3] = bufp[2] = c_[(b >> 4) & 3];
       }
       else {
         bufp[0] = ((b & uint8_t(0x80)) ?
                    a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                        c_[0] : uint8_t(0x7F)));
+                        c_[0] : uint8_t(0xFF)));
         bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
         bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
         bufp[3] = ((b & uint8_t(0x10)) ? a : c_[0]);
@@ -386,12 +384,12 @@ namespace Plus4 {
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
-            bufp[0] = uint8_t(0x7F);
+            bufp[0] = uint8_t(0xFF);
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
                      a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                          c_[0] : uint8_t(0x7F)));
+                          c_[0] : uint8_t(0xFF)));
         }
         ted.shiftRegisterCharacter = ted.currentCharacter;
         a = ted.shiftRegisterCharacter.attr_();
@@ -415,13 +413,13 @@ namespace Plus4 {
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
-            bufp[0] = uint8_t(0x7F);
+            bufp[0] = uint8_t(0xFF);
           bufp[1] = c_[tmp];
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
                      a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                          c_[0] : uint8_t(0x7F)));
+                          c_[0] : uint8_t(0xFF)));
           bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
         }
         ted.shiftRegisterCharacter = ted.currentCharacter;
@@ -443,13 +441,13 @@ namespace Plus4 {
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
-            bufp[0] = uint8_t(0x7F);
+            bufp[0] = uint8_t(0xFF);
           bufp[2] = bufp[1] = c_[(b >> 4) & 3];
         }
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
                      a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                          c_[0] : uint8_t(0x7F)));
+                          c_[0] : uint8_t(0xFF)));
           bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
           bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
         }
@@ -471,7 +469,7 @@ namespace Plus4 {
           if (tmp == 3 || !(ted.tedRegisterWriteMask & (0x00200000U << tmp)))
             bufp[0] = c_[tmp];
           else
-            bufp[0] = uint8_t(0x7F);
+            bufp[0] = uint8_t(0xFF);
           if (!(nextCharCnt & 1)) {
             bufp[1] = c_[tmp];
             bufp[3] = bufp[2] = c_[(b >> 4) & 3];
@@ -484,7 +482,7 @@ namespace Plus4 {
         else {
           bufp[0] = ((b & uint8_t(0x80)) ?
                      a : (!(ted.tedRegisterWriteMask & 0x00200000U) ?
-                          c_[0] : uint8_t(0x7F)));
+                          c_[0] : uint8_t(0xFF)));
           bufp[1] = ((b & uint8_t(0x40)) ? a : c_[0]);
           bufp[2] = ((b & uint8_t(0x20)) ? a : c_[0]);
           bufp[3] = ((b & uint8_t(0x10)) ? a : c_[0]);
@@ -616,148 +614,6 @@ namespace Plus4 {
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
-    }
-  }
-
-  void TED7360::resampleAndDrawLine(uint8_t invertColors)
-  {
-    const uint8_t *colorTable = (uint8_t *) 0;
-    if (line_buf_pos >= 432) {
-      switch (invertColors) {
-      case 1:
-      case 2:
-        colorTable = &(renderTables.colorTable_NTSC_HalfInvPhase[0]);
-        break;
-      case 3:
-        colorTable = &(renderTables.colorTable_NTSC_InvPhase[0]);
-        break;
-      default:
-        colorTable = &(renderTables.colorTable_NTSC[0]);
-        break;
-      }
-    }
-    else {
-      switch (invertColors) {
-      case 1:
-      case 2:
-        colorTable = &(renderTables.colorTable_HalfInvPhase[0]);
-        break;
-      case 3:
-        colorTable = &(renderTables.colorTable_InvPhase[0]);
-        break;
-      }
-    }
-    if (line_buf_pos >= 408) {
-      uint8_t tmpBuf[768];
-      int     nPixels = line_buf_pos;
-      int     cnt = 768;
-      int     readPos = 0;
-      uint8_t c = 0;
-      if (colorTable) {
-        for (int i = 0; i < 768; i++) {
-          if (cnt >= 768) {
-            cnt = cnt - 768;
-            c = colorTable[line_buf[readPos++]];
-          }
-          cnt = cnt + nPixels;
-          tmpBuf[i] = c;
-        }
-      }
-      else {
-        for (int i = 0; i < 768; i++) {
-          if (cnt >= 768) {
-            cnt = cnt - 768;
-            c = line_buf[readPos++];
-          }
-          cnt = cnt + nPixels;
-          tmpBuf[i] = c;
-        }
-      }
-      drawLine(&(tmpBuf[0]), 768);
-    }
-    else {
-      if (colorTable) {
-        for (int i = 0; i < line_buf_pos; i++)
-          line_buf[i] = colorTable[line_buf[i]];
-      }
-      drawLine(&(line_buf[0]), 384);
-    }
-  }
-
-}       // namespace Plus4
-
-// ----------------------------------------------------------------------------
-
-static uint8_t findNearestColor(float u, float v,
-                                const float *uTbl_, const float *vTbl_)
-{
-  float   minDiff = 1000000.0f;
-  uint8_t n = 0;
-  for (uint8_t i = 1; i <= 31; i++) {
-    float   d = ((uTbl_[i] - u) * (uTbl_[i] - u))
-                + ((vTbl_[i] - v) * (vTbl_[i] - v));
-    if (d < minDiff) {
-      minDiff = d;
-      n = i;
-    }
-  }
-  if (n >= 0x10)
-    n = n + 0x70;
-  return n;
-}
-
-namespace Plus4 {
-
-  TED7360::RenderTables::RenderTables()
-  {
-    float   colorTable_U[32];
-    float   colorTable_V[32];
-    for (uint8_t i = 0x00; i <= 0x1F; i++) {
-      float   r, g, b;
-      TED7360::convertPixelToRGB(uint8_t(i < 0x10 ? i : (i + 0x70)), r, g, b);
-      // Y = (0.299 * R) + (0.587 * G) + (0.114 * B)
-      // U = 0.492 * (B - Y)
-      // V = 0.877 * (R - Y)
-      float   y = (0.299f * r) + (0.587f * g) + (0.114f * b);
-      colorTable_U[i] = 0.492f * (b - y);
-      colorTable_V[i] = 0.877f * (r - y);
-    }
-    for (unsigned int i = 0x00U; i <= 0xFFU; i++) {
-      if ((i & 0x0FU) <= 1U) {
-        colorTable_NTSC[i] = uint8_t(i & 0x7FU);
-        colorTable_InvPhase[i] = uint8_t(i & 0x7FU);
-        colorTable_NTSC_InvPhase[i] = uint8_t(i & 0x7FU);
-        colorTable_HalfInvPhase[i] = uint8_t(i & 0x7FU);
-        colorTable_NTSC_HalfInvPhase[i] = uint8_t(i & 0x7FU);
-      }
-      else if (!(i & 0xF0U)) {
-        float   u = colorTable_U[i];
-        float   v = colorTable_V[i];
-        float   u_ = u * 0.8386706f + v * 0.544639f;    // -33 degrees
-        float   v_ = v * 0.8386706f - u * 0.544639f;
-        colorTable_NTSC[i] =
-            findNearestColor(u_, v_, &(colorTable_U[0]), &(colorTable_V[0]));
-        colorTable_InvPhase[i] =
-            findNearestColor(u, -v, &(colorTable_U[0]), &(colorTable_V[0]));
-        colorTable_NTSC_InvPhase[i] =
-            findNearestColor(u_, -v_, &(colorTable_U[0]), &(colorTable_V[0]));
-        colorTable_HalfInvPhase[i] =
-            findNearestColor(u, 0.0f, &(colorTable_U[0]), &(colorTable_V[0]));
-        colorTable_NTSC_HalfInvPhase[i] =
-            findNearestColor(u_, 0.0f, &(colorTable_U[0]), &(colorTable_V[0]));
-      }
-      else {
-        colorTable_NTSC[i] =
-            uint8_t(colorTable_NTSC[i & 0x0FU] | (i & 0x70U));
-        colorTable_InvPhase[i] =
-            uint8_t(colorTable_InvPhase[i & 0x0FU] | (i & 0x70U));
-        colorTable_NTSC_InvPhase[i] =
-            uint8_t(colorTable_NTSC_InvPhase[i & 0x0FU] | (i & 0x70U));
-        colorTable_HalfInvPhase[i] =
-            uint8_t(colorTable_HalfInvPhase[i & 0x0FU] | (i & 0x70U));
-        colorTable_NTSC_HalfInvPhase[i] =
-            uint8_t(colorTable_NTSC_HalfInvPhase[i & 0x0FU] | (i & 0x70U));
-      }
     }
   }
 

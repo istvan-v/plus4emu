@@ -25,6 +25,10 @@ namespace Plus4 {
 
   void TED7360::runOneCycle()
   {
+    if (video_buf_pos >= 450) {
+      videoOutputCallback(&(video_buf[0]), video_buf_pos);
+      video_buf_pos = 0;
+    }
     {
       TEDCallback *p = firstCallback0;
       while (p) {
@@ -40,20 +44,9 @@ namespace Plus4 {
       M7501::run(cpu_clock_multiplier);
       if (!cycle_count)
         playSample(0);
-      if (line_buf_pos >= 384) {
-        if (line_buf_pos <= 480) {
-          drawLine(&(line_buf[0]), line_buf_pos);
-          line_buf_pos = line_buf_pos - 456;
-        }
-        else
-          line_buf_pos = -64;
-      }
-      if (line_buf_pos >= 0) {
-        uint8_t *bufp = &(line_buf[line_buf_pos]);
-        bufp[3] = bufp[2] = bufp[1] = bufp[0] = uint8_t(0x00);
-        bufp[7] = bufp[6] = bufp[5] = bufp[4] = uint8_t(0x00);
-      }
-      line_buf_pos += 8;
+      video_buf[video_buf_pos] = videoOutputFlags;
+      video_buf[video_buf_pos + 1] = 0x00;
+      video_buf_pos = video_buf_pos + 2;
       if (!ted_disabled)
         video_column |= uint8_t(0x01);
       cycle_count = (cycle_count + 1) & 3;
@@ -68,6 +61,10 @@ namespace Plus4 {
             (tedRegisters[0x07] & uint8_t(0x08)) == uint8_t(0)) {
           displayActive = true;
         }
+        break;
+      case 37:                          // horizontal equalization 1 start
+        if (videoEqualizationFlag)
+          videoOutputFlags |= uint8_t(0x80);
         break;
       case 73:                          // DRAM refresh start
         singleClockModeFlags |= uint8_t(0x01);
@@ -92,25 +89,11 @@ namespace Plus4 {
         singleClockModeFlags &= uint8_t(0x02);
         break;
       case 87:                          // horizontal blanking start
-        displayBlankingFlags = displayBlankingFlags | 0x01;
-        if (line_buf_pos > 0 && line_buf_pos <= 480) {
-          uint8_t invColors = invertColorPhaseFlags & uint8_t(0x03);
-          if (invColors) {
-            if (tedRegisters[0x07] & 0x40)
-              invColors = 0;
-          }
-          if (line_buf_pos <= 384 && !invColors)
-            drawLine(&(line_buf[0]), line_buf_pos);
-          else
-            resampleAndDrawLine(invColors);
-          uint8_t tmp = (invertColorPhaseFlags ^ uint8_t(0xFF)) & uint8_t(0x04);
-          tmp = tmp | (invertColorPhaseFlags >> 1);
-          if (!(tedRegisters[0x07] & 0x40))
-            invertColorPhaseFlags = tmp ^ uint8_t((savedVideoLine & 1) << 1);
-          else
-            invertColorPhaseFlags = tmp & uint8_t(0x05);
-        }
-        line_buf_pos = 1000;
+        videoOutputFlags |= uint8_t(0x20);
+        break;
+      case 89:                          // horizontal sync start
+        if (!videoEqualizationFlag)
+          videoOutputFlags |= uint8_t(0x80);
         break;
       case 95:
         if (renderWindow) {
@@ -135,8 +118,11 @@ namespace Plus4 {
           character_position = 0x0000;
           character_position_reload = 0x0000;
         }
-        line_buf_pos = -32;
         prvCharacterLine = uint8_t(character_line);
+        if (!videoEqualizationFlag) {   // horizontal sync end
+          videoOutputFlags &= uint8_t(0x7D);
+        }                               // burst start
+        videoOutputFlags |= uint8_t(0x08);
         break;
       case 99:
         if (dmaWindow)                  // increment character sub-line
@@ -173,6 +159,8 @@ namespace Plus4 {
             dma_position = dma_position | 0x0400;
           }
         }
+        if (videoEqualizationFlag)      // horizontal equalization 2 end
+          videoOutputFlags &= uint8_t(0x7D);
         break;
       case 101:                         // external fetch single clock start
         if (renderWindow) {
@@ -186,8 +174,11 @@ namespace Plus4 {
         }
         character_column = 0x3C;
         break;
+      case 103:                         // burst end
+        videoOutputFlags &= uint8_t(0xF5);
+        break;
       case 105:                         // horizontal blanking end
-        displayBlankingFlags = displayBlankingFlags & 0x02;
+        videoOutputFlags &= uint8_t(0xDD);
         break;
       case 107:
         dma_position = (dma_position & 0x0400) | dma_position_reload;
@@ -263,26 +254,33 @@ namespace Plus4 {
       // calculate video output
       {
         bool    tmpFlag = videoShiftRegisterEnabled;
-        if ((unsigned int) line_buf_pos < 473U) {
-          uint8_t *bufp = &(line_buf[line_buf_pos]);
-          if (displayBlankingFlags) {
-            bufp[0] = uint8_t(0x00);
-            bufp[1] = uint8_t(0x00);
-            bufp[2] = uint8_t(0x00);
-            bufp[3] = uint8_t(0x00);
-          }
-          else if (!displayActive) {
-            uint8_t c = tedRegisters[0x19];
-            bufp[0] = (!(tedRegisterWriteMask & 0x02000000U) ?
-                       c : uint8_t(0x7F));
-            bufp[1] = c;
-            bufp[2] = c;
-            bufp[3] = c;
+        uint8_t *bufp = &(video_buf[video_buf_pos]);
+        if (videoOutputFlags & uint8_t(0xF0)) {
+          bufp[0] = videoOutputFlags;
+          bufp[1] = 0x00;
+          video_buf_pos = video_buf_pos + 2;
+        }
+        else if (!displayActive) {
+          if (!(tedRegisterWriteMask & 0x02000000U)) {
+            bufp[0] = videoOutputFlags;
+            bufp[1] = tedRegisters[0x19];
+            video_buf_pos = video_buf_pos + 2;
           }
           else {
-            prv_render_func(*this, bufp, 0);
-            tmpFlag = false;
+            bufp[0] = videoOutputFlags | uint8_t(0x02);
+            bufp[1] = 0xFF;
+            uint8_t c = tedRegisters[0x19];
+            bufp[2] = c;
+            bufp[3] = c;
+            bufp[4] = c;
+            video_buf_pos = video_buf_pos + 5;
           }
+        }
+        else {
+          bufp[0] = videoOutputFlags | uint8_t(0x02);
+          prv_render_func(*this, &(bufp[1]), 0);
+          video_buf_pos = video_buf_pos + 5;
+          tmpFlag = false;
         }
         if (tmpFlag)
           render_invalid_mode(*this, (uint8_t *) 0, 0);
@@ -324,6 +322,10 @@ namespace Plus4 {
       }
     }
     switch (video_column) {
+    case 42:                            // horizontal equalization 1 end
+      if (videoEqualizationFlag)
+        videoOutputFlags &= uint8_t(0x7D);
+      break;
     case 70:                            // update DMA read position
       if (renderWindow && character_line == 6)
         dma_position_reload =
@@ -345,38 +347,53 @@ namespace Plus4 {
           flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
       }
       break;
+    case 94:                            // horizontal equalization 2 start
+      if (videoEqualizationFlag)
+        videoOutputFlags |= uint8_t(0x80);
+      break;
     case 98:
-      if ((tedRegisters[0x07] & uint8_t(0x40)) == uint8_t(0)) {     // PAL
+      if (!(videoOutputFlags & uint8_t(0x01))) {                // PAL
+        videoOutputFlags = (videoOutputFlags & uint8_t(0xF9))
+                           | uint8_t((savedVideoLine & 1) << 2);
         switch (savedVideoLine) {
-        case 251:
-          displayBlankingFlags = displayBlankingFlags | 0x02;
+        case 251:                       // vertical blanking, equalization start
+          videoOutputFlags |= uint8_t(0x10);
+          videoEqualizationFlag = true;
           break;
-        case 254:
-          verticalSync(true, 8);
+        case 254:                       // vertical sync start
+          videoOutputFlags |= uint8_t(0x40);
           break;
-        case 257:
-          verticalSync(false, 28);
-          invertColorPhaseFlags = 0x04;
+        case 257:                       // vertical sync end
+          videoOutputFlags &= uint8_t(0xBD);
           break;
-        case 269:
-          displayBlankingFlags = displayBlankingFlags & 0x01;
+        case 260:                       // equalization end
+          videoOutputFlags &= uint8_t(0x7D);
+          videoEqualizationFlag = false;
+          break;
+        case 269:                       // vertical blanking end
+          videoOutputFlags &= uint8_t(0xED);
           break;
         }
       }
-      else {                                                        // NTSC
+      else {                                                    // NTSC
+        videoOutputFlags &= uint8_t(0xF9);
         switch (savedVideoLine) {
-        case 226:
-          displayBlankingFlags = displayBlankingFlags | 0x02;
+        case 226:                       // vertical blanking, equalization start
+          videoOutputFlags |= uint8_t(0x10);
+          videoEqualizationFlag = true;
           break;
-        case 229:
-          verticalSync(true, 8);
+        case 229:                       // vertical sync start
+          videoOutputFlags |= uint8_t(0x40);
           break;
-        case 232:
-          verticalSync(false, 28);
-          invertColorPhaseFlags = 0x00;
+        case 232:                       // vertical sync end
+          videoOutputFlags &= uint8_t(0xBD);
           break;
-        case 244:
-          displayBlankingFlags = displayBlankingFlags & 0x01;
+        case 235:                       // equalization end
+          videoOutputFlags &= uint8_t(0x7D);
+          videoEqualizationFlag = false;
+          break;
+        case 244:                       // vertical blanking end
+          videoOutputFlags &= uint8_t(0xED);
           break;
         }
       }
@@ -419,29 +436,33 @@ namespace Plus4 {
     // calculate video output
     {
       bool    tmpFlag = videoShiftRegisterEnabled;
-      if (line_buf_pos < 473) {
-        if (line_buf_pos >= 0) {
-          uint8_t *bufp = &(line_buf[line_buf_pos + 4]);
-          if (displayBlankingFlags) {
-            bufp[0] = uint8_t(0x00);
-            bufp[1] = uint8_t(0x00);
-            bufp[2] = uint8_t(0x00);
-            bufp[3] = uint8_t(0x00);
-          }
-          else if (!displayActive) {
-            uint8_t c = tedRegisters[0x19];
-            bufp[0] = (!(tedRegisterWriteMask & 0x02000000U) ?
-                       c : uint8_t(0x7F));
-            bufp[1] = c;
-            bufp[2] = c;
-            bufp[3] = c;
-          }
-          else {
-            prv_render_func(*this, bufp, 4);
-            tmpFlag = false;
-          }
+      uint8_t *bufp = &(video_buf[video_buf_pos]);
+      if (videoOutputFlags & uint8_t(0xF0)) {
+        bufp[0] = videoOutputFlags;
+        bufp[1] = 0x00;
+        video_buf_pos = video_buf_pos + 2;
+      }
+      else if (!displayActive) {
+        if (!(tedRegisterWriteMask & 0x02000000U)) {
+          bufp[0] = videoOutputFlags;
+          bufp[1] = tedRegisters[0x19];
+          video_buf_pos = video_buf_pos + 2;
         }
-        line_buf_pos += 8;
+        else {
+          bufp[0] = videoOutputFlags | uint8_t(0x02);
+          bufp[1] = 0xFF;
+          uint8_t c = tedRegisters[0x19];
+          bufp[2] = c;
+          bufp[3] = c;
+          bufp[4] = c;
+          video_buf_pos = video_buf_pos + 5;
+        }
+      }
+      else {
+        bufp[0] = videoOutputFlags | uint8_t(0x02);
+        prv_render_func(*this, &(bufp[1]), 4);
+        video_buf_pos = video_buf_pos + 5;
+        tmpFlag = false;
       }
       if (tmpFlag)
         render_invalid_mode(*this, (uint8_t *) 0, 4);
@@ -456,7 +477,7 @@ namespace Plus4 {
       nextCharacter.bitmap_() = 0x00;
     }
     if (renderingDisplay) {
-      nextCharacter.attr_() = attr_buf[character_column] & uint8_t(0x7F);
+      nextCharacter.attr_() = attr_buf[character_column];
       nextCharacter.char_() = char_buf[character_column];
       // read bitmap data from memory
       if (!bitmapAddressDisableFlags) {
@@ -493,7 +514,7 @@ namespace Plus4 {
       nextCharacter.cursor_() =
           (character_position == cursor_position ? 0xFF : 0x00);
       if (!(videoMode & 0x70)) {
-        if (attr_buf[character_column] & 0x80) {
+        if (nextCharacter.attr_() & 0x80) {
           // FIXME: this should probably be done when loading the bitmap
           // shift register in the render functions
           if (!flashState && !nextCharacter.cursor_())

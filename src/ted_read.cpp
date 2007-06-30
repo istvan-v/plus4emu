@@ -197,14 +197,6 @@ namespace Plus4 {
     return ted.dataBusState;
   }
 
-  uint8_t TED7360::read_register_FF15_to_FF19(void *userData, uint16_t addr)
-  {
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState =
-        ted.tedRegisters[uint8_t(addr) & uint8_t(0xFF)] | uint8_t(0x80);
-    return ted.dataBusState;
-  }
-
   uint8_t TED7360::read_register_FF1A(void *userData, uint16_t addr)
   {
     (void) addr;

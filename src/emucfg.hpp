@@ -69,6 +69,7 @@ namespace Plus4Emu {
     // --------
     struct {
       bool        enabled;
+      bool        ntscMode;
       int         bufferingMode;
       int         quality;
       double      brightness;

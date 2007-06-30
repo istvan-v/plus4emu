@@ -40,6 +40,7 @@ namespace Plus4Emu {
                       : 0);
     bufferingMode = (src.bufferingMode > 0 ?
                      (src.bufferingMode < 2 ? src.bufferingMode : 2) : 0);
+    ntscMode = src.ntscMode;
     if (src.indexToRGBFunc)
       indexToRGBFunc = src.indexToRGBFunc;
     else
@@ -97,6 +98,7 @@ namespace Plus4Emu {
   VideoDisplay::DisplayParameters::DisplayParameters()
     : displayQuality(2),
       bufferingMode(0),
+      ntscMode(false),
       indexToRGBFunc(&defaultIndexToRGBFunc),
       brightness(0.0), contrast(1.0), gamma(1.0), saturation(1.0),
       redBrightness(0.0), redContrast(1.0), redGamma(1.0),
@@ -163,6 +165,196 @@ namespace Plus4Emu {
   VideoDisplay::~VideoDisplay()
   {
   }
+
+  // --------------------------------------------------------------------------
+
+  template <>
+  uint16_t VideoDisplayColormap<uint16_t>::pixelConv(float r, float g, float b)
+  {
+    uint16_t  ri, gi, bi;
+    ri = uint16_t(r >= 0.0f ? (r < 1.0f ? (r * 31.0f + 0.5f) : 31.0f) : 0.0f);
+    gi = uint16_t(g >= 0.0f ? (g < 1.0f ? (g * 63.0f + 0.5f) : 63.0f) : 0.0f);
+    bi = uint16_t(b >= 0.0f ? (b < 1.0f ? (b * 31.0f + 0.5f) : 31.0f) : 0.0f);
+    return ((ri << 11) | (gi << 5) | bi);
+  }
+
+  template <>
+  uint32_t VideoDisplayColormap<uint32_t>::pixelConv(float r, float g, float b)
+  {
+    uint32_t  ri, gi, bi;
+    ri = uint32_t(r >= 0.0f ? (r < 1.0f ? (r * 255.0f + 0.5f) : 255.0f) : 0.0f);
+    gi = uint32_t(g >= 0.0f ? (g < 1.0f ? (g * 255.0f + 0.5f) : 255.0f) : 0.0f);
+    bi = uint32_t(b >= 0.0f ? (b < 1.0f ? (b * 255.0f + 0.5f) : 255.0f) : 0.0f);
+    return ((bi << 16) | (gi << 8) | ri);
+  }
+
+  template <typename T>
+  VideoDisplayColormap<T>::VideoDisplayColormap()
+  {
+    colormap_phase0 = new T[256 * 8];
+    try {
+      colormapTable = new T*[256];
+    }
+    catch (...) {
+      delete[] colormap_phase0;
+      throw;
+    }
+    colormap_phase33 = &(colormap_phase0[0x0100]);
+    colormap_phase327 = &(colormap_phase0[0x0200]);
+    colormap_phase0Inv = &(colormap_phase0[0x0300]);
+    colormap_phase33Inv = &(colormap_phase0[0x0400]);
+    colormap_phase327Inv = &(colormap_phase0[0x0500]);
+    colormap_noColor = &(colormap_phase0[0x0600]);
+    colormap_noVideo = &(colormap_phase0[0x0700]);
+    for (size_t i = 0; i < 0x0800; i++)
+      colormap_phase0[i] = T(0);
+    for (size_t i = 0; i < 256; i++) {
+      T       *p = colormap_noVideo;
+      if (!(i & 0xC0)) {
+        if (!(i & 0x20)) {
+          p = colormap_noColor;
+        }
+        else {
+          switch (i & 0x17) {
+          case 0x00:
+            p = colormap_phase0;
+            break;
+          case 0x01:
+            p = colormap_phase327;
+            break;
+          case 0x02:
+            p = colormap_phase0Inv;
+            break;
+          case 0x03:
+            p = colormap_phase327Inv;
+            break;
+          case 0x04:
+            p = colormap_phase0Inv;
+            break;
+          case 0x05:
+            p = colormap_phase327Inv;
+            break;
+          case 0x06:
+            p = colormap_phase0;
+            break;
+          case 0x07:
+            p = colormap_phase327;
+            break;
+          case 0x10:
+            p = colormap_phase33;
+            break;
+          case 0x11:
+            p = colormap_phase0;
+            break;
+          case 0x12:
+            p = colormap_phase33;
+            break;
+          case 0x13:
+            p = colormap_phase0;
+            break;
+          case 0x14:
+            p = colormap_phase33Inv;
+            break;
+          case 0x15:
+            p = colormap_phase0Inv;
+            break;
+          case 0x16:
+            p = colormap_phase33Inv;
+            break;
+          case 0x17:
+            p = colormap_phase0Inv;
+            break;
+          }
+        }
+      }
+      colormapTable[i] = p;
+    }
+  }
+
+  template <typename T>
+  VideoDisplayColormap<T>::~VideoDisplayColormap()
+  {
+    delete[] colormap_phase0;
+    delete[] colormapTable;
+  }
+
+  template <typename T>
+  void VideoDisplayColormap<T>::setDisplayParameters(
+      const VideoDisplay::DisplayParameters& displayParameters, bool yuvFormat)
+  {
+    float   baseColormap[768];
+    for (size_t i = 0; i < 256; i++) {
+      float   r = float(int(i)) / 255.0f;
+      float   g = r;
+      float   b = r;
+      if (displayParameters.indexToRGBFunc)
+        displayParameters.indexToRGBFunc(uint8_t(i), r, g, b);
+      // Y = (0.299 * R) + (0.587 * G) + (0.114 * B)
+      // U = 0.492 * (B - Y)
+      // V = 0.877 * (R - Y)
+      float   y = (0.299f * r) + (0.587f * g) + (0.114f * b);
+      float   u = 0.492f * (b - y);
+      float   v = 0.877f * (r - y);
+      baseColormap[i * 3 + 0] = y;
+      baseColormap[i * 3 + 1] = u;
+      baseColormap[i * 3 + 2] = v;
+    }
+    const float phaseShiftTable[8] = {
+      0.0f, 33.0f, 327.0f, 0.0f, 33.0f, 327.0f, 0.0f, 0.0f
+    };
+    const float yScaleTable[8] = {
+      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
+    };
+    const float uScaleTable[8] = {
+      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
+    };
+    const float vScaleTable[8] = {
+      1.0f, 1.0f, 1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f
+    };
+    for (size_t i = 0; i < 0x0800; i++) {
+      size_t  j = i & 0xFF;
+      size_t  k = i >> 8;
+      float   y = baseColormap[j * 3 + 0];
+      float   uTmp = baseColormap[j * 3 + 1];
+      float   vTmp = baseColormap[j * 3 + 2];
+      float   phaseShift = phaseShiftTable[k] * 0.01745329f;
+      float   re = float(std::cos(phaseShift));
+      float   im = float(std::sin(phaseShift));
+      float   u = uTmp * re - vTmp * im;
+      float   v = uTmp * im + vTmp * re;
+      u = u * uScaleTable[k];
+      v = v * vScaleTable[k];
+      {
+        float   r = (v / 0.877f) + y;
+        float   b = (u / 0.492f) + y;
+        float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+        displayParameters.applyColorCorrection(r, g, b);
+        y = (0.299f * r) + (0.587f * g) + (0.114f * b);
+        u = 0.492f * (b - y);
+        v = 0.877f * (r - y);
+      }
+      y = y * yScaleTable[k];
+      u = u * yScaleTable[k];
+      v = v * yScaleTable[k];
+      if (!yuvFormat) {
+        // R = (V / 0.877) + Y
+        // B = (U / 0.492) + Y
+        // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
+        float   r = (v / 0.877f) + y;
+        float   b = (u / 0.492f) + y;
+        float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+        colormap_phase0[i] = pixelConv(r, g, b);
+      }
+      else {
+        u = (u + 0.435912f) * 1.147020f;
+        v = (v + 0.614777f) * 0.813303f;
+        colormap_phase0[i] = pixelConv(y, u, v);
+      }
+    }
+  }
+
+  template class VideoDisplayColormap<uint16_t>;
+  template class VideoDisplayColormap<uint32_t>;
 
 }       // namespace Plus4Emu
 

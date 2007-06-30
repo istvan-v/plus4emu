@@ -199,6 +199,9 @@ class Plus4EmuMachineConfiguration {
     // 0x30, and 0x31
     ROMSegmentConfig  rom[50];
   } memory;
+  struct {
+    bool    ntscMode;
+  } display;
  public:
   Plus4EmuMachineConfiguration(Plus4Emu::ConfigurationDB& config, int n,
                                const std::string& romDirectory);
@@ -233,10 +236,14 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   vm.videoClockFrequency = ((n & 1) == 0 ? 17734475U : 14318180U);
   memory.ram.size = ((n & 2) == 0 ? 16 : 64);
   memory.rom[0x00].file = romDirectory + "p4_basic.rom";
-  if ((n & 1) == 0)
+  if ((n & 1) == 0) {
+    display.ntscMode = false;
     memory.rom[0x01].file = romDirectory + "p4kernal.rom";
-  else
+  }
+  else {
+    display.ntscMode = true;
     memory.rom[0x01].file = romDirectory + "p4_ntsc.rom";
+  }
   if ((n & 4) != 0) {
     memory.rom[0x02].file = romDirectory + "3plus1lo.rom";
     memory.rom[0x03].file = romDirectory + "3plus1hi.rom";
@@ -275,6 +282,7 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   config.createKey("memory.rom.30.offset", memory.rom[0x30].offset);
   config.createKey("memory.rom.31.file", memory.rom[0x31].file);
   config.createKey("memory.rom.31.offset", memory.rom[0x31].offset);
+  config.createKey("display.ntscMode", display.ntscMode);
 }
 
 class Plus4EmuDisplaySndConfiguration {

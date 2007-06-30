@@ -37,14 +37,6 @@ namespace Plus4 {
 
   class TED7360 : public M7501 {
    private:
-    struct RenderTables {
-      uint8_t   colorTable_NTSC[256];
-      uint8_t   colorTable_InvPhase[256];
-      uint8_t   colorTable_NTSC_InvPhase[256];
-      uint8_t   colorTable_HalfInvPhase[256];
-      uint8_t   colorTable_NTSC_HalfInvPhase[256];
-      RenderTables();
-    };
     class VideoShiftRegisterCharacter {
      private:
       uint32_t  buf_;
@@ -110,7 +102,6 @@ namespace Plus4 {
     static uint8_t  read_register_FF12(void *userData, uint16_t addr);
     static uint8_t  read_register_FF13(void *userData, uint16_t addr);
     static uint8_t  read_register_FF14(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF15_to_FF19(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1A(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1B(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1C(void *userData, uint16_t addr);
@@ -216,27 +207,16 @@ namespace Plus4 {
     static REGPARM void render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_invalid_mode(TED7360& ted,
                                             uint8_t *bufp, int offs);
-    void resampleAndDrawLine(uint8_t invertColors = 0);
     // -----------------------------------------------------------------
-    static RenderTables renderTables;
    protected:
     // CPU I/O registers
     uint8_t     ioRegister_0000;
     uint8_t     ioRegister_0001;
    private:
-    // number of RAM segments; can be one of the following values:
-    //   1: 16K (segment FF)
-    //   2: 32K (segments FE, FF)
-    //   4: 64K (segments FC to FF)
-    //  16: 256K Hannes (segments F0 to FF)
-    //  64: 1024K Hannes (segments C0 to FF)
-    uint8_t     ramSegments;
-    // value written to FD16:
-    //   bit 7:       enable memory expansion at 1000-FFFF if set to 0, or
-    //                at 4000-FFFF if set to 1
-    //   bit 6:       if set to 1, allow access to memory expansion by TED
-    //   bits 0 to 3: RAM bank selected
-    uint8_t     hannesRegister;
+    // TED cycle counter (0 to 3)
+    uint8_t     cycle_count;
+    // current video column (0 to 113, = (FF1E) / 2)
+    uint8_t     video_column;
     // base index to memoryMapTable[] (see below) to be used by readMemory()
     unsigned int  memoryReadMap;
     // base index to memoryMapTable[] to be used by writeMemory()
@@ -256,12 +236,6 @@ namespace Plus4 {
     REGPARM void  (*prv_render_func)(TED7360& ted, uint8_t *bufp, int offs);
     // CPU clock multiplier
     int         cpu_clock_multiplier;
-    // TED cycle counter (0 to 3)
-    uint8_t     cycle_count;
-   protected:
-    // current video column (0 to 113, = (FF1E) / 2)
-    uint8_t     video_column;
-   private:
     // current video line (0 to 311, = (FF1D, FF1C)
     int         video_line;
     // character sub-line (0 to 7, bits 0..2 of FF1F)
@@ -295,9 +269,15 @@ namespace Plus4 {
     bool        displayWindow;
     bool        renderingDisplay;
     bool        displayActive;
-    // bit 0: horizontal blanking
-    // bit 1: vertical blanking
-    uint8_t     displayBlankingFlags;
+    // bit 7: horizontal sync
+    // bit 6: vertical sync
+    // bit 5: horizontal blanking
+    // bit 4: vertical blanking
+    // bit 3: burst
+    // bit 2: PAL odd line (FF1D bit 0)
+    // bit 1: always zero
+    // bit 0: NTSC mode (FF07 bit 6)
+    uint8_t     videoOutputFlags;
     // timers (FF00 to FF05)
     bool        timer1_run;
     bool        timer2_run;
@@ -319,8 +299,8 @@ namespace Plus4 {
     uint8_t     attr_buf[64];
     uint8_t     attr_buf_tmp[64];
     uint8_t     char_buf[64];
-    uint8_t     line_buf[480];
-    int         line_buf_pos;
+    uint8_t     video_buf[464];
+    int         video_buf_pos;
     bool        videoShiftRegisterEnabled;
     // horizontal scroll (0 to 7)
     uint8_t     horiz_scroll;
@@ -342,7 +322,7 @@ namespace Plus4 {
     int         videoInterruptLine;
     bool        prvVideoInterruptState;
     uint8_t     prvCharacterLine;
-    uint8_t     invertColorPhaseFlags;
+    bool        videoEqualizationFlag;
    protected:
     // for reading data from invalid memory address
     uint8_t     dataBusState;
@@ -357,6 +337,19 @@ namespace Plus4 {
     bool        tape_write_state;
     bool        tape_button_state;
     // --------
+    // number of RAM segments; can be one of the following values:
+    //   1: 16K (segment FF)
+    //   2: 32K (segments FE, FF)
+    //   4: 64K (segments FC to FF)
+    //  16: 256K Hannes (segments F0 to FF)
+    //  64: 1024K Hannes (segments C0 to FF)
+    uint8_t     ramSegments;
+    // value written to FD16:
+    //   bit 7:       enable memory expansion at 1000-FFFF if set to 0, or
+    //                at 4000-FFFF if set to 1
+    //   bit 6:       if set to 1, allow access to memory expansion by TED
+    //   bits 0 to 3: RAM bank selected
+    uint8_t     hannesRegister;
     uint8_t     *segmentTable[256];
     // table of 4096 memory maps, indexed by a 12-bit value multiplied by 8:
     //   bits 8 to 11: ROM banks selected by writing to FDD0 + n
@@ -394,15 +387,10 @@ namespace Plus4 {
     {
       (void) sampleValue;
     }
-    virtual void drawLine(const uint8_t *buf, size_t nBytes)
+    virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes)
     {
       (void) buf;
       (void) nBytes;
-    }
-    virtual void verticalSync(bool newState_, unsigned int currentSlot_)
-    {
-      (void) newState_;
-      (void) currentSlot_;
     }
     virtual void ntscModeChangeCallback(bool isNTSC_)
     {

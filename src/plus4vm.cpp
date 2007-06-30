@@ -98,17 +98,10 @@ namespace Plus4 {
     vm.sendMonoAudioOutput(tmp);
   }
 
-  void Plus4VM::TED7360_::drawLine(const uint8_t *buf, size_t nBytes)
+  void Plus4VM::TED7360_::videoOutputCallback(const uint8_t *buf, size_t nBytes)
   {
     if (vm.getIsDisplayEnabled())
-      vm.display.drawLine(buf, nBytes);
-  }
-
-  void Plus4VM::TED7360_::verticalSync(bool newState_,
-                                       unsigned int currentSlot_)
-  {
-    if (vm.getIsDisplayEnabled())
-      vm.display.vsyncStateChange(newState_, currentSlot_);
+      vm.display.sendVideoOutput(buf, nBytes);
   }
 
   void Plus4VM::TED7360_::ntscModeChangeCallback(bool isNTSC_)

@@ -115,6 +115,9 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "display.enabled",
                                 display.enabled, true,
                                 displaySettingsChanged);
+    defineConfigurationVariable(*this, "display.ntscMode",
+                                display.ntscMode, false,
+                                displaySettingsChanged);
     defineConfigurationVariable(*this, "display.bufferingMode",
                                 display.bufferingMode, int(0),
                                 displaySettingsChanged, 0.0, 2.0);
@@ -370,6 +373,7 @@ namespace Plus4Emu {
       VideoDisplay::DisplayParameters dp(videoDisplay.getDisplayParameters());
       dp.displayQuality = display.quality;
       dp.bufferingMode = display.bufferingMode;
+      dp.ntscMode = display.ntscMode;
       dp.brightness = display.brightness;
       dp.contrast = display.contrast;
       dp.gamma = display.gamma;

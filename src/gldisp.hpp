@@ -31,28 +31,17 @@ namespace Plus4Emu {
 
   class OpenGLDisplay : public Fl_Gl_Window, public FLTKDisplay_ {
    private:
-    class Colormap {
-     private:
-      uint16_t  *palette;
-      uint16_t  *palette2;
-      static uint16_t pixelConv(double r, double g, double b);
-     public:
-      Colormap();
-      ~Colormap();
-      void setParams(const DisplayParameters& dp);
-      inline uint16_t operator()(uint8_t c) const
-      {
-        return palette[c];
-      }
-      inline uint16_t operator()(uint8_t c1, uint8_t c2) const
-      {
-        return palette2[(size_t(c1) << 8) + c2];
-      }
-    };
-    // ----------------
+    bool compileShader(int shaderMode_);
+    void deleteShader();
+    bool enableShader();
+    void disableShader();
     void displayFrame();
     void decodeLine_quality0(uint16_t *outBuf,
                              Message_LineData **lineBuffers_, size_t lineNum);
+    void decodeLine_quality2(uint16_t *outBuf,
+                             Message_LineData **lineBuffers_, size_t lineNum);
+    void decodeLine_quality3(uint32_t *outBuf,
+                             Message_LineData **lineBuffers_, int lineNum);
     void drawFrame_quality0(Message_LineData **lineBuffers_,
                             double x0, double y0, double x1, double y1);
     void drawFrame_quality1(Message_LineData **lineBuffers_,
@@ -63,10 +52,13 @@ namespace Plus4Emu {
                             double x0, double y0, double x1, double y1);
     static void fltkIdleCallback(void *userData_);
     // ----------------
-    Colormap      colormap;
+    VideoDisplayColormap<uint16_t>  colormap16;
+    VideoDisplayColormap<uint32_t>  colormap32;
     bool          *linesChanged;
-    // 1024x16 texture in 16-bit (R5G6B5) format
-    uint16_t      *textureBuffer;
+    // 1024x16 texture in 16-bit (R5G6B5) or 32-bit (R8G8B8) format
+    unsigned char *textureSpace;
+    uint16_t      *textureBuffer16;
+    uint32_t      *textureBuffer32;
     unsigned long textureID;
     uint8_t       forceUpdateLineCnt;
     uint8_t       forceUpdateLineMask;
@@ -80,10 +72,16 @@ namespace Plus4Emu {
     Message_LineData  **frameRingBuffer[4];
     double        ringBufferReadPos;
     int           ringBufferWritePos;
+    int           shaderMode;   // 0: no shader, 1: PAL, 2: NTSC
+    unsigned long shaderHandle;
+    unsigned long programHandle;
    public:
     OpenGLDisplay(int xx = 0, int yy = 0, int ww = 768, int hh = 576,
                   const char *lbl = (char *) 0, bool isDoubleBuffered = false);
     virtual ~OpenGLDisplay();
+#ifndef ENABLE_GL_SHADERS
+    virtual void setDisplayParameters(const DisplayParameters& dp);
+#endif
     // Read and process messages sent by the child thread. Returns true if
     // redraw() needs to be called to update the display.
     virtual bool checkEvents();

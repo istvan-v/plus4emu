@@ -44,23 +44,36 @@ namespace Plus4Emu {
     };
     class Message_LineData : public Message {
      private:
-      // a line of 768 pixels needs a maximum space of 768 * (17 / 16) = 816
-      // ( = 204 * 4) bytes in compressed format
-      uint32_t  buf_[204];
+      // 720 ( = 180 * 4) bytes of space for line data
+      uint32_t  buf_[180];
       // number of bytes in buffer
       size_t    nBytes_;
      public:
       // line number
       int       lineNum;
+      // bit 7: have burst signal
+      // bit 0: resample needed
+      uint8_t   flags;
+      size_t    lineLength;
       Message_LineData()
         : Message()
       {
         nBytes_ = 0;
         lineNum = 0;
+        flags = 0x00;
+        lineLength = 0;
       }
       virtual ~Message_LineData();
-      // copy a line (768 pixels in compressed format) to the buffer
-      void copyLine(const uint8_t *buf, size_t nBytes);
+      inline void appendData(const uint8_t *buf, size_t nBytes)
+      {
+        if (nBytes > 0) {
+          unsigned char *p = reinterpret_cast<unsigned char *>(&(buf_[0]));
+          std::memcpy(&(p[nBytes_]), buf, nBytes);
+          nBytes_ = nBytes_ + nBytes;
+          for (size_t i = nBytes_; (i & 3) != 0; i++)
+            p[i] = 0x00;
+        }
+      }
       inline void getLineData(const unsigned char*& buf, size_t& nBytes)
       {
         buf = reinterpret_cast<unsigned char *>(&(buf_[0]));
@@ -127,10 +140,9 @@ namespace Plus4Emu {
     }
     void deleteMessage(Message *m);
     void queueMessage(Message *m);
-    static void decodeLine(unsigned char *outBuf,
-                           const unsigned char *inBuf, size_t nBytes);
     void checkScreenshotCallback();
     void frameDone();
+    void lineDone();
     // ----------------
     Message       *messageQueue;
     Message       *lastMessage;
@@ -138,15 +150,27 @@ namespace Plus4Emu {
     Mutex         messageQueueMutex;
     // for 578 lines (576 + 2 border)
     Message_LineData  **lineBuffers;
+    Message_LineData  *nextLine;
     int           curLine;
-    int           lineCnt;      // nr. of lines received so far in this frame
-    int           prvLineCnt;
     int           vsyncCnt;
     int           framesPending;
     bool          skippingFrame;
-    bool          vsyncState;
-    bool          ntscMode;
     bool          oddFrame;
+    uint8_t       burstValue;
+    uint8_t       prvSyncState;
+    unsigned int  hsyncCnt;
+    unsigned int  hsyncCntInc;
+    unsigned int  hsyncPeriodCnt;
+    unsigned int  hsyncPeriodLength;
+    unsigned int  lineLengthCnt;
+    unsigned int  lineLength;
+    unsigned int  lineLengthMin;
+    unsigned int  lineLengthMax;
+    unsigned int  lineStart;
+    int           vsyncThreshold1;
+    int           vsyncThreshold2;
+    int           vsyncReload;
+    int           lineReload;
     volatile bool videoResampleEnabled;
     volatile bool exitFlag;
     DisplayParameters   displayParameters;
@@ -168,11 +192,7 @@ namespace Plus4Emu {
     // Draw next line of display. 'nBytes' should be 768 for full resolution,
     // or 384 for half resolution. With values in the range 0 to 383, or
     // 385 to 767, the remaining pixels are filled with color 0.
-    virtual void drawLine(const uint8_t *buf, size_t nBytes);
-    // Should be called at the beginning (newState = true) and end
-    // (newState = false) of VSYNC. 'currentSlot_' is the position within
-    // the current line (0 to 56).
-    virtual void vsyncStateChange(bool newState, unsigned int currentSlot_);
+    virtual void sendVideoOutput(const uint8_t *buf, size_t nBytes);
     // Read and process messages sent by the child thread. Returns true if
     // redraw() needs to be called to update the display.
     virtual bool checkEvents() = 0;
@@ -197,27 +217,9 @@ namespace Plus4Emu {
 
   class FLTKDisplay : public Fl_Window, public FLTKDisplay_ {
    private:
-    class Colormap {
-     private:
-      uint32_t  *palette;
-      uint32_t  *palette2;
-      static uint32_t pixelConv(double r, double g, double b);
-     public:
-      Colormap();
-      ~Colormap();
-      void setParams(const DisplayParameters& dp);
-      inline uint32_t operator()(uint8_t c) const
-      {
-        return palette[c];
-      }
-      inline uint32_t operator()(uint8_t c1, uint8_t c2) const
-      {
-        return palette2[(size_t(c1) << 8) + c2];
-      }
-    };
     void displayFrame();
     // ----------------
-    Colormap      colormap;
+    VideoDisplayColormap<uint32_t>  colormap;
     // linesChanged[n] & 0x01 is non-zero if video data for line n has been
     // received in the current frame; linesChanged[n] & 0x80 is non-zero if
     // line n has changed in the current frame

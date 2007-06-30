@@ -4,6 +4,7 @@ import sys
 
 win32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
+enableGLShaders = 1
 
 compilerFlags = Split('''
     -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
@@ -71,6 +72,11 @@ if not configure.CheckCXXHeader('FL/Fl.H'):
 if not configure.CheckCHeader('GL/gl.h'):
     print ' *** error: OpenGL is not found'
     Exit(-1)
+if enableGLShaders:
+    if not configure.CheckType('PFNGLCOMPILESHADERPROC',
+                               '#include <GL/gl.h>\n#include <GL/glext.h>'):
+        enableGLShaders = 0
+        print 'WARNING: disabling GL shader support'
 haveDotconf = configure.CheckCHeader('dotconf.h')
 if configure.CheckCHeader('stdint.h'):
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_STDINT_H'])
@@ -86,6 +92,8 @@ if haveDotconf:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_DOTCONF_H'])
 if haveSDL:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_SDL_H'])
+if enableGLShaders:
+    plus4emuLibEnvironment.Append(CCFLAGS = ['-DENABLE_GL_SHADERS'])
 
 plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']

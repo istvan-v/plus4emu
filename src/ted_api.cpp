@@ -28,12 +28,9 @@ static const float brightnessToYTable[8] = {
    0.180f,  0.235f,  0.261f,  0.341f,  0.506f,  0.661f,  0.753f,  0.993f
 };
 
-static const float colorPhaseTable[32] = {
+static const float colorPhaseTable[16] = {
      0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-   124.5f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    1.5f,  213.0f,
-  // the second half of the palette is used for emulating PAL color artifacts
-    27.5f,   68.0f,  136.0f,  227.0f,  303.0f,   33.5f,   48.0f,   60.0f,
-    70.5f,   80.5f,   99.5f,  109.5f,  120.0f,  132.0f,  146.5f,  180.0f
+   124.5f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    1.5f,  213.0f
 };
 
 namespace Plus4 {
@@ -41,7 +38,7 @@ namespace Plus4 {
   void TED7360::convertPixelToRGB(uint8_t color,
                                   float& red, float& green, float& blue)
   {
-    uint8_t c = (color & 0x0F) | ((color & 0x80) >> 3);
+    uint8_t c = color & 0x0F;
     uint8_t b = (color & 0x70) >> 4;
     float   y = 0.035f;
     float   u = 0.0f, v = 0.0f;
@@ -50,9 +47,9 @@ namespace Plus4 {
     if (c > 1) {
       float   phs = colorPhaseTable[c] * 3.14159265f / 180.0f;
       u = float(std::cos(phs)) * 0.18f;
-      v = float(std::sin(phs)) * (c < 0x15 ? 0.18f : 0.0f);
+      v = float(std::sin(phs)) * 0.18f;
     }
-    y *= 0.95f;
+    y *= 0.96f;
     // R = (V / 0.877) + Y
     // B = (U / 0.492) + Y
     // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
@@ -247,7 +244,7 @@ namespace Plus4 {
   void TED7360::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000001);        // version number
+    buf.writeUInt32(0x01000002);        // version number
     uint8_t   romBitmap = 0;
     for (uint8_t i = 0; i < 8; i++) {
       // find non-empty ROM segments
@@ -298,7 +295,7 @@ namespace Plus4 {
     buf.writeBoolean(displayWindow);
     buf.writeBoolean(renderingDisplay);
     buf.writeBoolean(displayActive);
-    buf.writeByte(displayBlankingFlags);
+    buf.writeByte(videoOutputFlags);
     buf.writeBoolean(timer1_run);
     buf.writeBoolean(timer2_run);
     buf.writeBoolean(timer3_run);
@@ -335,7 +332,7 @@ namespace Plus4 {
     buf.writeUInt32(uint32_t(savedVideoLine));
     buf.writeBoolean(prvVideoInterruptState);
     buf.writeByte(prvCharacterLine);
-    buf.writeByte(invertColorPhaseFlags);
+    buf.writeBoolean(videoEqualizationFlag);
     buf.writeByte(dataBusState);
     buf.writeUInt32(uint32_t(keyboard_row_select_mask));
     for (int i = 0; i < 16; i++)
@@ -358,7 +355,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000 && version != 0x01000001) {
+    if (!(version >= 0x01000000 && version <= 0x01000002)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible Plus/4 snapshot format");
     }
@@ -430,7 +427,15 @@ namespace Plus4 {
       displayWindow = buf.readBoolean();
       renderingDisplay = buf.readBoolean();
       displayActive = buf.readBoolean();
-      displayBlankingFlags = buf.readByte() & 0x03;
+      if (version >= 0x01000002) {
+        videoOutputFlags = uint8_t((videoOutputFlags & 0x01)
+                                   | (buf.readByte() & 0xFC));
+      }
+      else {
+        uint8_t tmp = buf.readByte();
+        videoOutputFlags = uint8_t((videoOutputFlags & 0x01)
+                                   | ((tmp & 0x01) << 5) | ((tmp & 0x02) << 3));
+      }
       timer1_run = buf.readBoolean();
       timer2_run = buf.readBoolean();
       timer3_run = buf.readBoolean();
@@ -471,7 +476,10 @@ namespace Plus4 {
       savedVideoLine = int(buf.readUInt32() & 0x01FF);
       prvVideoInterruptState = buf.readBoolean();
       prvCharacterLine = buf.readByte() & 7;
-      invertColorPhaseFlags = buf.readByte() & 0x07;
+      if (version >= 0x01000002)
+        videoEqualizationFlag = buf.readBoolean();
+      else
+        (void) buf.readByte();  // was invertColorPhaseFlags in old versions
       dataBusState = buf.readByte();
       keyboard_row_select_mask = int(buf.readUInt32() & 0xFFFF);
       for (int i = 0; i < 16; i++)

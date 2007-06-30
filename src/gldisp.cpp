@@ -49,6 +49,62 @@ typedef void (APIENTRY *PFNGLBLENDCOLORPROC)(GLclampf, GLclampf, GLclampf,
 #  endif
 #endif
 
+#ifdef ENABLE_GL_SHADERS
+
+static const char *shaderSourcePAL[1] = {
+  "uniform sampler2D textureHandle;\n"
+  "uniform float blendScale1;\n"
+  "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.2337,  0.0000,\n"
+  "                                 0.5000, -0.0574, -0.1190,  0.0000,\n"
+  "                                 0.5000,  0.2953,  0.0000,  0.0000,\n"
+  "                                 0.0000,  0.0000,  0.0000,  1.0000);\n"
+  "void main()\n"
+  "{\n"
+  "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
+  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.003, 0.015625));\n"
+  "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.0009, 0.015625));\n"
+  "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.0009, 0.015625));\n"
+  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.003, 0.015625));\n"
+  "  vec4 p10 = texture2D(textureHandle, c0 + vec2(0.003, -0.046875));\n"
+  "  vec4 p11 = texture2D(textureHandle, c0 + vec2(0.0009, -0.046875));\n"
+  "  vec4 p12 = texture2D(textureHandle, c0 + vec2(-0.0009, -0.046875));\n"
+  "  vec4 p13 = texture2D(textureHandle, c0 + vec2(-0.003, -0.046875));\n"
+  "  p01 = p01 + p02;\n"
+  "  vec4 tmp = ((p00 + p03 + p10 + p13) * 0.5) + (p01 + p11 + p12);\n"
+  "  float y = p01[0];\n"
+  "  float u = tmp[1] - 3.0;\n"
+  "  float v = tmp[2] - 3.0;\n"
+  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, blendScale1);\n"
+  "  gl_FragColor = (vec4(y, u, v, 0.0) * yuv2rgbMatrix) * f;\n"
+  "}\n"
+};
+
+static const char *shaderSourceNTSC[1] = {
+  "uniform sampler2D textureHandle;\n"
+  "uniform float blendScale1;\n"
+  "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.4673,  0.0000,\n"
+  "                                 0.5000, -0.1147, -0.2380,  0.0000,\n"
+  "                                 0.5000,  0.5907,  0.0000,  0.0000,\n"
+  "                                 0.0000,  0.0000,  0.0000,  1.0000);\n"
+  "void main()\n"
+  "{\n"
+  "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
+  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.003, 0.015625));\n"
+  "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.0009, 0.015625));\n"
+  "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.0009, 0.015625));\n"
+  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.003, 0.015625));\n"
+  "  p01 = p01 + p02;\n"
+  "  vec4 tmp = ((p00 + p03) * 0.5) + p01;\n"
+  "  float y = p01[0];\n"
+  "  float u = tmp[1] - 1.5;\n"
+  "  float v = tmp[2] - 1.5;\n"
+  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, blendScale1);\n"
+  "  gl_FragColor = (vec4(y, u, v, 0.0) * yuv2rgbMatrix) * f;\n"
+  "}\n"
+};
+
+#endif  // ENABLE_GL_SHADERS
+
 static void setTextureParameters(int displayQuality)
 {
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
@@ -74,91 +130,129 @@ static void setTextureParameters(int displayQuality)
 
 static void initializeTexture(const Plus4Emu::VideoDisplay::DisplayParameters&
                                   dp,
-                              const uint16_t *textureBuffer)
+                              const unsigned char *textureBuffer)
 {
   GLsizei txtWidth = 1024;
   GLsizei txtHeight = 16;
   switch (dp.displayQuality) {
   case 0:
+    txtWidth = 512;
     txtHeight = 8;
     break;
   case 1:
     txtWidth = 512;
     break;
   }
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, txtWidth, txtHeight, 0,
-               GL_RGB, GL_UNSIGNED_SHORT_5_6_5, (const GLvoid *) textureBuffer);
+  if (dp.displayQuality < 0) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, txtWidth, txtHeight, 0,
+                 GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
+                 (const GLvoid *) textureBuffer);
+  }
+  else {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, txtWidth, txtHeight, 0,
+                 GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                 (const GLvoid *) textureBuffer);
+  }
 }
 
 namespace Plus4Emu {
 
-  OpenGLDisplay::Colormap::Colormap()
+  bool OpenGLDisplay::compileShader(int shaderMode_)
   {
-    palette = new uint16_t[256];
-    try {
-      palette2 = new uint16_t[65536];
+#ifdef ENABLE_GL_SHADERS
+    if (shaderMode_ == shaderMode)
+      return true;
+    if (shaderMode != 0)
+      deleteShader();
+    if (shaderMode_ == 0)
+      return true;
+    shaderHandle = glCreateShader(GL_FRAGMENT_SHADER);
+    if (!shaderHandle)
+      return false;
+    programHandle = glCreateProgram();
+    if (!programHandle) {
+      glDeleteShader(GLuint(shaderHandle));
+      shaderHandle = 0UL;
+      return false;
     }
-    catch (...) {
-      delete[] palette;
-      throw;
+    if (shaderMode_ == 1) {
+      glShaderSource(GLuint(shaderHandle),
+                     GLsizei(1), &(shaderSourcePAL[0]), (GLint *) 0);
     }
-    DisplayParameters dp;
-    setParams(dp);
+    else {
+      glShaderSource(GLuint(shaderHandle),
+                     GLsizei(1), &(shaderSourceNTSC[0]), (GLint *) 0);
+    }
+    glAttachShader(GLuint(programHandle), GLuint(shaderHandle));
+    shaderMode = shaderMode_;
+    glCompileShader(GLuint(shaderHandle));
+    GLint   compileStatus = GL_FALSE;
+    glGetShaderiv(GLuint(shaderHandle), GL_COMPILE_STATUS, &compileStatus);
+    if (compileStatus == GL_FALSE) {
+      deleteShader();
+      return false;
+    }
+    glLinkProgram(GLuint(programHandle));
+    shaderMode = shaderMode_;
+    return true;
+#else
+    (void) shaderMode_;
+    shaderMode = 0;
+    return false;
+#endif  // ENABLE_GL_SHADERS
   }
 
-  OpenGLDisplay::Colormap::~Colormap()
+  void OpenGLDisplay::deleteShader()
   {
-    delete[] palette;
-    delete[] palette2;
+#ifdef ENABLE_GL_SHADERS
+    if (shaderMode == 0)
+      return;
+    disableShader();
+    shaderMode = 0;
+    glDetachShader(GLuint(programHandle), GLuint(shaderHandle));
+    glDeleteProgram(GLuint(programHandle));
+    programHandle = 0UL;
+    glDeleteShader(GLuint(shaderHandle));
+    shaderHandle = 0UL;
+#endif  // ENABLE_GL_SHADERS
   }
 
-  void OpenGLDisplay::Colormap::setParams(const DisplayParameters& dp)
+  bool OpenGLDisplay::enableShader()
   {
-    float   rTbl[256];
-    float   gTbl[256];
-    float   bTbl[256];
-    for (size_t i = 0; i < 256; i++) {
-      float   r = float(uint8_t(i)) / 255.0f;
-      float   g = float(uint8_t(i)) / 255.0f;
-      float   b = float(uint8_t(i)) / 255.0f;
-      if (dp.indexToRGBFunc)
-        dp.indexToRGBFunc(uint8_t(i), r, g, b);
-      dp.applyColorCorrection(r, g, b);
-      rTbl[i] = r;
-      gTbl[i] = g;
-      bTbl[i] = b;
-    }
-    for (size_t i = 0; i < 256; i++) {
-      palette[i] = pixelConv(rTbl[i], gTbl[i], bTbl[i]);
-    }
-    for (size_t i = 0; i < 256; i++) {
-      for (size_t j = 0; j < 256; j++) {
-        double  r = (rTbl[i] + rTbl[j]) * dp.blendScale1;
-        double  g = (gTbl[i] + gTbl[j]) * dp.blendScale1;
-        double  b = (bTbl[i] + bTbl[j]) * dp.blendScale1;
-        palette2[(i << 8) + j] = pixelConv(r, g, b);
-      }
-    }
+#ifdef ENABLE_GL_SHADERS
+    if (shaderMode == 0)
+      return false;
+    glUseProgram(GLuint(programHandle));
+    // FIXME: is it safe to use a constant texture ID of 0 here ?
+    glUniform1i(glGetUniformLocation(GLuint(programHandle), "textureHandle"),
+                0);
+    glUniform1f(glGetUniformLocation(GLuint(programHandle), "blendScale1"),
+                float(displayParameters.blendScale1) * 1.996f + 0.001f);
+    return true;
+#else
+    return false;
+#endif  // ENABLE_GL_SHADERS
   }
 
-  uint16_t OpenGLDisplay::Colormap::pixelConv(double r, double g, double b)
+  void OpenGLDisplay::disableShader()
   {
-    unsigned int  ri, gi, bi;
-    ri = (r > 0.0 ? (r < 1.0 ? (unsigned int) (r * 31.0 + 0.5) : 31U) : 0U);
-    gi = (g > 0.0 ? (g < 1.0 ? (unsigned int) (g * 63.0 + 0.5) : 63U) : 0U);
-    bi = (b > 0.0 ? (b < 1.0 ? (unsigned int) (b * 31.0 + 0.5) : 31U) : 0U);
-    return uint16_t((ri << 11) + (gi << 5) + bi);
+#ifdef ENABLE_GL_SHADERS
+    if (shaderMode == 0)
+      return;
+    glUseProgram(GLuint(0));
+#endif  // ENABLE_GL_SHADERS
   }
-
-  // --------------------------------------------------------------------------
 
   OpenGLDisplay::OpenGLDisplay(int xx, int yy, int ww, int hh,
                                const char *lbl, bool isDoubleBuffered)
     : Fl_Gl_Window(xx, yy, ww, hh, lbl),
       FLTKDisplay_(),
-      colormap(),
+      colormap16(),
+      colormap32(),
       linesChanged((bool *) 0),
-      textureBuffer((uint16_t *) 0),
+      textureSpace((unsigned char *) 0),
+      textureBuffer16((uint16_t *) 0),
+      textureBuffer32((uint32_t *) 0),
       textureID(0UL),
       forceUpdateLineCnt(0),
       forceUpdateLineMask(0),
@@ -166,7 +260,10 @@ namespace Plus4Emu {
       displayFrameRate(60.0),
       inputFrameRate(50.0),
       ringBufferReadPos(0.0),
-      ringBufferWritePos(2)
+      ringBufferWritePos(2),
+      shaderMode(0),
+      shaderHandle(0UL),
+      programHandle(0UL)
   {
     try {
       for (size_t n = 0; n < 4; n++)
@@ -174,8 +271,11 @@ namespace Plus4Emu {
       linesChanged = new bool[289];
       for (size_t n = 0; n < 289; n++)
         linesChanged[n] = false;
-      textureBuffer = new uint16_t[1024 * 16];  // max. texture size = 1024x16
-      std::memset(textureBuffer, 0, sizeof(uint16_t) * 1024 * 16);
+      // max. texture size = 1024x16, 32 bits
+      textureSpace = new unsigned char[1024 * 16 * 4];
+      std::memset(textureSpace, 0, 1024 * 16 * 4);
+      textureBuffer16 = reinterpret_cast<uint16_t *>(textureSpace);
+      textureBuffer32 = reinterpret_cast<uint32_t *>(textureSpace);
       for (size_t n = 0; n < 4; n++) {
         frameRingBuffer[n] = new Message_LineData*[578];
         for (size_t yc = 0; yc < 578; yc++)
@@ -185,8 +285,8 @@ namespace Plus4Emu {
     catch (...) {
       if (linesChanged)
         delete[] linesChanged;
-      if (textureBuffer)
-        delete[] textureBuffer;
+      if (textureSpace)
+        delete[] textureSpace;
       for (size_t n = 0; n < 4; n++) {
         if (frameRingBuffer[n])
           delete[] frameRingBuffer[n];
@@ -201,12 +301,13 @@ namespace Plus4Emu {
   OpenGLDisplay::~OpenGLDisplay()
   {
     Fl::remove_idle(&fltkIdleCallback, (void *) this);
+    deleteShader();
     if (textureID) {
       GLuint  tmp = GLuint(textureID);
       textureID = 0UL;
       glDeleteTextures(1, &tmp);
     }
-    delete[] textureBuffer;
+    delete[] textureSpace;
     delete[] linesChanged;
     for (size_t n = 0; n < 4; n++) {
       for (size_t yc = 0; yc < 578; yc++) {
@@ -225,29 +326,191 @@ namespace Plus4Emu {
                                           Message_LineData **lineBuffers_,
                                           size_t lineNum)
   {
+    Message_LineData  *l = (Message_LineData *) 0;
+    if (lineNum < 578) {
+      if (lineBuffers_[lineNum] != (Message_LineData *) 0)
+        l = lineBuffers_[lineNum];
+      else
+        l = lineBuffers_[lineNum ^ 1];
+    }
+    if (!l) {
+      for (size_t xc = 0; xc < 384; xc++)
+        outBuf[xc] = uint16_t(0);
+      return;
+    }
     const unsigned char *bufp = (unsigned char *) 0;
     size_t  nBytes = 0;
-    if (lineNum < 578) {
-      if (lineBuffers_[lineNum + 0] != (Message_LineData *) 0)
-        lineBuffers_[lineNum + 0]->getLineData(bufp, nBytes);
-      else if (lineBuffers_[lineNum + 1] != (Message_LineData *) 0)
-        lineBuffers_[lineNum + 1]->getLineData(bufp, nBytes);
-    }
-    if (!bufp)
-      nBytes = 0;
+    size_t  bufPos = 0;
     size_t  xc = 0;
-    if (nBytes <= 384) {
-      for ( ; xc < nBytes; xc++)
-        outBuf[xc] = colormap(bufp[xc]);
+    uint8_t videoFlags = uint8_t((lineNum & 2) | ((l->flags & 0x80) >> 2));
+    size_t  pixelSample2 = l->lineLength;
+    l->getLineData(bufp, nBytes);
+    if (displayParameters.ntscMode)
+      videoFlags = videoFlags | 0x10;
+    if (pixelSample2 == (displayParameters.ntscMode ? 396 : 495) &&
+        !(l->flags & 0x01)) {
+      do {
+        size_t  n = colormap16.convertFourPixels(&(outBuf[xc]), &(bufp[bufPos]),
+                                                 videoFlags);
+        bufPos = bufPos + n;
+        xc = xc + 4;
+      } while (xc < 384);
     }
     else {
-      size_t  n = (nBytes < 768 ? nBytes : 768);
-      for ( ; xc < n; xc += 2)
-        outBuf[xc >> 1] = colormap(bufp[xc], bufp[xc + 1]);
-      xc = xc >> 1;
+      uint16_t  tmpBuf[4];
+      size_t  pixelSample1 = 495;
+      size_t  pixelSampleCnt = 0;
+      uint8_t readPos = 4;
+      do {
+        if (readPos >= 4) {
+          readPos = readPos & 3;
+          if (bufPos >= nBytes) {
+            for ( ; xc < 384; xc++)
+              outBuf[xc] = uint16_t(0);
+            break;
+          }
+          pixelSample1 = ((bufp[bufPos] & 0x01) ? 396 : 495);
+          size_t  n = colormap16.convertFourPixels(&(tmpBuf[0]),
+                                                   &(bufp[bufPos]), videoFlags);
+          bufPos += n;
+        }
+        outBuf[xc] = tmpBuf[readPos];
+        pixelSampleCnt += pixelSample2;
+        while (pixelSampleCnt >= pixelSample1) {
+          pixelSampleCnt -= pixelSample1;
+          readPos++;
+        }
+        xc++;
+      } while (xc < 384);
     }
-    for ( ; xc < 384; xc++)
-      outBuf[xc] = colormap(0);
+  }
+
+  void OpenGLDisplay::decodeLine_quality2(uint16_t *outBuf,
+                                          Message_LineData **lineBuffers_,
+                                          size_t lineNum)
+  {
+    Message_LineData  *l = (Message_LineData *) 0;
+    if (lineNum < 578) {
+      if (lineBuffers_[lineNum] != (Message_LineData *) 0)
+        l = lineBuffers_[lineNum];
+      else
+        l = lineBuffers_[lineNum ^ 1];
+    }
+    if (!l) {
+      for (size_t xc = 0; xc < 768; xc++)
+        outBuf[xc] = uint16_t(0);
+      return;
+    }
+    const unsigned char *bufp = (unsigned char *) 0;
+    size_t  nBytes = 0;
+    size_t  bufPos = 0;
+    size_t  xc = 0;
+    uint8_t videoFlags = uint8_t((lineNum & 2) | ((l->flags & 0x80) >> 2));
+    size_t  pixelSample2 = l->lineLength;
+    l->getLineData(bufp, nBytes);
+    if (displayParameters.ntscMode)
+      videoFlags = videoFlags | 0x10;
+    if (pixelSample2 == (displayParameters.ntscMode ? 396 : 495) &&
+        !(l->flags & 0x01)) {
+      do {
+        size_t  n = colormap16.convertFourToEightPixels(&(outBuf[xc]),
+                                                        &(bufp[bufPos]),
+                                                        videoFlags);
+        bufPos = bufPos + n;
+        xc = xc + 8;
+      } while (xc < 768);
+    }
+    else {
+      uint16_t  tmpBuf[4];
+      size_t  pixelSample1 = 990;
+      size_t  pixelSampleCnt = 0;
+      uint8_t readPos = 4;
+      do {
+        if (readPos >= 4) {
+          readPos = readPos & 3;
+          if (bufPos >= nBytes) {
+            for ( ; xc < 768; xc++)
+              outBuf[xc] = uint16_t(0);
+            break;
+          }
+          pixelSample1 = ((bufp[bufPos] & 0x01) ? 792 : 990);
+          size_t  n = colormap16.convertFourPixels(&(tmpBuf[0]),
+                                                   &(bufp[bufPos]), videoFlags);
+          bufPos += n;
+        }
+        outBuf[xc] = tmpBuf[readPos];
+        pixelSampleCnt += pixelSample2;
+        if (pixelSampleCnt >= pixelSample1) {
+          pixelSampleCnt -= pixelSample1;
+          readPos++;
+        }
+        xc++;
+      } while (xc < 768);
+    }
+  }
+
+  void OpenGLDisplay::decodeLine_quality3(uint32_t *outBuf,
+                                          Message_LineData **lineBuffers_,
+                                          int lineNum)
+  {
+    Message_LineData  *l = (Message_LineData *) 0;
+    if (lineNum >= 0 && lineNum < 578) {
+      if (lineBuffers_[lineNum] != (Message_LineData *) 0)
+        l = lineBuffers_[lineNum];
+      else
+        l = lineBuffers_[lineNum ^ 1];
+    }
+    if (!l) {
+      for (size_t xc = 0; xc < 768; xc++)
+        outBuf[xc] = 0x00808000U;
+      return;
+    }
+    const unsigned char *bufp = (unsigned char *) 0;
+    size_t  nBytes = 0;
+    size_t  bufPos = 0;
+    size_t  xc = 0;
+    uint8_t videoFlags = uint8_t((lineNum & 2) | ((l->flags & 0x80) >> 2));
+    size_t  pixelSample2 = l->lineLength;
+    l->getLineData(bufp, nBytes);
+    if (displayParameters.ntscMode)
+      videoFlags = videoFlags | 0x10;
+    if (pixelSample2 == (displayParameters.ntscMode ? 396 : 495) &&
+        !(l->flags & 0x01)) {
+      do {
+        size_t  n = colormap32.convertFourToEightPixels(&(outBuf[xc]),
+                                                        &(bufp[bufPos]),
+                                                        videoFlags);
+        bufPos = bufPos + n;
+        xc = xc + 8;
+      } while (xc < 768);
+    }
+    else {
+      uint32_t  tmpBuf[4];
+      size_t  pixelSample1 = 990;
+      size_t  pixelSampleCnt = 0;
+      uint8_t readPos = 4;
+      do {
+        if (readPos >= 4) {
+          readPos = readPos & 3;
+          if (bufPos >= nBytes) {
+            for ( ; xc < 768; xc++)
+              outBuf[xc] = 0x00808000U;
+            break;
+          }
+          pixelSample1 = ((bufp[bufPos] & 0x01) ? 792 : 990);
+          size_t  n = colormap32.convertFourPixels(&(tmpBuf[0]),
+                                                   &(bufp[bufPos]), videoFlags);
+          bufPos += n;
+        }
+        outBuf[xc] = tmpBuf[readPos];
+        pixelSampleCnt += pixelSample2;
+        if (pixelSampleCnt >= pixelSample1) {
+          pixelSampleCnt -= pixelSample1;
+          readPos++;
+        }
+        xc++;
+      } while (xc < 768);
+    }
   }
 
   void OpenGLDisplay::drawFrame_quality0(Message_LineData **lineBuffers_,
@@ -260,13 +523,12 @@ namespace Plus4Emu {
       for (size_t offs = 0; offs < 8; offs++) {
         linesChanged[yc + offs + 1] = false;
         // decode video data, and build 16-bit texture
-        decodeLine_quality0(&(textureBuffer[offs * 384]),
+        decodeLine_quality0(&(textureBuffer16[offs * 384]),
                             lineBuffers_, (yc + offs + 1) << 1);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
-                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                      (GLvoid *) textureBuffer);
+                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
       // update display
       double  ycf0 = y0 + ((double(int(yc << 1)) * (1.0 / 576.0))
                            * (y1 - y0));
@@ -275,9 +537,9 @@ namespace Plus4Emu {
       glBegin(GL_QUADS);
       glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 8.0));
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(0.001 / 8.0));
+      glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(0.001 / 8.0));
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(7.999 / 8.0));
+      glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(7.999 / 8.0));
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
       glTexCoord2f(GLfloat(0.0), GLfloat(7.999 / 8.0));
       glVertex2f(GLfloat(x0), GLfloat(ycf1));
@@ -293,13 +555,12 @@ namespace Plus4Emu {
     for (size_t yc = 0; yc < 588; yc += 28) {
       for (size_t offs = 0; offs < 32; offs += 2) {
         // decode video data, and build 16-bit texture
-        decodeLine_quality0(&(textureBuffer[(offs >> 1) * 384]),
+        decodeLine_quality0(&(textureBuffer16[(offs >> 1) * 384]),
                             lineBuffers_, yc + offs);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 16,
-                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                      (GLvoid *) textureBuffer);
+                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
       // update display
       double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0))
                            * (y1 - y0));
@@ -327,38 +588,16 @@ namespace Plus4Emu {
                                          double x0, double y0,
                                          double x1, double y1)
   {
-    unsigned char lineBuf1[768];
-    unsigned char *curLine_ = &(lineBuf1[0]);
     // full horizontal resolution, no interlace (768x288)
     for (size_t yc = 0; yc < 588; yc += 28) {
       for (size_t offs = 0; offs < 32; offs += 2) {
-        // decode video data
-        const unsigned char *bufp = (unsigned char *) 0;
-        size_t  nBytes = 0;
-        bool    haveLineData = false;
-        if ((yc + offs) < 578) {
-          if (lineBuffers_[yc + offs] != (Message_LineData *) 0) {
-            lineBuffers_[yc + offs]->getLineData(bufp, nBytes);
-            haveLineData = true;
-          }
-          else if (lineBuffers_[yc + offs + 1] != (Message_LineData *) 0) {
-            lineBuffers_[yc + offs + 1]->getLineData(bufp, nBytes);
-            haveLineData = true;
-          }
-        }
-        if (haveLineData)
-          decodeLine(curLine_, bufp, nBytes);
-        else
-          std::memset(curLine_, 0, 768);
-        // build 16-bit texture
-        uint16_t  *txtp = &(textureBuffer[(offs >> 1) * 768]);
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(curLine_[xc]);
+        // decode video data, and build 16-bit texture
+        decodeLine_quality2(&(textureBuffer16[(offs >> 1) * 768]),
+                            lineBuffers_, yc + offs);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
-                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                      (GLvoid *) textureBuffer);
+                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
       // update display
       double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0))
                            * (y1 - y0));
@@ -386,90 +625,54 @@ namespace Plus4Emu {
                                          double x0, double y0,
                                          double x1, double y1)
   {
-    if (displayParameters.blendScale1 >= 0.495) {
+    if (shaderMode != (displayParameters.ntscMode ? 2 : 1))
+      compileShader(displayParameters.ntscMode ? 2 : 1);
+    if (!enableShader()) {
       drawFrame_quality2(lineBuffers_, x0, y0, x1, y1);
       return;
     }
-    unsigned char lineBuf1[768];
-    unsigned char lineBuf2[768];
-    unsigned char *curLine_ = &(lineBuf1[0]);
-    unsigned char *prvLine_ = &(lineBuf2[0]);
-    // full horizontal resolution, interlace (768x576)
-    int     cnt = 0;
-    for (size_t yc = 0; yc < 590; yc++) {
-      bool    haveLineDataInPrvLine = false;
-      bool    haveLineDataInCurLine = false;
-      bool    haveLineDataInNxtLine = false;
-      if (yc > 0 && yc < 579)
-        haveLineDataInPrvLine = !!(lineBuffers_[yc - 1]);
-      if (yc < 578)
-        haveLineDataInCurLine = !!(lineBuffers_[yc]);
-      if (yc < 577)
-        haveLineDataInNxtLine = !!(lineBuffers_[yc + 1]);
-      if (haveLineDataInCurLine | haveLineDataInNxtLine) {
-        unsigned char *tmp = curLine_;
-        curLine_ = prvLine_;
-        prvLine_ = tmp;
-        // decode video data
-        const unsigned char *bufp = (unsigned char *) 0;
-        size_t  nBytes = 0;
-        if (haveLineDataInCurLine)
-          lineBuffers_[yc]->getLineData(bufp, nBytes);
-        else
-          lineBuffers_[yc + 1]->getLineData(bufp, nBytes);
-        decodeLine(curLine_, bufp, nBytes);
+    {
+      // interlace
+      double  tmp = (y1 - y0) * (1.0 / 576.0);
+      if (lineBuffers_[100] != (Message_LineData *) 0 ||
+          lineBuffers_[101] == (Message_LineData *) 0) {
+        tmp = tmp * 2.0;
       }
-      // build 16-bit texture
-      uint16_t  *txtp = &(textureBuffer[(yc & 15) * 768]);
-      if (haveLineDataInCurLine) {
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(curLine_[xc]);
-      }
-      else if (haveLineDataInPrvLine && haveLineDataInNxtLine) {
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(prvLine_[xc], curLine_[xc]);
-      }
-      else if (haveLineDataInPrvLine) {
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(curLine_[xc], 0);
-      }
-      else if (haveLineDataInNxtLine) {
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(0, curLine_[xc]);
-      }
-      else {
-        for (size_t xc = 0; xc < 768; xc++)
-          txtp[xc] = colormap(0);
-      }
-      if (++cnt == 16) {
-        cnt = 2;
-        // load texture
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
-                        GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                        (GLvoid *) textureBuffer);
-        // update display
-        double  ycf0 = y0 + ((double(int(yc - 15)) * (1.0 / 576.0))
-                             * (y1 - y0));
-        double  ycf1 = y0 + ((double(int(yc - 1)) * (1.0 / 576.0))
-                             * (y1 - y0));
-        double  txtycf0 = double(int((yc - 14) & 15)) * (1.0 / 16.0);
-        double  txtycf1 = txtycf0 + (14.0 / 16.0);
-        if (yc == 589) {
-          ycf1 -= ((y1 - y0) * (12.0 / 576.0));
-          txtycf1 -= (12.0 / 16.0);
-        }
-        glBegin(GL_QUADS);
-        glTexCoord2f(GLfloat(0.0), GLfloat(txtycf0));
-        glVertex2f(GLfloat(x0), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf0));
-        glVertex2f(GLfloat(x1), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf1));
-        glVertex2f(GLfloat(x1), GLfloat(ycf1));
-        glTexCoord2f(GLfloat(0.0), GLfloat(txtycf1));
-        glVertex2f(GLfloat(x0), GLfloat(ycf1));
-        glEnd();
-      }
+      y0 = y0 - tmp;
+      y1 = y1 - tmp;
     }
+    // full horizontal resolution, interlace (768x576), TV emulation
+    for (int yc = -4; yc < 594; yc += 26) {
+      for (int offs = 0; offs < 32; offs += 2) {
+        // decode video data, and build 32-bit texture
+        decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
+                            lineBuffers_, yc + offs);
+      }
+      // load texture
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
+                      GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
+      // update display
+      double  ycf0 = y0 + ((double(int(yc + 4)) * (1.0 / 576.0))
+                           * (y1 - y0));
+      double  ycf1 = y0 + ((double(int(yc + 30)) * (1.0 / 576.0))
+                           * (y1 - y0));
+      double  txtycf1 = 14.75 / 16.0;
+      if (yc == 568) {
+        ycf1 -= ((y1 - y0) * (20.0 / 576.0));
+        txtycf1 -= (10.0 / 16.0);
+      }
+      glBegin(GL_QUADS);
+      glTexCoord2f(GLfloat(0.0), GLfloat(1.75 / 16.0));
+      glVertex2f(GLfloat(x0), GLfloat(ycf0));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(1.75 / 16.0));
+      glVertex2f(GLfloat(x1), GLfloat(ycf0));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf1));
+      glVertex2f(GLfloat(x1), GLfloat(ycf1));
+      glTexCoord2f(GLfloat(0.0), GLfloat(txtycf1));
+      glVertex2f(GLfloat(x0), GLfloat(ycf1));
+      glEnd();
+    }
+    disableShader();
   }
 
   void OpenGLDisplay::fltkIdleCallback(void *userData_)
@@ -554,13 +757,12 @@ namespace Plus4Emu {
         for (offs = 0; offs < 8; offs++) {
           linesChanged[yc + offs + 1] = false;
           // decode video data, and build 16-bit texture
-          decodeLine_quality0(&(textureBuffer[offs * 384]),
+          decodeLine_quality0(&(textureBuffer16[offs * 384]),
                               lineBuffers, (yc + offs + 1) << 1);
         }
         // load texture
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
-                        GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                        (GLvoid *) textureBuffer);
+                        GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
         // update display
         double  ycf0 = y0 + ((double(int(yc << 1)) * (1.0 / 576.0))
                              * (y1 - y0));
@@ -569,9 +771,9 @@ namespace Plus4Emu {
         glBegin(GL_QUADS);
         glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 8.0));
         glVertex2f(GLfloat(x0), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(0.001 / 8.0));
+        glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(0.001 / 8.0));
         glVertex2f(GLfloat(x1), GLfloat(ycf0));
-        glTexCoord2f(GLfloat(384.0 / 1024.0), GLfloat(7.999 / 8.0));
+        glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(7.999 / 8.0));
         glVertex2f(GLfloat(x1), GLfloat(ycf1));
         glTexCoord2f(GLfloat(0.0), GLfloat(7.999 / 8.0));
         glVertex2f(GLfloat(x0), GLfloat(ycf1));
@@ -627,7 +829,7 @@ namespace Plus4Emu {
         glDisable(GL_BLEND);
       switch (displayParameters.displayQuality) {
       case 0:
-        // full horizontal resolution, no interlace (768x288)
+        // half horizontal resolution, no interlace (384x288)
         // no texture filtering or effects
         drawFrame_quality0(lineBuffers, x0, y0, x1, y1);
         break;
@@ -640,7 +842,7 @@ namespace Plus4Emu {
         drawFrame_quality2(lineBuffers, x0, y0, x1, y1);
         break;
       case 3:
-        // full horizontal resolution, interlace (768x576)
+        // full horizontal resolution, interlace (768x576), TV emulation
         drawFrame_quality3(lineBuffers, x0, y0, x1, y1);
         break;
       }
@@ -709,7 +911,7 @@ namespace Plus4Emu {
       if (blendEnabled_ || readPosFrac < 0.5) {
         switch (displayParameters.displayQuality) {
         case 0:
-          // full horizontal resolution, no interlace (768x288)
+          // half horizontal resolution, no interlace (384x288)
           // no texture filtering or effects
           drawFrame_quality0(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
           break;
@@ -722,7 +924,7 @@ namespace Plus4Emu {
           drawFrame_quality2(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
           break;
         case 3:
-          // full horizontal resolution, interlace (768x576)
+          // full horizontal resolution, interlace (768x576), TV emulation
           drawFrame_quality3(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
           break;
         }
@@ -743,7 +945,7 @@ namespace Plus4Emu {
       if (blendEnabled_ || readPosFrac > 0.5) {
         switch (displayParameters.displayQuality) {
         case 0:
-          // full horizontal resolution, no interlace (768x288)
+          // half horizontal resolution, no interlace (384x288)
           // no texture filtering or effects
           drawFrame_quality0(frameRingBuffer[(readPosInt + 1) & 3],
                              x0, y0, x1, y1);
@@ -759,7 +961,7 @@ namespace Plus4Emu {
                              x0, y0, x1, y1);
           break;
         case 3:
-          // full horizontal resolution, interlace (768x576)
+          // full horizontal resolution, interlace (768x576), TV emulation
           drawFrame_quality3(frameRingBuffer[(readPosInt + 1) & 3],
                              x0, y0, x1, y1);
           break;
@@ -791,7 +993,7 @@ namespace Plus4Emu {
       glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
       glBindTexture(GL_TEXTURE_2D, tmp);
       setTextureParameters(displayParameters.displayQuality);
-      initializeTexture(displayParameters, textureBuffer);
+      initializeTexture(displayParameters, textureSpace);
       glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
       // clear display
       glDisable(GL_TEXTURE_2D);
@@ -898,9 +1100,12 @@ namespace Plus4Emu {
         if (displayParameters.displayQuality != msg->dp.displayQuality ||
             displayParameters.bufferingMode != msg->dp.bufferingMode) {
           Fl::remove_idle(&fltkIdleCallback, (void *) this);
-          if (displayParameters.bufferingMode != msg->dp.bufferingMode) {
-            // if double buffering mode has changed, also need to generate
-            // a new texture ID
+          if (displayParameters.bufferingMode != msg->dp.bufferingMode ||
+              displayParameters.displayQuality == 3 ||
+              msg->dp.displayQuality == 3) {
+            // if TV emulation (quality=3) or double buffering mode
+            // has changed, also need to generate a new texture ID
+            deleteShader();
             GLuint  oldTextureID = GLuint(textureID);
             textureID = 0UL;
             if (oldTextureID)
@@ -934,23 +1139,26 @@ namespace Plus4Emu {
             }
           }
           // reset texture
-          std::memset(textureBuffer, 0, sizeof(uint16_t) * 1024 * 16);
+          if (msg->dp.displayQuality < 3) {
+            std::memset(textureBuffer16, 0, sizeof(uint16_t) * 1024 * 16);
+          }
+          else {
+            for (size_t n = 0; n < (1024 * 16); n++)
+              textureBuffer32[n] = 0x00808000U;
+          }
           glEnable(GL_TEXTURE_2D);
           GLint   savedTextureID;
           glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
           glBindTexture(GL_TEXTURE_2D, GLuint(textureID));
           setTextureParameters(msg->dp.displayQuality);
-          initializeTexture(msg->dp, textureBuffer);
+          initializeTexture(msg->dp, textureSpace);
           glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
         }
         displayParameters = msg->dp;
-        if (displayParameters.displayQuality > 1)
-          colormap.setParams(displayParameters);
-        else {
-          DisplayParameters tmp_dp(displayParameters);
-          tmp_dp.blendScale1 = 0.5;
-          colormap.setParams(tmp_dp);
-        }
+        if (displayParameters.displayQuality < 3)
+          colormap16.setDisplayParameters(displayParameters, false);
+        else
+          colormap32.setDisplayParameters(displayParameters, true);
         for (size_t yc = 0; yc < 289; yc++)
           linesChanged[yc] = true;
       }
@@ -983,7 +1191,7 @@ namespace Plus4Emu {
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
     }
-    else if (forceUpdateTimer.getRealTime() >= 0.125) {
+    else if (forceUpdateTimer.getRealTime() >= 0.085) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);
@@ -996,6 +1204,16 @@ namespace Plus4Emu {
   {
     return fltkEventCallback(fltkEventCallbackUserData, event);
   }
+
+#ifndef ENABLE_GL_SHADERS
+  void OpenGLDisplay::setDisplayParameters(const DisplayParameters& dp)
+  {
+    DisplayParameters dp_(dp);
+    if (dp_.displayQuality >= 3)
+      dp_.displayQuality = 2;
+    FLTKDisplay_::setDisplayParameters(dp_);
+  }
+#endif
 
 }       // namespace Plus4Emu
 
