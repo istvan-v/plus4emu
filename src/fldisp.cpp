@@ -106,17 +106,16 @@ namespace Plus4Emu {
       framesPending(0),
       skippingFrame(false),
       oddFrame(false),
-      burstValue(0x28),
-      prvSyncState(0x00),
+      burstValue(0x08),
+      syncLengthCnt(0U),
       hsyncCnt(0U),
-      hsyncCntInc(0U),
-      hsyncPeriodCnt(0U),
       hsyncPeriodLength(570U),
       lineLengthCnt(0U),
       lineLength(570U),
       lineLengthMin(513U),
       lineLengthMax(627U),
       lineStart(75U),
+      lineLengthFilter(570.0f),
       vsyncThreshold1(338),
       vsyncThreshold2(264),
       vsyncReload(-16),
@@ -199,34 +198,32 @@ namespace Plus4Emu {
       deleteMessage(nextLine);
       nextLine = allocateMessage<Message_LineData>();
       if (!dp.ntscMode) {
-        burstValue = 0x28;
-        prvSyncState = 0x00;
+        burstValue = 0x08;
+        syncLengthCnt = 0U;
         hsyncCnt = 0U;
-        hsyncCntInc = 0U;
-        hsyncPeriodCnt = 0U;
         hsyncPeriodLength = 570U;
         lineLengthCnt = 0U;
         lineLength = 570U;
         lineLengthMin = 513U;
         lineLengthMax = 627U;
         lineStart = 75U;
+        lineLengthFilter = 570.0f;
         vsyncThreshold1 = 338;
         vsyncThreshold2 = 264;
         vsyncReload = -16;
         lineReload = -6;
       }
       else {
-        burstValue = 0x29;
-        prvSyncState = 0x00;
+        burstValue = 0x09;
+        syncLengthCnt = 0U;
         hsyncCnt = 0U;
-        hsyncCntInc = 0U;
-        hsyncPeriodCnt = 0U;
         hsyncPeriodLength = 456U;
         lineLengthCnt = 0U;
         lineLength = 456U;
         lineLengthMin = 399U;
         lineLengthMax = 513U;
         lineStart = 60U;
+        lineLengthFilter = 456.0f;
         vsyncThreshold1 = 292;
         vsyncThreshold2 = 242;
         vsyncReload = 0;
@@ -246,26 +243,32 @@ namespace Plus4Emu {
   void FLTKDisplay_::lineDone()
   {
     lineLengthCnt = lineLengthCnt - lineLength;
-    if (hsyncCnt != 0U || lineLength != hsyncPeriodLength) {
-      unsigned int  l = (savedDisplayParameters.ntscMode ? 4U : 5U);
-      if (lineLength > (hsyncPeriodLength + l) ||
-          lineLength < (hsyncPeriodLength - l)) {
-        lineLength = (lineLength + hsyncPeriodLength) >> 1;
-      }
-      else if (hsyncCnt != 0U) {
-        if (int(hsyncCnt) < (int(hsyncPeriodLength) - int(hsyncCnt)))
-          lineLength--;
-        else
-          lineLength++;
-      }
+    while (hsyncCnt >= lineLengthMax) {
+      hsyncPeriodLength = (hsyncPeriodLength + lineLengthMax) >> 1;
+      hsyncCnt -= hsyncPeriodLength;
+    }
+    lineLengthFilter =
+        (lineLengthFilter * 0.9f) + (float(int(hsyncPeriodLength)) * 0.1f);
+    lineLength = (unsigned int) (int(lineLengthFilter + 0.5f));
+    if (lineLengthCnt != hsyncCnt) {
+      int     hsyncPhaseError = int(lineLengthCnt) - int(hsyncCnt);
+      if (hsyncPhaseError >= int(hsyncPeriodLength >> 1))
+        hsyncPhaseError -= int(hsyncPeriodLength);
+      if (hsyncPhaseError <= -(int(hsyncPeriodLength >> 1)))
+        hsyncPhaseError += int(hsyncPeriodLength);
+      unsigned int  tmp = (unsigned int) (hsyncPhaseError >= 0 ?
+                                          hsyncPhaseError : (-hsyncPhaseError));
+      tmp = (tmp + 6U) >> 2;
+      tmp = (tmp < 10U ? tmp : 10U);
+      if (hsyncPhaseError >= 0)
+        lineLength += tmp;
       else
-        lineLength = hsyncPeriodLength;
+        lineLength -= tmp;
       if (lineLength > lineLengthMax)
         lineLength = lineLengthMax;
       else if (lineLength < lineLengthMin)
         lineLength = lineLengthMin;
     }
-    hsyncCntInc = 0U;
     if (!skippingFrame) {
       if (curLine >= 0 && curLine < 578) {
         Message_LineData  *m = nextLine;
@@ -286,7 +289,7 @@ namespace Plus4Emu {
       oddFrame = false;
     }
     if (vsyncCnt == 0) {
-      curLine = lineReload + (!oddFrame ? 0 : 1);
+      curLine = lineReload - (!oddFrame ? 0 : 1);
       frameDone();
     }
     vsyncCnt++;
@@ -300,26 +303,29 @@ namespace Plus4Emu {
     while (bufp < endp) {
       uint8_t       c = *bufp;
       unsigned int  l = ((unsigned int) c & 0x01U) ^ 0x05U;
-      if ((c ^ prvSyncState) & 0xC0) {                  // hsync or vsync
-        if ((c & 0x80) > (prvSyncState & 0x80)) {       // hsync start
-          hsyncCnt = 0U;
-          hsyncCntInc = 255U;
-          if (hsyncPeriodCnt >= 350U) {
-            hsyncPeriodLength = hsyncPeriodCnt;
-            hsyncPeriodCnt = 0U;
+      if (c & 0x80) {                                   // sync
+        if (syncLengthCnt == 0U) {                      // hsync start
+          while (hsyncCnt >= lineLengthMax) {
+            hsyncPeriodLength = (hsyncPeriodLength + lineLengthMax) >> 1;
+            hsyncCnt -= hsyncPeriodLength;
+          }
+          if (hsyncCnt >= lineLengthMin) {
+            hsyncPeriodLength = hsyncCnt;
+            hsyncCnt = 0U;
           }
         }
-        if (c & 0x40) {                                 // vsync
+        syncLengthCnt++;
+        if (syncLengthCnt >= 26U) {                     // vsync
           if (vsyncCnt >= vsyncThreshold2) {
             vsyncCnt = vsyncReload;
-            oddFrame = (lineLengthCnt > ((lineLength >> 2) + 25) &&
-                        lineLengthCnt < (lineLength - (lineLength >> 2)));
+            oddFrame = ((lineLengthCnt + 10U) > (lineLength >> 1));
           }
         }
-        prvSyncState = c;
       }
+      else
+        syncLengthCnt = 0U;
       {
-        uint8_t tmp = (c & uint8_t(0x29)) ^ burstValue;
+        uint8_t tmp = (c & uint8_t(0x09)) ^ burstValue;
         nextLine->flags |= (tmp | ((tmp - uint8_t(1)) & uint8_t(0x80)));
       }
       bufp = bufp + size_t((c & 0x02) ? 5 : 2);
@@ -334,8 +340,7 @@ namespace Plus4Emu {
         startp = bufp;
         lineDone();
       }
-      hsyncCnt = hsyncCnt + (hsyncCntInc & l);
-      hsyncPeriodCnt = hsyncPeriodCnt + l;
+      hsyncCnt = hsyncCnt + l;
     }
     nextLine->appendData(startp, size_t(bufp - startp));
   }
@@ -385,38 +390,62 @@ namespace Plus4Emu {
       return;
     unsigned char *imageBuf_ = (unsigned char *) 0;
     try {
- /*   imageBuf_ = new unsigned char[768 * 576 + 768];
-      unsigned char *p = imageBuf_;
-      for (int c = 0; c <= 255; c++) {
-        float   r, g, b;
-        r = float(c) / 255.0f;
-        g = r;
-        b = r;
-        if (displayParameters.indexToRGBFunc)
-          displayParameters.indexToRGBFunc(uint8_t(c), r, g, b);
-        r = r * 255.0f + 0.5f;
-        g = g * 255.0f + 0.5f;
-        b = b * 255.0f + 0.5f;
-        *(p++) = (unsigned char) (r > 0.0f ? (r < 255.5f ? r : 255.5f) : 0.0f);
-        *(p++) = (unsigned char) (g > 0.0f ? (g < 255.5f ? g : 255.5f) : 0.0f);
-        *(p++) = (unsigned char) (b > 0.0f ? (b < 255.5f ? b : 255.5f) : 0.0f);
-      }
-      unsigned char lineBuf_[768];
-      for (size_t yc = 1; yc < 578; yc++) {
-        if (lineBuffers[yc]) {
+      VideoDisplayColormap<uint32_t>  colormap_;
+      VideoDisplay::DisplayParameters dp;
+      dp.indexToRGBFunc = displayParameters.indexToRGBFunc;
+      colormap_.setDisplayParameters(dp);
+      imageBuf_ = new unsigned char[768 * 576 * 3];
+      for (size_t yc = 2; yc < 578; yc++) {
+        unsigned char *outBuf = &(imageBuf_[(yc - 2) * 768 * 3]);
+        Message_LineData  *l = (Message_LineData *) 0;
+        if (lineBuffers[yc] != (Message_LineData *) 0)
+          l = lineBuffers[yc];
+        else
+          l = lineBuffers[yc ^ 1];
+        size_t  xc = 0;
+        if (l) {
           const unsigned char *bufp = (unsigned char *) 0;
-          size_t  nBytes = 0;
-          lineBuffers[yc]->getLineData(bufp, nBytes);
-          decodeLine(&(lineBuf_[0]), bufp, nBytes);
-        }
-        else if (yc == 1 || lineBuffers[yc - 1] == (Message_LineData *) 0)
-          std::memset(&(lineBuf_[0]), 0, 768);
-        if (yc > 1) {
-          std::memcpy(p, &(lineBuf_[0]), 768);
-          p = p + 768;
+          size_t    nBytes = 0;
+          size_t    bufPos = 0;
+          uint8_t   videoFlags = uint8_t((yc & 2) | ((l->flags & 0x80) >> 2));
+          size_t    pixelSample2 = l->lineLength;
+          l->getLineData(bufp, nBytes);
+          if (displayParameters.ntscMode)
+            videoFlags = videoFlags | 0x10;
+          uint32_t  tmpBuf[4];
+          size_t    pixelSample1 = 990;
+          size_t    pixelSampleCnt = 0;
+          uint8_t   readPos = 4;
+          do {
+            if (readPos >= 4) {
+              readPos = readPos & 3;
+              if (bufPos >= nBytes)
+                break;
+              pixelSample1 = ((bufp[bufPos] & 0x01) ? 792 : 990);
+              size_t  n = colormap_.convertFourPixels(&(tmpBuf[0]),
+                                                      &(bufp[bufPos]),
+                                                      videoFlags);
+              bufPos += n;
+            }
+            uint32_t  c = tmpBuf[readPos];
+            outBuf[xc * 3 + 0] = (unsigned char) (c & 0xFFU);
+            outBuf[xc * 3 + 1] = (unsigned char) ((c >> 8) & 0xFFU);
+            outBuf[xc * 3 + 2] = (unsigned char) ((c >> 16) & 0xFFU);
+            pixelSampleCnt += pixelSample2;
+            if (pixelSampleCnt >= pixelSample1) {
+              pixelSampleCnt -= pixelSample1;
+              readPos++;
+            }
+            xc++;
+          } while (xc < 768);
+          for ( ; xc < 768; xc++) {
+            outBuf[xc * 3 + 0] = 0x00;
+            outBuf[xc * 3 + 1] = 0x00;
+            outBuf[xc * 3 + 2] = 0x00;
+          }
         }
       }
-      func(userData_, imageBuf_, 768, 576); */
+      func(userData_, imageBuf_, 768, 576);
     }
     catch (...) {
       if (imageBuf_)

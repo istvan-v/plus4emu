@@ -261,7 +261,7 @@ namespace Plus4 {
     videoInterruptLine = 0;
     prvVideoInterruptState = false;
     prvCharacterLine = 0;
-    videoEqualizationFlag = false;
+    vsyncFlags = 0x00;
     dataBusState = uint8_t(0xFF);
     keyboard_row_select_mask = 0xFFFF;
     tape_motor_state = false;

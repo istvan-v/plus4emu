@@ -22,6 +22,33 @@
 
 #include <cmath>
 
+static const float phaseShiftTable[16] = {
+     0.0f,   33.0f,  327.0f,    0.0f,   33.0f,  327.0f,    0.0f,    0.0f,
+     0.0f,   33.0f,   33.0f,    0.0f,    0.0f,  327.0f,  327.0f,    0.0f
+};
+
+static const float yScaleTable[16] = {
+     1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    0.0f,
+     1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f
+};
+
+static const float uScaleTable[16] = {
+     1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    0.0f,    0.0f,
+     1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f,    1.0f
+};
+
+static const float vScaleTable[16] = {
+     1.0f,    1.0f,    1.0f,   -1.0f,   -1.0f,   -1.0f,    0.0f,    0.0f,
+     1.0f,    1.0f,   -1.0f,   -1.0f,    1.0f,    1.0f,   -1.0f,   -1.0f
+};
+
+static const size_t colormapIndexTable[32] = {
+  0x0000, 0x0200, 0x0300, 0x0500, 0x0300, 0x0500, 0x0000, 0x0200,
+  0x0800, 0x0D00, 0x0B00, 0x0E00, 0x0B00, 0x0E00, 0x0800, 0x0D00,
+  0x0100, 0x0000, 0x0100, 0x0000, 0x0400, 0x0300, 0x0400, 0x0300,
+  0x0900, 0x0C00, 0x0900, 0x0C00, 0x0A00, 0x0F00, 0x0A00, 0x0F00
+};
+
 namespace Plus4Emu {
 
   void VideoDisplay::DisplayParameters::defaultIndexToRGBFunc(uint8_t color,
@@ -191,80 +218,24 @@ namespace Plus4Emu {
   template <typename T>
   VideoDisplayColormap<T>::VideoDisplayColormap()
   {
-    colormap_phase0 = new T[256 * 8];
+    colormapData = new T[256 * 16];
     try {
       colormapTable = new T*[256];
     }
     catch (...) {
-      delete[] colormap_phase0;
+      delete[] colormapData;
       throw;
     }
-    colormap_phase33 = &(colormap_phase0[0x0100]);
-    colormap_phase327 = &(colormap_phase0[0x0200]);
-    colormap_phase0Inv = &(colormap_phase0[0x0300]);
-    colormap_phase33Inv = &(colormap_phase0[0x0400]);
-    colormap_phase327Inv = &(colormap_phase0[0x0500]);
-    colormap_noColor = &(colormap_phase0[0x0600]);
-    colormap_noVideo = &(colormap_phase0[0x0700]);
-    for (size_t i = 0; i < 0x0800; i++)
-      colormap_phase0[i] = T(0);
+    for (size_t i = 0; i < 0x1000; i++)
+      colormapData[i] = T(0);
     for (size_t i = 0; i < 256; i++) {
-      T       *p = colormap_noVideo;
+      T       *p = &(colormapData[0x0700]);
       if (!(i & 0xC0)) {
         if (!(i & 0x20)) {
-          p = colormap_noColor;
+          p = &(colormapData[0x0600]);
         }
         else {
-          switch (i & 0x17) {
-          case 0x00:
-            p = colormap_phase0;
-            break;
-          case 0x01:
-            p = colormap_phase327;
-            break;
-          case 0x02:
-            p = colormap_phase0Inv;
-            break;
-          case 0x03:
-            p = colormap_phase327Inv;
-            break;
-          case 0x04:
-            p = colormap_phase0Inv;
-            break;
-          case 0x05:
-            p = colormap_phase327Inv;
-            break;
-          case 0x06:
-            p = colormap_phase0;
-            break;
-          case 0x07:
-            p = colormap_phase327;
-            break;
-          case 0x10:
-            p = colormap_phase33;
-            break;
-          case 0x11:
-            p = colormap_phase0;
-            break;
-          case 0x12:
-            p = colormap_phase33;
-            break;
-          case 0x13:
-            p = colormap_phase0;
-            break;
-          case 0x14:
-            p = colormap_phase33Inv;
-            break;
-          case 0x15:
-            p = colormap_phase0Inv;
-            break;
-          case 0x16:
-            p = colormap_phase33Inv;
-            break;
-          case 0x17:
-            p = colormap_phase0Inv;
-            break;
-          }
+          p = &(colormapData[colormapIndexTable[i & 0x1F]]);
         }
       }
       colormapTable[i] = p;
@@ -274,7 +245,7 @@ namespace Plus4Emu {
   template <typename T>
   VideoDisplayColormap<T>::~VideoDisplayColormap()
   {
-    delete[] colormap_phase0;
+    delete[] colormapData;
     delete[] colormapTable;
   }
 
@@ -299,24 +270,21 @@ namespace Plus4Emu {
       baseColormap[i * 3 + 1] = u;
       baseColormap[i * 3 + 2] = v;
     }
-    const float phaseShiftTable[8] = {
-      0.0f, 33.0f, 327.0f, 0.0f, 33.0f, 327.0f, 0.0f, 0.0f
-    };
-    const float yScaleTable[8] = {
-      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
-    };
-    const float uScaleTable[8] = {
-      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
-    };
-    const float vScaleTable[8] = {
-      1.0f, 1.0f, 1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f
-    };
-    for (size_t i = 0; i < 0x0800; i++) {
+    for (size_t i = 0; i < 0x1000; i++) {
       size_t  j = i & 0xFF;
       size_t  k = i >> 8;
       float   y = baseColormap[j * 3 + 0];
       float   uTmp = baseColormap[j * 3 + 1];
       float   vTmp = baseColormap[j * 3 + 2];
+      if (i >= 0x0800) {
+        if (i < 0x0C00) {
+          uTmp = uTmp - 0.12728f;       // add PAL burst (135 degrees)
+          vTmp = vTmp + 0.12728f;
+        }
+        else {
+          uTmp = uTmp - 0.18f;          // add NTSC burst (180 degrees)
+        }
+      }
       float   phaseShift = phaseShiftTable[k] * 0.01745329f;
       float   re = float(std::cos(phaseShift));
       float   im = float(std::sin(phaseShift));
@@ -343,12 +311,12 @@ namespace Plus4Emu {
         float   r = (v / 0.877f) + y;
         float   b = (u / 0.492f) + y;
         float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
-        colormap_phase0[i] = pixelConv(r, g, b);
+        colormapData[i] = pixelConv(r, g, b);
       }
       else {
         u = (u + 0.435912f) * 1.147020f;
         v = (v + 0.614777f) * 0.813303f;
-        colormap_phase0[i] = pixelConv(y, u, v);
+        colormapData[i] = pixelConv(y, u, v);
       }
     }
   }

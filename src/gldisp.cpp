@@ -61,14 +61,14 @@ static const char *shaderSourcePAL[1] = {
   "void main()\n"
   "{\n"
   "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
-  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.003, 0.015625));\n"
+  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.0032, 0.015625));\n"
   "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.0009, 0.015625));\n"
   "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.0009, 0.015625));\n"
-  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.003, 0.015625));\n"
-  "  vec4 p10 = texture2D(textureHandle, c0 + vec2(0.003, -0.046875));\n"
+  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.0032, 0.015625));\n"
+  "  vec4 p10 = texture2D(textureHandle, c0 + vec2(0.0032, -0.046875));\n"
   "  vec4 p11 = texture2D(textureHandle, c0 + vec2(0.0009, -0.046875));\n"
   "  vec4 p12 = texture2D(textureHandle, c0 + vec2(-0.0009, -0.046875));\n"
-  "  vec4 p13 = texture2D(textureHandle, c0 + vec2(-0.003, -0.046875));\n"
+  "  vec4 p13 = texture2D(textureHandle, c0 + vec2(-0.0032, -0.046875));\n"
   "  p01 = p01 + p02;\n"
   "  vec4 tmp = ((p00 + p03 + p10 + p13) * 0.5) + (p01 + p11 + p12);\n"
   "  float y = p01[0];\n"
@@ -89,10 +89,10 @@ static const char *shaderSourceNTSC[1] = {
   "void main()\n"
   "{\n"
   "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
-  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.003, 0.015625));\n"
+  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.0032, 0.015625));\n"
   "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.0009, 0.015625));\n"
   "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.0009, 0.015625));\n"
-  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.003, 0.015625));\n"
+  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.0032, 0.015625));\n"
   "  p01 = p01 + p02;\n"
   "  vec4 tmp = ((p00 + p03) * 0.5) + p01;\n"
   "  float y = p01[0];\n"
@@ -143,7 +143,7 @@ static void initializeTexture(const Plus4Emu::VideoDisplay::DisplayParameters&
     txtWidth = 512;
     break;
   }
-  if (dp.displayQuality < 0) {
+  if (dp.displayQuality < 3) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, txtWidth, txtHeight, 0,
                  GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
                  (const GLvoid *) textureBuffer);
@@ -631,15 +631,11 @@ namespace Plus4Emu {
       drawFrame_quality2(lineBuffers_, x0, y0, x1, y1);
       return;
     }
-    {
-      // interlace
-      double  tmp = (y1 - y0) * (1.0 / 576.0);
-      if (lineBuffers_[100] != (Message_LineData *) 0 ||
-          lineBuffers_[101] == (Message_LineData *) 0) {
-        tmp = tmp * 2.0;
-      }
-      y0 = y0 - tmp;
-      y1 = y1 - tmp;
+    double  yOffs = (y1 - y0) * (-1.0 / 576.0);
+    // interlace
+    if (lineBuffers_[100] != (Message_LineData *) 0 ||
+        lineBuffers_[101] == (Message_LineData *) 0) {
+      yOffs = yOffs * 2.0;
     }
     // full horizontal resolution, interlace (768x576), TV emulation
     for (int yc = -4; yc < 594; yc += 26) {
@@ -652,19 +648,24 @@ namespace Plus4Emu {
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
                       GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
       // update display
-      double  ycf0 = y0 + ((double(int(yc + 4)) * (1.0 / 576.0))
-                           * (y1 - y0));
-      double  ycf1 = y0 + ((double(int(yc + 30)) * (1.0 / 576.0))
-                           * (y1 - y0));
+      double  ycf0 =
+          y0 + ((double(yc + 4) * (1.0 / 576.0)) * (y1 - y0)) + yOffs;
+      double  ycf1 =
+          y0 + ((double(yc + 30) * (1.0 / 576.0)) * (y1 - y0)) + yOffs;
+      double  txtycf0 = 2.0 / 16.0;
       double  txtycf1 = 15.0 / 16.0;
+      if (ycf0 < y0) {
+        txtycf0 -= ((ycf0 - y0) * (288.0 / 16.0) / (y1 - y0));
+        ycf0 = y0;
+      }
       if (yc == 568) {
         ycf1 -= ((y1 - y0) * (20.0 / 576.0));
         txtycf1 -= (10.0 / 16.0);
       }
       glBegin(GL_QUADS);
-      glTexCoord2f(GLfloat(0.0), GLfloat(2.0 / 16.0));
+      glTexCoord2f(GLfloat(0.0), GLfloat(txtycf0));
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(2.0 / 16.0));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf0));
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
       glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf1));
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
@@ -731,6 +732,8 @@ namespace Plus4Emu {
       glVertex2f(GLfloat(x1), GLfloat(1.0));
       glEnd();
     }
+    if (x0 >= x1 || y0 >= y1)
+      return;
 
     GLuint  textureID_ = GLuint(textureID);
     GLint   savedTextureID = 0;

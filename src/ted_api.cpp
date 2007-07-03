@@ -332,7 +332,7 @@ namespace Plus4 {
     buf.writeUInt32(uint32_t(savedVideoLine));
     buf.writeBoolean(prvVideoInterruptState);
     buf.writeByte(prvCharacterLine);
-    buf.writeBoolean(videoEqualizationFlag);
+    buf.writeByte(vsyncFlags);
     buf.writeByte(dataBusState);
     buf.writeUInt32(uint32_t(keyboard_row_select_mask));
     for (int i = 0; i < 16; i++)
@@ -477,7 +477,7 @@ namespace Plus4 {
       prvVideoInterruptState = buf.readBoolean();
       prvCharacterLine = buf.readByte() & 7;
       if (version >= 0x01000002)
-        videoEqualizationFlag = buf.readBoolean();
+        vsyncFlags = buf.readByte() & 0xC0;
       else
         (void) buf.readByte();  // was invertColorPhaseFlags in old versions
       dataBusState = buf.readByte();

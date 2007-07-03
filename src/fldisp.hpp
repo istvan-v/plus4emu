@@ -157,16 +157,15 @@ namespace Plus4Emu {
     bool          skippingFrame;
     bool          oddFrame;
     uint8_t       burstValue;
-    uint8_t       prvSyncState;
+    unsigned int  syncLengthCnt;
     unsigned int  hsyncCnt;
-    unsigned int  hsyncCntInc;
-    unsigned int  hsyncPeriodCnt;
     unsigned int  hsyncPeriodLength;
     unsigned int  lineLengthCnt;
     unsigned int  lineLength;
     unsigned int  lineLengthMin;
     unsigned int  lineLengthMax;
     unsigned int  lineStart;
+    float         lineLengthFilter;
     int           vsyncThreshold1;
     int           vsyncThreshold2;
     int           vsyncReload;
@@ -197,9 +196,8 @@ namespace Plus4Emu {
     // redraw() needs to be called to update the display.
     virtual bool checkEvents() = 0;
     // Set function to be called once by checkEvents() after video data for
-    // a complete frame has been received. 'buf' contains 768 bytes of
-    // colormap data (256*3 interleaved red, green, and blue values) followed
-    // by 'w_' * 'h_' bytes of image data.
+    // a complete frame has been received. 'buf' contains 'w_' * 'h_' * 3
+    // bytes of image data as interleaved red, green, and blue values.
     virtual void setScreenshotCallback(void (*func)(void *userData,
                                                     const unsigned char *buf,
                                                     int w_, int h_),

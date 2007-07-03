@@ -108,14 +108,24 @@ namespace Plus4Emu {
   template <typename T>
   class VideoDisplayColormap {
    private:
-    T       *colormap_phase0;
-    T       *colormap_phase33;
-    T       *colormap_phase327;
-    T       *colormap_phase0Inv;
-    T       *colormap_phase33Inv;
-    T       *colormap_phase327Inv;
-    T       *colormap_noColor;
-    T       *colormap_noVideo;
+    // 16x256 colormap entries:
+    //   0x0000-0x00FF: normal colors (no phase shift)
+    //   0x0100-0x01FF: +33 degrees phase shift (PAL input on NTSC display)
+    //   0x0200-0x02FF: -33 degrees phase shift (NTSC input on PAL display)
+    //   0x0300-0x03FF: invert phase
+    //   0x0400-0x04FF: +33 degrees phase shift, invert phase
+    //   0x0500-0x05FF: -33 degrees phase shift, invert phase
+    //   0x0600-0x06FF: no colors (U = 0, V = 0)
+    //   0x0700-0x07FF: no video (Y = 0, U = 0, V = 0)
+    //   0x0800-0x08FF: PAL burst, normal colors (no phase shift)
+    //   0x0900-0x09FF: PAL burst, +33 degrees phase shift
+    //   0x0A00-0x0AFF: PAL burst, +33 degrees phase shift, invert phase
+    //   0x0B00-0x0BFF: PAL burst, invert phase
+    //   0x0C00-0x0CFF: NTSC burst, normal colors (no phase shift)
+    //   0x0D00-0x0DFF: NTSC burst, -33 degrees phase shift
+    //   0x0E00-0x0EFF: NTSC burst, -33 degrees phase shift, invert phase
+    //   0x0F00-0x0FFF: NTSC burst, invert phase
+    T       *colormapData;
     T       **colormapTable;
     static T pixelConv(float r, float g, float b);
    public:
@@ -135,7 +145,7 @@ namespace Plus4Emu {
                                     unsigned char flags_) const
     {
       unsigned char c = inBuf[0];
-      const T *colormap_ = colormapTable[(c & 0xC5) | flags_];
+      const T *colormap_ = colormapTable[(c & 0x8D) | flags_];
       if (c & 0x02) {
         outBuf[0] = colormap_[inBuf[1]];
         outBuf[1] = colormap_[inBuf[2]];
@@ -155,7 +165,7 @@ namespace Plus4Emu {
                                            unsigned char flags_) const
     {
       unsigned char c = inBuf[0];
-      const T *colormap_ = colormapTable[(c & 0xC5) | flags_];
+      const T *colormap_ = colormapTable[(c & 0x8D) | flags_];
       if (c & 0x02) {
         T       tmp = colormap_[inBuf[1]];
         outBuf[0] = tmp;

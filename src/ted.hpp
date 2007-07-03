@@ -322,7 +322,7 @@ namespace Plus4 {
     int         videoInterruptLine;
     bool        prvVideoInterruptState;
     uint8_t     prvCharacterLine;
-    bool        videoEqualizationFlag;
+    uint8_t     vsyncFlags;
    protected:
     // for reading data from invalid memory address
     uint8_t     dataBusState;
