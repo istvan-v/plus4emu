@@ -49,6 +49,116 @@ typedef void (APIENTRY *PFNGLBLENDCOLORPROC)(GLclampf, GLclampf, GLclampf,
 #  endif
 #endif
 
+#ifndef WIN32
+#  define   glBlendColor_         glBlendColor
+#  ifdef ENABLE_GL_SHADERS
+#    define glAttachShader_       glAttachShader
+#    define glCompileShader_      glCompileShader
+#    define glCreateProgram_      glCreateProgram
+#    define glCreateShader_       glCreateShader
+#    define glDeleteProgram_      glDeleteProgram
+#    define glDeleteShader_       glDeleteShader
+#    define glDetachShader_       glDetachShader
+#    define glGetShaderiv_        glGetShaderiv
+#    define glGetUniformLocation_ glGetUniformLocation
+#    define glLinkProgram_        glLinkProgram
+#    define glShaderSource_       glShaderSource
+#    define glUniform1f_          glUniform1f
+#    define glUniform1i_          glUniform1i
+#    define glUseProgram_         glUseProgram
+#  endif
+#else
+static PFNGLBLENDCOLORPROC    glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
+static inline void glBlendColor_(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
+{
+  if (glBlendColor__)
+    glBlendColor__(r, g, b, a);
+  else
+    glDisable(GL_BLEND);
+}
+#  ifdef ENABLE_GL_SHADERS
+static volatile bool haveGLShaderFuncs = false;
+static PFNGLATTACHSHADERPROC    glAttachShader_ = (PFNGLATTACHSHADERPROC) 0;
+static PFNGLCOMPILESHADERPROC   glCompileShader_ = (PFNGLCOMPILESHADERPROC) 0;
+static PFNGLCREATEPROGRAMPROC   glCreateProgram_ = (PFNGLCREATEPROGRAMPROC) 0;
+static PFNGLCREATESHADERPROC    glCreateShader_ = (PFNGLCREATESHADERPROC) 0;
+static PFNGLDELETEPROGRAMPROC   glDeleteProgram_ = (PFNGLDELETEPROGRAMPROC) 0;
+static PFNGLDELETESHADERPROC    glDeleteShader_ = (PFNGLDELETESHADERPROC) 0;
+static PFNGLDETACHSHADERPROC    glDetachShader_ = (PFNGLDETACHSHADERPROC) 0;
+static PFNGLGETSHADERIVPROC     glGetShaderiv_ = (PFNGLGETSHADERIVPROC) 0;
+static PFNGLGETUNIFORMLOCATIONPROC  glGetUniformLocation_ =
+                                        (PFNGLGETUNIFORMLOCATIONPROC) 0;
+static PFNGLLINKPROGRAMPROC     glLinkProgram_ = (PFNGLLINKPROGRAMPROC) 0;
+static PFNGLSHADERSOURCEPROC    glShaderSource_ = (PFNGLSHADERSOURCEPROC) 0;
+static PFNGLUNIFORM1FPROC       glUniform1f_ = (PFNGLUNIFORM1FPROC) 0;
+static PFNGLUNIFORM1IPROC       glUniform1i_ = (PFNGLUNIFORM1IPROC) 0;
+static PFNGLUSEPROGRAMPROC      glUseProgram_ = (PFNGLUSEPROGRAMPROC) 0;
+static bool queryGLShaderFunctions()
+{
+  if (!haveGLShaderFuncs) {
+    glAttachShader_ =
+        (PFNGLATTACHSHADERPROC) wglGetProcAddress("glAttachShader");
+    if (!glAttachShader_)
+      return false;
+    glCompileShader_ =
+        (PFNGLCOMPILESHADERPROC) wglGetProcAddress("glCompileShader");
+    if (!glCompileShader_)
+      return false;
+    glCreateProgram_ =
+        (PFNGLCREATEPROGRAMPROC) wglGetProcAddress("glCreateProgram");
+    if (!glCreateProgram_)
+      return false;
+    glCreateShader_ =
+        (PFNGLCREATESHADERPROC) wglGetProcAddress("glCreateShader");
+    if (!glCreateShader_)
+      return false;
+    glDeleteProgram_ =
+        (PFNGLDELETEPROGRAMPROC) wglGetProcAddress("glDeleteProgram");
+    if (!glDeleteProgram_)
+      return false;
+    glDeleteShader_ =
+        (PFNGLDELETESHADERPROC) wglGetProcAddress("glDeleteShader");
+    if (!glDeleteShader_)
+      return false;
+    glDetachShader_ =
+        (PFNGLDETACHSHADERPROC) wglGetProcAddress("glDetachShader");
+    if (!glDetachShader_)
+      return false;
+    glGetShaderiv_ =
+        (PFNGLGETSHADERIVPROC) wglGetProcAddress("glGetShaderiv");
+    if (!glGetShaderiv_)
+      return false;
+    glGetUniformLocation_ =
+        (PFNGLGETUNIFORMLOCATIONPROC) wglGetProcAddress("glGetUniformLocation");
+    if (!glGetUniformLocation_)
+      return false;
+    glLinkProgram_ =
+        (PFNGLLINKPROGRAMPROC) wglGetProcAddress("glLinkProgram");
+    if (!glLinkProgram_)
+      return false;
+    glShaderSource_ =
+        (PFNGLSHADERSOURCEPROC) wglGetProcAddress("glShaderSource");
+    if (!glShaderSource_)
+      return false;
+    glUniform1f_ =
+        (PFNGLUNIFORM1FPROC) wglGetProcAddress("glUniform1f");
+    if (!glUniform1f_)
+      return false;
+    glUniform1i_ =
+        (PFNGLUNIFORM1IPROC) wglGetProcAddress("glUniform1i");
+    if (!glUniform1i_)
+      return false;
+    glUseProgram_ =
+        (PFNGLUSEPROGRAMPROC) wglGetProcAddress("glUseProgram");
+    if (!glUseProgram_)
+      return false;
+    haveGLShaderFuncs = true;
+  }
+  return haveGLShaderFuncs;
+}
+#  endif
+#endif
+
 #ifdef ENABLE_GL_SHADERS
 
 static const char *shaderSourcePAL[1] = {
@@ -166,33 +276,37 @@ namespace Plus4Emu {
       deleteShader();
     if (shaderMode_ == 0)
       return true;
-    shaderHandle = glCreateShader(GL_FRAGMENT_SHADER);
+#  ifdef WIN32
+    if (!queryGLShaderFunctions())
+      return false;
+#  endif
+    shaderHandle = glCreateShader_(GL_FRAGMENT_SHADER);
     if (!shaderHandle)
       return false;
-    programHandle = glCreateProgram();
+    programHandle = glCreateProgram_();
     if (!programHandle) {
-      glDeleteShader(GLuint(shaderHandle));
+      glDeleteShader_(GLuint(shaderHandle));
       shaderHandle = 0UL;
       return false;
     }
     if (shaderMode_ == 1) {
-      glShaderSource(GLuint(shaderHandle),
-                     GLsizei(1), &(shaderSourcePAL[0]), (GLint *) 0);
+      glShaderSource_(GLuint(shaderHandle),
+                      GLsizei(1), &(shaderSourcePAL[0]), (GLint *) 0);
     }
     else {
-      glShaderSource(GLuint(shaderHandle),
-                     GLsizei(1), &(shaderSourceNTSC[0]), (GLint *) 0);
+      glShaderSource_(GLuint(shaderHandle),
+                      GLsizei(1), &(shaderSourceNTSC[0]), (GLint *) 0);
     }
-    glAttachShader(GLuint(programHandle), GLuint(shaderHandle));
+    glAttachShader_(GLuint(programHandle), GLuint(shaderHandle));
     shaderMode = shaderMode_;
-    glCompileShader(GLuint(shaderHandle));
+    glCompileShader_(GLuint(shaderHandle));
     GLint   compileStatus = GL_FALSE;
-    glGetShaderiv(GLuint(shaderHandle), GL_COMPILE_STATUS, &compileStatus);
+    glGetShaderiv_(GLuint(shaderHandle), GL_COMPILE_STATUS, &compileStatus);
     if (compileStatus == GL_FALSE) {
       deleteShader();
       return false;
     }
-    glLinkProgram(GLuint(programHandle));
+    glLinkProgram_(GLuint(programHandle));
     shaderMode = shaderMode_;
     return true;
 #else
@@ -209,10 +323,14 @@ namespace Plus4Emu {
       return;
     disableShader();
     shaderMode = 0;
-    glDetachShader(GLuint(programHandle), GLuint(shaderHandle));
-    glDeleteProgram(GLuint(programHandle));
+#  ifdef WIN32
+    if (!queryGLShaderFunctions())
+      return;
+#  endif
+    glDetachShader_(GLuint(programHandle), GLuint(shaderHandle));
+    glDeleteProgram_(GLuint(programHandle));
     programHandle = 0UL;
-    glDeleteShader(GLuint(shaderHandle));
+    glDeleteShader_(GLuint(shaderHandle));
     shaderHandle = 0UL;
 #endif  // ENABLE_GL_SHADERS
   }
@@ -222,12 +340,16 @@ namespace Plus4Emu {
 #ifdef ENABLE_GL_SHADERS
     if (shaderMode == 0)
       return false;
-    glUseProgram(GLuint(programHandle));
+#  ifdef WIN32
+    if (!queryGLShaderFunctions())
+      return false;
+#  endif
+    glUseProgram_(GLuint(programHandle));
     // FIXME: is it safe to use a constant texture ID of 0 here ?
-    glUniform1i(glGetUniformLocation(GLuint(programHandle), "textureHandle"),
-                0);
-    glUniform1f(glGetUniformLocation(GLuint(programHandle), "blendScale1"),
-                float(displayParameters.blendScale1) * 1.996f + 0.001f);
+    glUniform1i_(glGetUniformLocation_(GLuint(programHandle), "textureHandle"),
+                 0);
+    glUniform1f_(glGetUniformLocation_(GLuint(programHandle), "blendScale1"),
+                 float(displayParameters.blendScale1) * 1.996f + 0.001f);
     return true;
 #else
     return false;
@@ -239,7 +361,11 @@ namespace Plus4Emu {
 #ifdef ENABLE_GL_SHADERS
     if (shaderMode == 0)
       return;
-    glUseProgram(GLuint(0));
+#  ifdef WIN32
+    if (!queryGLShaderFunctions())
+      return;
+#  endif
+    glUseProgram_(GLuint(0));
 #endif  // ENABLE_GL_SHADERS
   }
 
@@ -741,6 +867,10 @@ namespace Plus4Emu {
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
     glBindTexture(GL_TEXTURE_2D, textureID_);
     setTextureParameters(displayParameters.displayQuality);
+#ifdef WIN32
+    if (!glBlendColor__)
+      glBlendColor__ = (PFNGLBLENDCOLORPROC) wglGetProcAddress("glBlendColor");
+#endif
 
     if (displayParameters.displayQuality == 0 &&
         displayParameters.bufferingMode == 0) {
@@ -810,22 +940,10 @@ namespace Plus4Emu {
             (displayParameters.blendScale2 > 0.99 &&
              displayParameters.blendScale3 < 0.01))) {
         glEnable(GL_BLEND);
-#ifndef WIN32
-        glBlendColor(GLclampf(displayParameters.blendScale2),
-                     GLclampf(displayParameters.blendScale2),
-                     GLclampf(displayParameters.blendScale2),
-                     GLclampf(1.0 - displayParameters.blendScale3));
-#else
-        PFNGLBLENDCOLORPROC glBlendColor_ =
-            (PFNGLBLENDCOLORPROC) wglGetProcAddress("glBlendColor");
-        if (glBlendColor_)
-          glBlendColor_(GLclampf(displayParameters.blendScale2),
-                        GLclampf(displayParameters.blendScale2),
-                        GLclampf(displayParameters.blendScale2),
-                        GLclampf(1.0 - displayParameters.blendScale3));
-        else
-          glDisable(GL_BLEND);
-#endif
+        glBlendColor_(GLclampf(displayParameters.blendScale2),
+                      GLclampf(displayParameters.blendScale2),
+                      GLclampf(displayParameters.blendScale2),
+                      GLclampf(1.0 - displayParameters.blendScale3));
         glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_ALPHA);
       }
       else
@@ -887,10 +1005,6 @@ namespace Plus4Emu {
       ringBufferReadPos = ringBufferReadPos + d;
       if (ringBufferReadPos >= 4.0)
         ringBufferReadPos -= 4.0;
-#ifdef WIN32
-      PFNGLBLENDCOLORPROC glBlendColor_ =
-          (PFNGLBLENDCOLORPROC) wglGetProcAddress("glBlendColor");
-#endif
       bool    blendEnabled_ = true;
       if (readPosFrac >= 0.002 && readPosFrac <= 0.998)
         glEnable(GL_BLEND);
@@ -899,16 +1013,8 @@ namespace Plus4Emu {
         blendEnabled_ = false;
       }
       if (blendEnabled_) {
-#ifndef WIN32
-        glBlendColor(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                     GLclampf(1.0 - readPosFrac));
-#else
-        if (glBlendColor_)
-          glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                        GLclampf(1.0 - readPosFrac));
-        else
-          glDisable(GL_BLEND);
-#endif
+        glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
+                      GLclampf(1.0 - readPosFrac));
         glBlendFunc(GL_CONSTANT_ALPHA, GL_ZERO);
       }
       if (blendEnabled_ || readPosFrac < 0.5) {
@@ -933,16 +1039,8 @@ namespace Plus4Emu {
         }
       }
       if (blendEnabled_) {
-#ifndef WIN32
-        glBlendColor(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                     GLclampf(readPosFrac));
-#else
-        if (glBlendColor_)
-          glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                        GLclampf(readPosFrac));
-        else
-          glDisable(GL_BLEND);
-#endif
+        glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
+                      GLclampf(readPosFrac));
         glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE);
       }
       if (blendEnabled_ || readPosFrac > 0.5) {
@@ -1109,6 +1207,12 @@ namespace Plus4Emu {
             // if TV emulation (quality=3) or double buffering mode
             // has changed, also need to generate a new texture ID
             deleteShader();
+#ifdef WIN32
+            glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
+#  ifdef ENABLE_GL_SHADERS
+            haveGLShaderFuncs = false;
+#  endif
+#endif
             GLuint  oldTextureID = GLuint(textureID);
             textureID = 0UL;
             if (oldTextureID)
