@@ -184,25 +184,44 @@ namespace Plus4Emu {
    public:
     FLTKDisplay_();
     virtual ~FLTKDisplay_();
-    // set color correction and other display parameters
-    // (see 'struct DisplayParameters' above for more information)
+    /*!
+     * Set color correction and other display parameters.
+     * (see 'struct DisplayParameters' above for more information)
+     */
     virtual void setDisplayParameters(const DisplayParameters& dp);
     virtual const DisplayParameters& getDisplayParameters() const;
-    // Draw next line of display. 'nBytes' should be 768 for full resolution,
-    // or 384 for half resolution. With values in the range 0 to 383, or
-    // 385 to 767, the remaining pixels are filled with color 0.
+    /*!
+     * Read and process 'nBytes' bytes of video data from 'buf'. A group of
+     * four pixels is encoded as a flags byte followed by 1 or 4 colormap
+     * indices (in the first case, all four pixels have the same color).
+     * The flags byte can be the sum of any of the following values:
+     *   128: composite sync
+     *    64: vertical sync
+     *    32: horizontal blanking
+     *    16: vertical blanking
+     *     8: burst
+     *     4: PAL odd line
+     *     2: number of data bytes: 0: 1 byte, 1: 4 bytes
+     *     1: NTSC mode (dot clock multiplied by 1.25)
+     */
     virtual void sendVideoOutput(const uint8_t *buf, size_t nBytes);
-    // Read and process messages sent by the child thread. Returns true if
-    // redraw() needs to be called to update the display.
+    /*!
+     * Read and process messages sent by the child thread. Returns true if
+     * redraw() needs to be called to update the display.
+     */
     virtual bool checkEvents() = 0;
-    // Set function to be called once by checkEvents() after video data for
-    // a complete frame has been received. 'buf' contains 'w_' * 'h_' * 3
-    // bytes of image data as interleaved red, green, and blue values.
+    /*!
+     * Set function to be called once by checkEvents() after video data for
+     * a complete frame has been received. 'buf' contains 'w_' * 'h_' * 3
+     * bytes of image data as interleaved red, green, and blue values.
+     */
     virtual void setScreenshotCallback(void (*func)(void *userData,
                                                     const unsigned char *buf,
                                                     int w_, int h_),
                                        void *userData_);
-    // Set function to be called by handle().
+    /*!
+     * Set function to be called by handle().
+     */
     virtual void setFLTKEventCallback(int (*func)(void *userData, int event),
                                       void *userData_ = (void *) 0);
    protected:
@@ -231,11 +250,15 @@ namespace Plus4Emu {
     FLTKDisplay(int xx = 0, int yy = 0, int ww = 768, int hh = 576,
                 const char *lbl = (char *) 0);
     virtual ~FLTKDisplay();
-    // set color correction and other display parameters
-    // (see 'struct DisplayParameters' above for more information)
+    /*!
+     * Set color correction and other display parameters.
+     * (see 'struct DisplayParameters' above for more information)
+     */
     virtual void setDisplayParameters(const DisplayParameters& dp);
-    // Read and process messages sent by the child thread. Returns true if
-    // redraw() needs to be called to update the display.
+    /*!
+     * Read and process messages sent by the child thread. Returns true if
+     * redraw() needs to be called to update the display.
+     */
     virtual bool checkEvents();
    protected:
     virtual void draw();
