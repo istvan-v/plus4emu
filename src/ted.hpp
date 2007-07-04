@@ -387,6 +387,21 @@ namespace Plus4 {
     {
       (void) sampleValue;
     }
+    /*!
+     * 'buf' contains 'nBytes' bytes of video data. A group of four pixels
+     * is encoded as a flags byte followed by 1 or 4 colormap indices (in the
+     * first case, all four pixels have the same color) which can be converted
+     * to RGB format with the convertPixelToRGB() function.
+     * The flags byte can be the sum of any of the following values:
+     *   128: composite sync
+     *    64: vertical sync
+     *    32: horizontal blanking
+     *    16: vertical blanking
+     *     8: burst
+     *     4: PAL odd line (FF1D bit 0)
+     *     2: number of data bytes: 0: 1 byte, 1: 4 bytes
+     *     1: NTSC mode (dot clock multiplied by 1.25)
+     */
     virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes)
     {
       (void) buf;
