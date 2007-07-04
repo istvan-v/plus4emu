@@ -70,10 +70,10 @@ namespace Plus4 {
           displayActive = true;
         }
         break;
-      case 37:                          // horizontal equalization 1 start
+      case 37:                          // equalization pulse 1 start
         if (vsyncFlags) {
           videoOutputFlags =
-              uint8_t((videoOutputFlags & 0x7F) | ((vsyncFlags ^ 0xFF) & 0x80));
+              uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
         }
         break;
       case 73:                          // DRAM refresh start
@@ -212,7 +212,7 @@ namespace Plus4 {
             dma_position = dma_position | 0x0400;
           }
         }
-        if (vsyncFlags) {               // horizontal equalization 2 end
+        if (vsyncFlags) {               // equalization pulse 2 end
           videoOutputFlags =
               uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
         }
@@ -377,7 +377,7 @@ namespace Plus4 {
       }
     }
     switch (video_column) {
-    case 42:                            // horizontal equalization 1 end
+    case 42:                            // equalization pulse 1 end
       if (vsyncFlags) {
         videoOutputFlags =
             uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
@@ -404,10 +404,10 @@ namespace Plus4 {
           flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
       }
       break;
-    case 94:                            // horizontal equalization 2 start
+    case 94:                            // equalization pulse 2 start
       if (vsyncFlags) {
         videoOutputFlags =
-            uint8_t((videoOutputFlags & 0x7F) | ((vsyncFlags ^ 0xFF) & 0x80));
+            uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
       }
       break;
     case 98:
