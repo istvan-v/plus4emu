@@ -39,8 +39,7 @@ namespace Plus4 {
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryReadMap + 4]];
-    if (p)
-      ted.dataBusState = p[addr];
+    ted.dataBusState = p[addr];
     return ted.dataBusState;
   }
 
@@ -48,8 +47,7 @@ namespace Plus4 {
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryReadMap]];
-    if (p)
-      ted.dataBusState = p[addr];
+    ted.dataBusState = p[addr];
     return ted.dataBusState;
   }
 
@@ -57,8 +55,7 @@ namespace Plus4 {
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryReadMap + 1]];
-    if (p)
-      ted.dataBusState = p[addr & 0x3FFF];
+    ted.dataBusState = p[addr & 0x3FFF];
     return ted.dataBusState;
   }
 
