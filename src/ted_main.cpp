@@ -42,6 +42,12 @@ namespace Plus4 {
       dmaCycleCounter = 0;
       M7501::setIsCPURunning(true);
       M7501::run(cpu_clock_multiplier);
+      TEDCallback *p = firstCallback1;
+      while (p) {
+        TEDCallback *nxt = p->nxt1;
+        p->func(p->userData);
+        p = nxt;
+      }
       if (!cycle_count)
         playSample(0);
       video_buf[video_buf_pos] = uint8_t((videoOutputFlags & 0x01) | 0x30);
