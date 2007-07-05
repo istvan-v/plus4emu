@@ -68,7 +68,7 @@ typedef void (APIENTRY *PFNGLBLENDCOLORPROC)(GLclampf, GLclampf, GLclampf,
 #    define glUseProgram_         glUseProgram
 #  endif
 #else
-static PFNGLBLENDCOLORPROC    glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
+static PFNGLBLENDCOLORPROC      glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
 static inline void glBlendColor_(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
 {
   if (glBlendColor__)
@@ -77,7 +77,7 @@ static inline void glBlendColor_(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
     glDisable(GL_BLEND);
 }
 #  ifdef ENABLE_GL_SHADERS
-static volatile bool haveGLShaderFuncs = false;
+static volatile bool  haveGLShaderFuncs = false;
 static PFNGLATTACHSHADERPROC    glAttachShader_ = (PFNGLATTACHSHADERPROC) 0;
 static PFNGLCOMPILESHADERPROC   glCompileShader_ = (PFNGLCOMPILESHADERPROC) 0;
 static PFNGLCREATEPROGRAMPROC   glCreateProgram_ = (PFNGLCREATEPROGRAMPROC) 0;
@@ -307,7 +307,6 @@ namespace Plus4Emu {
       return false;
     }
     glLinkProgram_(GLuint(programHandle));
-    shaderMode = shaderMode_;
     return true;
 #else
     (void) shaderMode_;
@@ -322,11 +321,11 @@ namespace Plus4Emu {
     if (shaderMode == 0)
       return;
     disableShader();
-    shaderMode = 0;
 #  ifdef WIN32
     if (!queryGLShaderFunctions())
       return;
 #  endif
+    shaderMode = 0;
     glDetachShader_(GLuint(programHandle), GLuint(shaderHandle));
     glDeleteProgram_(GLuint(programHandle));
     programHandle = 0UL;
