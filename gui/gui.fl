@@ -22,6 +22,8 @@ class Plus4EmuGUI {open
   }
   decl {friend class Plus4EmuGUI_DebugWindow;} {public
   }
+  decl {friend class Plus4EmuGUIMonitor;} {public
+  }
   decl {friend class Plus4EmuGUI_AboutWindow;} {public
   }
   decl {Plus4Emu::VideoDisplay& display;} {}

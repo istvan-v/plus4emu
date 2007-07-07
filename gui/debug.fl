@@ -12,6 +12,8 @@ decl {\#include <FL/Fl_Text_Buffer.H>} {}
 
 class Plus4EmuGUI_DebugWindow {open
 } {
+  decl {friend class Plus4EmuGUIMonitor;} {public
+  }
   decl {Plus4EmuGUI& gui;} {}
   decl {char windowTitle[64];} {}
   decl {int savedWindowPositionX;} {}
@@ -513,6 +515,18 @@ class Plus4EmuGUI_DebugWindow {open
   applyBreakPointList();
 }}
             tooltip {Reset watchpoints from text format definition} xywh {375 365 145 25} color 39 selection_color 40 labelcolor 52
+          }
+        }
+        Fl_Group monitorTab {
+          label Monitor open
+          xywh {10 35 520 370} box THIN_UP_BOX color 38 selection_color 38 labelcolor 52 hide
+        } {
+          Fl_Text_Editor monitor_ {
+            xywh {20 48 500 345} color 0 selection_color 238 labelcolor 52 when 0 textfont 5 textcolor 159
+            code0 {o->setDebugger(*this);}
+            code1 {o->cursor_style(Fl_Text_Display::BLOCK_CURSOR);}
+            code2 {o->cursor_color(FL_YELLOW);}
+            class Plus4EmuGUIMonitor
           }
         }
       }

@@ -44,6 +44,7 @@ class Plus4EmuGUI_SoundConfigWindow;
 class Plus4EmuGUI_MachineConfigWindow;
 class Plus4EmuGUI_DebugWindow;
 class Plus4EmuGUI_AboutWindow;
+class Plus4EmuGUIMonitor;
 
 #include "gui_fl.hpp"
 #include "disk_cfg_fl.hpp"
@@ -53,6 +54,7 @@ class Plus4EmuGUI_AboutWindow;
 #include "vm_cfg_fl.hpp"
 #include "debug_fl.hpp"
 #include "about_fl.hpp"
+#include "monitor.hpp"
 
 #endif  // PLUS4EMU_GUI_HPP
 
