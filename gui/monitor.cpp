@@ -463,7 +463,7 @@ void Plus4EmuGUIMonitor::command_disassemble(const std::vector<std::string>&
   if (args.size() > 1)
     startAddr = parseHexNumberEx(args[1].c_str(), addressMask);
   disassembleAddress = startAddr;
-  uint32_t  endAddr = startAddr + 20U;
+  uint32_t  endAddr = (startAddr + 20U) & addressMask;
   if (args.size() > 2)
     endAddr = parseHexNumberEx(args[2].c_str(), addressMask);
   if (args.size() > 3) {
@@ -503,7 +503,7 @@ void Plus4EmuGUIMonitor::command_memoryDump(const std::vector<std::string>&
   if (args.size() > 1)
     startAddr = parseHexNumberEx(args[1].c_str(), addressMask);
   memoryDumpAddress = startAddr;
-  uint32_t  endAddr = startAddr + 95U;
+  uint32_t  endAddr = (startAddr + 95U) & addressMask;
   if (args.size() > 2)
     endAddr = parseHexNumberEx(args[2].c_str(), addressMask);
   while (((endAddr - memoryDumpAddress) & addressMask)
