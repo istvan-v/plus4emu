@@ -19,6 +19,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {int savedWindowPositionX;} {}
   decl {int savedWindowPositionY;} {}
   decl {Fl_Widget *focusWidget;} {}
+  decl {Fl_Widget *prvTab;} {}
   decl {uint32_t memoryDumpStartAddress;} {}
   decl {uint32_t memoryDumpEndAddress;} {}
   decl {uint32_t memoryDumpViewAddress;} {}
@@ -41,6 +42,7 @@ class Plus4EmuGUI_DebugWindow {open
   savedWindowPositionX = 32;
   savedWindowPositionY = 32;
   focusWidget = (Fl_Widget *) 0;
+  prvTab = (Fl_Widget *) 0;
   memoryDumpStartAddress = 0x00000000U;
   memoryDumpEndAddress = 0x0000007FU;
   memoryDumpViewAddress = 0x00000000U;
@@ -64,7 +66,12 @@ class Plus4EmuGUI_DebugWindow {open
 }} open
       xywh {308 146 540 450} type Double color 37 visible
     } {
-      Fl_Tabs debugTabs {open
+      Fl_Tabs debugTabs {
+        callback {{
+  if (prvTab == monitorTab)
+    updateWindow();
+  prvTab = o->value();
+}} open
         xywh {10 10 520 395} color 38 selection_color 38 labelcolor 52
       } {
         Fl_Group mainTab {
@@ -649,6 +656,8 @@ class Plus4EmuGUI_DebugWindow {open
   }
   else
     disassemblyAddressOffset = 0;
+  if (focusWidget == monitor_)
+    monitor_->breakMessage(&(windowTitle[0]));
 }} {}
   }
   Function {updateWindow()} {open return_type void
