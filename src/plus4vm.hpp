@@ -328,10 +328,14 @@ namespace Plus4 {
                                             bool isCPUAddress = false,
                                             int32_t offs = 0) const;
     /*!
-     * Returns read-only reference to a structure containing all CPU
-     * registers; see plus4/cpu.hpp for more information.
+     * Set the registers of the currently selected CPU; see cpu.hpp for more
+     * information.
      */
-    virtual const M7501Registers& getCPURegisters() const;
+    virtual void setCPURegisters(const M7501Registers& r);
+    /*!
+     * Get the registers of the currently selected CPU.
+     */
+    virtual void getCPURegisters(M7501Registers& r) const;
     // ------------------------------- FILE I/O -------------------------------
     /*!
      * Save snapshot of virtual machine state, including all ROM and RAM

@@ -142,7 +142,7 @@ namespace Plus4 {
     static const unsigned char  CPU_OP_INVALID_OPCODE       = 93;
     static const unsigned char  opcodeTable[4128];
     const unsigned char *currentOpcode;
-    unsigned int  interruptDelayRegister;
+    uint8_t     interruptDelayRegister;
     bool        interruptFlag;
     bool        resetFlag;
     bool        haltFlag;
@@ -157,12 +157,13 @@ namespace Plus4 {
     MemoryWriteFunc *memoryWriteCallbacks;
     void        *memoryCallbackUserData;
     uint8_t     *breakPointTable;
-    size_t      breakPointCnt;
+    unsigned int  breakPointCnt;
     bool        singleStepModeEnabled;
     bool        singleStepModeStepOverFlag;
     bool        haveBreakPoints;
     uint8_t     breakPointPriorityThreshold;
     int32_t     singleStepModeNextAddr;
+    int32_t     newPCAddress;
     void checkReadBreakPoint(uint16_t addr, uint8_t value);
     void checkWriteBreakPoint(uint16_t addr, uint8_t value);
     void checkSingleStepModeBreak(uint16_t addr, uint8_t value);
@@ -206,16 +207,13 @@ namespace Plus4 {
     void run(int nCycles = 1);
     inline void interruptRequest()
     {
-      interruptDelayRegister |= 4U;     // delay interrupt requests by 2 cycles
+      // delay interrupt requests by 2 cycles
+      interruptDelayRegister |= uint8_t(0x04);
     }
     virtual void reset(bool isColdReset = false);
     inline void setIsCPURunning(bool n)
     {
       haltFlag = !n;
-    }
-    inline const M7501Registers& getRegisters() const
-    {
-      return *(static_cast<const M7501Registers *>(this));
     }
     inline void setOverflowFlag()
     {
@@ -236,6 +234,8 @@ namespace Plus4 {
     {
       return (this->breakOnInvalidOpcode);
     }
+    void setRegisters(const M7501Registers& r);
+    void getRegisters(M7501Registers& r) const;
     void saveState(Plus4Emu::File::Buffer&);
     void saveState(Plus4Emu::File&);
     void loadState(Plus4Emu::File::Buffer&);

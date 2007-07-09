@@ -225,7 +225,7 @@ namespace Plus4 {
                                              uint16_t addr, uint8_t value)
   {
     if (vm.noBreakOnDataRead && !isWrite) {
-      if (vm.ted->getRegisters().reg_PC != addr)
+      if (vm.ted->reg_PC != addr)
         return;
     }
     vm.breakPointCallback(vm.breakPointCallbackUserData,
@@ -1203,8 +1203,11 @@ namespace Plus4 {
   uint16_t Plus4VM::getProgramCounter() const
   {
     const M7501 *p = getDebugCPU();
-    if (p)
-      return p->getRegisters().reg_PC;
+    if (p) {
+      M7501Registers  r;
+      p->getRegisters(r);
+      return r.reg_PC;
+    }
     return uint16_t(0xFFFF);
   }
 
@@ -1212,9 +1215,10 @@ namespace Plus4 {
   {
     const M7501 *p = getDebugCPU();
     if (p) {
+      M7501Registers  r;
+      p->getRegisters(r);
       return (uint16_t(0x0100)
-              | uint16_t((p->getRegisters().reg_SP + uint8_t(1))
-                         & uint8_t(0xFF)));
+              | uint16_t((r.reg_SP + uint8_t(1)) & uint8_t(0xFF)));
     }
     return uint16_t(0xFFFF);
   }
@@ -1224,7 +1228,8 @@ namespace Plus4 {
     char        tmpBuf[96];
     const M7501 *p = getDebugCPU();
     if (p) {
-      const M7501Registers& r = p->getRegisters();
+      M7501Registers  r;
+      p->getRegisters(r);
       std::sprintf(&(tmpBuf[0]),
                    " PC  SR AC XR YR SP\n"
                    "%04X %02X %02X %02X %02X %02X",
@@ -1248,12 +1253,27 @@ namespace Plus4 {
                                                      addr, isCPUAddress, offs);
   }
 
-  const M7501Registers& Plus4VM::getCPURegisters() const
+  void Plus4VM::setCPURegisters(const M7501Registers& r)
+  {
+    M7501   *p = getDebugCPU();
+    if (p)
+      p->setRegisters(r);
+  }
+
+  void Plus4VM::getCPURegisters(M7501Registers& r) const
   {
     const M7501 *p = getDebugCPU();
-    if (p)
-      return p->getRegisters();
-    return ted->getRegisters();
+    if (p) {
+      p->getRegisters(r);
+    }
+    else {
+      r.reg_PC = 0xFFFF;
+      r.reg_SR = 0xFF;
+      r.reg_AC = 0xFF;
+      r.reg_XR = 0xFF;
+      r.reg_YR = 0xFF;
+      r.reg_SP = 0xFF;
+    }
   }
 
   void Plus4VM::saveState(Plus4Emu::File& f)

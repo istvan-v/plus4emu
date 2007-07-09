@@ -40,7 +40,7 @@ namespace Plus4 {
   M7501::M7501()
     : M7501Registers(),
       currentOpcode(&(opcodeTable[0x0FFF])),
-      interruptDelayRegister(0U),
+      interruptDelayRegister(0x00),
       interruptFlag(false),
       resetFlag(true),
       haltFlag(false),
@@ -52,12 +52,13 @@ namespace Plus4 {
       memoryWriteCallbacks((MemoryWriteFunc *) 0),
       memoryCallbackUserData((void *) 0),
       breakPointTable((uint8_t *) 0),
-      breakPointCnt(0),
+      breakPointCnt(0U),
       singleStepModeEnabled(false),
       singleStepModeStepOverFlag(false),
       haveBreakPoints(false),
       breakPointPriorityThreshold(0),
-      singleStepModeNextAddr(int32_t(-1))
+      singleStepModeNextAddr(int32_t(-1)),
+      newPCAddress(int32_t(-1))
   {
     try {
       memoryReadCallbacks = new MemoryReadFunc[65536];
@@ -89,10 +90,9 @@ namespace Plus4 {
   void M7501::run(int nCycles)
   {
     do {
-      if (interruptDelayRegister != 0U) {
-        interruptDelayRegister &=
-            (unsigned int) (((reg_SR >> 1) & uint8_t(0x02)) ^ uint8_t(0xFF));
-        interruptFlag = interruptFlag | bool(interruptDelayRegister & 1U);
+      if (interruptDelayRegister != 0x00) {
+        interruptDelayRegister &= uint8_t(((reg_SR >> 1) & 0x02) ^ 0xFF);
+        interruptFlag = interruptFlag | bool(interruptDelayRegister & 0x01);
         interruptDelayRegister >>= 1;
       }
       while (true) {
@@ -113,8 +113,18 @@ namespace Plus4 {
             currentOpcode = &(opcodeTable[size_t(opNum) << 4]);
           }
           else {
-            if (resetFlag)
+            if (resetFlag) {
+              if (newPCAddress >= 0) {
+                // set new PC if requested
+                reg_PC = uint16_t(newPCAddress & 0xFFFF);
+                newPCAddress = int32_t(-1);
+                resetFlag = false;
+                // continue with opcode fetch
+                currentOpcode--;
+                continue;
+              }
               currentOpcode = &(opcodeTable[size_t(0x101) << 4]);
+            }
             else
               currentOpcode = &(opcodeTable[size_t(0x100) << 4]);
             continue;
@@ -621,7 +631,7 @@ namespace Plus4 {
           break;
         case CPU_OP_BRK:
           {
-            interruptDelayRegister &= 0xFCU;
+            interruptDelayRegister &= uint8_t(0xFC);
             interruptFlag = false;
             reg_TMP = reg_SR | uint8_t(0x10);
             reg_SR = reg_SR | uint8_t(0x34);
@@ -773,7 +783,7 @@ namespace Plus4 {
           break;
         case CPU_OP_INTERRUPT:
           {
-            interruptDelayRegister &= 0xFCU;
+            interruptDelayRegister &= uint8_t(0xFC);
             interruptFlag = false;
             reg_TMP = reg_SR & uint8_t(0xEF);
             reg_SR = reg_SR | uint8_t(0x34);
@@ -902,7 +912,7 @@ namespace Plus4 {
           break;
         case CPU_OP_RESET:
           {
-            interruptDelayRegister &= 0xFCU;
+            interruptDelayRegister &= uint8_t(0xFC);
             interruptFlag = false;
             resetFlag = false;
             reg_TMP = reg_SR & uint8_t(0xEF);
@@ -1141,7 +1151,7 @@ namespace Plus4 {
             if (!resetFlag)
               currentOpcode--;
             else
-              currentOpcode = &(opcodeTable[size_t(0x0101) << 4]);
+              currentOpcode = &(opcodeTable[0x0FFF]);
           }
           break;
         }
@@ -1153,11 +1163,12 @@ namespace Plus4 {
   void M7501::reset(bool isColdReset)
   {
     resetFlag = true;
+    newPCAddress = int32_t(-1);
     if (isColdReset) {
       reg_SR = uint8_t(0x24);
       reg_SP = uint8_t(0xFF);
       currentOpcode = &(opcodeTable[0x0FFF]);
-      interruptDelayRegister = 0U;
+      interruptDelayRegister = 0x00;
       interruptFlag = false;
       haltFlag = false;
     }
@@ -1284,6 +1295,32 @@ namespace Plus4 {
       singleStepModeNextAddr = int32_t(-1);
   }
 
+  void M7501::setRegisters(const M7501Registers& r)
+  {
+    if (r.reg_PC != reg_PC) {
+      resetFlag = true;
+      newPCAddress = int32_t(r.reg_PC);
+    }
+    reg_SR = r.reg_SR | uint8_t(0x30);
+    reg_AC = r.reg_AC;
+    reg_XR = r.reg_XR;
+    reg_YR = r.reg_YR;
+    reg_SP = r.reg_SP;
+  }
+
+  void M7501::getRegisters(M7501Registers& r) const
+  {
+    if (newPCAddress < 0)
+      r.reg_PC = reg_PC;
+    else
+      r.reg_PC = uint16_t(newPCAddress & 0xFFFF);
+    r.reg_SR = reg_SR;
+    r.reg_AC = reg_AC;
+    r.reg_XR = reg_XR;
+    r.reg_YR = reg_YR;
+    r.reg_SP = reg_SP;
+  }
+
   void M7501::breakPointCallback(bool isWrite, uint16_t addr, uint8_t value)
   {
     (void) isWrite;
@@ -1318,7 +1355,7 @@ namespace Plus4 {
   void M7501::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000000);        // version number
+    buf.writeUInt32(0x01000001);        // version number
     buf.writeByte(uint8_t(reg_PC) & 0xFF);
     buf.writeByte(uint8_t(reg_PC >> 8));
     buf.writeByte(reg_SR);
@@ -1330,10 +1367,11 @@ namespace Plus4 {
     buf.writeByte(reg_L);
     buf.writeByte(reg_H);
     buf.writeUInt32(uint32_t(currentOpcode - &(opcodeTable[0])));
-    buf.writeUInt32(interruptDelayRegister);
+    buf.writeUInt32(uint32_t(interruptDelayRegister));
     buf.writeBoolean(interruptFlag);
     buf.writeBoolean(resetFlag);
     buf.writeBoolean(haltFlag);
+    buf.writeInt32(newPCAddress);
   }
 
   void M7501::saveState(Plus4Emu::File& f)
@@ -1348,7 +1386,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000) {
+    if (version != 0x01000000 && version != 0x01000001) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible M7501 snapshot format");
     }
@@ -1365,10 +1403,14 @@ namespace Plus4 {
       reg_L = buf.readByte();
       reg_H = buf.readByte();
       uint32_t  currentOpcodeIndex = buf.readUInt32();
-      interruptDelayRegister = buf.readUInt32();
+      interruptDelayRegister = uint8_t(buf.readUInt32() & 0xFFU);
       interruptFlag = buf.readBoolean();
       resetFlag = buf.readBoolean();
       haltFlag = buf.readBoolean();
+      if (version != 0x01000000)
+        newPCAddress = buf.readInt32();
+      else
+        newPCAddress = int32_t(-1);
       if (currentOpcodeIndex < 4128U)
         currentOpcode = &(opcodeTable[currentOpcodeIndex]);
       else
