@@ -519,6 +519,7 @@ namespace Plus4Emu {
       return this->displayEnabled;
     }
     void setAudioConverterSampleRate(float sampleRate_);
+   public:
     /*!
      * Open a file in the user specified working directory. 'baseName_' is the
      * file name without any leading directory components; it is converted to
