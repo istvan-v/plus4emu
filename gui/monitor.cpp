@@ -416,6 +416,7 @@ Plus4EmuGUIMonitor::Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh,
   buffer(buf_);
   add_key_binding(FL_Enter, FL_TEXT_EDITOR_ANY_STATE, &enterKeyCallback);
   insert_mode(0);
+  scrollbar_align(FL_ALIGN_RIGHT);
 }
 
 Plus4EmuGUIMonitor::~Plus4EmuGUIMonitor()
@@ -541,6 +542,79 @@ void Plus4EmuGUIMonitor::command_memoryModify(const std::vector<std::string>&
   memoryDump();
 }
 
+void Plus4EmuGUIMonitor::command_printRegisters(const std::vector<std::string>&
+                                                    args)
+{
+  if (args.size() != 1)
+    throw Plus4Emu::Exception("too many arguments");
+  printMessage("  PC  SR AC XR YR SP");
+  printCPURegisters();
+}
+
+void Plus4EmuGUIMonitor::command_setRegisters(const std::vector<std::string>&
+                                                  args)
+{
+  if (args.size() < 2 || args.size() > 7)
+    throw Plus4Emu::Exception("invalid number of arguments");
+  Plus4::M7501Registers r;
+  reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->getCPURegisters(r);
+  uint32_t  tmp = parseHexNumberEx(args[1].c_str());
+  if (tmp > 0xFFFFU)
+    throw Plus4Emu::Exception("address is out of range");
+  r.reg_PC = uint16_t(tmp);
+  if (args.size() >= 3) {
+    tmp = parseHexNumberEx(args[2].c_str());
+    if (tmp > 0xFFU)
+      throw Plus4Emu::Exception("byte value is out of range");
+    r.reg_SR = uint8_t(tmp);
+  }
+  if (args.size() >= 4) {
+    tmp = parseHexNumberEx(args[3].c_str());
+    if (tmp > 0xFFU)
+      throw Plus4Emu::Exception("byte value is out of range");
+    r.reg_AC = uint8_t(tmp);
+  }
+  if (args.size() >= 5) {
+    tmp = parseHexNumberEx(args[4].c_str());
+    if (tmp > 0xFFU)
+      throw Plus4Emu::Exception("byte value is out of range");
+    r.reg_XR = uint8_t(tmp);
+  }
+  if (args.size() >= 6) {
+    tmp = parseHexNumberEx(args[5].c_str());
+    if (tmp > 0xFFU)
+      throw Plus4Emu::Exception("byte value is out of range");
+    r.reg_YR = uint8_t(tmp);
+  }
+  if (args.size() >= 7) {
+    tmp = parseHexNumberEx(args[6].c_str());
+    if (tmp > 0xFFU)
+      throw Plus4Emu::Exception("byte value is out of range");
+    r.reg_SP = uint8_t(tmp);
+  }
+  reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->setCPURegisters(r);
+  this->move_up();
+  printCPURegisters();
+}
+
+void Plus4EmuGUIMonitor::command_go(const std::vector<std::string>& args)
+{
+  if (args.size() > 3)
+    throw Plus4Emu::Exception("too many arguments");
+  if (args.size() > 1) {
+    Plus4::M7501Registers r;
+    reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->getCPURegisters(r);
+    uint32_t  tmp = parseHexNumberEx(args[1].c_str());
+    if (tmp > 0xFFFFU)
+      throw Plus4Emu::Exception("address is out of range");
+    r.reg_PC = uint16_t(tmp);
+    reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->setCPURegisters(r);
+  }
+  debugWindow->focusWidget = this;
+  gui->vm.setSingleStepMode(false);
+  debugWindow->hide();
+}
+
 void Plus4EmuGUIMonitor::command_toggleCPUAddressMode(
     const std::vector<std::string>& args)
 {
@@ -611,14 +685,20 @@ void Plus4EmuGUIMonitor::parseCommand(const char *s)
   tokenizeString(args, s);
   if (args.size() == 0)
     return;
-  if (args[0] == ">")
+  if (args[0] == ";")
+    command_setRegisters(args);
+  else if (args[0] == ">")
     command_memoryModify(args);
   else if (args[0] == "A" || args[0] == ".")
     command_assemble(args);
   else if (args[0] == "D")
     command_disassemble(args);
+  else if (args[0] == "G")
+    command_go(args);
   else if (args[0] == "M")
     command_memoryDump(args);
+  else if (args[0] == "R")
+    command_printRegisters(args);
   else if (args[0] == "AM")
     command_toggleCPUAddressMode(args);
   else
@@ -700,5 +780,31 @@ void Plus4EmuGUIMonitor::memoryDump()
                int(dataBuf[3]), int(dataBuf[4]), int(dataBuf[5]),
                int(dataBuf[6]), int(dataBuf[7]));
   printMessage(&(tmpBuf[0]));
+}
+
+void Plus4EmuGUIMonitor::printCPURegisters()
+{
+  Plus4::M7501Registers r;
+  reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->getCPURegisters(r);
+  char    tmpBuf[32];
+  std::sprintf(&(tmpBuf[0]), ";%04X %02X %02X %02X %02X %02X",
+               (unsigned int) r.reg_PC, (unsigned int) r.reg_SR,
+               (unsigned int) r.reg_AC, (unsigned int) r.reg_XR,
+               (unsigned int) r.reg_YR, (unsigned int) r.reg_SP);
+  printMessage(&(tmpBuf[0]));
+}
+
+void Plus4EmuGUIMonitor::breakMessage(const char *s)
+{
+  try {
+    if (s == (char *) 0 || s[0] == '\0')
+      s = "BREAK";
+    insert_position(buf_->length());
+    printMessage(s);
+    printMessage("  PC  SR AC XR YR SP");
+    printCPURegisters();
+  }
+  catch (...) {
+  }
 }
 

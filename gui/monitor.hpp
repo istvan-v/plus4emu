@@ -45,6 +45,9 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   void command_disassemble(const std::vector<std::string>& args);
   void command_memoryDump(const std::vector<std::string>& args);
   void command_memoryModify(const std::vector<std::string>& args);
+  void command_printRegisters(const std::vector<std::string>& args);
+  void command_setRegisters(const std::vector<std::string>& args);
+  void command_go(const std::vector<std::string>& args);
   void command_toggleCPUAddressMode(const std::vector<std::string>& args);
   static int enterKeyCallback(int c, Fl_Text_Editor *e_);
   void moveDown();
@@ -52,6 +55,7 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   void printMessage(const char *s);
   void disassembleInstruction(bool assembleMode = false);
   void memoryDump();
+  void printCPURegisters();
  public:
   Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh, const char *ll = 0);
   virtual ~Plus4EmuGUIMonitor();
@@ -60,6 +64,7 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
     debugWindow = &debugWindow_;
     gui = &(debugWindow->gui);
   }
+  void breakMessage(const char *s = 0);
 };
 
 #endif  // PLUS4EMU_GUI_MONITOR_HPP
