@@ -48,7 +48,15 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   void command_printRegisters(const std::vector<std::string>& args);
   void command_setRegisters(const std::vector<std::string>& args);
   void command_go(const std::vector<std::string>& args);
+  void command_searchPattern(const std::vector<std::string>& args);
+  void command_searchAndReplace(const std::vector<std::string>& args);
+  void command_memoryCopy(const std::vector<std::string>& args);
+  void command_memoryFill(const std::vector<std::string>& args);
+  void command_memoryCompare(const std::vector<std::string>& args);
+  void command_assemblerOffset(const std::vector<std::string>& args);
+  void command_printInfo(const std::vector<std::string>& args);
   void command_toggleCPUAddressMode(const std::vector<std::string>& args);
+  void command_help(const std::vector<std::string>& args);
   static int enterKeyCallback(int c, Fl_Text_Editor *e_);
   void moveDown();
   void parseCommand(const char *s);
@@ -56,6 +64,10 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   void disassembleInstruction(bool assembleMode = false);
   void memoryDump();
   void printCPURegisters();
+  void parseSearchPattern(std::vector<uint8_t>& searchString_,
+                          std::vector<uint8_t>& searchMask_,
+                          const std::vector<std::string>& args,
+                          size_t argOffs, size_t argCnt);
  public:
   Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh, const char *ll = 0);
   virtual ~Plus4EmuGUIMonitor();
@@ -65,6 +77,10 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
     gui = &(debugWindow->gui);
   }
   void breakMessage(const char *s = 0);
+  int32_t searchPattern(const std::vector<std::string>& args,
+                        size_t argOffs, size_t argCnt,
+                        uint32_t startAddr, uint32_t endAddr,
+                        bool cpuAddressMode_);
 };
 
 #endif  // PLUS4EMU_GUI_MONITOR_HPP
