@@ -55,6 +55,14 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   void command_memoryCompare(const std::vector<std::string>& args);
   void command_assemblerOffset(const std::vector<std::string>& args);
   void command_printInfo(const std::vector<std::string>& args);
+  void command_continue(const std::vector<std::string>& args);
+  void command_step(const std::vector<std::string>& args);
+  void command_stepOver(const std::vector<std::string>& args);
+  void command_trace(const std::vector<std::string>& args);
+  void command_setDebugContext(const std::vector<std::string>& args);
+  void command_load(const std::vector<std::string>& args,
+                    bool verifyMode = false);
+  void command_save(const std::vector<std::string>& args);
   void command_toggleCPUAddressMode(const std::vector<std::string>& args);
   void command_help(const std::vector<std::string>& args);
   static int enterKeyCallback(int c, Fl_Text_Editor *e_);
@@ -81,6 +89,7 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
     gui = &(debugWindow->gui);
   }
   void breakMessage(const char *s = 0);
+  static void tokenizeString(std::vector<std::string>& args, const char *s);
   int32_t searchPattern(const std::vector<std::string>& args,
                         size_t argOffs, size_t argCnt,
                         uint32_t startAddr, uint32_t endAddr,

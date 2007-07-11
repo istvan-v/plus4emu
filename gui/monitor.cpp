@@ -25,9 +25,19 @@
 
 #define MONITOR_MAX_LINES   (100)
 
+static const char *fileOpenErrorMessages[6] = {
+  "Error opening file",
+  "Invalid file name",
+  "File not found",
+  "File is not a regular file",
+  "Permission denied",
+  "File already exists"
+};
+
 // ----------------------------------------------------------------------------
 
-static void tokenizeString(std::vector<std::string>& args, const char *s)
+void Plus4EmuGUIMonitor::tokenizeString(std::vector<std::string>& args,
+                                        const char *s)
 {
   args.resize(0);
   if (!s)
@@ -453,46 +463,104 @@ void Plus4EmuGUIMonitor::command_assemble(const std::vector<std::string>& args)
   else
     std::sprintf(&(tmpBuf[0]), "A %06X  ", (unsigned int) addr);
   this->overstrike(&(tmpBuf[0]));
+  show_insert_position();
 }
 
 void Plus4EmuGUIMonitor::command_disassemble(const std::vector<std::string>&
                                                  args)
 {
-  if (args.size() > 4)
-    throw Plus4Emu::Exception("invalid number of disassemble arguments");
-  uint32_t  startAddr = disassembleAddress & addressMask;
-  if (args.size() > 1)
-    startAddr = parseHexNumberEx(args[1].c_str(), addressMask);
-  disassembleAddress = startAddr;
-  uint32_t  endAddr = (startAddr + 20U) & addressMask;
-  if (args.size() > 2)
-    endAddr = parseHexNumberEx(args[2].c_str(), addressMask);
-  if (args.size() > 3) {
-    uint32_t  tmp = parseHexNumberEx(args[3].c_str(), addressMask);
-    disassembleOffset = int32_t(tmp) - int32_t(startAddr);
-    if (disassembleOffset > int32_t(addressMask >> 1))
-      disassembleOffset -= int32_t(addressMask + 1U);
-    else if (disassembleOffset < -(int32_t((addressMask >> 1) + 1U)))
-      disassembleOffset += int32_t(addressMask + 1U);
-  }
-  std::string tmpBuf;
-  while (((endAddr - disassembleAddress) & addressMask)
-         > (MONITOR_MAX_LINES * 4U)) {
-    uint32_t  nextAddr = gui->vm.disassembleInstruction(tmpBuf,
-                                                        disassembleAddress,
-                                                        cpuAddressMode,
-                                                        disassembleOffset);
-    disassembleAddress = nextAddr & addressMask;
-  }
-  while (true) {
-    uint32_t  prvAddr = disassembleAddress;
-    disassembleInstruction();
-    while (prvAddr != disassembleAddress) {
-      if (prvAddr == endAddr)
-        return;
-      prvAddr = (prvAddr + 1U) & addressMask;
+  size_t    argOffs = 1;
+  std::FILE *f = (std::FILE *) 0;
+  if (args.size() > 1) {
+    if (args[1].length() >= 1) {
+      if (args[1][0] == '"') {
+        argOffs++;
+        std::string fileName(args[1].c_str() + 1);
+        int   err = gui->vm.openFileInWorkingDirectory(f, fileName, "w", false);
+        if (err != 0) {
+          if (err >= -6 && err <= -2)
+            printMessage(fileOpenErrorMessages[(-err) - 1]);
+          else
+            printMessage(fileOpenErrorMessages[0]);
+          return;
+        }
+      }
     }
   }
+  try {
+    if (args.size() > (argOffs + 3))
+      throw Plus4Emu::Exception("invalid number of disassemble arguments");
+    uint32_t  startAddr = disassembleAddress & addressMask;
+    if (args.size() > argOffs)
+      startAddr = parseHexNumberEx(args[argOffs].c_str(), addressMask);
+    disassembleAddress = startAddr;
+    uint32_t  endAddr = (startAddr + 20U) & addressMask;
+    if (args.size() > (argOffs + 1))
+      endAddr = parseHexNumberEx(args[argOffs + 1].c_str(), addressMask);
+    if (args.size() > (argOffs + 2)) {
+      uint32_t  tmp = parseHexNumberEx(args[argOffs + 2].c_str(), addressMask);
+      disassembleOffset = int32_t(tmp) - int32_t(startAddr);
+      if (disassembleOffset > int32_t(addressMask >> 1))
+        disassembleOffset -= int32_t(addressMask + 1U);
+      else if (disassembleOffset < -(int32_t((addressMask >> 1) + 1U)))
+        disassembleOffset += int32_t(addressMask + 1U);
+    }
+    std::string tmpBuf;
+    if (!f) {
+      // disassemble to screen
+      while (((endAddr - disassembleAddress) & addressMask)
+             > (MONITOR_MAX_LINES * 4U)) {
+        uint32_t  nextAddr = gui->vm.disassembleInstruction(tmpBuf,
+                                                            disassembleAddress,
+                                                            cpuAddressMode,
+                                                            disassembleOffset);
+        disassembleAddress = nextAddr & addressMask;
+      }
+      while (true) {
+        uint32_t  prvAddr = disassembleAddress;
+        disassembleInstruction();
+        while (prvAddr != disassembleAddress) {
+          if (prvAddr == endAddr)
+            return;
+          prvAddr = (prvAddr + 1U) & addressMask;
+        }
+      }
+    }
+    else {
+      // disassemble to file
+      while (true) {
+        uint32_t  prvAddr = disassembleAddress;
+        uint32_t  nextAddr = gui->vm.disassembleInstruction(tmpBuf,
+                                                            disassembleAddress,
+                                                            cpuAddressMode,
+                                                            disassembleOffset);
+        int       n = std::fprintf(f, ". %s\n", tmpBuf.c_str());
+        if (size_t(n) != (tmpBuf.length() + 3)) {
+          printMessage("Error writing file");
+          break;
+        }
+        disassembleAddress = nextAddr & addressMask;
+        while (prvAddr != disassembleAddress) {
+          if (prvAddr == endAddr) {
+            int     err = std::fflush(f);
+            std::fclose(f);
+            f = (std::FILE *) 0;
+            if (err != 0)
+              printMessage("Error writing file");
+            return;
+          }
+          prvAddr = (prvAddr + 1U) & addressMask;
+        }
+      }
+    }
+  }
+  catch (...) {
+    if (f)
+      std::fclose(f);
+    throw;
+  }
+  if (f)
+    std::fclose(f);
 }
 
 void Plus4EmuGUIMonitor::command_memoryDump(const std::vector<std::string>&
@@ -599,7 +667,7 @@ void Plus4EmuGUIMonitor::command_setRegisters(const std::vector<std::string>&
 
 void Plus4EmuGUIMonitor::command_go(const std::vector<std::string>& args)
 {
-  if (args.size() > 3)
+  if (args.size() > 2)
     throw Plus4Emu::Exception("too many arguments");
   if (args.size() > 1) {
     Plus4::M7501Registers r;
@@ -885,7 +953,7 @@ void Plus4EmuGUIMonitor::command_printInfo(
 {
   if (args.size() > 1)
     throw Plus4Emu::Exception("too many arguments");
-  switch (debugWindow->debugContextValuator->value()) {
+  switch (gui->vm.getDebugContext()) {
   case 0:
     printMessage("Debug context:       main CPU");
     break;
@@ -922,6 +990,221 @@ void Plus4EmuGUIMonitor::command_printInfo(
                (unsigned int) (disassembleOffset >= 0 ?
                                disassembleOffset : (-disassembleOffset)));
   printMessage(&(tmpBuf[0]));
+}
+
+void Plus4EmuGUIMonitor::command_continue(const std::vector<std::string>& args)
+{
+  if (args.size() > 1)
+    throw Plus4Emu::Exception("too many arguments");
+  debugWindow->focusWidget = this;
+  gui->vm.setSingleStepMode(false);
+  debugWindow->hide();
+}
+
+void Plus4EmuGUIMonitor::command_step(const std::vector<std::string>& args)
+{
+  if (args.size() > 1)
+    throw Plus4Emu::Exception("too many arguments");
+  debugWindow->focusWidget = this;
+  gui->vm.setSingleStepMode(true);
+  debugWindow->hide();
+}
+
+void Plus4EmuGUIMonitor::command_stepOver(const std::vector<std::string>& args)
+{
+  if (args.size() > 1)
+    throw Plus4Emu::Exception("too many arguments");
+  debugWindow->focusWidget = this;
+  gui->vm.setSingleStepMode(true, true);
+  debugWindow->hide();
+}
+
+void Plus4EmuGUIMonitor::command_trace(const std::vector<std::string>& args)
+{
+  // TODO: implement this
+  (void) args;
+}
+
+void Plus4EmuGUIMonitor::command_setDebugContext(
+    const std::vector<std::string>& args)
+{
+  if (args.size() > 2)
+    throw Plus4Emu::Exception("too many arguments");
+  int     n = 0;
+  if (args.size() < 2) {
+    n = gui->vm.getDebugContext();
+    n = (n + 1) % 5;
+  }
+  else {
+    uint32_t  tmp = parseHexNumberEx(args[1].c_str());
+    switch (tmp) {
+    case 0U:
+      break;
+    case 8U:
+    case 9U:
+      n = int(tmp - 7U);
+      break;
+    case 16U:
+    case 17U:
+      n = int(tmp - 13U);
+      break;
+    default:
+      throw Plus4Emu::Exception("invalid debug context");
+    }
+  }
+  debugWindow->debugContextValuator->value(n);
+  debugWindow->debugContextValuator->do_callback();
+  switch (gui->vm.getDebugContext()) {
+  case 0:
+    printMessage("Debug context set to main CPU");
+    break;
+  case 1:
+    printMessage("Debug context set to floppy unit 8");
+    break;
+  case 2:
+    printMessage("Debug context set to floppy unit 9");
+    break;
+  case 3:
+    printMessage("Debug context set to floppy unit 10");
+    break;
+  case 4:
+    printMessage("Debug context set to floppy unit 11");
+    break;
+  }
+}
+
+void Plus4EmuGUIMonitor::command_load(const std::vector<std::string>& args,
+                                      bool verifyMode)
+{
+  if (args.size() < 2 || args.size() > 4)
+    throw Plus4Emu::Exception("invalid number of arguments");
+  if (args[1].length() < 1 || args[1][0] != '"')
+    throw Plus4Emu::Exception("file name is not a string");
+  std::string fileName(args[1].c_str() + 1);
+  bool      haveStartAddr = false;
+  bool      haveEndAddr = false;
+  bool      cpuAddressMode_ = true;
+  uint32_t  startAddr = 0U;
+  uint32_t  endAddr = 0U;
+  uint32_t  addressMask_ = 0xFFFFU;
+  if (args.size() > 2) {
+    startAddr = parseHexNumberEx(args[2].c_str());
+    haveStartAddr = true;
+    cpuAddressMode_ = cpuAddressMode;
+    addressMask_ = addressMask;
+  }
+  if (args.size() > 3) {
+    endAddr = parseHexNumberEx(args[3].c_str());
+    haveEndAddr = true;
+  }
+  if ((startAddr | endAddr) > addressMask_)
+    throw Plus4Emu::Exception("address is out of range");
+  std::FILE *f = (std::FILE *) 0;
+  int       err = gui->vm.openFileInWorkingDirectory(f, fileName, "rb");
+  if (err != 0) {
+    if (err >= -6 && err <= -2)
+      printMessage(fileOpenErrorMessages[(-err) - 1]);
+    else
+      printMessage(fileOpenErrorMessages[0]);
+    return;
+  }
+  try {
+    int     c = std::fgetc(f);
+    if (c == EOF)
+      throw Plus4Emu::Exception("Error reading file");
+    if (!haveStartAddr)
+      startAddr = uint32_t(c & 0xFF);
+    c = std::fgetc(f);
+    if (c == EOF)
+      throw Plus4Emu::Exception("Error reading file");
+    if (!haveStartAddr)
+      startAddr |= (uint32_t(c & 0xFF) << 8);
+    if (!haveEndAddr)
+      endAddr = (startAddr - 1U) & addressMask_;
+    char      tmpBuf[64];
+    uint32_t  addr = startAddr;
+    if (!verifyMode) {
+      // load
+      while (addr != endAddr) {
+        c = std::fgetc(f);
+        if (c == EOF)
+          break;
+        gui->vm.writeMemory(addr, uint8_t(c & 0xFF), cpuAddressMode_);
+        addr = (addr + 1U) & addressMask_;
+      }
+      if (addr != startAddr) {
+        int     n = (cpuAddressMode_ ? 4 : 6);
+        std::sprintf(&(tmpBuf[0]), "Loaded PRG file to %0*X-%0*X",
+                     n, (unsigned int) startAddr, n, (unsigned int) addr);
+        printMessage(&(tmpBuf[0]));
+      }
+    }
+    else {
+      // verify
+      size_t    diffCnt = 0;
+      while (addr != endAddr) {
+        c = std::fgetc(f);
+        if (c == EOF)
+          break;
+        if (gui->vm.readMemory(addr, cpuAddressMode_) != uint8_t(c & 0xFF))
+          diffCnt++;
+        addr = (addr + 1U) & addressMask_;
+      }
+      std::sprintf(&(tmpBuf[0]), "%lu differences", (unsigned long) diffCnt);
+      printMessage(&(tmpBuf[0]));
+    }
+  }
+  catch (std::exception& e) {
+    std::fclose(f);
+    printMessage(e.what());
+    return;
+  }
+  std::fclose(f);
+}
+
+void Plus4EmuGUIMonitor::command_save(const std::vector<std::string>& args)
+{
+  if (args.size() != 5 && (args.size() != 4 || !cpuAddressMode))
+    throw Plus4Emu::Exception("invalid number of arguments");
+  if (args[1].length() < 1 || args[1][0] != '"')
+    throw Plus4Emu::Exception("file name is not a string");
+  std::string fileName(args[1].c_str() + 1);
+  uint32_t  startAddr = parseHexNumberEx(args[2].c_str());
+  uint32_t  endAddr = parseHexNumberEx(args[3].c_str());
+  uint32_t  loadAddr = startAddr;
+  if (args.size() > 4)
+    loadAddr = parseHexNumberEx(args[4].c_str());
+  if ((startAddr | endAddr) > addressMask || loadAddr > 0xFFFFU)
+    throw Plus4Emu::Exception("address is out of range");
+  std::FILE *f = (std::FILE *) 0;
+  int       err = gui->vm.openFileInWorkingDirectory(f, fileName, "wb", false);
+  if (err != 0) {
+    if (err >= -6 && err <= -2)
+      printMessage(fileOpenErrorMessages[(-err) - 1]);
+    else
+      printMessage(fileOpenErrorMessages[0]);
+    return;
+  }
+  try {
+    if (std::fputc(int(loadAddr & 0xFFU), f) == EOF)
+      throw Plus4Emu::Exception("Error writing file");
+    if (std::fputc(int(loadAddr >> 8), f) == EOF)
+      throw Plus4Emu::Exception("Error writing file");
+    while (startAddr != endAddr) {
+      uint8_t c = gui->vm.readMemory(startAddr, cpuAddressMode);
+      if (std::fputc(int(c), f) == EOF)
+        throw Plus4Emu::Exception("Error writing file");
+      startAddr = (startAddr + 1U) & addressMask;
+    }
+    if (std::fflush(f) != 0)
+      throw Plus4Emu::Exception("Error writing file");
+  }
+  catch (std::exception& e) {
+    std::fclose(f);
+    printMessage(e.what());
+    return;
+  }
+  std::fclose(f);
 }
 
 void Plus4EmuGUIMonitor::command_toggleCPUAddressMode(
@@ -963,10 +1246,18 @@ void Plus4EmuGUIMonitor::command_help(const std::vector<std::string>& args)
     printMessage("G       continue or go to address");
     printMessage("H       search for pattern in memory");
     printMessage("I       print current settings");
+    printMessage("L       load PRG file to memory");
     printMessage("M       dump memory");
     printMessage("R       print CPU registers");
+    printMessage("S       save memory to PRG file");
     printMessage("SR      search and replace pattern in memory");
     printMessage("T       copy memory");
+    printMessage("TR      trace (log instructions to file)");
+    printMessage("V       verify (compare memory and PRG file)");
+    printMessage("W       set debug context");
+    printMessage("X       continue");
+    printMessage("Y       step over");
+    printMessage("Z       step");
   }
   else if (args[1] == "." || args[1] == "A") {
     printMessage("A <address> ...");
@@ -1019,11 +1310,20 @@ void Plus4EmuGUIMonitor::command_help(const std::vector<std::string>& args)
   else if (args[1] == "I") {
     printMessage("I       print current monitor settings");
   }
+  else if (args[1] == "L") {
+    printMessage("L <\"filename\"> [start [end+1]]");
+    printMessage("Zeropage variables are not updated");
+  }
   else if (args[1] == "M") {
     printMessage("M [start [end]]");
   }
   else if (args[1] == "R") {
     printMessage("R       print CPU registers");
+  }
+  else if (args[1] == "S") {
+    printMessage("S <\"filename\"> <start> <end+1> <loadAddr>");
+    printMessage("Zeropage variables are not updated");
+    printMessage("Load address is optional in CPU address mode");
   }
   else if (args[1] == "SR") {
     printMessage("SR <start> <end> <searchPat>, <replacePat>");
@@ -1035,6 +1335,31 @@ void Plus4EmuGUIMonitor::command_help(const std::vector<std::string>& args)
   }
   else if (args[1] == "T") {
     printMessage("T <srcStart> <srcEnd> <dstStart>");
+  }
+  else if (args[1] == "TR") {
+    printMessage("TR <\"filename\"> [maxInsns [addr]]");
+    printMessage("maxInsns=0 (default) is interpreted as 65536");
+  }
+  else if (args[1] == "V") {
+    printMessage("V <\"filename\"> [start [end+1]]");
+    printMessage("Zeropage variables are not updated");
+  }
+  else if (args[1] == "W") {
+    printMessage("W       cycle debug context");
+    printMessage("W0      set debug context to main CPU");
+    printMessage("W8      set debug context to floppy unit 8");
+    printMessage("W9      set debug context to floppy unit 9");
+    printMessage("W10     set debug context to floppy unit 10");
+    printMessage("W11     set debug context to floppy unit 11");
+  }
+  else if (args[1] == "X") {
+    printMessage("X       continue emulation");
+  }
+  else if (args[1] == "Y") {
+    printMessage("Y       step one instruction with step over");
+  }
+  else if (args[1] == "Z") {
+    printMessage("Z       step one CPU instruction");
   }
   else {
     printMessage("Unknown command name");
@@ -1117,14 +1442,30 @@ void Plus4EmuGUIMonitor::parseCommand(const char *s)
     command_searchPattern(args);
   else if (args[0] == "I")
     command_printInfo(args);
+  else if (args[0] == "L")
+    command_load(args, false);
   else if (args[0] == "M")
     command_memoryDump(args);
   else if (args[0] == "R")
     command_printRegisters(args);
+  else if (args[0] == "S")
+    command_save(args);
   else if (args[0] == "SR")
     command_searchAndReplace(args);
   else if (args[0] == "T")
     command_memoryCopy(args);
+  else if (args[0] == "TR")
+    command_trace(args);
+  else if (args[0] == "V")
+    command_load(args, true);
+  else if (args[0] == "W")
+    command_setDebugContext(args);
+  else if (args[0] == "X")
+    command_continue(args);
+  else if (args[0] == "Y")
+    command_stepOver(args);
+  else if (args[0] == "Z")
+    command_step(args);
   else
     throw Plus4Emu::Exception("invalid monitor command");
 }
