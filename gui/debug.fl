@@ -25,10 +25,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {uint32_t memoryDumpViewAddress;} {}
   decl {bool memoryDumpCPUAddressMode;} {}
   decl {bool memoryDumpASCIIFileFormat;} {}
-  decl {bool disassemblyCPUAddressMode;} {}
   decl {uint32_t disassemblyStartAddress;} {}
-  decl {int32_t disassemblyAddressOffset;} {}
-  decl {uint32_t disassemblyEndAddress;} {}
   decl {uint32_t disassemblyViewAddress;} {}
   decl {uint32_t disassemblyNextAddress;} {}
   decl {Fl_Text_Buffer *bpEditBuffer;} {}
@@ -48,10 +45,7 @@ class Plus4EmuGUI_DebugWindow {open
   memoryDumpViewAddress = 0x00000000U;
   memoryDumpCPUAddressMode = true;
   memoryDumpASCIIFileFormat = false;
-  disassemblyCPUAddressMode = true;
   disassemblyStartAddress = 0x00000000U;
-  disassemblyAddressOffset = 0;
-  disassemblyEndAddress = 0x0000003FU;
   disassemblyViewAddress = 0x00000000U;
   disassemblyNextAddress = 0x00000000U;
   for (int i = 0; i < 5; i++)
@@ -99,15 +93,42 @@ class Plus4EmuGUI_DebugWindow {open
           label Memory open
           xywh {10 35 520 370} box THIN_UP_BOX color 38 selection_color 38 labelcolor 52 hide
         } {
-          Fl_Input {} {
-            label Command
+          Fl_Input searchStringValuator {
+            label Search
             callback {{
-  parseCommand(o->value());
-  o->value("");
-  updateWindow();
+  if (o->value()) {
+    try {
+      std::vector<std::string>  args;
+      {
+        std::string tmp("H ");
+        tmp += o->value();
+        Plus4EmuGUIMonitor::tokenizeString(args, tmp.c_str());
+      }
+      int32_t addr = monitor_->searchPattern(
+          args, 1, args.size() - 1,
+          memoryDumpViewAddress + 1U, memoryDumpViewAddress,
+          memoryDumpCPUAddressMode);
+      if (addr >= 0) {
+        memoryDumpViewAddress = uint32_t(addr);
+        updateMemoryDumpDisplay();
+      }
+      else
+        throw Plus4Emu::Exception("Search string not found");
+    }
+    catch (std::exception& e) {
+      gui.errorMessage(e.what());
+    }
+  }
 }}
-            tooltip {Enter command followed by space separated list of hexadecimal arguments. The available commands are: >ADDRESS VALUE1 ... (modify memory), F START END VALUE1 ... (fill memory area with pattern), H START END VALUE1 ... (find pattern in memory area), and T START END DEST (copy memory). Leave blank to execute no command.} xywh {20 63 500 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
+            xywh {20 63 375 25} color 0 selection_color 238 labelcolor 52 align 5 when 10 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
+          }
+          Fl_Button {} {
+            label {Find next}
+            callback {{
+  searchStringValuator->do_callback();
+}}
+            xywh {405 63 115 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Output memoryDumpDisplay {
             label {Memory dump}
@@ -124,11 +145,14 @@ class Plus4EmuGUI_DebugWindow {open
           Fl_Input memoryDumpStartAddressValuator {
             label {Start address}
             callback {{
-  if (parseHexNumber(memoryDumpStartAddress, o->value()) > 0L)
-    memoryDumpViewAddress = memoryDumpStartAddress;
-  updateMemoryDumpDisplay();
+  if (parseHexNumber(memoryDumpStartAddress, o->value()) > 0L) {
+    if (memoryDumpStartAddress != memoryDumpViewAddress) {
+      memoryDumpViewAddress = memoryDumpStartAddress;
+      updateMemoryDumpDisplay();
+    }
+  }
 }}
-            xywh {405 160 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
+            xywh {405 160 115 25} color 0 selection_color 238 labelcolor 52 align 5 when 6 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
             code1 {o->value("0000");}
           }
@@ -268,14 +292,6 @@ class Plus4EmuGUI_DebugWindow {open
           Fl_Output disassemblyDisplay {
             xywh {20 48 375 345} type Multiline color 0 selection_color 238 labelcolor 52 align 5 textfont 5 textcolor 159
           }
-          Fl_Light_Button {} {
-            label {CPU address}
-            callback {{
-  disassemblyCPUAddressMode = (o->value() != 0);
-  updateDisassemblyDisplay();
-}}
-            tooltip {Select if 16 bit CPU, or 22 bit physical addresses are to be used} xywh {405 50 115 25} value 1 color 39 labelcolor 52
-          }
           Fl_Input disassemblyStartAddressValuator {
             label {Start address}
             callback {{
@@ -283,33 +299,9 @@ class Plus4EmuGUI_DebugWindow {open
     disassemblyViewAddress = disassemblyStartAddress;
   updateDisassemblyDisplay();
 }}
-            xywh {405 95 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
+            xywh {405 70 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
             code1 {o->value("0000");}
-          }
-          Fl_Input disassemblyRuntimeAddressValuator {
-            label {Runtime address}
-            callback {{
-  uint32_t  tmp = 0U;
-  if (parseHexNumber(tmp, o->value()) > 0L) {
-    disassemblyAddressOffset =
-        int32_t(tmp & 0x3FFFFFU) - int32_t(disassemblyStartAddress & 0x3FFFFFU);
-  }
-  updateDisassemblyDisplay();
-}}
-            tooltip {The address where the disassembled code will actually run} xywh {405 140 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
-            code1 {o->value("0000");}
-          }
-          Fl_Input disassemblyEndAddressValuator {
-            label {End address}
-            callback {{
-  parseHexNumber(disassemblyEndAddress, o->value());
-  updateDisassemblyDisplay();
-}}
-            tooltip {End address of disassembly (for file I/O only); this address is still included} xywh {405 185 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
-            code1 {o->value("003F");}
           }
           Fl_Button {} {
             label {@|<}
@@ -319,7 +311,7 @@ class Plus4EmuGUI_DebugWindow {open
     updateDisassemblyDisplay();
   }
 }}
-            tooltip {Return to start address} xywh {405 230 55 25} color 39 selection_color 40 labelcolor 52
+            tooltip {Return to start address} xywh {405 115 55 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Button {} {
             label {@>}
@@ -327,48 +319,7 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyViewAddress = disassemblyNextAddress;
   updateDisassemblyDisplay();
 }}
-            tooltip {View next page} xywh {465 230 55 25} color 39 selection_color 40 labelcolor 52
-          }
-          Fl_Button {} {
-            label {Save to file}
-            callback {{
-  std::FILE *f = (std::FILE *) 0;
-  try {
-    std::string tmp;
-    if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "All files (*)", Fl_File_Chooser::CREATE,
-                       "Disassemble to file")) {
-      f = std::fopen(tmp.c_str(), "w");
-      if (!f)
-        throw Plus4Emu::Exception("cannot open file");
-      uint32_t  addr = disassemblyStartAddress;
-      uint32_t  addrMask = uint32_t(disassemblyCPUAddressMode ? 0x00FFFFU : 0x3FFFFFU);
-      uint32_t  nextAddr = addr;
-      bool      endFlag = false;
-      do {
-        nextAddr = gui.vm.disassembleInstruction(tmp, addr, disassemblyCPUAddressMode,
-                                                 disassemblyAddressOffset);
-        tmp += '\\n';
-        for (size_t i = 0; i < tmp.length(); i++) {
-          if (std::fputc(tmp[i], f) == EOF)
-            throw Plus4Emu::Exception("error writing file - is the disk full ?");
-        }
-        while (addr != nextAddr) {
-          if (((addr ^ disassemblyEndAddress) & addrMask) == 0U)
-            endFlag = true;
-          addr = (addr + 1U) & addrMask;
-        }
-      } while (!endFlag);
-      std::fclose(f);
-    }
-  }
-  catch (std::exception& e) {
-    if (f)
-      std::fclose(f);
-    gui.errorMessage(e.what());
-  }
-}}
-            xywh {405 275 115 25} color 39 selection_color 40 labelcolor 52
+            tooltip {View next page} xywh {465 115 55 25} color 39 selection_color 40 labelcolor 52
           }
         }
         Fl_Group breakPointsTab {
@@ -593,7 +544,7 @@ class Plus4EmuGUI_DebugWindow {open
   updateWindow();
   if (!window->shown()) {
     window->resize(savedWindowPositionX, savedWindowPositionY, 540, 450);
-    if (focusWidget)
+    if (focusWidget != (Fl_Widget *) 0 && focusWidget != monitor_)
       focusWidget->take_focus();
     else
       stepButton->take_focus();
@@ -648,14 +599,6 @@ class Plus4EmuGUI_DebugWindow {open
   setDebugContext(debugContext_);
   debugContextValuator->value(debugContext_);
   disassemblyViewAddress = uint32_t(gui.vm.getProgramCounter() & 0xFFFF);
-  if (!disassemblyCPUAddressMode) {
-    uint32_t  cpuAddr_ = disassemblyViewAddress;
-    uint8_t   segment_ = gui.vm.getMemoryPage(uint8_t(cpuAddr_ >> 14));
-    disassemblyViewAddress = (uint32_t(segment_) << 14) | (cpuAddr_ & 0x00003FFFU);
-    disassemblyAddressOffset = int32_t(cpuAddr_) - int32_t(disassemblyViewAddress);
-  }
-  else
-    disassemblyAddressOffset = 0;
   if (focusWidget == monitor_)
     monitor_->breakMessage(&(windowTitle[0]));
 }} {}
@@ -846,41 +789,23 @@ class Plus4EmuGUI_DebugWindow {open
   } {
     code {{
   try {
-    uint32_t  addrMask = uint32_t(disassemblyCPUAddressMode ? 0x00FFFFU : 0x3FFFFFU);
-    disassemblyStartAddress &= addrMask;
-    if (disassemblyAddressOffset >= 0)
-      disassemblyAddressOffset &= int32_t(addrMask);
-    else {
-      disassemblyAddressOffset = (-disassemblyAddressOffset) - 1;
-      disassemblyAddressOffset &= int32_t(addrMask);
-      disassemblyAddressOffset = (-disassemblyAddressOffset) - 1;
-    }
-    disassemblyEndAddress &= addrMask;
-    disassemblyViewAddress &= addrMask;
-    disassemblyNextAddress &= addrMask;
-    const char  *fmt = (disassemblyCPUAddressMode ? "%04X" : "%06X");
+    disassemblyStartAddress &= 0xFFFFU;
+    disassemblyViewAddress &= 0xFFFFU;
+    disassemblyNextAddress &= 0xFFFFU;
     char  tmpBuf[8];
-    std::sprintf(&(tmpBuf[0]), fmt, (unsigned int) disassemblyStartAddress);
+    std::sprintf(&(tmpBuf[0]), "%04X", (unsigned int) disassemblyStartAddress);
     disassemblyStartAddressValuator->value(&(tmpBuf[0]));
-    std::sprintf(&(tmpBuf[0]), fmt,
-                 (unsigned int) ((int32_t(disassemblyStartAddress)
-                                  + disassemblyAddressOffset) & int32_t(addrMask)));
-    disassemblyRuntimeAddressValuator->value(&(tmpBuf[0]));
-    std::sprintf(&(tmpBuf[0]), fmt, (unsigned int) disassemblyEndAddress);
-    disassemblyEndAddressValuator->value(&(tmpBuf[0]));
     std::string tmp1;
     std::string tmp2;
     tmp2.reserve(864);
     uint32_t  addr = disassemblyViewAddress;
     for (int i = 0; i < 20; i++) {
-      addr = gui.vm.disassembleInstruction(tmp1, addr, disassemblyCPUAddressMode,
-                                           disassemblyAddressOffset);
+      addr = gui.vm.disassembleInstruction(tmp1, addr, true, 0);
       tmp2 += tmp1;
       tmp2 += '\\n';
     }
     disassemblyNextAddress = addr;
-    gui.vm.disassembleInstruction(tmp1, addr, disassemblyCPUAddressMode,
-                                  disassemblyAddressOffset);
+    gui.vm.disassembleInstruction(tmp1, addr, true, 0);
     tmp2 += tmp1;
     disassemblyDisplay->value(tmp2.c_str());
   }
@@ -907,138 +832,6 @@ class Plus4EmuGUI_DebugWindow {open
   catch (std::exception& e) {
     if (buf)
       std::free(const_cast<char *>(buf));
-    gui.errorMessage(e.what());
-  }
-}} {}
-  }
-  Function {parseCommand(const char *s)} {open private return_type void
-  } {
-    code {{
-  try {
-    if (!s)
-      return;
-    while (*s == ' ' || *s == '\\t' || *s == '\\r' || *s == '\\n')
-      s++;
-    if (*s == '\\0')
-      return;
-    char    c = *(s++);
-    std::vector<uint32_t> args;
-    while (true) {
-      uint32_t  tmp = 0U;
-      long      n = parseHexNumber(tmp, s);
-      if (!n)           // end of string or error
-        break;
-      if (n < 0L)       // end of line
-        n = (-n);
-      else
-        args.push_back(tmp);
-      s = s + n;
-    }
-    uint32_t  addrMask = uint32_t(memoryDumpCPUAddressMode ? 0x00FFFFU : 0x3FFFFFU);
-    switch (c) {
-    case '>':
-      if (args.size() < 2)
-        throw Plus4Emu::Exception("too few arguments");
-      else {
-        uint32_t  addr = args[0] & addrMask;
-        size_t    byteCnt = 0;
-        do {
-          gui.vm.writeMemory(addr, uint8_t(args[byteCnt + 1] & 0xFFU),
-                             memoryDumpCPUAddressMode);
-          addr++;
-          addr &= addrMask;
-          byteCnt++;
-        } while ((byteCnt + 1) < args.size());
-      }
-      break;
-    case 'F':
-    case 'f':
-      if (args.size() < 3)
-        throw Plus4Emu::Exception("too few arguments");
-      else {
-        uint32_t  addr = args[0] & addrMask;
-        uint32_t  endAddr = args[1] & addrMask;
-        size_t    byteCnt = 0;
-        while (true) {
-          gui.vm.writeMemory(addr, uint8_t(args[byteCnt + 2] & 0xFFU),
-                             memoryDumpCPUAddressMode);
-          if (addr == endAddr)
-            break;
-          addr++;
-          addr &= addrMask;
-          byteCnt++;
-          if ((byteCnt + 2) >= args.size())
-            byteCnt = 0;
-        }
-      }
-      break;
-    case 'H':
-    case 'h':
-      if (args.size() < 3)
-        throw Plus4Emu::Exception("too few arguments");
-      else {
-        uint32_t  addr = args[0] & addrMask;
-        uint32_t  addrFound = addr;
-        uint32_t  endAddr = args[1] & addrMask;
-        size_t    byteCnt = 0;
-        while (true) {
-          if (gui.vm.readMemory(addr, memoryDumpCPUAddressMode)
-              != uint8_t(args[byteCnt + 2] & 0xFFU))
-            byteCnt = 0;
-          else {
-            if (!byteCnt)
-              addrFound = addr;
-            byteCnt++;
-            if ((byteCnt + 2) >= args.size()) {
-              memoryDumpViewAddress = addrFound;
-              break;
-            }
-          }
-          if (addr == endAddr)
-            throw Plus4Emu::Exception("search string not found");
-          addr++;
-          addr &= addrMask;
-        }
-      }
-      break;
-    case 'T':
-    case 't':
-      if (args.size() != 3)
-        throw Plus4Emu::Exception("invalid number of arguments");
-      else {
-        uint32_t  srcAddr = args[0] & addrMask;
-        uint32_t  endAddr = args[1] & addrMask;
-        uint32_t  dstAddr = args[2] & addrMask;
-        bool      reverseFlag = false;
-        if (dstAddr > srcAddr) {
-          reverseFlag = true;
-          dstAddr = (dstAddr + (endAddr - srcAddr)) & addrMask;
-          uint32_t  tmp = srcAddr;
-          srcAddr = endAddr;
-          endAddr = tmp;
-        }
-        while (true) {
-          gui.vm.writeMemory(dstAddr,
-                             gui.vm.readMemory(srcAddr, memoryDumpCPUAddressMode),
-                             memoryDumpCPUAddressMode);
-          if (srcAddr == endAddr)
-            break;
-          if (!reverseFlag) {
-            srcAddr = (srcAddr + 1U) & addrMask;
-            dstAddr = (dstAddr + 1U) & addrMask;
-          }
-          else {
-            srcAddr = (srcAddr - 1U) & addrMask;
-            dstAddr = (dstAddr - 1U) & addrMask;
-          }
-        }
-      }
-      break;
-    default:
-      throw Plus4Emu::Exception("unknown command");
-    }
-  }
-  catch (std::exception& e) {
     gui.errorMessage(e.what());
   }
 }} {}
