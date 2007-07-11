@@ -68,6 +68,10 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
                           std::vector<uint8_t>& searchMask_,
                           const std::vector<std::string>& args,
                           size_t argOffs, size_t argCnt);
+  int32_t searchPattern(const std::vector<uint8_t>& searchString_,
+                        const std::vector<uint8_t>& searchMask_,
+                        uint32_t startAddr, uint32_t endAddr,
+                        bool cpuAddressMode_);
  public:
   Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh, const char *ll = 0);
   virtual ~Plus4EmuGUIMonitor();

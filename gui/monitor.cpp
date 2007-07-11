@@ -642,23 +642,13 @@ void Plus4EmuGUIMonitor::command_searchPattern(const std::vector<std::string>&
   char    tmpBuf[64];
   int     bufPos = 0;
   for (size_t i = 0; i < matchCnt; i++) {
-    if (cpuAddressMode) {
-      int     n = std::sprintf(&(tmpBuf[bufPos]), " %04X",
-                               (unsigned int) matchAddrs[i]);
-      bufPos += n;
-      if ((i & 7) == 7 || i == (matchCnt - 1)) {
-        printMessage(&(tmpBuf[0]));
-        bufPos = 0;
-      }
-    }
-    else {
-      int     n = std::sprintf(&(tmpBuf[bufPos]), " %06X",
-                               (unsigned int) matchAddrs[i]);
-      bufPos += n;
-      if ((i & 3) == 3 || i == (matchCnt - 1)) {
-        printMessage(&(tmpBuf[0]));
-        bufPos = 0;
-      }
+    int     n = std::sprintf(&(tmpBuf[bufPos]), " %0*X",
+                             int(cpuAddressMode ? 4 : 6),
+                             (unsigned int) matchAddrs[i]);
+    bufPos += n;
+    if (((i & 3) == 3 && bufPos >= 28) || i == (matchCnt - 1)) {
+      printMessage(&(tmpBuf[0]));
+      bufPos = 0;
     }
   }
   if (startAddr != endAddr) {
@@ -696,6 +686,10 @@ void Plus4EmuGUIMonitor::command_searchAndReplace(
   }
   if (searchArgCnt < 1 || replaceArgCnt < 1)
     throw Plus4Emu::Exception("insufficient arguments for search/replace");
+  std::vector<uint8_t>  searchString_;
+  std::vector<uint8_t>  searchMask_;
+  parseSearchPattern(searchString_, searchMask_,
+                     args, searchArgOffs, searchArgCnt);
   std::vector<uint8_t>  replaceString_;
   std::vector<uint8_t>  replaceMask_;
   parseSearchPattern(replaceString_, replaceMask_,
@@ -708,7 +702,7 @@ void Plus4EmuGUIMonitor::command_searchAndReplace(
     throw Plus4Emu::Exception("address is out of range");
   size_t    replaceCnt = 0;
   while (true) {
-    int32_t   nextAddr = searchPattern(args, searchArgOffs, searchArgCnt,
+    int32_t   nextAddr = searchPattern(searchString_, searchMask_,
                                        startAddr, endAddr, cpuAddressMode);
     if (nextAddr < 0)
       break;
@@ -806,7 +800,7 @@ void Plus4EmuGUIMonitor::command_memoryCompare(const std::vector<std::string>&
     throw Plus4Emu::Exception("address is out of range");
   size_t    diffCnt = 0;
   uint32_t  diffAddrs[64];
-  size_t    bytesRemaining = ((endAddr1 - startAddr1) & addressMask) + 1U;
+  size_t    bytesRemaining = size_t((endAddr1 - startAddr1) & addressMask) + 1;
   do {
     uint8_t c1 = gui->vm.readMemory(startAddr1, cpuAddressMode);
     uint8_t c2 = gui->vm.readMemory(startAddr2, cpuAddressMode);
@@ -819,23 +813,13 @@ void Plus4EmuGUIMonitor::command_memoryCompare(const std::vector<std::string>&
   char    tmpBuf[64];
   int     bufPos = 0;
   for (size_t i = 0; i < diffCnt; i++) {
-    if (cpuAddressMode) {
-      int     n = std::sprintf(&(tmpBuf[bufPos]), " %04X",
-                               (unsigned int) diffAddrs[i]);
-      bufPos += n;
-      if ((i & 7) == 7 || i == (diffCnt - 1)) {
-        printMessage(&(tmpBuf[0]));
-        bufPos = 0;
-      }
-    }
-    else {
-      int     n = std::sprintf(&(tmpBuf[bufPos]), " %06X",
-                               (unsigned int) diffAddrs[i]);
-      bufPos += n;
-      if ((i & 3) == 3 || i == (diffCnt - 1)) {
-        printMessage(&(tmpBuf[0]));
-        bufPos = 0;
-      }
+    int     n = std::sprintf(&(tmpBuf[bufPos]), " %0*X",
+                             int(cpuAddressMode ? 4 : 6),
+                             (unsigned int) diffAddrs[i]);
+    bufPos += n;
+    if (((i & 3) == 3 && bufPos >= 28) || i == (diffCnt - 1)) {
+      printMessage(&(tmpBuf[0]));
+      bufPos = 0;
     }
   }
   if (bytesRemaining > 0) {
@@ -870,9 +854,9 @@ void Plus4EmuGUIMonitor::command_assemblerOffset(
     if (assembleOffset > int32_t(addressMask >> 1))
       assembleOffset -= int32_t(addressMask + 1U);
     if (negativeFlag)
-      assembleOffset = -(assembleOffset);
+      assembleOffset = -assembleOffset;
   }
-  disassembleOffset = -(assembleOffset);
+  disassembleOffset = -assembleOffset;
   char    tmpBuf[128];
   if (assembleOffset == 0) {
     std::sprintf(&(tmpBuf[0]), "Assemble offset set to 0\n"
@@ -922,18 +906,18 @@ void Plus4EmuGUIMonitor::command_printInfo(
     printMessage("Address mode:        CPU (16 bit)");
   else
     printMessage("Address mode:        physical (22 bit)");
-  int     n = (cpuAddressMode ? 4 : 6);
   char    tmpBuf[64];
+  int     n = (cpuAddressMode ? 4 : 6);
   std::sprintf(&(tmpBuf[0]), "Assemble offset:    %c%0*X",
-               int(assembleOffset > 0 ?
-                   '+' : (assembleOffset < 0 ? '-' : ' ')),
+               int(assembleOffset == 0 ?
+                   ' ' : (assembleOffset > 0 ? '+' : '-')),
                n,
                (unsigned int) (assembleOffset >= 0 ?
                                assembleOffset : (-assembleOffset)));
   printMessage(&(tmpBuf[0]));
   std::sprintf(&(tmpBuf[0]), "Disassemble offset: %c%0*X",
-               int(disassembleOffset > 0 ?
-                   '+' : (disassembleOffset < 0 ? '-' : ' ')),
+               int(disassembleOffset == 0 ?
+                   ' ' : (disassembleOffset > 0 ? '+' : '-')),
                n,
                (unsigned int) (disassembleOffset >= 0 ?
                                disassembleOffset : (-disassembleOffset)));
@@ -1006,9 +990,9 @@ void Plus4EmuGUIMonitor::command_help(const std::vector<std::string>& args)
   }
   else if (args[1] == "AO") {
     printMessage("AO      reset assemble/disassemble offset");
-    printMessage("AO<n>   set assemble offset to +n bytes");
-    printMessage("AO+<n>  set assemble offset to +n bytes");
-    printMessage("AO-<n>  set assemble offset to -n bytes");
+    printMessage("AO <n>  set assemble offset to +n bytes");
+    printMessage("AO +<n> set assemble offset to +n bytes");
+    printMessage("AO -<n> set assemble offset to -n bytes");
     printMessage("Disassemble offset is set to -(asm offset)");
   }
   else if (args[1] == "C") {
@@ -1198,11 +1182,9 @@ void Plus4EmuGUIMonitor::memoryDump()
     memoryDumpAddress = (memoryDumpAddress + 1U) & addressMask;
   }
   char    *bufp = &(tmpBuf[0]);
-  int     n = 0;
-  if (cpuAddressMode)
-    n = std::sprintf(bufp, ">%04X", (unsigned int) startAddr);
-  else
-    n = std::sprintf(bufp, ">%06X", (unsigned int) startAddr);
+  int     n = std::sprintf(bufp, ">%0*X",
+                           int(cpuAddressMode ? 4 : 6),
+                           (unsigned int) startAddr);
   bufp = bufp + n;
   n = std::sprintf(bufp, "  %02X %02X %02X %02X %02X %02X %02X %02X",
                    (unsigned int) dataBuf[0], (unsigned int) dataBuf[1],
@@ -1285,16 +1267,13 @@ void Plus4EmuGUIMonitor::parseSearchPattern(
   }
 }
 
-int32_t Plus4EmuGUIMonitor::searchPattern(const std::vector<std::string>& args,
-                                          size_t argOffs, size_t argCnt,
-                                          uint32_t startAddr, uint32_t endAddr,
-                                          bool cpuAddressMode_)
+int32_t Plus4EmuGUIMonitor::searchPattern(
+    const std::vector<uint8_t>& searchString_,
+    const std::vector<uint8_t>& searchMask_,
+    uint32_t startAddr, uint32_t endAddr, bool cpuAddressMode_)
 {
   uint32_t  addrMask_ = (cpuAddressMode_ ? 0x0000FFFFU : 0x003FFFFFU);
-  std::vector<uint8_t>  searchString_;
-  std::vector<uint8_t>  searchMask_;
-  parseSearchPattern(searchString_, searchMask_, args, argOffs, argCnt);
-  uint32_t  i = (startAddr & addrMask_);
+  uint32_t  i = startAddr & addrMask_;
   if (searchString_.size() < 1)
     return int32_t(i);                  // empty string
   uint32_t  j = i;
@@ -1331,5 +1310,17 @@ int32_t Plus4EmuGUIMonitor::searchPattern(const std::vector<std::string>& args,
   }
   // not found
   return int32_t(-1);
+}
+
+int32_t Plus4EmuGUIMonitor::searchPattern(const std::vector<std::string>& args,
+                                          size_t argOffs, size_t argCnt,
+                                          uint32_t startAddr, uint32_t endAddr,
+                                          bool cpuAddressMode_)
+{
+  std::vector<uint8_t>  searchString_;
+  std::vector<uint8_t>  searchMask_;
+  parseSearchPattern(searchString_, searchMask_, args, argOffs, argCnt);
+  return searchPattern(searchString_, searchMask_,
+                       startAddr, endAddr, cpuAddressMode_);
 }
 
