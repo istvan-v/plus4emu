@@ -160,8 +160,7 @@ namespace Plus4 {
       M7501_(VC1551& vc1551_);
       virtual ~M7501_();
      protected:
-      virtual void breakPointCallback(bool isWrite,
-                                      uint16_t addr, uint8_t value);
+      virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);
     };
     M7501_      cpu;
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
@@ -198,8 +197,7 @@ namespace Plus4 {
     uint8_t     idCharacter2;
     std::FILE   *imageFile;
     void        (*breakPointCallback)(void *userData,
-                                      int debugContext_,
-                                      bool isIO, bool isWrite,
+                                      int debugContext_, int type,
                                       uint16_t addr, uint8_t value);
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
@@ -260,11 +258,15 @@ namespace Plus4 {
     virtual const M7501 * getCPU() const;
     /*!
      * Set function to be called when a breakpoint is triggered.
+     * 'type' can be one of the following values:
+     *   0: breakpoint at opcode read
+     *   1: memory read
+     *   2: memory write
+     *   3: opcode read in single step mode
      */
     virtual void setBreakPointCallback(void (*breakPointCallback_)(
                                            void *userData,
-                                           int debugContext_,
-                                           bool isIO, bool isWrite,
+                                           int debugContext_, int type,
                                            uint16_t addr, uint8_t value),
                                        void *userData_);
     /*!

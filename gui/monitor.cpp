@@ -420,7 +420,9 @@ Plus4EmuGUIMonitor::Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh,
     disassembleOffset(int32_t(0)),
     memoryDumpAddress(0U),
     addressMask(0xFFFFU),
-    cpuAddressMode(true)
+    cpuAddressMode(true),
+    traceFile((std::FILE *) 0),
+    traceInstructionsRemaining(0)
 {
   buf_ = new Fl_Text_Buffer();
   buffer(buf_);
@@ -431,6 +433,7 @@ Plus4EmuGUIMonitor::Plus4EmuGUIMonitor(int xx, int yy, int ww, int hh,
 
 Plus4EmuGUIMonitor::~Plus4EmuGUIMonitor()
 {
+  closeTraceFile();
   buffer((Fl_Text_Buffer *) 0);
   delete buf_;
 }
@@ -679,7 +682,7 @@ void Plus4EmuGUIMonitor::command_go(const std::vector<std::string>& args)
     reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->setCPURegisters(r);
   }
   debugWindow->focusWidget = this;
-  gui->vm.setSingleStepMode(false);
+  gui->vm.setSingleStepMode(0);
   debugWindow->hide();
 }
 
@@ -997,7 +1000,7 @@ void Plus4EmuGUIMonitor::command_continue(const std::vector<std::string>& args)
   if (args.size() > 1)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
-  gui->vm.setSingleStepMode(false);
+  gui->vm.setSingleStepMode(0);
   debugWindow->hide();
 }
 
@@ -1006,7 +1009,7 @@ void Plus4EmuGUIMonitor::command_step(const std::vector<std::string>& args)
   if (args.size() > 1)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
-  gui->vm.setSingleStepMode(true);
+  gui->vm.setSingleStepMode(1);
   debugWindow->hide();
 }
 
@@ -1015,14 +1018,53 @@ void Plus4EmuGUIMonitor::command_stepOver(const std::vector<std::string>& args)
   if (args.size() > 1)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
-  gui->vm.setSingleStepMode(true, true);
+  gui->vm.setSingleStepMode(2);
   debugWindow->hide();
 }
 
 void Plus4EmuGUIMonitor::command_trace(const std::vector<std::string>& args)
 {
-  // TODO: implement this
-  (void) args;
+  closeTraceFile();
+  if (args.size() < 2 || args.size() > 4)
+    throw Plus4Emu::Exception("invalid number of arguments");
+  if (args[1].length() < 1 || args[1][0] != '"')
+    throw Plus4Emu::Exception("file name is not a string");
+  uint32_t  maxInsns = 0U;
+  int32_t   startAddr = int32_t(-1);
+  if (args.size() > 2) {
+    maxInsns = parseHexNumberEx(args[2].c_str());
+    if (maxInsns > 0x01000000U)
+      throw Plus4Emu::Exception("invalid instruction count");
+  }
+  if (!maxInsns)
+    maxInsns = 65536U;
+  if (args.size() > 3) {
+    uint32_t  n = parseHexNumberEx(args[3].c_str());
+    if (n > 0xFFFFU)
+      throw Plus4Emu::Exception("address is out of range");
+    startAddr = int32_t(n);
+  }
+  std::string fileName(args[1].c_str() + 1);
+  std::FILE *f = (std::FILE *) 0;
+  int       err = gui->vm.openFileInWorkingDirectory(f, fileName, "w", false);
+  if (err != 0) {
+    if (err >= -6 && err <= -2)
+      printMessage(fileOpenErrorMessages[(-err) - 1]);
+    else
+      printMessage(fileOpenErrorMessages[0]);
+    return;
+  }
+  traceFile = f;
+  traceInstructionsRemaining = size_t(maxInsns);
+  if (startAddr >= 0) {
+    Plus4::M7501Registers r;
+    reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->getCPURegisters(r);
+    r.reg_PC = uint16_t(startAddr);
+    reinterpret_cast<Plus4::Plus4VM *>(&(gui->vm))->setCPURegisters(r);
+  }
+  debugWindow->focusWidget = this;
+  gui->vm.setSingleStepMode(3);
+  debugWindow->hide();
 }
 
 void Plus4EmuGUIMonitor::command_setDebugContext(
@@ -1562,7 +1604,6 @@ void Plus4EmuGUIMonitor::breakMessage(const char *s)
   try {
     if (s == (char *) 0 || s[0] == '\0')
       s = "BREAK";
-    insert_position(buf_->length());
     printMessage(s);
     printMessage("  PC  SR AC XR YR SP");
     printCPURegisters();
@@ -1663,5 +1704,57 @@ int32_t Plus4EmuGUIMonitor::searchPattern(const std::vector<std::string>& args,
   parseSearchPattern(searchString_, searchMask_, args, argOffs, argCnt);
   return searchPattern(searchString_, searchMask_,
                        startAddr, endAddr, cpuAddressMode_);
+}
+
+void Plus4EmuGUIMonitor::writeTraceFile(int debugContext_, uint16_t addr)
+{
+  if (!traceInstructionsRemaining) {
+    closeTraceFile();
+    return;
+  }
+  traceInstructionsRemaining--;
+  char    tmpBuf[64];
+  char    *bufp = &(tmpBuf[0]);
+  if (debugContext_ == 0) {
+    unsigned int  tedX, tedY;
+    tedY = ((unsigned int) gui->vm.readMemory(0xFF1C, true) & 0x01U) << 8;
+    tedY |= ((unsigned int) gui->vm.readMemory(0xFF1D, true) & 0xFFU);
+    tedX = (unsigned int) gui->vm.readMemory(0xFF1E, true) & 0xFFU;
+    int   n = std::sprintf(bufp, "[%04X:%02X] ", tedY, tedX);
+    bufp = bufp + n;
+  }
+  else {
+    int   n = std::sprintf(bufp, "[U%d] ", int(((debugContext_ - 1) & 3) | 8));
+    bufp = bufp + n;
+  }
+  int   n = std::sprintf(bufp, "%04X ", (unsigned int) (addr & 0xFFFF));
+  bufp = bufp + n;
+  try {
+    std::string tmpBuf2;
+    tmpBuf2.reserve(40);
+    gui->vm.disassembleInstruction(tmpBuf2, addr, true);
+    if (tmpBuf2.length() > 21 && tmpBuf2.length() <= 40) {
+      n = std::sprintf(bufp, "%s", tmpBuf2.c_str() + 21);
+      bufp = bufp + n;
+    }
+  }
+  catch (...) {
+  }
+  if (std::fprintf(traceFile, "%s\n", &(tmpBuf[0]))
+      != (int(bufp - &(tmpBuf[0])) + 1)) {
+    closeTraceFile();           // error writing file, disk may be full
+  }
+  if (!traceInstructionsRemaining)
+    closeTraceFile();
+}
+
+void Plus4EmuGUIMonitor::closeTraceFile()
+{
+  traceInstructionsRemaining = 0;
+  std::FILE *f = traceFile;
+  if (f) {
+    traceFile = (std::FILE *) 0;
+    std::fclose(f);
+  }
 }
 

@@ -27,72 +27,50 @@ namespace Plus4Emu {
 
   class BreakPoint {
    private:
-    // 0x00000000: memory (16 bit address),
-    // 0x04000000: memory (8 bit segment + 14 bit address),
-    // 0x08000000: I/O (16 bit address)
-    // + 0x01000000 if set for read
-    // + 0x02000000 if set for write
-    // + 0x10000000 to ignore other breakpoints if PC is at this address
+    // 0x00000000: no break (disabled)
+    // 0x01000000: memory read (16 bit address)
+    // 0x02000000: memory write (16 bit address)
+    // 0x03000000: memory read/write (16 bit address)
+    // 0x04000000: video (16 bit address: bits 7..15 for Y, bits 0..6 for X)
+    // 0x05000000: ignore other breakpoints if PC is at this address
     // + priority (0 to 3) * 0x00400000
     // + address
     uint32_t  n_;
    public:
-    BreakPoint(bool isIO_, bool haveSegment_,
-               bool r_, bool w_, bool ignoreFlag_,
-               uint8_t segment_, uint16_t addr_, int priority_)
+    // allowed values for 'type_':
+    //   0: memory read/write
+    //   1: memory read
+    //   2: memory write
+    //   3: memory read/write
+    //   4: video
+    //   5: ignore
+    BreakPoint(int type_, uint16_t addr_, int priority_)
     {
-      this->n_ = (r_ ? 0x01000000 : 0x00000000)
-                 + (w_ ? 0x02000000 : 0x00000000);
-      if (!(this->n_))
-        this->n_ = 0x03000000;
-      this->n_ += (priority_ > 0 ?
-                   (priority_ < 3 ? ((uint32_t) priority_ << 22) : 0x00C00000)
-                   : 0x00000000);
-      if (isIO_)
-        this->n_ += (0x08000000 + (uint32_t) (addr_ & 0xFFFF));
-      else if (haveSegment_)
-        this->n_ += (0x04000000 + ((uint32_t) (segment_ & 0xFF) << 14)
-                                + (uint32_t) (addr_ & 0x3FFF));
+      if (type_ >= 1 && type_ <= 5)
+        this->n_ = uint32_t(type_) << 24;
       else
-        this->n_ += (0x00000000 + (uint32_t) (addr_ & 0xFFFF));
-      if (ignoreFlag_)
-        this->n_ = (this->n_ & 0xF7FFFFFFU) | 0x13C00000U;
+        this->n_ = 0x03000000U;
+      if (priority_ > 0) {
+        if (priority_ < 3)
+          this->n_ |= (uint32_t(priority_) << 22);
+        else
+          this->n_ |= uint32_t(0x00C00000);
+      }
+      this->n_ |= uint32_t(addr_ & 0xFFFF);
+      if (type_ == 5)
+        this->n_ |= uint32_t(0x00C00000);
     }
-    bool isIO() const
+    int type() const
     {
-      return !!(this->n_ & 0x08000000);
-    }
-    bool haveSegment() const
-    {
-      return !!(this->n_ & 0x04000000);
-    }
-    bool isRead() const
-    {
-      return !!(this->n_ & 0x01000000);
-    }
-    bool isWrite() const
-    {
-      return !!(this->n_ & 0x02000000);
-    }
-    bool isIgnore() const
-    {
-      return !!(this->n_ & 0x10000000);
+      return int(this->n_ >> 24);
     }
     int priority() const
     {
-      return (int) ((this->n_ & 0x00C00000) >> 22);
-    }
-    uint8_t segment() const
-    {
-      if (this->haveSegment())
-        return ((uint8_t) (this->n_ >> 14) & 0xFF);
-      return 0;
+      return int((this->n_ & 0x00C00000) >> 22);
     }
     uint16_t addr() const
     {
-      if (this->haveSegment())
-        return ((uint16_t) (this->n_ & 0x3FFF));
-      return ((uint16_t) this->n_ & 0xFFFF);
+      return uint16_t(this->n_ & 0xFFFF);
     }
     bool operator<(const BreakPoint& bp) const
     {
@@ -111,13 +89,10 @@ namespace Plus4Emu {
     // separated by any whitespace characters (space, tab, or newline).
     // A breakpoint definition consists of an address or address range in
     // one of the following formats (each 'n' is a hexadecimal digit):
-    //   nn             a single I/O port address
-    //   nn-nn          all I/O port addresses in the specified range
     //   nnnn           a single CPU memory address
     //   nnnn-nnnn      all CPU memory addresses in the specified range
-    //   nn:nnnn        a single raw memory address, as segment:offset
-    //   nn:nnnn-nnnn   range of raw memory addresses
-    //                  (segment:first_offset-last_offset)
+    //   nnnn:nn        a single video position, as Y:X
+    //   nnnn:nn-nn     range of video positions (Y:first_X-last_X)
     // and these optional modifiers:
     //   r              the breakpoint is triggered on reads
     //   w              the breakpoint is triggered on writes
@@ -137,11 +112,14 @@ namespace Plus4Emu {
     // If there are any syntax errors in the list, Plus4Emu::Exception is
     // thrown, and no breakpoints are added.
     BreakPointList(const std::string& lst);
-    void addMemoryBreakPoint(uint8_t segment, uint16_t addr,
-                             bool r, bool w, bool ignoreFlag, int priority);
-    void addMemoryBreakPoint(uint16_t addr, bool r, bool w, bool ignoreFlag,
-                             int priority);
-    void addIOBreakPoint(uint16_t addr, bool r, bool w, int priority);
+    // allowed values for type:
+    //   0: memory read/write
+    //   1: memory read
+    //   2: memory write
+    //   3: memory read/write
+    //   4: video (address bits 7..15 for Y, bits 0..6 for X)
+    //   5: ignore other breakpoints if PC is at this address
+    void addBreakPoint(int type, uint16_t addr, int priority);
     size_t getBreakPointCnt() const
     {
       return this->lst_.size();

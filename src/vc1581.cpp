@@ -26,14 +26,12 @@
 #include "vc1581.hpp"
 
 static void defaultBreakPointCallback(void *userData,
-                                      int debugContext_,
-                                      bool isIO, bool isWrite,
+                                      int debugContext_, int type,
                                       uint16_t addr, uint8_t value)
 {
   (void) userData;
   (void) debugContext_;
-  (void) isIO;
-  (void) isWrite;
+  (void) type;
   (void) addr;
   (void) value;
 }
@@ -74,16 +72,13 @@ namespace Plus4 {
   {
   }
 
-  void VC1581::M7501_::breakPointCallback(bool isWrite,
+  void VC1581::M7501_::breakPointCallback(int type,
                                           uint16_t addr, uint8_t value)
   {
-    if (vc1581.noBreakOnDataRead && !isWrite) {
-      if (reg_PC != addr)
-        return;
-    }
+    if (vc1581.noBreakOnDataRead && type == 1)
+      return;
     vc1581.breakPointCallback(vc1581.breakPointCallbackUserData,
-                              (vc1581.deviceNumber & 3) + 1,
-                              false, isWrite, addr, value);
+                              (vc1581.deviceNumber & 3) + 1, type, addr, value);
   }
 
   VC1581::CIA8520_::~CIA8520_()
@@ -317,8 +312,7 @@ namespace Plus4 {
 
   void VC1581::setBreakPointCallback(void (*breakPointCallback_)(
                                          void *userData,
-                                         int debugContext_,
-                                         bool isIO, bool isWrite,
+                                         int debugContext_, int type,
                                          uint16_t addr, uint8_t value),
                                      void *userData_)
   {

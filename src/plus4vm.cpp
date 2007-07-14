@@ -221,15 +221,12 @@ namespace Plus4 {
     return false;
   }
 
-  void Plus4VM::TED7360_::breakPointCallback(bool isWrite,
+  void Plus4VM::TED7360_::breakPointCallback(int type,
                                              uint16_t addr, uint8_t value)
   {
-    if (vm.noBreakOnDataRead && !isWrite) {
-      if (vm.ted->reg_PC != addr)
-        return;
-    }
-    vm.breakPointCallback(vm.breakPointCallbackUserData,
-                          0, false, isWrite, addr, value);
+    if (vm.noBreakOnDataRead && type == 1)
+      return;
+    vm.breakPointCallback(vm.breakPointCallbackUserData, 0, type, addr, value);
   }
 
   void Plus4VM::TED7360_::reset(bool cold_reset)
@@ -544,6 +541,20 @@ namespace Plus4 {
     vm.demoTimeCnt++;
   }
 
+  void Plus4VM::videoBreakPointCheckCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    TED7360_& ted_ = *(vm.ted);
+    if (vm.videoBreakPoints) {
+      uint16_t  n = (ted_.getVideoPositionY() << 7)
+                    | uint16_t(ted_.getVideoPositionX() >> 1);
+      if (vm.videoBreakPoints[n] != 0) {
+        if (int(vm.videoBreakPoints[n]) > ted_.getBreakPointPriorityThreshold())
+          vm.breakPointCallback(vm.breakPointCallbackUserData, 0, 4, n, 0x00);
+      }
+    }
+  }
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -569,7 +580,9 @@ namespace Plus4 {
       floppyROM_1541((uint8_t *) 0),
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
-      floppyROM_1581_1((uint8_t *) 0)
+      floppyROM_1581_1((uint8_t *) 0),
+      videoBreakPointCnt(0),
+      videoBreakPoints((uint8_t *) 0)
   {
     sid_ = new SID();
     try {
@@ -624,6 +637,8 @@ namespace Plus4 {
       delete[] floppyROM_1581_1;
     delete ted;
     delete sid_;
+    if (videoBreakPoints)
+      delete[] videoBreakPoints;
   }
 
   void Plus4VM::run(size_t microseconds)
@@ -1003,7 +1018,7 @@ namespace Plus4 {
         else
           p = ted;
         if (p)
-          p->setSingleStepMode(false, false);
+          p->setSingleStepMode(0);
       }
     }
   }
@@ -1012,19 +1027,29 @@ namespace Plus4 {
   {
     for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
       const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-      if (bp.isIO())
-        throw Plus4Emu::Exception("setting breakpoints on I/O ports is not "
-                                  "supported on this machine");
-      if (bp.haveSegment())
-        throw Plus4Emu::Exception("segment:offset format breakpoints are not "
-                                  "supported on this machine");
+      if (bp.type() == 4 && currentDebugContext != 0)
+        throw Plus4Emu::Exception("cannot set video breakpoints "
+                                  "on floppy drives");
     }
     M7501   *p = getDebugCPU();
     if (p) {
       for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
         const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-        p->setBreakPoint(bp.addr(), bp.priority(),
-                         bp.isRead(), bp.isWrite(), bp.isIgnore());
+        if (bp.type() != 4) {
+          p->setBreakPoint(bp.type(), bp.addr(), bp.priority());
+        }
+        else {
+          if (videoBreakPointCnt == 0) {
+            if (!videoBreakPoints) {
+              videoBreakPoints = new uint8_t[65536];
+              for (size_t j = 0; j <= 0xFFFF; j++)
+                videoBreakPoints[j] = 0;
+            }
+            ted->setCallback(&videoBreakPointCheckCallback, this, 3);
+          }
+          videoBreakPoints[bp.addr()] = uint8_t(bp.priority() + 1);
+          videoBreakPointCnt++;
+        }
       }
     }
   }
@@ -1042,6 +1067,12 @@ namespace Plus4 {
     M7501   *p = getDebugCPU();
     if (p)
       p->clearBreakPoints();
+    if (currentDebugContext == 0 && videoBreakPointCnt != 0) {
+      ted->setCallback(&videoBreakPointCheckCallback, this, 0);
+      videoBreakPointCnt = 0;
+      delete[] videoBreakPoints;
+      videoBreakPoints = (uint8_t *) 0;
+    }
   }
 
   void Plus4VM::setBreakPointPriorityThreshold(int n)
@@ -1065,11 +1096,11 @@ namespace Plus4 {
     }
   }
 
-  void Plus4VM::setSingleStepMode(bool isEnabled, bool stepOverFlag)
+  void Plus4VM::setSingleStepMode(int mode_)
   {
     M7501   *p = getDebugCPU();
     if (p)
-      p->setSingleStepMode(isEnabled, stepOverFlag);
+      p->setSingleStepMode(mode_);
   }
 
   void Plus4VM::setBreakOnInvalidOpcode(bool isEnabled)
@@ -1086,8 +1117,7 @@ namespace Plus4 {
 
   void Plus4VM::setBreakPointCallback(void (*breakPointCallback_)(
                                           void *userData,
-                                          int debugContext_,
-                                          bool isIO, bool isWrite,
+                                          int debugContext_, int type,
                                           uint16_t addr, uint8_t value),
                                       void *userData_)
   {

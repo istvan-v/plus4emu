@@ -74,14 +74,12 @@ static const uint8_t gcrDecodeTable[32] = {
 };
 
 static void defaultBreakPointCallback(void *userData,
-                                      int debugContext_,
-                                      bool isIO, bool isWrite,
+                                      int debugContext_, int type,
                                       uint16_t addr, uint8_t value)
 {
   (void) userData;
   (void) debugContext_;
-  (void) isIO;
-  (void) isWrite;
+  (void) type;
   (void) addr;
   (void) value;
 }
@@ -124,16 +122,13 @@ namespace Plus4 {
   {
   }
 
-  void VC1541::M7501_::breakPointCallback(bool isWrite,
+  void VC1541::M7501_::breakPointCallback(int type,
                                           uint16_t addr, uint8_t value)
   {
-    if (vc1541.noBreakOnDataRead && !isWrite) {
-      if (reg_PC != addr)
-        return;
-    }
+    if (vc1541.noBreakOnDataRead && type == 1)
+      return;
     vc1541.breakPointCallback(vc1541.breakPointCallbackUserData,
-                              (vc1541.deviceNumber & 3) + 1,
-                              false, isWrite, addr, value);
+                              (vc1541.deviceNumber & 3) + 1, type, addr, value);
   }
 
   VC1541::VIA6522_::VIA6522_(VC1541& vc1541_)
@@ -860,8 +855,7 @@ namespace Plus4 {
 
   void VC1541::setBreakPointCallback(void (*breakPointCallback_)(
                                          void *userData,
-                                         int debugContext_,
-                                         bool isIO, bool isWrite,
+                                         int debugContext_, int type,
                                          uint16_t addr, uint8_t value),
                                      void *userData_)
   {

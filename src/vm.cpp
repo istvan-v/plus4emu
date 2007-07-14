@@ -40,14 +40,12 @@
 #endif
 
 static void defaultBreakPointCallback(void *userData,
-                                      int debugContext_,
-                                      bool isIO, bool isWrite,
+                                      int debugContext_, int type,
                                       uint16_t addr, uint8_t value)
 {
   (void) userData;
   (void) debugContext_;
-  (void) isIO;
-  (void) isWrite;
+  (void) type;
   (void) addr;
   (void) value;
 }
@@ -565,10 +563,9 @@ namespace Plus4Emu {
     noBreakOnDataRead = n;
   }
 
-  void VirtualMachine::setSingleStepMode(bool isEnabled, bool stepOverFlag)
+  void VirtualMachine::setSingleStepMode(int mode_)
   {
-    (void) isEnabled;
-    (void) stepOverFlag;
+    (void) mode_;
   }
 
   void VirtualMachine::setBreakOnInvalidOpcode(bool isEnabled)
@@ -578,8 +575,7 @@ namespace Plus4Emu {
 
   void VirtualMachine::setBreakPointCallback(void (*breakPointCallback_)(
                                                  void *userData,
-                                                 int debugContext_,
-                                                 bool isIO, bool isWrite,
+                                                 int debugContext_, int type,
                                                  uint16_t addr, uint8_t value),
                                              void *userData_)
   {

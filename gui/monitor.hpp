@@ -40,6 +40,8 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   uint32_t                  memoryDumpAddress;
   uint32_t                  addressMask;
   bool                      cpuAddressMode;
+  std::FILE                 *traceFile;
+  size_t                    traceInstructionsRemaining;
   // --------
   void command_assemble(const std::vector<std::string>& args);
   void command_disassemble(const std::vector<std::string>& args);
@@ -94,6 +96,12 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
                         size_t argOffs, size_t argCnt,
                         uint32_t startAddr, uint32_t endAddr,
                         bool cpuAddressMode_);
+  inline bool getIsTraceOn() const
+  {
+    return (traceFile != (std::FILE *) 0);
+  }
+  void writeTraceFile(int debugContext_, uint16_t addr);
+  void closeTraceFile();
 };
 
 #endif  // PLUS4EMU_GUI_MONITOR_HPP

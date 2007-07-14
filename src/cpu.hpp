@@ -158,15 +158,15 @@ namespace Plus4 {
     void        *memoryCallbackUserData;
     uint8_t     *breakPointTable;
     unsigned int  breakPointCnt;
-    bool        singleStepModeEnabled;
-    bool        singleStepModeStepOverFlag;
+    // 0: normal mode, 1: single step, 2: step over, 3: trace
+    uint8_t     singleStepMode;
     bool        haveBreakPoints;
     uint8_t     breakPointPriorityThreshold;
     int32_t     singleStepModeNextAddr;
     int32_t     newPCAddress;
+    void checkOpcodeReadBreakPoint(uint16_t addr, uint8_t value);
     void checkReadBreakPoint(uint16_t addr, uint8_t value);
     void checkWriteBreakPoint(uint16_t addr, uint8_t value);
-    void checkSingleStepModeBreak(uint16_t addr, uint8_t value);
    protected:
     inline uint8_t readMemory(uint16_t addr)
     {
@@ -219,13 +219,23 @@ namespace Plus4 {
     {
       reg_SR |= uint8_t(0x40);
     }
-    void setBreakPoint(uint16_t addr, int priority,
-                       bool r, bool w, bool ignoreFlag);
+    // type can be 0 for no break (delete previously set breakpoint),
+    // 1 for memory read, 2 for memory write, 3 for memory read and write,
+    // and 5 for ignore
+    void setBreakPoint(int type, uint16_t addr, int priority);
     void clearBreakPoints();
     void setBreakPointPriorityThreshold(int n);
-    int getBreakPointPriorityThreshold() const;
+    inline int getBreakPointPriorityThreshold() const
+    {
+      return int(breakPointPriorityThreshold >> 2);
+    }
     Plus4Emu::BreakPointList getBreakPointList();
-    void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
+    // 'mode_' can be one of the following values:
+    //   0: normal mode
+    //   1: single step (break on every instruction, disable breakpoints)
+    //   2: step over
+    //   3: trace (break on every instruction, breakpoints are not disabled)
+    void setSingleStepMode(int mode_);
     inline void setBreakOnInvalidOpcode(bool isEnabled)
     {
       this->breakOnInvalidOpcode = isEnabled;
@@ -242,7 +252,9 @@ namespace Plus4 {
     void registerChunkType(Plus4Emu::File&);
    protected:
     virtual bool systemCallback(uint8_t n);
-    virtual void breakPointCallback(bool isWrite, uint16_t addr, uint8_t value);
+    // type is 0 for opcode read at breakpoint, 1 for memory read,
+    // 2 for memory write, and 3 for opcode read in single step mode
+    virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);
   };
 
 }       // namespace Plus4

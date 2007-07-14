@@ -73,11 +73,15 @@ namespace Plus4 {
     virtual const M7501 * getCPU() const = 0;
     /*!
      * Set function to be called when a breakpoint is triggered.
+     * 'type' can be one of the following values:
+     *   0: breakpoint at opcode read
+     *   1: memory read
+     *   2: memory write
+     *   3: opcode read in single step mode
      */
     virtual void setBreakPointCallback(void (*breakPointCallback_)(
                                            void *userData,
-                                           int debugContext_,
-                                           bool isIO, bool isWrite,
+                                           int debugContext_, int type,
                                            uint16_t addr, uint8_t value),
                                        void *userData_) = 0;
     /*!

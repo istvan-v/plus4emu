@@ -55,7 +55,7 @@ class Plus4EmuGUI_DebugWindow {open
     Fl_Window window {
       callback {{
   focusWidget = (Fl_Widget *) 0;
-  gui.vm.setSingleStepMode(false);
+  gui.vm.setSingleStepMode(0);
   this->hide();
 }} open
       xywh {308 146 540 450} type Double color 37 visible
@@ -120,7 +120,7 @@ class Plus4EmuGUI_DebugWindow {open
     }
   }
 }}
-            xywh {20 63 375 25} color 0 selection_color 238 labelcolor 52 align 5 when 10 textfont 4 textcolor 52
+            tooltip {The search string can be specified with the syntax used by the H and SR monitor commands} xywh {20 63 375 25} color 0 selection_color 238 labelcolor 52 align 5 when 10 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
           }
           Fl_Button {} {
@@ -152,7 +152,7 @@ class Plus4EmuGUI_DebugWindow {open
     }
   }
 }}
-            xywh {405 160 115 25} color 0 selection_color 238 labelcolor 52 align 5 when 6 textfont 4 textcolor 52
+            xywh {405 160 115 25} color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
             code1 {o->value("0000");}
           }
@@ -172,7 +172,17 @@ class Plus4EmuGUI_DebugWindow {open
   memoryDumpViewAddress = (memoryDumpViewAddress + 0x003FFF80U) & 0x003FFFFFU;
   updateMemoryDumpDisplay();
 }}
-            tooltip {View previous page} xywh {405 250 55 25} color 39 selection_color 40 labelcolor 52
+            tooltip {View previous page} xywh {405 250 40 25} color 39 selection_color 40 labelcolor 52
+          }
+          Fl_Button {} {
+            label {@|<}
+            callback {{
+  if (memoryDumpStartAddress != memoryDumpViewAddress) {
+    memoryDumpViewAddress = memoryDumpStartAddress;
+    updateMemoryDumpDisplay();
+  }
+}}
+            tooltip {Return to start address} xywh {450 250 25 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Button {} {
             label {@>}
@@ -180,7 +190,7 @@ class Plus4EmuGUI_DebugWindow {open
   memoryDumpViewAddress = (memoryDumpViewAddress + 0x80U) & 0x003FFFFFU;
   updateMemoryDumpDisplay();
 }}
-            tooltip {View next page} xywh {465 250 55 25} color 39 selection_color 40 labelcolor 52
+            tooltip {View next page} xywh {480 250 40 25} color 39 selection_color 40 labelcolor 52
           }
           Fl_Light_Button {} {
             label {ASCII format}
@@ -322,6 +332,18 @@ class Plus4EmuGUI_DebugWindow {open
             tooltip {View next page} xywh {465 115 55 25} color 39 selection_color 40 labelcolor 52
           }
         }
+        Fl_Group monitorTab {
+          label Monitor open
+          xywh {10 35 520 370} box THIN_UP_BOX color 38 selection_color 38 labelcolor 52 hide
+        } {
+          Fl_Text_Editor monitor_ {
+            tooltip {Type ? for a list of available commands, and ? CMD for help on command CMD} xywh {20 48 500 345} color 0 selection_color 238 labelcolor 52 when 0 textfont 5 textcolor 159
+            code0 {o->setDebugger(*this);}
+            code1 {o->cursor_style(Fl_Text_Display::BLOCK_CURSOR);}
+            code2 {o->cursor_color(FL_YELLOW);}
+            class Plus4EmuGUIMonitor
+          }
+        }
         Fl_Group breakPointsTab {
           label Watchpoints open
           xywh {10 35 520 370} box THIN_UP_BOX color 38 selection_color 38 labelcolor 52 hide
@@ -330,7 +352,7 @@ class Plus4EmuGUI_DebugWindow {open
             callback {{
   applyBreakPointList();
 }}
-            tooltip {Enter watchpoint definitions, separated by spaces or newlines. Allowed formats include NN (I/O), NNNN (memory, CPU address), and NN:NNNN (memory, physical address as segment:offset); each N is a hexadecimal digit. Address ranges (separated by a - character) can also be specified. Use the following suffixes to check for read or write access only, set priority, or ignore watchpoints depending on the program counter: r, w, p0, p1, p2, p3, i.} xywh {20 48 345 345} box DOWN_BOX color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
+            tooltip {Enter watchpoint definitions, separated by spaces or newlines. Allowed formats include NNNN (memory, CPU address), and NNNN:NN (TED video position as Y:X); each N is a hexadecimal digit. Address ranges (separated by a - character) can also be specified. Use the following suffixes to check for read or write access only, set priority, or ignore watchpoints depending on the program counter: r, w, p0, p1, p2, p3, i.} xywh {20 48 345 345} box DOWN_BOX color 0 selection_color 238 labelcolor 52 align 5 textfont 4 textcolor 52
             code0 {o->cursor_color(FL_YELLOW);}
             code1 {o->buffer(bpEditBuffer);}
           }
@@ -475,18 +497,6 @@ class Plus4EmuGUI_DebugWindow {open
             tooltip {Reset watchpoints from text format definition} xywh {375 365 145 25} color 39 selection_color 40 labelcolor 52
           }
         }
-        Fl_Group monitorTab {
-          label Monitor open
-          xywh {10 35 520 370} box THIN_UP_BOX color 38 selection_color 38 labelcolor 52 hide
-        } {
-          Fl_Text_Editor monitor_ {
-            xywh {20 48 500 345} color 0 selection_color 238 labelcolor 52 when 0 textfont 5 textcolor 159
-            code0 {o->setDebugger(*this);}
-            code1 {o->cursor_style(Fl_Text_Display::BLOCK_CURSOR);}
-            code2 {o->cursor_color(FL_YELLOW);}
-            class Plus4EmuGUIMonitor
-          }
-        }
       }
       Fl_Choice debugContextValuator {
         callback {{
@@ -503,7 +513,7 @@ class Plus4EmuGUI_DebugWindow {open
         label Step
         callback {{
   focusWidget = stepButton;
-  gui.vm.setSingleStepMode(true);
+  gui.vm.setSingleStepMode(1);
   this->hide();
 }}
         xywh {265 415 80 25} color 38 selection_color 39 labelcolor 52
@@ -512,7 +522,7 @@ class Plus4EmuGUI_DebugWindow {open
         label {Step over}
         callback {{
   focusWidget = stepButton;
-  gui.vm.setSingleStepMode(true, true);
+  gui.vm.setSingleStepMode(2);
   this->hide();
 }}
         xywh {355 415 80 25} color 38 selection_color 39 labelcolor 52
@@ -521,7 +531,7 @@ class Plus4EmuGUI_DebugWindow {open
         label Continue
         callback {{
   focusWidget = continueButton;
-  gui.vm.setSingleStepMode(false);
+  gui.vm.setSingleStepMode(0);
   this->hide();
 }}
         xywh {445 415 80 25} color 38 selection_color 39 labelcolor 52
@@ -541,6 +551,7 @@ class Plus4EmuGUI_DebugWindow {open
   Function {show()} {open return_type void
   } {
     code {{
+  monitor_->closeTraceFile();
   updateWindow();
   if (!window->shown()) {
     window->resize(savedWindowPositionX, savedWindowPositionY, 540, 450);
@@ -574,24 +585,47 @@ class Plus4EmuGUI_DebugWindow {open
   window->label(&(windowTitle[0]));
 }} {}
   }
-  Function {breakPoint(int debugContext_, bool isIO, bool isWrite, uint16_t addr, uint8_t value)} {open return_type void
+  Function {breakPoint(int debugContext_, int type, uint16_t addr, uint8_t value)} {open return_type bool
   } {
     code {{
-  if (isIO) {
-    if (isWrite)
-      std::sprintf(&(windowTitle[0]), "Break on writing %02X to I/O address %02X",
-                   (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFF));
-    else
-      std::sprintf(&(windowTitle[0]), "Break on reading %02X from I/O address %02X",
-                   (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFF));
+  if ((type == 0 || type == 3) && monitor_->getIsTraceOn()) {
+    monitor_->writeTraceFile(debugContext_, addr);
+    if (type == 3)
+      return false;
   }
-  else {
-    if (isWrite)
-      std::sprintf(&(windowTitle[0]), "Break on writing %02X to memory address %04X",
-                   (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFFFF));
-    else
-      std::sprintf(&(windowTitle[0]), "Break on reading %02X from memory address %04X",
-                   (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFFFF));
+  switch (type) {
+  case 0:
+  case 3:
+    try {
+      std::string tmpBuf;
+      tmpBuf.reserve(40);
+      gui.vm.disassembleInstruction(tmpBuf, addr, true);
+      if (tmpBuf.length() > 21 && tmpBuf.length() <= 40) {
+        std::sprintf(&(windowTitle[0]), "Break at PC=%04X: %s",
+                     (unsigned int) (addr & 0xFFFF), (tmpBuf.c_str() + 21));
+        break;
+      }
+    }
+    catch (...) {
+    }
+  case 1:
+    std::sprintf(&(windowTitle[0]),
+                 "Break on reading %02X from memory address %04X",
+                 (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFFFF));
+    break;
+  case 2:
+    std::sprintf(&(windowTitle[0]),
+                 "Break on writing %02X to memory address %04X",
+                 (unsigned int) (value & 0xFF), (unsigned int) (addr & 0xFFFF));
+    break;
+  case 4:
+    std::sprintf(&(windowTitle[0]),
+                 "Break at TED video position %04X:%02X",
+                 (unsigned int) ((addr >> 7) & 0x01FF),
+                 (unsigned int) ((addr & 0x7F) << 1));
+    break;
+  default:
+    std::sprintf(&(windowTitle[0]), "Break");
   }
   window->label(&(windowTitle[0]));
   if (debugTabs->value() == breakPointsTab)
@@ -601,6 +635,7 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyViewAddress = uint32_t(gui.vm.getProgramCounter() & 0xFFFF);
   if (focusWidget == monitor_)
     monitor_->breakMessage(&(windowTitle[0]));
+  return true;
 }} {}
   }
   Function {updateWindow()} {open return_type void

@@ -959,8 +959,7 @@ void Plus4EmuGUI::fltkCheckCallback(void *userData)
 }
 
 void Plus4EmuGUI::breakPointCallback(void *userData,
-                                     int debugContext_,
-                                     bool isIO, bool isWrite,
+                                     int debugContext_, int type,
                                      uint16_t addr, uint8_t value)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
@@ -969,7 +968,10 @@ void Plus4EmuGUI::breakPointCallback(void *userData,
     Fl::unlock();
     return;
   }
-  gui_.debugWindow->breakPoint(debugContext_, isIO, isWrite, addr, value);
+  if (!gui_.debugWindow->breakPoint(debugContext_, type, addr, value)) {
+    Fl::unlock();
+    return;             // do not show debugger window if tracing
+  }
   if (!gui_.debugWindow->shown()) {
     gui_.debugWindowShowFlag = true;
     Fl::awake();

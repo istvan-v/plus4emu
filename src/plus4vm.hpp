@@ -59,8 +59,7 @@ namespace Plus4 {
       virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes);
       virtual void ntscModeChangeCallback(bool isNTSC_);
       virtual bool systemCallback(uint8_t n);
-      virtual void breakPointCallback(bool isWrite,
-                                      uint16_t addr, uint8_t value);
+      virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);
     };
     // ----------------
     TED7360_  *ted;
@@ -111,6 +110,8 @@ namespace Plus4 {
     uint8_t   *floppyROM_1551;
     uint8_t   *floppyROM_1581_0;
     uint8_t   *floppyROM_1581_1;
+    size_t    videoBreakPointCnt;
+    uint8_t   *videoBreakPoints;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -140,6 +141,7 @@ namespace Plus4 {
     static void sidCallback(void *userData);
     static void demoPlayCallback(void *userData);
     static void demoRecordCallback(void *userData);
+    static void videoBreakPointCheckCallback(void *userData);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -261,10 +263,14 @@ namespace Plus4 {
     virtual void setNoBreakOnDataRead(bool n);
     /*!
      * Set if the breakpoint callback should be called whenever the first byte
-     * of a CPU instruction is read from memory. Breakpoints are ignored in
-     * this mode.
+     * of a CPU instruction is read from memory. 'mode_' can be one of the
+     * following values:
+     *   0: normal mode
+     *   1: single step mode (break on every instruction, ignore breakpoints)
+     *   2: step over mode
+     *   3: trace (similar to mode 1, but does not ignore breakpoints)
      */
-    virtual void setSingleStepMode(bool isEnabled, bool stepOverFlag = false);
+    virtual void setSingleStepMode(int mode_);
     /*!
      * Set if invalid CPU opcodes should be interpreted as NOPs with
      * a breakpoint set (priority = 3).
@@ -272,11 +278,16 @@ namespace Plus4 {
     virtual void setBreakOnInvalidOpcode(bool isEnabled);
     /*!
      * Set function to be called when a breakpoint is triggered.
+     * 'type' can be one of the following values:
+     *   0: breakpoint at opcode read
+     *   1: memory read
+     *   2: memory write
+     *   3: opcode read in single step mode
+     *   4: video breakpoint ('addr' is Y * 128 + X / 2)
      */
     virtual void setBreakPointCallback(void (*breakPointCallback_)(
                                            void *userData,
-                                           int debugContext_,
-                                           bool isIO, bool isWrite,
+                                           int debugContext_, int type,
                                            uint16_t addr, uint8_t value),
                                        void *userData_);
     /*!

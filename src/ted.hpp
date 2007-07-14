@@ -488,6 +488,14 @@ namespace Plus4 {
     {
       return !!(tedRegisters[0x07] & 0x40);
     }
+    inline uint8_t getVideoPositionX() const
+    {
+      return uint8_t((video_column & 0x7F) << 1);
+    }
+    inline uint16_t getVideoPositionY() const
+    {
+      return uint16_t(savedVideoLine & 0x01FF);
+    }
     // Set function to be called by runOneCycle(). 'flags_' can be one of
     // the following values:
     //   0: do not call the function (removes a previously set callback)

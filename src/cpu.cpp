@@ -53,8 +53,7 @@ namespace Plus4 {
       memoryCallbackUserData((void *) 0),
       breakPointTable((uint8_t *) 0),
       breakPointCnt(0U),
-      singleStepModeEnabled(false),
-      singleStepModeStepOverFlag(false),
+      singleStepMode(0),
       haveBreakPoints(false),
       breakPointPriorityThreshold(0),
       singleStepModeNextAddr(int32_t(-1)),
@@ -105,10 +104,8 @@ namespace Plus4 {
               currentOpcode--;
               break;
             }
-            if (singleStepModeEnabled)
-              checkSingleStepModeBreak(reg_PC, opNum);
-            else if (haveBreakPoints)
-              checkReadBreakPoint(reg_PC, opNum);
+            if (uint8_t(haveBreakPoints) | singleStepMode)
+              checkOpcodeReadBreakPoint(reg_PC, opNum);
             reg_PC = (reg_PC + 1) & 0xFFFF;
             currentOpcode = &(opcodeTable[size_t(opNum) << 4]);
           }
@@ -1139,9 +1136,10 @@ namespace Plus4 {
               currentOpcode--;
               break;
             }
-            if (!(singleStepModeEnabled || breakPointPriorityThreshold >= 16)) {
+            if (!((singleStepMode == 1 || singleStepMode == 2) ||
+                  breakPointPriorityThreshold >= 16)) {
               reg_PC = tmp;
-              breakPointCallback(false, tmp, tmp2);
+              breakPointCallback(0, tmp, tmp2);
               reg_PC = (reg_PC + 1) & 0xFFFF;
             }
             currentOpcode = &(opcodeTable[0x0FFF]);
@@ -1182,31 +1180,18 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  void M7501::checkReadBreakPoint(uint16_t addr, uint8_t value)
+  void M7501::checkOpcodeReadBreakPoint(uint16_t addr, uint8_t value)
   {
-    if (!singleStepModeEnabled) {
+    if (haveBreakPoints && !(singleStepMode == 1 || singleStepMode == 2)) {
       uint8_t *tbl = breakPointTable;
       if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0) {
-        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
-          breakPointCallback(false, addr, value);
+        if (!((tbl[addr] | tbl[reg_PC]) & 0x10)) {
+          breakPointCallback(0, addr, value);
+          return;
+        }
       }
     }
-  }
-
-  void M7501::checkWriteBreakPoint(uint16_t addr, uint8_t value)
-  {
-    if (!singleStepModeEnabled) {
-      uint8_t *tbl = breakPointTable;
-      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 2) != 0) {
-        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
-          breakPointCallback(true, addr, value);
-      }
-    }
-  }
-
-  void M7501::checkSingleStepModeBreak(uint16_t addr, uint8_t value)
-  {
-    if (singleStepModeStepOverFlag) {
+    if (singleStepMode == 2) {
       if (singleStepModeNextAddr >= int32_t(0) &&
           singleStepModeNextAddr != int32_t(addr))
         return;
@@ -1221,13 +1206,35 @@ namespace Plus4 {
       if (breakPointTable[addr] & 0x10)
         return;
     }
-    breakPointCallback(false, addr, value);
+    breakPointCallback(3, addr, value);
   }
 
-  void M7501::setBreakPoint(uint16_t addr, int priority,
-                            bool r, bool w, bool ignoreFlag)
+  void M7501::checkReadBreakPoint(uint16_t addr, uint8_t value)
   {
-    uint8_t mode = (r ? 1 : 0) | (w ? 2 : 0) | (ignoreFlag ? 31 : 0);
+    if (!(singleStepMode == 1 || singleStepMode == 2)) {
+      uint8_t *tbl = breakPointTable;
+      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0) {
+        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+          breakPointCallback(1, addr, value);
+      }
+    }
+  }
+
+  void M7501::checkWriteBreakPoint(uint16_t addr, uint8_t value)
+  {
+    if (!(singleStepMode == 1 || singleStepMode == 2)) {
+      uint8_t *tbl = breakPointTable;
+      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 2) != 0) {
+        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+          breakPointCallback(2, addr, value);
+      }
+    }
+  }
+
+  void M7501::setBreakPoint(int type, uint16_t addr, int priority)
+  {
+    uint8_t mode =
+        uint8_t(type >= 0 && type <= 3 ? type : (type == 5 ? 31 : 0));
     if (mode) {
       // create new breakpoint, or change existing one
       mode |= uint8_t((priority > 0 ? (priority < 3 ? priority : 3) : 0) << 2);
@@ -1259,17 +1266,12 @@ namespace Plus4 {
   void M7501::clearBreakPoints()
   {
     for (unsigned int addr = 0; addr < 65536; addr++)
-      setBreakPoint(uint16_t(addr), 0, false, false, false);
+      setBreakPoint(0, uint16_t(addr), 0);
   }
 
   void M7501::setBreakPointPriorityThreshold(int n)
   {
     breakPointPriorityThreshold = uint8_t((n > 0 ? (n < 4 ? n : 4) : 0) << 2);
-  }
-
-  int M7501::getBreakPointPriorityThreshold() const
-  {
-    return int(breakPointPriorityThreshold >> 2);
   }
 
   Plus4Emu::BreakPointList M7501::getBreakPointList()
@@ -1278,20 +1280,19 @@ namespace Plus4 {
     if (breakPointTable) {
       for (size_t i = 0; i < 65536; i++) {
         uint8_t bp = breakPointTable[i];
-        if (bp)
-          bplst.addMemoryBreakPoint(uint16_t(i),
-                                    !!(bp & 1), !!(bp & 2), !!(bp & 16),
-                                    bp >> 2);
+        if (bp) {
+          bplst.addBreakPoint(((bp & 16) != 0 ? 5 : int(bp & 3)),
+                              uint16_t(i), bp >> 2);
+        }
       }
     }
     return bplst;
   }
 
-  void M7501::setSingleStepMode(bool isEnabled, bool stepOverFlag)
+  void M7501::setSingleStepMode(int mode_)
   {
-    singleStepModeEnabled = isEnabled;
-    singleStepModeStepOverFlag = isEnabled && stepOverFlag;
-    if (!isEnabled)
+    singleStepMode = uint8_t(mode_ >= 0 && mode_ <= 3 ? mode_ : 0);
+    if (!singleStepMode)
       singleStepModeNextAddr = int32_t(-1);
   }
 
@@ -1321,9 +1322,9 @@ namespace Plus4 {
     r.reg_SP = reg_SP;
   }
 
-  void M7501::breakPointCallback(bool isWrite, uint16_t addr, uint8_t value)
+  void M7501::breakPointCallback(int type, uint16_t addr, uint8_t value)
   {
-    (void) isWrite;
+    (void) type;
     (void) addr;
     (void) value;
   }
