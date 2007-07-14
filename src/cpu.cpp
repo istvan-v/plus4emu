@@ -1190,6 +1190,8 @@ namespace Plus4 {
           return;
         }
       }
+      if (!singleStepMode)
+        return;
     }
     if (singleStepMode == 2) {
       if (singleStepModeNextAddr >= int32_t(0) &&

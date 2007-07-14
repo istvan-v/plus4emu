@@ -975,6 +975,14 @@ namespace Plus4Emu {
     if (!(mode >= 0 && mode <= 2))
       throw Exception("invalid tape open mode parameter");
     isReadOnly = (mode == 2);
+    if (!isReadOnly) {
+      // check if file exists so that libsndfile does not create an empty file
+      std::FILE *f = std::fopen(fileName, "rb");
+      if (f)
+        std::fclose(f);
+      else
+        throw Exception("error opening tape file");
+    }
     SF_INFO sfinfo;
     std::memset(&sfinfo, 0, sizeof(SF_INFO));
     sf = sf_open(fileName, (isReadOnly ? SFM_READ : SFM_RDWR), &sfinfo);
