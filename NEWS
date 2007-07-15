@@ -1,5 +1,24 @@
-Changes in version 1.2.0
-------------------------
+Changes in version 1.2.0 beta
+-----------------------------
+
+  * many improvements in the TV emulation; to enable all the new
+    features, use OpenGL mode and set the display quality to 3 (requires
+    OpenGL 2.0 or newer and shader support)
+  * added a tedmon-like monitor to the debugger; it supports all the
+    commands, including assemble, but there are also some improvements
+    and additional features (use ? to print the list of commands, or ? N
+    for help on command N)
+  * it is now possible to set breakpoints on TED video positions in the
+    debugger
+  * trace command in the monitor for logging CPU instructions to a text
+    file; when debugging the main CPU, the TED video position at the
+    first cycle of each opcode is also logged
+  * the file I/O ROM module now also includes a tape turbo; to enable
+    it, set $0647 to $17, $27, $37, or $47 to select speed (from slowest
+    to fastest), and use device 7 when saving
+  * tape playback and recording can be sent to the sound output
+  * the RAM startup pattern has been made configurable
+  * various bug fixes
 
 Changes in version 1.1.3
 ------------------------

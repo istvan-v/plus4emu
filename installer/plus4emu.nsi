@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.0.exe"
+  OutFile "plus4emu-1.2.0-beta.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -143,6 +143,8 @@ Section "Source code" SecSrc
   File "..\gui\gui.cpp"
   File "..\gui\gui.hpp"
   File "..\gui\main.cpp"
+  File "..\gui\monitor.cpp"
+  File "..\gui\monitor.hpp"
 
   SetOutPath "$INSTDIR\src\installer"
 

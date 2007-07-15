@@ -7,7 +7,7 @@ disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 enableGLShaders = 1
 
 compilerFlags = Split('''
-    -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
+    -Wall -W -ansi -pedantic -Wno-long-long -O3 -fno-inline-functions -fomit-frame-pointer -ffast-math
 ''')
 
 fltkConfig = 'fltk-config'
