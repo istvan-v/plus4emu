@@ -331,7 +331,37 @@ namespace Plus4 {
     }
   }
 
-  void TED7360::setRAMSize(size_t n)
+  void TED7360::initializeRAMSegment(uint8_t *p)
+  {
+    uint8_t   ramPatternBase[256];
+    uint8_t   bitMasks[8];
+    uint8_t   xorValue = 0x00;
+    uint64_t  tmp = ramPatternCode;
+    for (unsigned int i = 0U; i < 8U; i++) {
+      bitMasks[i] = uint8_t(1 << ((unsigned char) tmp & 7));
+      xorValue |= uint8_t((((unsigned char) tmp & 8) >> 3) << i);
+      tmp = tmp >> 4;
+    }
+    for (unsigned int i = 0U; i < 256U; i++) {
+      uint8_t n = xorValue;
+      for (unsigned int j = 0U; j < 8U; j++) {
+        if (i & (unsigned int) bitMasks[j])
+          n ^= uint8_t(1U << j);
+      }
+      ramPatternBase[i] = n;
+    }
+    ramPatternBase[0] ^= (uint8_t(tmp) & uint8_t(0xFF));
+    unsigned int  tmp2 = ((unsigned int) tmp >> 8) & 0xFFU;
+    for (unsigned int i = 0U; i <= 0x3FFFU; i++) {
+      randomSeed = (randomSeed * 1103515245U + 12345U) & 0x7FFFFFFFU;
+      if (tmp2 <= ((randomSeed >> 15) & 0xFFU))
+        p[i] = ramPatternBase[i & 0xFFU];
+      else
+        p[i] = uint8_t(randomSeed >> 23);
+    }
+  }
+
+  void TED7360::setRAMSize(size_t n, uint64_t ramPattern)
   {
     if (n > 256)
       n = 1024;
@@ -344,6 +374,7 @@ namespace Plus4 {
     else
       n = 16;
     ramSegments = uint8_t(n >> 4);
+    ramPatternCode = ramPattern & ((uint64_t(1) << 48) - uint64_t(1));
     // free old segments if reducing memory size
     for (uint8_t i = uint8_t(0x08); i <= (uint8_t(0xFF) - ramSegments); i++) {
       if (segmentTable[i]) {
@@ -356,11 +387,7 @@ namespace Plus4 {
       if (!segmentTable[i])
         segmentTable[i] = new uint8_t[16384];
       // clear memory
-      for (size_t j = 0; j < 0x4000; j++) {
-        uint8_t   tmp = ((j & 1) ? uint8_t(0xFF) : uint8_t(0x00));
-        tmp = ((j & 0x40) ? (tmp & uint8_t(0xF7)) : (tmp | uint8_t(0x08)));
-        segmentTable[i][j] = ((j & 0xFF) ? tmp : uint8_t(0xFF));
-      }
+      initializeRAMSegment(segmentTable[i]);
     }
     // set up memory map table
     for (size_t i = 0; i < 4096; i++) {

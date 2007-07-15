@@ -207,6 +207,7 @@ namespace Plus4 {
     static REGPARM void render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_invalid_mode(TED7360& ted,
                                             uint8_t *bufp, int offs);
+    void initializeRAMSegment(uint8_t *p);
     // -----------------------------------------------------------------
    protected:
     // CPU I/O registers
@@ -379,6 +380,8 @@ namespace Plus4 {
     TEDCallback callbacks[16];
     TEDCallback *firstCallback0;
     TEDCallback *firstCallback1;
+    uint64_t    ramPatternCode;
+    uint32_t    randomSeed;
     // -----------------------------------------------------------------
     void selectRenderer();
     void initRegisters();
@@ -429,8 +432,26 @@ namespace Plus4 {
     // ignored.
     void loadROM(int bankNum, int offs, int cnt, const uint8_t *buf);
     // Resize RAM to 'n' kilobytes (16, 32, 64, 256, or 1024), and clear all
-    // RAM data.
-    void setRAMSize(size_t n);
+    // RAM data to a pattern defined by 'ramPattern':
+    //   bits 0 to 2:   address line (0 to 7) for initial value of data bit 0
+    //   bit 3:         invert bit 0
+    //   bits 4 to 6:   address line (0 to 7) for initial value of data bit 1
+    //   bit 7:         invert bit 1
+    //   bits 8 to 10:  address line (0 to 7) for initial value of data bit 2
+    //   bit 11:        invert bit 2
+    //   bits 12 to 14: address line (0 to 7) for initial value of data bit 3
+    //   bit 15:        invert bit 3
+    //   bits 16 to 18: address line (0 to 7) for initial value of data bit 4
+    //   bit 19:        invert bit 4
+    //   bits 20 to 22: address line (0 to 7) for initial value of data bit 5
+    //   bit 23:        invert bit 5
+    //   bits 24 to 26: address line (0 to 7) for initial value of data bit 6
+    //   bit 27:        invert bit 6
+    //   bits 28 to 30: address line (0 to 7) for initial value of data bit 7
+    //   bit 31:        invert bit 7
+    //   bits 32 to 39: XOR value for bytes at the beginning of 256 byte pages
+    //   bits 40 to 47: probability of random bytes (0: none, 255: maximum)
+    void setRAMSize(size_t n, uint64_t ramPattern = 0UL);
     void runOneCycle();
     virtual void reset(bool cold_reset = false);
     void setCPUClockMultiplier(int clk);

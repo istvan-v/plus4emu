@@ -20,6 +20,7 @@
 #include "plus4emu.hpp"
 #include "cpu.hpp"
 #include "ted.hpp"
+#include "system.hpp"
 
 static const uint8_t tedRegisterInit[32] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0B, 0x08,
@@ -43,6 +44,8 @@ namespace Plus4 {
     firstCallback1 = (TEDCallback *) 0;
     // create initial memory map
     ramSegments = 0;
+    ramPatternCode = 0UL;
+    randomSeed = Plus4Emu::Timer::getRandomSeedFromTime() & 0x7FFFFFFFU;
     for (int i = 0; i < 256; i++)
       segmentTable[i] = (uint8_t *) 0;
     try {
