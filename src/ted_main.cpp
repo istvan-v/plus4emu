@@ -117,10 +117,10 @@ namespace Plus4 {
         break;
       case 97:                          // increment line number
         if (!(videoOutputFlags & uint8_t(0x01))) {              // PAL
+          videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
+                                     | (((savedVideoLine & 0x01) ^ 0x01) << 2));
           savedVideoLine =
               (savedVideoLine != 311 ? ((video_line + 1) & 0x01FF) : 0);
-          videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
-                                     | ((savedVideoLine & 0x01) << 2));
           switch (savedVideoLine) {
           case 251:                     // vertical blanking, equalization start
             videoOutputFlags |= uint8_t(0x10);
