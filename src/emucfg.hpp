@@ -47,10 +47,17 @@ namespace Plus4Emu {
     } vm;
     bool          vmConfigurationChanged;
     // --------
+    struct MemoryRAMConfiguration_ {
+      int         size;
+      std::string startupPattern;
+      MemoryRAMConfiguration_()
+        : size(64),
+          startupPattern(std::string(VirtualMachine::defaultRAMPatternString))
+      {
+      }
+    };
     struct MemoryConfiguration_ {
-      struct {
-        int       size;
-      } ram;
+      MemoryRAMConfiguration_   ram;
       struct ROMSegmentConfig {
         std::string file;
         int         offset;
@@ -156,6 +163,7 @@ namespace Plus4Emu {
     struct TapeConfiguration_ {
       std::string imageFile;
       int         defaultSampleRate;
+      int         feedbackLevel;
       bool        fastMode;
       int         soundFileChannel;
       bool        enableSoundFileFilter;
@@ -163,9 +171,8 @@ namespace Plus4Emu {
       double      soundFileFilterMaxFreq;
     };
     TapeConfiguration_    tape;
+    bool          tapeFileChanged;
     bool          tapeSettingsChanged;
-    bool          tapeDefaultSampleRateChanged;
-    bool          fastTapeModeChanged;
     bool          tapeSoundFileSettingsChanged;
     // --------
     struct FileIOConfiguration_ {

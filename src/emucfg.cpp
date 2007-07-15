@@ -97,6 +97,10 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "memory.ram.size",
                                 memory.ram.size, 64,
                                 memoryConfigurationChanged, 16.0, 1024.0, 16.0);
+    defineConfigurationVariable(
+        *this, "memory.ram.startupPattern", memory.ram.startupPattern,
+        std::string(VirtualMachine::defaultRAMPatternString),
+        memoryConfigurationChanged);
     for (size_t i = 0; i < 50; i++) {
       if (i >= 8 && i < 48 && (i != 16 && i != 32))
         continue;
@@ -295,14 +299,18 @@ namespace Plus4Emu {
     // ----------------
     defineConfigurationVariable(*this, "tape.imageFile",
                                 tape.imageFile, std::string(""),
-                                tapeSettingsChanged);
+                                tapeFileChanged);
     defineConfigurationVariable(*this, "tape.defaultSampleRate",
                                 tape.defaultSampleRate, int(24000),
-                                tapeDefaultSampleRateChanged,
+                                tapeSettingsChanged,
                                 10000.0, 120000.0);
+    defineConfigurationVariable(*this, "tape.feedbackLevel",
+                                tape.feedbackLevel, int(0),
+                                tapeSettingsChanged,
+                                -10.0, 10.0);
     defineConfigurationVariable(*this, "tape.fastMode",
                                 tape.fastMode, false,
-                                fastTapeModeChanged);
+                                tapeSettingsChanged);
     defineConfigurationVariable(*this, "tape.soundFileChannel",
                                 tape.soundFileChannel, int(0),
                                 tapeSoundFileSettingsChanged,
@@ -349,7 +357,31 @@ namespace Plus4Emu {
       vmConfigurationChanged = false;
     }
     if (memoryConfigurationChanged) {
-      vm_.resetMemoryConfiguration(memory.ram.size);
+      uint64_t  ramPattern = 0UL;
+      if (memory.ram.startupPattern.length() > 0) {
+        try {
+          if (memory.ram.startupPattern.length() > 12)
+            throw Exception("invalid RAM startup pattern string");
+          for (size_t i = 0; i < memory.ram.startupPattern.length(); i++) {
+            char    c = memory.ram.startupPattern[i];
+            ramPattern = ramPattern << 4;
+            if (c >= '0' && c <= '9')
+              ramPattern |= uint64_t(c - '0');
+            else if (c >= 'A' && c <= 'F')
+              ramPattern |= uint64_t((c - 'A') + 10);
+            else if (c >= 'a' && c <= 'f')
+              ramPattern |= uint64_t((c - 'a') + 10);
+            else
+              throw Exception("invalid RAM startup pattern string");
+          }
+        }
+        catch (std::exception& e) {
+          ramPattern = 0UL;
+          memory.ram.startupPattern = "";
+          errorCallback(errorCallbackUserData, e.what());
+        }
+      }
+      vm_.resetMemoryConfiguration(memory.ram.size, ramPattern);
       for (size_t i = 0; i < 64; i++) {
         if (i >= 8 && (i & 15) >= 4)
           continue;
@@ -492,11 +524,13 @@ namespace Plus4Emu {
       vm_.setFloppyDriveHighAccuracy(floppy.highTimingAccuracy);
       floppyTimingAccuracyChanged = false;
     }
-    if (tapeDefaultSampleRateChanged) {
-      vm_.setDefaultTapeSampleRate(tape.defaultSampleRate);
-      tapeDefaultSampleRateChanged = false;
-    }
     if (tapeSettingsChanged) {
+      vm_.setDefaultTapeSampleRate(tape.defaultSampleRate);
+      vm_.setTapeFeedbackLevel(tape.feedbackLevel);
+      vm_.setEnableFastTapeMode(tape.fastMode);
+      tapeSettingsChanged = false;
+    }
+    if (tapeFileChanged) {
       try {
         vm_.setTapeFileName(tape.imageFile);
       }
@@ -505,11 +539,7 @@ namespace Plus4Emu {
         vm_.setTapeFileName(tape.imageFile);
         errorCallback(errorCallbackUserData, e.what());
       }
-      tapeSettingsChanged = false;
-    }
-    if (fastTapeModeChanged) {
-      vm_.setEnableFastTapeMode(tape.fastMode);
-      fastTapeModeChanged = false;
+      tapeFileChanged = false;
     }
     if (tapeSoundFileSettingsChanged) {
       vm_.setTapeSoundFileParameters(tape.soundFileChannel,

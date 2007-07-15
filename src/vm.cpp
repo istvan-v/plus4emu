@@ -91,6 +91,8 @@ namespace Plus4Emu {
     }
   };
 
+  const char * VirtualMachine::defaultRAMPatternString = "01F70000E000";
+
   VirtualMachine::VirtualMachine(VideoDisplay& display_,
                                  AudioOutput& audioOutput_)
     : display(display_),
@@ -191,9 +193,11 @@ namespace Plus4Emu {
     (void) isColdReset;
   }
 
-  void VirtualMachine::resetMemoryConfiguration(size_t memSize)
+  void VirtualMachine::resetMemoryConfiguration(size_t memSize,
+                                                uint64_t ramPattern)
   {
     (void) memSize;
+    (void) ramPattern;
   }
 
   void VirtualMachine::loadROMSegment(uint8_t n,
@@ -402,6 +406,11 @@ namespace Plus4Emu {
                              : 10000L);
   }
 
+  void VirtualMachine::setTapeFeedbackLevel(int n)
+  {
+    (void) n;
+  }
+
   long VirtualMachine::getTapeSampleRate() const
   {
     if (tape)
@@ -426,25 +435,17 @@ namespace Plus4Emu {
   void VirtualMachine::tapePlay()
   {
     tapeRecordOn = false;
-    if (tape) {
-      tapePlaybackOn = true;
+    tapePlaybackOn = true;
+    if (tape)
       tape->play();
-    }
-    else
-      tapePlaybackOn = false;
   }
 
   void VirtualMachine::tapeRecord()
   {
-    if (tape) {
-      tapePlaybackOn = true;
-      tapeRecordOn = true;
+    tapePlaybackOn = true;
+    tapeRecordOn = true;
+    if (tape)
       tape->record();
-    }
-    else {
-      tapePlaybackOn = false;
-      tapeRecordOn = false;
-    }
   }
 
   void VirtualMachine::tapeStop()

@@ -24,6 +24,7 @@
 #include "disasm.hpp"
 
 #include <cstdio>
+#include <cmath>
 #include <vector>
 
 #include "resid/sid.hpp"
@@ -483,8 +484,16 @@ namespace Plus4 {
       // assume tape sample rate < single clock frequency
       vm.tapeTimeRemaining -= vm.tapeTimesliceLength;
       vm.setTapeMotorState(vm.ted->getTapeMotorState());
-      vm.ted->setTapeInput(vm.runTape(vm.ted->getTapeOutput() ? 1 : 0) > 0);
+      bool    tedTapeOutput = vm.ted->getTapeOutput();
+      bool    tedTapeInput = (vm.runTape(tedTapeOutput ? 1 : 0) > 0);
+      vm.ted->setTapeInput(tedTapeInput);
+      int     tapeButtonState = vm.getTapeButtonState();
+      bool    tapeFeedback = ((tapeButtonState == 1 && tedTapeInput) ||
+                              (tapeButtonState == 2 && tedTapeOutput));
+      vm.tapeFeedbackSignal = (tapeFeedback ?
+                               vm.tapeFeedbackLevel : int32_t(0));
     }
+    vm.soundOutputAccumulator += vm.tapeFeedbackSignal;
   }
 
   void Plus4VM::sidCallback(void *userData)
@@ -582,7 +591,9 @@ namespace Plus4 {
       floppyROM_1581_0((uint8_t *) 0),
       floppyROM_1581_1((uint8_t *) 0),
       videoBreakPointCnt(0),
-      videoBreakPoints((uint8_t *) 0)
+      videoBreakPoints((uint8_t *) 0),
+      tapeFeedbackSignal(0),
+      tapeFeedbackLevel(0)
   {
     sid_ = new SID();
     try {
@@ -653,11 +664,13 @@ namespace Plus4 {
           ted->setKeyState(i, false);
       }
     }
-    bool    newTapeCallbackFlag = (haveTape() && getTapeButtonState() != 0);
+    bool    newTapeCallbackFlag = (getTapeButtonState() != 0);
     if (newTapeCallbackFlag != tapeCallbackFlag) {
       tapeCallbackFlag = newTapeCallbackFlag;
-      if (!tapeCallbackFlag)
+      if (!tapeCallbackFlag) {
         ted->setTapeInput(false);
+        tapeFeedbackSignal = 0;
+      }
       ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
     tedTimeRemaining += (int64_t(microseconds) << 32);
@@ -681,7 +694,7 @@ namespace Plus4 {
     resetFloppyDrives(0x0F, isColdReset);
   }
 
-  void Plus4VM::resetMemoryConfiguration(size_t memSize)
+  void Plus4VM::resetMemoryConfiguration(size_t memSize, uint64_t ramPattern)
   {
     try {
       stopDemo();
@@ -711,7 +724,7 @@ namespace Plus4 {
         floppyROM_1581_1 = (uint8_t *) 0;
       }
       // set new RAM size
-      ted->setRAMSize(memSize);
+      ted->setRAMSize(memSize, ramPattern);
     }
     catch (...) {
       try {
@@ -976,6 +989,21 @@ namespace Plus4 {
     else
       tapeTimesliceLength = 0;
     tapeTimeRemaining = 0;
+  }
+
+  void Plus4VM::setTapeFeedbackLevel(int n)
+  {
+    n = (n >= -10 ? (n <= 10 ? n : 10) : -10);
+    if (n > 0) {
+      tapeFeedbackLevel =
+          int32_t(std::pow(2.0, double(n) * 0.5) * 11264.0 + 0.5);
+    }
+    else if (n < 0) {
+      tapeFeedbackLevel =
+          int32_t(std::pow(2.0, double(n) * -0.5) * -11264.0 - 0.5);
+    }
+    else
+      tapeFeedbackLevel = 0;
   }
 
   void Plus4VM::tapePlay()

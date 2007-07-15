@@ -92,6 +92,9 @@ namespace Plus4Emu {
       //   0x02000000: drive 3 green LED is on
       uint32_t  floppyDriveLEDState;
     };
+    static const uint64_t defaultRAMPattern =
+        (uint64_t(0x0000E000UL) | (uint64_t(0x000001F7UL) << 32));
+    static const char     *defaultRAMPatternString;
     // --------
     VirtualMachine(VideoDisplay& display_, AudioOutput& audioOutput_);
     virtual ~VirtualMachine();
@@ -119,9 +122,29 @@ namespace Plus4Emu {
     virtual void reset(bool isColdReset = false);
     /*!
      * Delete all ROM segments, and resize RAM to 'memSize' kilobytes;
-     * implies calling reset(true).
+     * implies calling reset(true). RAM is cleared to a pattern defined
+     * by 'ramPattern':
+     *   bits 0 to 2:   address line (0 to 7) for initial value of data bit 0
+     *   bit 3:         invert bit 0
+     *   bits 4 to 6:   address line (0 to 7) for initial value of data bit 1
+     *   bit 7:         invert bit 1
+     *   bits 8 to 10:  address line (0 to 7) for initial value of data bit 2
+     *   bit 11:        invert bit 2
+     *   bits 12 to 14: address line (0 to 7) for initial value of data bit 3
+     *   bit 15:        invert bit 3
+     *   bits 16 to 18: address line (0 to 7) for initial value of data bit 4
+     *   bit 19:        invert bit 4
+     *   bits 20 to 22: address line (0 to 7) for initial value of data bit 5
+     *   bit 23:        invert bit 5
+     *   bits 24 to 26: address line (0 to 7) for initial value of data bit 6
+     *   bit 27:        invert bit 6
+     *   bits 28 to 30: address line (0 to 7) for initial value of data bit 7
+     *   bit 31:        invert bit 7
+     *   bits 32 to 39: XOR value for bytes at the beginning of 256 byte pages
+     *   bits 40 to 47: probability of random bytes (0: none, 255: maximum)
      */
-    virtual void resetMemoryConfiguration(size_t memSize);
+    virtual void resetMemoryConfiguration(
+        size_t memSize, uint64_t ramPattern = defaultRAMPattern);
     /*!
      * Load ROM segment 'n' from the specified file, skipping 'offs' bytes.
      */
@@ -229,6 +252,12 @@ namespace Plus4Emu {
      * stored in the file header is used instead.
      */
     virtual void setDefaultTapeSampleRate(long sampleRate_ = 24000L);
+    /*!
+     * Send tape input/output signals to the sound output. The absolute value
+     * of 'n' (in the range 0 to 10) controls the output level, negative
+     * values invert the signal. If 'n' is zero, tape feedback is disabled.
+     */
+    virtual void setTapeFeedbackLevel(int n);
     /*!
      * Returns the actual sample rate of the tape file, or zero if there is no
      * tape image file opened.
