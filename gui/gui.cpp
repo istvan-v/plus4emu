@@ -47,6 +47,7 @@ void Plus4EmuGUI::init_()
   displayMode = 0;
   exitFlag = false;
   errorFlag = false;
+  lightPenEnabled = false;
   oldWindowWidth = -1;
   oldWindowHeight = -1;
   oldDisplayMode = 0;
@@ -430,6 +431,10 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_DeleteCPs, (void *) this);
   mainMenuBar->add("Machine/Tape/Close",
                    (char *) 0, &menuCallback_Machine_TapeClose, (void *) this);
+  mainMenuBar->add("Machine/Printer/Enable printer",
+                   (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
+  mainMenuBar->add("Machine/Printer/View printer output",
+                   (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
   mainMenuBar->add("Machine/Reset/Reset (F11)",
                    (char *) 0, &menuCallback_Machine_Reset, (void *) this);
   mainMenuBar->add("Machine/Reset/Force reset (Ctrl+F11)",
@@ -440,6 +445,8 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_ResetAll, (void *) this);
   mainMenuBar->add("Machine/Enable SID emulation",
                    (char *) 0, &menuCallback_Machine_EnableSID, (void *) this);
+  mainMenuBar->add("Machine/Enable light pen",
+                   (char *) 0, &menuCallback_Machine_EnableLP, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Load config 1 (PageDown)",
                    (char *) 0, &menuCallback_Machine_QuickCfgL1, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Load config 2 (PageUp)",
@@ -499,6 +506,12 @@ void Plus4EmuGUI::run()
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
   mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Full speed (Alt+W)")
+                        - mainMenuBar->menu()),
+                    FL_MENU_TOGGLE);
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/Enable printer")
+                        - mainMenuBar->menu()),
+                    FL_MENU_TOGGLE);
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Enable light pen")
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
   updateMenu();
@@ -609,8 +622,33 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
   case FL_PUSH:
   case FL_DRAG:
     gui_.emulatorWindow->take_focus();
+    if (gui_.lightPenEnabled) {
+      double  xPos = double(Fl::event_x());
+      double  yPos = double(Fl::event_y());
+      double  w = double(gui_.emulatorWindow->w());
+      double  h = double(gui_.emulatorWindow->h());
+      w = (w >= 1.0 ? w : 1.0);
+      h = (h >= 1.0 ? h : 1.0);
+      double  aspectRatio = gui_.config.display.pixelAspectRatio;
+      aspectRatio = (aspectRatio >= 0.125 ? aspectRatio : 0.125);
+      aspectRatio = (aspectRatio * w / h) * 0.75;
+      xPos = xPos / w;
+      yPos = yPos / h;
+      if (aspectRatio >= 1.0)
+        xPos = (xPos - 0.5) * aspectRatio + 0.5;
+      else
+        yPos = (yPos - 0.5) / aspectRatio + 0.5;
+      xPos = xPos - 0.002604;
+      if (xPos >= 0.0 && xPos < 1.0 && yPos >= 0.0 && yPos < 1.0) {
+        gui_.vmThread.setLightPenPosition(int(xPos * 65536.0),
+                                          int(yPos * 65536.0));
+      }
+      else
+        gui_.vmThread.setLightPenPosition(-1, -1);
+    }
     return 1;
   case FL_RELEASE:
+    gui_.vmThread.setLightPenPosition(-1, -1);
     return 1;
   case FL_KEYUP:
   case FL_KEYDOWN:
@@ -1784,6 +1822,22 @@ void Plus4EmuGUI::menuCallback_Machine_TapeClose(Fl_Widget *o, void *v)
   }
 }
 
+void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  // TODO: implement this
+  (void) gui_;
+}
+
+void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  // TODO: implement this
+  (void) gui_;
+}
+
 void Plus4EmuGUI::menuCallback_Machine_Reset(Fl_Widget *o, void *v)
 {
   (void) o;
@@ -1858,6 +1912,17 @@ void Plus4EmuGUI::menuCallback_Machine_EnableSID(Fl_Widget *o, void *v)
     }
     gui_.unlockVMThread();
   }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_EnableLP(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  const Fl_Menu_Item  *m =
+      gui_.mainMenuBar->find_item("Machine/Enable light pen");
+  gui_.lightPenEnabled = (m->value() != 0);
+  if (!gui_.lightPenEnabled)
+    gui_.vmThread.setLightPenPosition(-1, -1);
 }
 
 void Plus4EmuGUI::menuCallback_Machine_QuickCfgL1(Fl_Widget *o, void *v)

@@ -202,7 +202,7 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState =
-        uint8_t(ted.character_position_reload >> 8) | uint8_t(0xFC);
+        uint8_t(ted.characterPositionReload >> 8) | uint8_t(0xFC);
     return ted.dataBusState;
   }
 
@@ -210,7 +210,7 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = uint8_t(ted.character_position_reload & 0xFF);
+    ted.dataBusState = uint8_t(ted.characterPositionReload & 0xFF);
     return ted.dataBusState;
   }
 
@@ -218,15 +218,7 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = uint8_t(ted.video_line >> 8) | uint8_t(0xFE);
-    return ted.dataBusState;
-  }
-
-  uint8_t TED7360::read_register_FF1D(void *userData, uint16_t addr)
-  {
-    (void) addr;
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = uint8_t(ted.video_line & 0xFF);
+    ted.dataBusState = ted.tedRegisters[0x1C] | uint8_t(0xFE);
     return ted.dataBusState;
   }
 
@@ -234,7 +226,7 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = uint8_t(ted.video_column << 1);
+    ted.dataBusState = uint8_t((ted.tedRegisters[0x1E] << 1) & 0xFF);
     return ted.dataBusState;
   }
 
@@ -242,9 +234,12 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState =
-        ((ted.tedRegisters[0x1F] & uint8_t(0x78)) | uint8_t(0x80))
-        | ted.character_line;
+    ted.dataBusState = ted.tedRegisters[0x1F] | uint8_t(0x80);
+    if ((int(ted.tedRegisters[0x1F]) & 7) != ted.characterLine) {
+      // special case: if the counter has just been incremented in this
+      // cycle, return the bitwise AND of the previous and the current value
+      ted.dataBusState &= uint8_t(ted.characterLine | 0xF8);
+    }
     return ted.dataBusState;
   }
 

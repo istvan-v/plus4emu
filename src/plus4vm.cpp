@@ -564,6 +564,23 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::lightPenCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    TED7360_& ted_ = *(vm.ted);
+    if (vm.lightPenPositionX >= 0 && vm.lightPenPositionY >= 0) {
+      if (ted_.checkLightPen(vm.lightPenPositionX, vm.lightPenPositionY)) {
+        vm.lightPenCycleCounter = 150;
+        vm.setKeyboardState(86, true);
+      }
+    }
+    if (vm.lightPenCycleCounter) {
+      vm.lightPenCycleCounter--;
+      if (!vm.lightPenCycleCounter)
+        vm.setKeyboardState(86, false);
+    }
+  }
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -593,7 +610,10 @@ namespace Plus4 {
       videoBreakPointCnt(0),
       videoBreakPoints((uint8_t *) 0),
       tapeFeedbackSignal(0),
-      tapeFeedbackLevel(0)
+      tapeFeedbackLevel(0),
+      lightPenPositionX(-1),
+      lightPenPositionY(-1),
+      lightPenCycleCounter(0)
   {
     sid_ = new SID();
     try {
@@ -847,6 +867,39 @@ namespace Plus4 {
       demoBuffer.writeByte(isPressed ? 0x01 : 0x02);
       demoBuffer.writeByte(0x01);
       demoBuffer.writeByte(uint8_t(keyCode & 0x7F));
+    }
+  }
+
+  void Plus4VM::setLightPenPosition(int xPos, int yPos)
+  {
+    if (xPos < 0 || xPos > 65535 || yPos < 0 || yPos > 65535) {
+      // disable light pen
+      if (lightPenCycleCounter) {
+        setKeyboardState(86, false);
+        lightPenCycleCounter = 0;
+      }
+      if (lightPenPositionX >= 0 || lightPenPositionY >= 0) {
+        ted->setCallback(&lightPenCallback, this, 0);
+        lightPenPositionX = -1;
+        lightPenPositionY = -1;
+      }
+    }
+    else {
+      if (lightPenPositionX < 0 || lightPenPositionY < 0)
+        ted->setCallback(&lightPenCallback, this, 3);
+      lightPenPositionX = ((xPos * 384) >> 16) + 424;
+      if (lightPenPositionX >= 456)
+        lightPenPositionX -= 456;
+      if (!ted->getIsNTSCMode()) {
+        lightPenPositionY = ((yPos * 288) >> 16) + 275;
+        if (lightPenPositionY >= 312)
+          lightPenPositionY -= 312;
+      }
+      else {
+        lightPenPositionY = ((yPos * 288) >> 16) + 225;
+        if (lightPenPositionY >= 262)
+          lightPenPositionY -= 262;
+      }
     }
   }
 

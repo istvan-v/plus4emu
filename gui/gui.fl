@@ -37,6 +37,7 @@ class Plus4EmuGUI {open
   decl {int displayMode;} {}
   decl {bool exitFlag;} {}
   decl {bool errorFlag;} {}
+  decl {bool lightPenEnabled;} {}
   decl {int oldWindowWidth;} {}
   decl {int oldWindowHeight;} {}
   decl {int oldDisplayMode;} {}
@@ -139,11 +140,14 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_DeleteCP(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_DeleteCPs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapeClose(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Reset(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ColdReset(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ResetFreqs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ResetAll(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_EnableSID(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_EnableLP(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgL1(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgL2(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgS1(Fl_Widget *o, void *v);} {}

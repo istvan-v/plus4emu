@@ -105,7 +105,6 @@ namespace Plus4 {
     static uint8_t  read_register_FF1A(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1B(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1C(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1D(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1E(void *userData, uint16_t addr);
     static uint8_t  read_register_FF1F(void *userData, uint16_t addr);
     static uint8_t  read_register_FF3E_FF3F(void *userData, uint16_t addr);
@@ -207,7 +206,10 @@ namespace Plus4 {
     static REGPARM void render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
     static REGPARM void render_invalid_mode(TED7360& ted,
                                             uint8_t *bufp, int offs);
+    void selectRenderer();
+    void initRegisters();
     void initializeRAMSegment(uint8_t *p);
+    void runOneCycle_freezeMode();
     // -----------------------------------------------------------------
    protected:
     // CPU I/O registers
@@ -217,7 +219,7 @@ namespace Plus4 {
     // TED cycle counter (0 to 3)
     uint8_t     cycle_count;
     // current video column (0 to 113, = (FF1E) / 2)
-    uint8_t     video_column;
+    uint8_t     videoColumn;
     // base index to memoryMapTable[] (see below) to be used by readMemory()
     unsigned int  memoryReadMap;
     // base index to memoryMapTable[] to be used by writeMemory()
@@ -228,6 +230,7 @@ namespace Plus4 {
     unsigned int  tedBitmapReadMap;
    protected:
     // copy of TED registers at FF00 to FF1F
+    // NOTE: FF1E is stored shifted right by one bit
     uint32_t    tedRegisterWriteMask;
     uint8_t     tedRegisters[32];
    private:
@@ -237,16 +240,16 @@ namespace Plus4 {
     REGPARM void  (*prv_render_func)(TED7360& ted, uint8_t *bufp, int offs);
     // CPU clock multiplier
     int         cpu_clock_multiplier;
-    // current video line (0 to 311, = (FF1D, FF1C)
-    int         video_line;
+    // current video line (0 to 311, = (FF1D, FF1C))
+    int         videoLine;
     // character sub-line (0 to 7, bits 0..2 of FF1F)
-    int         character_line;
+    int         characterLine;
     // character line offset (FF1A, FF1B)
-    int         character_position;
-    int         character_position_reload;
-    int         character_column;
-    int         dma_position;
-    int         dma_position_reload;
+    int         characterPosition;
+    int         characterPositionReload;
+    int         characterColumn;
+    int         dmaPosition;
+    int         dmaPositionReload;
     // base address for attribute data (FF14 bits 3..7)
     int         attr_base_addr;
     // base address for bitmap data (FF12 bits 3..5)
@@ -301,6 +304,7 @@ namespace Plus4 {
     uint8_t     attr_buf_tmp[64];
     uint8_t     char_buf[64];
     uint8_t     video_buf[464];
+    int         prv_video_buf_pos;
     int         video_buf_pos;
     bool        videoShiftRegisterEnabled;
     // horizontal scroll (0 to 7)
@@ -383,8 +387,17 @@ namespace Plus4 {
     uint64_t    ramPatternCode;
     uint32_t    randomSeed;
     // -----------------------------------------------------------------
-    void selectRenderer();
-    void initRegisters();
+    inline void checkVideoInterrupt()
+    {
+      if (videoLine == videoInterruptLine) {
+        if (!prvVideoInterruptState) {
+          prvVideoInterruptState = true;
+          tedRegisters[0x09] |= uint8_t(0x02);
+        }
+      }
+      else
+        prvVideoInterruptState = false;
+    }
    protected:
     virtual void playSample(int16_t sampleValue)
     {
@@ -511,12 +524,15 @@ namespace Plus4 {
     }
     inline uint8_t getVideoPositionX() const
     {
-      return uint8_t((video_column & 0x7F) << 1);
+      return uint8_t((videoColumn & 0x7F) << 1);
     }
     inline uint16_t getVideoPositionY() const
     {
       return uint16_t(savedVideoLine & 0x01FF);
     }
+    // returns true if the raster position is at xPos (0..455), yPos (0..311),
+    // and the pixel at that position is not black
+    bool checkLightPen(int xPos, int yPos) const;
     // Set function to be called by runOneCycle(). 'flags_' can be one of
     // the following values:
     //   0: do not call the function (removes a previously set callback)

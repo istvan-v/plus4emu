@@ -141,6 +141,12 @@ namespace Plus4Emu {
      */
     void resetKeyboard();
     /*!
+     * Set light pen position. 'xPos_' and 'yPos_' should be in the range
+     * 0 to 65535 for the visible 768x576 display area. Values that are
+     * out of range turn off the light pen.
+     */
+    void setLightPenPosition(int xPos_, int yPos_);
+    /*!
      * Start tape playback.
      */
     void tapePlay();
@@ -234,6 +240,20 @@ namespace Plus4Emu {
       {
       }
       virtual ~Message_ResetKeyboard();
+      virtual void process();
+    };
+    class Message_LightPenEvent : public Message {
+     private:
+      int     xPos;
+      int     yPos;
+     public:
+      Message_LightPenEvent(VMThread& vmThread_, int xPos_, int yPos_)
+        : Message(vmThread_),
+          xPos(xPos_),
+          yPos(yPos_)
+      {
+      }
+      virtual ~Message_LightPenEvent();
       virtual void process();
     };
     class Message_TapePlay : public Message {

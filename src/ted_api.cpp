@@ -195,6 +195,25 @@ namespace Plus4 {
     }
   }
 
+  bool TED7360::checkLightPen(int xPos, int yPos) const
+  {
+    if (savedVideoLine != yPos)
+      return false;
+    if (yPos < 0 || yPos > 311 || xPos < 0 || xPos > 455)
+      return false;
+    if (videoColumn != uint8_t(xPos < 452 ? ((xPos + 4) >> 2) : 0))
+      return false;
+    if (video_buf[prv_video_buf_pos] & 0x02) {
+      if (video_buf[prv_video_buf_pos + 1 + (xPos & 3)] & 0x0F)
+        return true;
+    }
+    else {
+      if (video_buf[prv_video_buf_pos + 1] & 0x0F)
+        return true;
+    }
+    return false;
+  }
+
   // --------------------------------------------------------------------------
 
   class ChunkType_TED7360Snapshot : public Plus4Emu::File::ChunkTypeHandler {
@@ -280,14 +299,14 @@ namespace Plus4 {
     // save internal registers
     buf.writeUInt32(tedRegisterWriteMask);
     buf.writeByte(cycle_count);
-    buf.writeByte(video_column);
-    buf.writeUInt32(uint32_t(video_line));
-    buf.writeByte(uint8_t(character_line));
-    buf.writeUInt32(uint32_t(character_position));
-    buf.writeUInt32(uint32_t(character_position_reload));
-    buf.writeByte(uint8_t(character_column));
-    buf.writeUInt32(uint32_t(dma_position));
-    buf.writeUInt32(uint32_t(dma_position_reload));
+    buf.writeByte(videoColumn);
+    buf.writeUInt32(uint32_t(videoLine));
+    buf.writeByte(uint8_t(characterLine));
+    buf.writeUInt32(uint32_t(characterPosition));
+    buf.writeUInt32(uint32_t(characterPositionReload));
+    buf.writeByte(uint8_t(characterColumn));
+    buf.writeUInt32(uint32_t(dmaPosition));
+    buf.writeUInt32(uint32_t(dmaPositionReload));
     buf.writeByte(flashState);
     buf.writeBoolean(renderWindow);
     buf.writeBoolean(dmaWindow);
@@ -412,14 +431,14 @@ namespace Plus4 {
       // load remaining internal registers from snapshot data
       tedRegisterWriteMask = buf.readUInt32();
       cycle_count = buf.readByte() & 0x03;
-      video_column = buf.readByte() & 0x7F;
-      video_line = int(buf.readUInt32() & 0x01FF);
-      character_line = buf.readByte() & 7;
-      character_position = int(buf.readUInt32() & 0x03FF);
-      character_position_reload = int(buf.readUInt32() & 0x03FF);
-      character_column = buf.readByte() & 0x3F;
-      dma_position = int(buf.readUInt32() & 0x07FF);
-      dma_position_reload = int(buf.readUInt32() & 0x03FF);
+      videoColumn = buf.readByte() & 0x7F;
+      videoLine = int(buf.readUInt32() & 0x01FF);
+      characterLine = buf.readByte() & 7;
+      characterPosition = int(buf.readUInt32() & 0x03FF);
+      characterPositionReload = int(buf.readUInt32() & 0x03FF);
+      characterColumn = buf.readByte() & 0x3F;
+      dmaPosition = int(buf.readUInt32() & 0x07FF);
+      dmaPositionReload = int(buf.readUInt32() & 0x03FF);
       flashState = uint8_t(buf.readByte() == 0x00 ? 0x00 : 0xFF);
       renderWindow = buf.readBoolean();
       dmaWindow = buf.readBoolean();

@@ -336,6 +336,12 @@ namespace Plus4Emu {
     queueMessage(allocateMessage<Message_ResetKeyboard>());
   }
 
+  void VMThread::setLightPenPosition(int xPos_, int yPos_)
+  {
+    queueMessage(allocateMessage<Message_LightPenEvent, int, int>(
+                     xPos_, yPos_));
+  }
+
   void VMThread::tapePlay()
   {
     queueMessage(allocateMessage<Message_TapePlay>());
@@ -382,9 +388,13 @@ namespace Plus4Emu {
       return m;
     }
     if (messageCnt >= 1024) {
+      // too many messages, delete oldest one
+      messageCnt--;
+      Message *m = messageQueue;
+      messageQueue = m->nextMessage;
       mutex_.unlock();
-      errorCallback(userData, "message queue overflow");
-      return (Message *) 0;
+      m->~Message();
+      return m;
     }
     mutex_.unlock();
     Message *m = (Message *) std::malloc(sizeof(Message_Dummy));
@@ -462,6 +472,15 @@ namespace Plus4Emu {
         vmThread.vm.setKeyboardState(i, false);
       }
     }
+  }
+
+  VMThread::Message_LightPenEvent::~Message_LightPenEvent()
+  {
+  }
+
+  void VMThread::Message_LightPenEvent::process()
+  {
+    vmThread.vm.setLightPenPosition(xPos, yPos);
   }
 
   VMThread::Message_TapePlay::~Message_TapePlay()

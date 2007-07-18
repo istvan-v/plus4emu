@@ -152,7 +152,7 @@ namespace Plus4 {
     bool      dmaCheckFlag = bool(bitsChanged & uint8_t(0x07));
     if (bitsChanged & uint8_t(0x18)) {
       // display enabled or number of rows has changed
-      if (ted.video_column != 97) {
+      if (ted.videoColumn != 98) {
         switch (ted.savedVideoLine) {
         case 0:
           if (value & uint8_t(0x10)) {
@@ -161,13 +161,14 @@ namespace Plus4 {
               // registers (FIXME: the timing is not correct)
               ted.renderWindow = true;
               ted.dmaEnabled = true;
-              if (ted.video_column >= 99 || ted.video_column < 71)
+              if (ted.videoColumn >= 100 || ted.videoColumn < 72)
                 ted.singleClockModeFlags |= uint8_t(0x01);
-              if (!(ted.video_column >= 98 && ted.video_column <= 100)) {
+              if (!(ted.videoColumn >= 99 && ted.videoColumn <= 101)) {
                 // FIXME: this check is a hack
                 if (ted.bitmapAddressDisableFlags & 0x02) {
-                  ted.character_line = 7;
+                  ted.characterLine = 7;
                   ted.prvCharacterLine = uint8_t(7);
+                  ted.tedRegisters[0x1F] |= uint8_t(0x07);
                 }
               }
               dmaCheckFlag = true;
@@ -199,21 +200,21 @@ namespace Plus4 {
         // check if DMA should be requested
         if (!((uint8_t(ted.savedVideoLine) ^ value) & uint8_t(0x07))) {
           if (ted.dmaEnabled) {
-            switch (ted.video_column) {
-            case 95:
+            switch (ted.videoColumn) {
             case 96:
+            case 97:
               ted.dmaWindow = true;
               break;
-            case 97:
             case 98:
+            case 99:
               break;
             default:
               ted.dmaWindow = true;
               if (ted.dmaCycleCounter == 0 &&
-                  (ted.video_column >= 99 || ted.video_column < 75))
+                  (ted.videoColumn >= 100 || ted.videoColumn < 76))
                 ted.dmaCycleCounter = 2;
               ted.dmaFlags = ted.dmaFlags | 1;
-              ted.dma_position = ted.dma_position & 0x03FF;
+              ted.dmaPosition = ted.dmaPosition & 0x03FF;
               break;
             }
           }
@@ -244,11 +245,8 @@ namespace Plus4 {
     if (bitsChanged & uint8_t(0x60)) {
       if (bitsChanged & uint8_t(0x20)) {
         if (ted.ted_disabled) {
-          if (ted.video_column & uint8_t(0x01)) {
+          if (!(ted.videoColumn & uint8_t(0x01)))
             ted.singleClockModeFlags |= uint8_t(0x01);
-            ted.video_column++;
-            ted.video_column &= uint8_t(0x7F);
-          }
         }
       }
       if (bitsChanged & uint8_t(0x40)) {
@@ -300,6 +298,7 @@ namespace Plus4 {
     ted.tedRegisters[0x0A] = value;
     ted.videoInterruptLine = (ted.videoInterruptLine & 0x00FF)
                              | (int(value & uint8_t(0x01)) << 8);
+    ted.checkVideoInterrupt();
   }
 
   void TED7360::write_register_FF0B(void *userData,
@@ -311,6 +310,7 @@ namespace Plus4 {
     ted.tedRegisters[0x0B] = value;
     ted.videoInterruptLine = (ted.videoInterruptLine & 0x0100)
                              | int(value & uint8_t(0xFF));
+    ted.checkVideoInterrupt();
   }
 
   void TED7360::write_register_FF0C(void *userData,
@@ -421,8 +421,8 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x04000000U;
-    ted.character_position_reload &= 0x00FF;
-    ted.character_position_reload |= (int(value & uint8_t(0x03)) << 8);
+    ted.characterPositionReload &= 0x00FF;
+    ted.characterPositionReload |= (int(value & uint8_t(0x03)) << 8);
   }
 
   void TED7360::write_register_FF1B(void *userData,
@@ -432,8 +432,8 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x08000000U;
-    ted.character_position_reload &= 0x0300;
-    ted.character_position_reload |= int(value);
+    ted.characterPositionReload &= 0x0300;
+    ted.characterPositionReload |= int(value);
   }
 
   void TED7360::write_register_FF1C(void *userData,
@@ -442,9 +442,10 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x10000000U;
-    ted.video_line =
-        (ted.video_line & 0x00FF) | (int(value & uint8_t(0x01)) << 8);
+    ted.tedRegisters[0x1C] = value;
+    ted.videoLine =
+        (ted.videoLine & 0x00FF) | (int(value & uint8_t(0x01)) << 8);
+    ted.checkVideoInterrupt();
   }
 
   void TED7360::write_register_FF1D(void *userData,
@@ -453,8 +454,9 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x20000000U;
-    ted.video_line = (ted.video_line & 0x0100) | int(value);
+    ted.tedRegisters[0x1D] = value;
+    ted.videoLine = (ted.videoLine & 0x0100) | int(value);
+    ted.checkVideoInterrupt();
   }
 
   void TED7360::write_register_FF1E(void *userData,
@@ -463,10 +465,20 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x40000000U;
+    // if there are read delays pending:
+    if (ted.videoColumn == 98) {
+      ted.tedRegisters[0x1D] = uint8_t(ted.videoLine & 0x00FF);
+      ted.tedRegisters[0x1C] = uint8_t((ted.videoLine & 0x0100) >> 8);
+      ted.checkVideoInterrupt();
+    }
+    if (ted.videoColumn == 100) {
+      ted.tedRegisters[0x1F] =
+          (ted.tedRegisters[0x1F] & 0xF8) | uint8_t(ted.characterLine);
+    }
     // NOTE: values written to this register are inverted
     uint8_t   newVal = ((value ^ uint8_t(0xFF)) & uint8_t(0xFC)) >> 1;
-    ted.video_column = (ted.video_column & uint8_t(0x01)) | newVal;
+    ted.videoColumn = (ted.videoColumn & uint8_t(0x01)) | newVal;
+    ted.tedRegisters[0x1E] = ted.videoColumn;
   }
 
   void TED7360::write_register_FF1F(void *userData,
@@ -476,7 +488,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x1F] = value;
-    ted.character_line = int(value & uint8_t(0x07));
+    ted.characterLine = int(value & uint8_t(0x07));
   }
 
 }       // namespace Plus4

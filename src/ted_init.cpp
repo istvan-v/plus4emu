@@ -26,7 +26,7 @@ static const uint8_t tedRegisterInit[32] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0B, 0x08,
   0xFF, 0x04, 0xA0, 0x00, 0xFF, 0xFF, 0x00, 0x00,
   0x7C, 0x00, 0xC4, 0x01, 0x07, 0x80, 0x80, 0x80,
-  0x80, 0x80, 0xFF, 0xE8, 0xFE, 0xE0, 0xC6, 0x80
+  0x80, 0x80, 0xFF, 0xE8, 0xFE, 0xE0, 0xC8, 0x80
 };
 
 namespace Plus4 {
@@ -124,7 +124,6 @@ namespace Plus4 {
     setMemoryReadCallback(0xFF1A, &read_register_FF1A);
     setMemoryReadCallback(0xFF1B, &read_register_FF1B);
     setMemoryReadCallback(0xFF1C, &read_register_FF1C);
-    setMemoryReadCallback(0xFF1D, &read_register_FF1D);
     setMemoryReadCallback(0xFF1E, &read_register_FF1E);
     setMemoryReadCallback(0xFF1F, &read_register_FF1F);
     setMemoryReadCallback(0xFF3E, &read_register_FF3E_FF3F);
@@ -186,7 +185,7 @@ namespace Plus4 {
   void TED7360::initRegisters()
   {
     cycle_count = 0;
-    video_column = 99;
+    videoColumn = 100;
     // initialize memory paging
     memoryReadMap = 0x06F8U;
     memoryWriteMap = 0x0678U;
@@ -206,13 +205,13 @@ namespace Plus4 {
     // set internal TED registers
     render_func = &render_invalid_mode;
     prv_render_func = &render_invalid_mode;
-    video_line = 224;
-    character_line = 0;
-    character_position = 0x0000;
-    character_position_reload = 0x0000;
-    character_column = 0;
-    dma_position = 0x03FF;
-    dma_position_reload = 0x03FF;
+    videoLine = 224;
+    characterLine = 0;
+    characterPosition = 0x0000;
+    characterPositionReload = 0x0000;
+    characterColumn = 0;
+    dmaPosition = 0x03FF;
+    dmaPositionReload = 0x03FF;
     attr_base_addr = 0x0000;
     bitmap_base_addr = 0x0000;
     charset_base_addr = 0x0000;
@@ -248,6 +247,7 @@ namespace Plus4 {
     }
     for (int i = 0; i < 464; i++)
       video_buf[i] = uint8_t(0x00);
+    prv_video_buf_pos = 0;
     video_buf_pos = 0;
     videoShiftRegisterEnabled = false;
     horiz_scroll = 0;

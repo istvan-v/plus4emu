@@ -192,6 +192,12 @@ namespace Plus4Emu {
      */
     virtual void setKeyboardState(int keyCode, bool isPressed);
     /*!
+     * Set light pen position. 'xPos' and 'yPos' should be in the range
+     * 0 to 65535 for the visible 768x576 display area. Values that are
+     * out of range turn off the light pen.
+     */
+    virtual void setLightPenPosition(int xPos, int yPos);
+    /*!
      * Returns status information about the emulated machine (see also
      * struct VMStatus above, and the comments for functions that return
      * individual status values).

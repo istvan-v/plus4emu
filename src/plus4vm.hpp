@@ -114,6 +114,9 @@ namespace Plus4 {
     uint8_t   *videoBreakPoints;
     int32_t   tapeFeedbackSignal;
     int32_t   tapeFeedbackLevel;
+    int       lightPenPositionX;
+    int       lightPenPositionY;
+    int       lightPenCycleCounter;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -144,6 +147,7 @@ namespace Plus4 {
     static void demoPlayCallback(void *userData);
     static void demoRecordCallback(void *userData);
     static void videoBreakPointCheckCallback(void *userData);
+    static void lightPenCallback(void *userData);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -198,6 +202,12 @@ namespace Plus4 {
      * Set state of key 'keyCode' (0 to 127).
      */
     virtual void setKeyboardState(int keyCode, bool isPressed);
+    /*!
+     * Set light pen position. 'xPos' and 'yPos' should be in the range
+     * 0 to 65535 for the visible 768x576 display area. Values that are
+     * out of range turn off the light pen.
+     */
+    virtual void setLightPenPosition(int xPos, int yPos);
     /*!
      * Returns status information about the emulated machine (see also
      * struct VMStatus above, and the comments for functions that return

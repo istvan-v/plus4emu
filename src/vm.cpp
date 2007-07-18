@@ -319,6 +319,12 @@ namespace Plus4Emu {
     (void) isPressed;
   }
 
+  void VirtualMachine::setLightPenPosition(int xPos, int yPos)
+  {
+    (void) xPos;
+    (void) yPos;
+  }
+
   void VirtualMachine::getVMStatus(VMStatus& vmStatus_)
   {
     vmStatus_.tapeReadOnly = getIsTapeReadOnly();
