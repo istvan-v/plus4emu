@@ -197,11 +197,6 @@ namespace Plus4 {
       case 100:
         if (dmaWindow)                  // increment character sub-line
           characterLine = (characterLine + 1) & 7;
-        if (videoLine == 205) {
-          dmaPosition = 0x03FF;
-          dmaPositionReload = 0x03FF;
-          dmaFlags = 0;
-        }
         if (savedVideoLine == 203)
           dmaEnabled = false;
         if (savedVideoLine == 204) {    // end of display
@@ -428,6 +423,7 @@ namespace Plus4 {
           (savedVideoLine == 204 &&
            (tedRegisters[0x06] & uint8_t(0x08)) != uint8_t(0)))
         displayWindow = false;
+      checkDMAPositionReset();
       // delay video line reads by one cycle
       tedRegisters[0x1D] = uint8_t(videoLine & 0x00FF);
       tedRegisters[0x1C] = uint8_t((videoLine & 0x0100) >> 8);

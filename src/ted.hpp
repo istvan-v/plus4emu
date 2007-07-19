@@ -398,6 +398,15 @@ namespace Plus4 {
       else
         prvVideoInterruptState = false;
     }
+    inline void checkDMAPositionReset()
+    {
+      if (videoLine == 205) {
+        if (!incrementingDMAPosition) {
+          dmaPosition = dmaPosition | 0x03FF;
+          dmaPositionReload = 0x03FF;
+        }
+      }
+    }
    protected:
     virtual void playSample(int16_t sampleValue)
     {

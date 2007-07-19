@@ -445,6 +445,7 @@ namespace Plus4 {
     ted.tedRegisters[0x1C] = value;
     ted.videoLine =
         (ted.videoLine & 0x00FF) | (int(value & uint8_t(0x01)) << 8);
+    ted.checkDMAPositionReset();
     ted.checkVideoInterrupt();
   }
 
@@ -456,6 +457,7 @@ namespace Plus4 {
     ted.dataBusState = value;
     ted.tedRegisters[0x1D] = value;
     ted.videoLine = (ted.videoLine & 0x0100) | int(value);
+    ted.checkDMAPositionReset();
     ted.checkVideoInterrupt();
   }
 
@@ -467,6 +469,7 @@ namespace Plus4 {
     ted.dataBusState = value;
     // if there are read delays pending:
     if (ted.videoColumn == 98) {
+      ted.checkDMAPositionReset();
       ted.tedRegisters[0x1D] = uint8_t(ted.videoLine & 0x00FF);
       ted.tedRegisters[0x1C] = uint8_t((ted.videoLine & 0x0100) >> 8);
       ted.checkVideoInterrupt();
