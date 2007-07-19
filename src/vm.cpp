@@ -325,6 +325,28 @@ namespace Plus4Emu {
     (void) yPos;
   }
 
+  void VirtualMachine::setEnablePrinter(bool isEnabled)
+  {
+    (void) isEnabled;
+  }
+
+  void VirtualMachine::getPrinterOutput(const uint8_t*& buf_,
+                                        int& w_, int& h_) const
+  {
+    buf_ = (uint8_t *) 0;
+    w_ = 0;
+    h_ = 0;
+  }
+
+  void VirtualMachine::clearPrinterOutput()
+  {
+  }
+
+  uint8_t VirtualMachine::getPrinterLEDState() const
+  {
+    return 0x00;
+  }
+
   void VirtualMachine::getVMStatus(VMStatus& vmStatus_)
   {
     vmStatus_.tapeReadOnly = getIsTapeReadOnly();

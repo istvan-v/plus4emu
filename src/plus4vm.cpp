@@ -29,6 +29,7 @@
 
 #include "resid/sid.hpp"
 #include "p4floppy.hpp"
+#include "vc1526.hpp"
 #include "vc1541.hpp"
 #include "vc1551.hpp"
 #include "vc1581.hpp"
@@ -581,6 +582,16 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::printerCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.printerTimeRemaining += vm.tedTimesliceLength;
+    while (vm.printerTimeRemaining > 0) {
+      vm.printerTimeRemaining -= (int64_t(1) << 32);
+      vm.printer_->runOneCycle(vm.ted->serialPort);
+    }
+  }
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -607,13 +618,16 @@ namespace Plus4 {
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
       floppyROM_1581_1((uint8_t *) 0),
+      printerROM_1526((uint8_t *) 0),
       videoBreakPointCnt(0),
       videoBreakPoints((uint8_t *) 0),
       tapeFeedbackSignal(0),
       tapeFeedbackLevel(0),
       lightPenPositionX(-1),
       lightPenPositionY(-1),
-      lightPenCycleCounter(0)
+      lightPenCycleCounter(0),
+      printer_((VC1526 *) 0),
+      printerTimeRemaining(0)
   {
     sid_ = new SID();
     try {
@@ -658,6 +672,10 @@ namespace Plus4 {
         floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
       }
     }
+    if (printer_) {
+      delete printer_;
+      printer_ = (VC1526 *) 0;
+    }
     if (floppyROM_1541)
       delete[] floppyROM_1541;
     if (floppyROM_1551)
@@ -666,6 +684,8 @@ namespace Plus4 {
       delete[] floppyROM_1581_0;
     if (floppyROM_1581_1)
       delete[] floppyROM_1581_1;
+    if (printerROM_1526)
+      delete[] printerROM_1526;
     delete ted;
     delete sid_;
     if (videoBreakPoints)
@@ -712,6 +732,8 @@ namespace Plus4 {
       ted->setCallback(&sidCallback, this, 0);
     }
     resetFloppyDrives(0x0F, isColdReset);
+    if (printer_)
+      printer_->reset();
   }
 
   void Plus4VM::resetMemoryConfiguration(size_t memSize, uint64_t ramPattern)
@@ -727,6 +749,8 @@ namespace Plus4 {
             floppyDrives[i].floppyDrive->setROMImage(n, (uint8_t *) 0);
         }
       }
+      if (printer_)
+        printer_->setROMImage((uint8_t *) 0);
       if (floppyROM_1541) {
         delete[] floppyROM_1541;
         floppyROM_1541 = (uint8_t *) 0;
@@ -742,6 +766,10 @@ namespace Plus4 {
       if (floppyROM_1581_1) {
         delete[] floppyROM_1581_1;
         floppyROM_1581_1 = (uint8_t *) 0;
+      }
+      if (printerROM_1526) {
+        delete[] printerROM_1526;
+        printerROM_1526 = (uint8_t *) 0;
       }
       // set new RAM size
       ted->setRAMSize(memSize, ramPattern);
@@ -765,6 +793,38 @@ namespace Plus4 {
     uint8_t **floppyROMPtr = (uint8_t **) 0;
     if (n >= 8) {
       switch (n) {
+      case 0x0C:
+        {
+          // clear segment first
+          if (printer_)
+            printer_->setROMImage((uint8_t *) 0);
+          if (fileName == (char *) 0 || fileName[0] == '\0') {
+            // empty file name: delete segment
+            return;
+          }
+          // load file into memory
+          std::vector<uint8_t>  buf;
+          buf.resize(0x2000);
+          std::FILE   *f = std::fopen(fileName, "rb");
+          if (!f)
+            throw Plus4Emu::Exception("cannot open ROM file");
+          std::fseek(f, 0L, SEEK_END);
+          if (ftell(f) < long(offs + 0x2000)) {
+            std::fclose(f);
+            throw Plus4Emu::Exception("ROM file is shorter than expected");
+          }
+          std::fseek(f, long(offs), SEEK_SET);
+          std::fread(&(buf.front()), 1, 0x2000, f);
+          std::fclose(f);
+          if (printerROM_1526 == (uint8_t *) 0)
+            printerROM_1526 = new uint8_t[8192];
+          for (int i = 0; i < 8192; i++)
+            printerROM_1526[i] = buf[i];
+          if (printer_)
+            printer_->setROMImage(printerROM_1526);
+          return;
+        }
+        break;
       case 0x10:
         floppyROMSegment = 2;
         floppyROMPtr = &floppyROM_1541;
@@ -901,6 +961,51 @@ namespace Plus4 {
           lightPenPositionY -= 262;
       }
     }
+  }
+
+  void Plus4VM::setEnablePrinter(bool isEnabled)
+  {
+    if (isEnabled) {
+      if (printer_ == (VC1526 *) 0) {
+        printer_ = new VC1526(4);       // TODO: allow setting device number ?
+        printer_->setROMImage(printerROM_1526);
+        printerTimeRemaining = 0;
+        ted->setCallback(&printerCallback, this, 1);
+      }
+    }
+    else if (printer_ != (VC1526 *) 0) {
+      ted->setCallback(&printerCallback, this, 0);
+      ted->serialPort.removeDevice(4);
+      delete printer_;
+      printer_ = (VC1526 *) 0;
+    }
+  }
+
+  void Plus4VM::getPrinterOutput(const uint8_t*& buf_, int& w_, int& h_) const
+  {
+    if (printer_) {
+      buf_ = printer_->getPageData();
+      w_ = printer_->getPageWidth();
+      h_ = printer_->getPageHeight();
+    }
+    else {
+      buf_ = (uint8_t *) 0;
+      w_ = 0;
+      h_ = 0;
+    }
+  }
+
+  void Plus4VM::clearPrinterOutput()
+  {
+    if (printer_)
+      printer_->clearPage();
+  }
+
+  uint8_t Plus4VM::getPrinterLEDState() const
+  {
+    if (printer_)
+      return printer_->getLEDState();
+    return 0x00;
   }
 
   void Plus4VM::getVMStatus(VMStatus& vmStatus_)
@@ -1238,6 +1343,10 @@ namespace Plus4 {
     else {
       uint8_t segment = uint8_t((addr >> 14) & 0xFF);
       switch (segment) {
+      case 0x0C:
+        if (printerROM_1526)
+          return printerROM_1526[addr & 0x1FFFU];
+        break;
       case 0x10:
         if (floppyROM_1541)
           return floppyROM_1541[addr & 0x3FFFU];

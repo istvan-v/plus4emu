@@ -31,6 +31,7 @@
 namespace Plus4 {
 
   class SID;
+  class VC1526;
 
   class Plus4VM : public Plus4Emu::VirtualMachine {
    private:
@@ -110,6 +111,7 @@ namespace Plus4 {
     uint8_t   *floppyROM_1551;
     uint8_t   *floppyROM_1581_0;
     uint8_t   *floppyROM_1581_1;
+    uint8_t   *printerROM_1526;
     size_t    videoBreakPointCnt;
     uint8_t   *videoBreakPoints;
     int32_t   tapeFeedbackSignal;
@@ -117,6 +119,8 @@ namespace Plus4 {
     int       lightPenPositionX;
     int       lightPenPositionY;
     int       lightPenCycleCounter;
+    VC1526    *printer_;
+    int64_t   printerTimeRemaining;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -148,6 +152,7 @@ namespace Plus4 {
     static void demoRecordCallback(void *userData);
     static void videoBreakPointCheckCallback(void *userData);
     static void lightPenCallback(void *userData);
+    static void printerCallback(void *userData);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -208,6 +213,27 @@ namespace Plus4 {
      * out of range turn off the light pen.
      */
     virtual void setLightPenPosition(int xPos, int yPos);
+    /*!
+     * Set if printer emulation should be enabled.
+     */
+    virtual void setEnablePrinter(bool isEnabled);
+    /*!
+     * Get the current printer output as a 8-bit greyscale image.
+     * 'buf_' contains 'w_' * 'h_' bytes. If there is no printer, a NULL
+     * buffer pointer, and zero width and height will be returned.
+     */
+    virtual void getPrinterOutput(const uint8_t*& buf_,
+                                  int& w_, int& h_) const;
+    /*!
+     * Clear the printer output buffer, and reset the head position to
+     * the top of the page.
+     */
+    virtual void clearPrinterOutput();
+    /*!
+     * Returns the current state of printer LEDs as a bitmap (if bit 0 is set,
+     * LED 1 is on, if bit 1 is set, LED 2 is on, etc.).
+     */
+    virtual uint8_t getPrinterLEDState() const;
     /*!
      * Returns status information about the emulated machine (see also
      * struct VMStatus above, and the comments for functions that return

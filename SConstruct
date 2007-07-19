@@ -127,6 +127,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/memory.cpp
     src/plus4vm.cpp
     src/render.cpp
+    src/riot6532.cpp
     src/snd_conv.cpp
     src/soundio.cpp
     src/system.cpp
@@ -136,6 +137,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/ted_main.cpp
     src/ted_read.cpp
     src/ted_write.cpp
+    src/vc1526.cpp
     src/vc1541.cpp
     src/vc1551.cpp
     src/vc1581.cpp

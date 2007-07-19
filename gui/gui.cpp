@@ -1826,8 +1826,23 @@ void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  // TODO: implement this
-  (void) gui_;
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        const Fl_Menu_Item  *m =
+            gui_.mainMenuBar->find_item("Machine/Printer/Enable printer");
+        gui_.vm.setEnablePrinter(m->value() != 0);
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
 }
 
 void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)

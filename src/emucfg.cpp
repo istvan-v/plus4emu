@@ -102,7 +102,7 @@ namespace Plus4Emu {
         std::string(VirtualMachine::defaultRAMPatternString),
         memoryConfigurationChanged);
     for (size_t i = 0; i < 50; i++) {
-      if (i >= 8 && i < 48 && (i != 16 && i != 32))
+      if (i >= 8 && i < 48 && (i != 12 && i != 16 && i != 32))
         continue;
       char  tmpBuf[24];
       char  *s = &(tmpBuf[0]);
@@ -382,8 +382,8 @@ namespace Plus4Emu {
         }
       }
       vm_.resetMemoryConfiguration(memory.ram.size, ramPattern);
-      for (size_t i = 0; i < 64; i++) {
-        if (i >= 8 && (i & 15) >= 4)
+      for (size_t i = 0; i < 50; i++) {
+        if (i >= 8 && i < 48 && (i != 12 && i != 16 && i != 32))
           continue;
         try {
           vm_.loadROMSegment(uint8_t(i),

@@ -19,6 +19,7 @@ Changes in version 1.2.0
     to fastest), and use device 7 when saving
   * tape playback and recording can be sent to the sound output
   * the RAM startup pattern has been made configurable
+  * minor TED emulation improvements
   * various bug fixes
 
 Changes in version 1.1.3
