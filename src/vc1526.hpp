@@ -32,13 +32,13 @@ namespace Plus4 {
    public:
     static const int    pageWidth = 700;
     static const int    pageHeight = 1000;
-    static const int    marginLeft = 30;
-    static const int    marginRight = 30;
+    static const int    marginLeft = 36;
+    static const int    marginRight = 24;
     static const int    marginTop = 30;
     static const int    marginBottom = 30;
    private:
-    // emulate mechanic parts at 10 kHz clock frequency (1 MHz / 100)
-    static const int    updateMotorReload = 100;
+    static const int    updatePinReload = 10;           // 100 kHz
+    static const int    updateMotorReload = 100;        // 10 kHz
     class M6504_ : public M7501 {
      private:
       VC1526& vc1526;
@@ -62,17 +62,25 @@ namespace Plus4 {
     RIOT6532    riot2;          // I/O 0280..02BF, RAM 0080..00FF
     const uint8_t *memory_rom;  // 8K ROM (0400..1FFF)
     int         deviceNumber;
+    int         updatePinCnt;
     int         updateMotorCnt;
     int         headPosX;
     int         headPosY;
     int         motorXPhase;
     int         prvMotorXPhase;
+    int         motorXCnt;
     int         motorYPhase;
     int         prvMotorYPhase;
+    int         motorYCnt;
     uint8_t     pinState;
     uint8_t     prvPinState;
     bool        viaInterruptFlag;
     uint8_t     *pageBuf;       // pageWidth * pageHeight bytes
+    void        (*breakPointCallback)(void *userData,
+                                      int debugContext_, int type,
+                                      uint16_t addr, uint8_t value);
+    void        *breakPointCallbackUserData;
+    bool        noBreakOnDataRead;
     // --------
     static uint8_t readRIOT1RAM(void *userData, uint16_t addr);
     static void writeRIOT1RAM(void *userData, uint16_t addr, uint8_t value);
@@ -88,12 +96,23 @@ namespace Plus4 {
     static uint8_t readRIOT2Register(void *userData, uint16_t addr);
     static void writeRIOT2Register(void *userData,
                                    uint16_t addr, uint8_t value);
+    void updatePins();
     void updateMotors();
+    static inline int yPosToPixel(int n)
+    {
+      return ((n * 7) / 18);
+    }
+    static inline int pixelToYPos(int n)
+    {
+      return ((n * 18) / 7);
+    }
    public:
     VC1526(int devNum_ = 4);
     virtual ~VC1526();
     virtual void setROMImage(const uint8_t *romData_);
-    // run printer emulation for one microsecond (1 MHz clock frequency)
+    /*!
+     * Run printer emulation for one microsecond (1 MHz clock frequency).
+     */
     virtual void runOneCycle(SerialBus& serialBus_);
     virtual const uint8_t *getPageData() const;
     virtual int getPageWidth() const;
@@ -101,6 +120,38 @@ namespace Plus4 {
     virtual void clearPage();
     virtual uint8_t getLEDState() const;
     virtual void reset();
+    /*!
+     * Returns pointer to the printer CPU.
+     */
+    virtual M7501 * getCPU();
+    virtual const M7501 * getCPU() const;
+    /*!
+     * Set function to be called when a breakpoint is triggered.
+     * 'type' can be one of the following values:
+     *   0: breakpoint at opcode read
+     *   1: memory read
+     *   2: memory write
+     *   3: opcode read in single step mode
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_, int type,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_);
+    /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n);
+    /*!
+     * Read a byte from printer memory (used for debugging).
+     */
+    virtual uint8_t readMemoryDebug(uint16_t addr) const;
+    /*!
+     * Write a byte to printer memory (used for debugging).
+     */
+    virtual void writeMemoryDebug(uint16_t addr, uint8_t value);
   };
 
 }       // namespace Plus4
