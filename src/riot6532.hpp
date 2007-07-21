@@ -73,6 +73,7 @@ namespace Plus4 {
     }
     uint8_t readRegister(uint16_t addr);
     void writeRegister(uint16_t addr, uint8_t value);
+    uint8_t readRegisterDebug(uint16_t addr) const;
     inline uint8_t getPortA() const
     {
       return portAPinState;
