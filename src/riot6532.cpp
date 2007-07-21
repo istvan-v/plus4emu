@@ -132,6 +132,7 @@ namespace Plus4 {
     case 0x11:
     case 0x19:
       portADataDirection = value;
+      portADataDirectionInv = value ^ 0xFF;
       updatePortA();
       break;
     case 0x02:                          // output register B
@@ -146,6 +147,7 @@ namespace Plus4 {
     case 0x13:
     case 0x1B:
       portBDataDirection = value;
+      portBDataDirectionInv = value ^ 0xFF;
       updatePortB();
       break;
     case 0x14:                          // write timer
@@ -187,6 +189,52 @@ namespace Plus4 {
       interruptMask = (interruptMask & 0x80) | uint8_t((addr & 0x0002) << 5);
       break;
     }
+  }
+
+  uint8_t RIOT6532::readRegisterDebug(uint16_t addr) const
+  {
+    switch (addr & 0x001F) {
+    case 0x00:                          // output register A
+    case 0x08:
+    case 0x10:
+    case 0x18:
+      return portAPinState;
+    case 0x01:                          // port A data direction
+    case 0x09:
+    case 0x11:
+    case 0x19:
+      return portADataDirection;
+    case 0x02:                          // output register B
+    case 0x0A:
+    case 0x12:
+    case 0x1A:
+      return ((portBRegister & portBDataDirection)
+              | (portBInput & portBDataDirectionInv));
+    case 0x03:                          // port B data direction
+    case 0x0B:
+    case 0x13:
+    case 0x1B:
+      return portBDataDirection;
+    case 0x04:                          // read timer
+    case 0x06:
+    case 0x0C:
+    case 0x0E:
+    case 0x14:
+    case 0x16:
+    case 0x1C:
+    case 0x1E:
+      return timerState;
+    case 0x05:                          // read interrupt flags
+    case 0x07:
+    case 0x0D:
+    case 0x0F:
+    case 0x15:
+    case 0x17:
+    case 0x1D:
+    case 0x1F:
+      return interruptFlags;
+    }
+    return 0x00;        // not reached
   }
 
 }       // namespace Plus4
