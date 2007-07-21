@@ -159,8 +159,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 xywh {270 139 75 20} color 36 labelcolor 52 align 20
               }
               Fl_Box {} {
-                label 00
-                xywh {30 165 35 25} box DOWN_BOX color 0 labelcolor 52
+                label Basic
+                xywh {25 165 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM00FileNameValuator {
                 callback {{
@@ -186,8 +186,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 01
-                xywh {30 195 35 25} box DOWN_BOX color 0 labelcolor 52
+                label Kernal
+                xywh {25 195 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM01FileNameValuator {
                 callback {{
@@ -213,8 +213,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 02
-                xywh {30 225 35 25} box DOWN_BOX color 0 labelcolor 52
+                label FuncL
+                xywh {25 225 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM02FileNameValuator {
                 callback {{
@@ -240,8 +240,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 03
-                xywh {30 255 35 25} box DOWN_BOX color 0 labelcolor 52
+                label FuncH
+                xywh {25 255 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM03FileNameValuator {
                 callback {{
@@ -267,8 +267,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 04
-                xywh {30 285 35 25} box DOWN_BOX color 0 labelcolor 52
+                label C1L
+                xywh {25 285 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM04FileNameValuator {
                 callback {{
@@ -294,8 +294,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 05
-                xywh {30 315 35 25} box DOWN_BOX color 0 labelcolor 52
+                label C1H
+                xywh {25 315 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM05FileNameValuator {
                 callback {{
@@ -321,8 +321,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 06
-                xywh {30 345 35 25} box DOWN_BOX color 0 labelcolor 52
+                label C2L
+                xywh {25 345 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM06FileNameValuator {
                 callback {{
@@ -348,8 +348,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 07
-                xywh {30 375 35 25} box DOWN_BOX color 0 labelcolor 52
+                label C2H
+                xywh {25 375 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM07FileNameValuator {
                 callback {{
@@ -375,8 +375,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 0C
-                xywh {30 405 35 25} box DOWN_BOX color 0 labelcolor 52
+                label 1526
+                xywh {25 405 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM0CFileNameValuator {
                 callback {{
@@ -402,8 +402,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 10
-                xywh {30 435 35 25} box DOWN_BOX color 0 labelcolor 52
+                label 1541
+                xywh {25 435 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM10FileNameValuator {
                 callback {{
@@ -429,8 +429,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 20
-                xywh {30 465 35 25} box DOWN_BOX color 0 labelcolor 52
+                label 1551
+                xywh {25 465 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM20FileNameValuator {
                 callback {{
@@ -456,8 +456,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 30
-                xywh {30 495 35 25} box DOWN_BOX color 0 labelcolor 52
+                label 1581L
+                xywh {25 495 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM30FileNameValuator {
                 callback {{
@@ -483,8 +483,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(FL_YELLOW);}
               }
               Fl_Box {} {
-                label 31
-                xywh {30 525 35 25} box DOWN_BOX color 0 labelcolor 52
+                label 1581H
+                xywh {25 525 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
               }
               Fl_Input memoryROM31FileNameValuator {
                 callback {{

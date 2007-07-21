@@ -431,10 +431,6 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_DeleteCPs, (void *) this);
   mainMenuBar->add("Machine/Tape/Close",
                    (char *) 0, &menuCallback_Machine_TapeClose, (void *) this);
-  mainMenuBar->add("Machine/Printer/Enable printer",
-                   (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
-  mainMenuBar->add("Machine/Printer/View printer output",
-                   (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
   mainMenuBar->add("Machine/Reset/Reset (F11)",
                    (char *) 0, &menuCallback_Machine_Reset, (void *) this);
   mainMenuBar->add("Machine/Reset/Force reset (Ctrl+F11)",
@@ -443,10 +439,6 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_ResetFreqs, (void *) this);
   mainMenuBar->add("Machine/Reset/Reset machine configuration (Shift+F11)",
                    (char *) 0, &menuCallback_Machine_ResetAll, (void *) this);
-  mainMenuBar->add("Machine/Enable SID emulation",
-                   (char *) 0, &menuCallback_Machine_EnableSID, (void *) this);
-  mainMenuBar->add("Machine/Enable light pen",
-                   (char *) 0, &menuCallback_Machine_EnableLP, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Load config 1 (PageDown)",
                    (char *) 0, &menuCallback_Machine_QuickCfgL1, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Load config 2 (PageUp)",
@@ -455,6 +447,14 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_QuickCfgS1, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Save config 2",
                    (char *) 0, &menuCallback_Machine_QuickCfgS2, (void *) this);
+  mainMenuBar->add("Machine/Printer/Enable printer",
+                   (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
+  mainMenuBar->add("Machine/Printer/View printer output",
+                   (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
+  mainMenuBar->add("Machine/Enable light pen",
+                   (char *) 0, &menuCallback_Machine_EnableLP, (void *) this);
+  mainMenuBar->add("Machine/Enable SID emulation",
+                   (char *) 0, &menuCallback_Machine_EnableSID, (void *) this);
   mainMenuBar->add("Machine/Toggle pause (F10)",
                    (char *) 0, &menuCallback_Machine_Pause, (void *) this);
   mainMenuBar->add("Machine/Configure...",
