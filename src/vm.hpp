@@ -373,10 +373,6 @@ namespace Plus4Emu {
      */
     virtual void setBreakPoints(const BreakPointList& bpList);
     /*!
-     * Returns the currently defined breakpoints.
-     */
-    virtual BreakPointList getBreakPoints();
-    /*!
      * Clear all breakpoints.
      */
     virtual void clearBreakPoints();

@@ -573,11 +573,6 @@ namespace Plus4Emu {
     (void) bpList;
   }
 
-  BreakPointList VirtualMachine::getBreakPoints()
-  {
-    return BreakPointList();
-  }
-
   void VirtualMachine::clearBreakPoints()
   {
   }
