@@ -29,7 +29,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {uint32_t disassemblyViewAddress;} {}
   decl {uint32_t disassemblyNextAddress;} {}
   decl {Fl_Text_Buffer *bpEditBuffer;} {}
-  decl {std::string breakPointLists[5];} {}
+  decl {std::string breakPointLists[6];} {}
   Function {Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_) : gui(gui_)} {open
   } {
     code {{
@@ -48,7 +48,7 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyStartAddress = 0x00000000U;
   disassemblyViewAddress = 0x00000000U;
   disassemblyNextAddress = 0x00000000U;
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 6; i++)
     breakPointLists[i] = "";
   bpEditBuffer = new Fl_Text_Buffer();
 }} {}
@@ -506,7 +506,7 @@ class Plus4EmuGUI_DebugWindow {open
   }
 }} open
         xywh {15 415 150 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
-        code0 {o->add("Main CPU|Unit 8|Unit 9|Unit 10|Unit 11");}
+        code0 {o->add("Main CPU|Unit 8|Unit 9|Unit 10|Unit 11|Printer");}
         code1 {o->value(gui.vm.getDebugContext());}
       } {}
       Fl_Button stepButton {
@@ -874,7 +874,7 @@ class Plus4EmuGUI_DebugWindow {open
   Function {setDebugContext(int n)} {open private return_type void
   } {
     code {{
-  n = (n >= 0 ? (n <= 4 ? n : 4) : 0);
+  n = (n >= 0 ? (n <= 5 ? n : 5) : 0);
   int   tmp = gui.vm.getDebugContext();
   if (n != tmp) {
     const char  *s = (char *) 0;

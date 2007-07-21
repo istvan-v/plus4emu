@@ -250,6 +250,7 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   }
   if (n >= 8)
     memory.rom[0x06].file = romDirectory + "p4fileio.rom";
+  memory.rom[0x0C].file = romDirectory + "1526_07c.rom";
   memory.rom[0x10].file = romDirectory + "dos1541.rom";
   memory.rom[0x20].file = romDirectory + "dos1551.rom";
   memory.rom[0x30].file = romDirectory + "dos1581.rom";
@@ -274,6 +275,8 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   config.createKey("memory.rom.06.offset", memory.rom[0x06].offset);
   config.createKey("memory.rom.07.file", memory.rom[0x07].file);
   config.createKey("memory.rom.07.offset", memory.rom[0x07].offset);
+  config.createKey("memory.rom.0C.file", memory.rom[0x0C].file);
+  config.createKey("memory.rom.0C.offset", memory.rom[0x0C].offset);
   config.createKey("memory.rom.10.file", memory.rom[0x10].file);
   config.createKey("memory.rom.10.offset", memory.rom[0x10].offset);
   config.createKey("memory.rom.20.file", memory.rom[0x20].file);

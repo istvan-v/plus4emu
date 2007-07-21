@@ -477,6 +477,34 @@ namespace Plus4 {
     }
   }
 
+  M7501 * Plus4VM::getDebugCPU()
+  {
+    if (currentDebugContext == 0)
+      return ted;
+    else if (currentDebugContext <= 4) {
+      if (floppyDrives[currentDebugContext - 1].floppyDrive
+          != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
+    }
+    else if (printer_ != (VC1526 *) 0)
+      return printer_->getCPU();
+    return (M7501 *) 0;
+  }
+
+  const M7501 * Plus4VM::getDebugCPU() const
+  {
+    if (currentDebugContext == 0)
+      return ted;
+    else if (currentDebugContext <= 4) {
+      if (floppyDrives[currentDebugContext - 1].floppyDrive
+          != (FloppyDrive *) 0)
+        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
+    }
+    else if (printer_ != (VC1526 *) 0)
+      return printer_->getCPU();
+    return (M7501 *) 0;
+  }
+
   void Plus4VM::tapeCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
@@ -971,6 +999,15 @@ namespace Plus4 {
         printer_->setROMImage(printerROM_1526);
         printerTimeRemaining = 0;
         ted->setCallback(&printerCallback, this, 1);
+        printer_->setBreakPointCallback(breakPointCallback,
+                                        breakPointCallbackUserData);
+        M7501   *p = printer_->getCPU();
+        if (p) {
+          p->setBreakPointPriorityThreshold(
+              ted->getBreakPointPriorityThreshold());
+          p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
+        }
+        printer_->setNoBreakOnDataRead(noBreakOnDataRead);
       }
     }
     else if (printer_ != (VC1526 *) 0) {
@@ -1192,17 +1229,20 @@ namespace Plus4 {
 
   void Plus4VM::setDebugContext(int n)
   {
-    currentDebugContext = (n >= 0 ? (n <= 4 ? n : 4) : 0);
+    currentDebugContext = (n >= 0 ? (n <= 5 ? n : 5) : 0);
     // disable single stepping in other debug contexts
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
       if (i != currentDebugContext) {
         M7501   *p = (M7501 *) 0;
-        if (i != 0) {
+        if (i == 0) {
+          p = ted;
+        }
+        else if (i <= 4) {
           if (floppyDrives[i - 1].floppyDrive != (FloppyDrive *) 0)
             p = floppyDrives[i - 1].floppyDrive->getCPU();
         }
-        else
-          p = ted;
+        else if (printer_ != (VC1526 *) 0)
+          p = printer_->getCPU();
         if (p)
           p->setSingleStepMode(0);
       }
@@ -1214,8 +1254,8 @@ namespace Plus4 {
     for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
       const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
       if (bp.type() == 4 && currentDebugContext != 0)
-        throw Plus4Emu::Exception("cannot set video breakpoints "
-                                  "on floppy drives");
+        throw Plus4Emu::Exception("video breakpoints can only be set "
+                                  "for the main CPU");
     }
     M7501   *p = getDebugCPU();
     if (p) {
@@ -1233,19 +1273,17 @@ namespace Plus4 {
             }
             ted->setCallback(&videoBreakPointCheckCallback, this, 3);
           }
-          videoBreakPoints[bp.addr()] = uint8_t(bp.priority() + 1);
+          // correct video position for FF1E read delay
+          uint16_t  addr = bp.addr();
+          uint16_t  addrX = (addr & 0x7F) + 1;
+          addr = addr & 0xFF80;
+          if (addrX != 114)
+            addr = addr | (addrX & 0x7F);
+          videoBreakPoints[addr] = uint8_t(bp.priority() + 1);
           videoBreakPointCnt++;
         }
       }
     }
-  }
-
-  Plus4Emu::BreakPointList Plus4VM::getBreakPoints()
-  {
-    M7501   *p = getDebugCPU();
-    if (p)
-      return (p->getBreakPointList());
-    return (Plus4Emu::BreakPointList());
   }
 
   void Plus4VM::clearBreakPoints()
@@ -1264,10 +1302,14 @@ namespace Plus4 {
   void Plus4VM::setBreakPointPriorityThreshold(int n)
   {
     ted->setBreakPointPriorityThreshold(n);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       M7501   *p = (M7501 *) 0;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        p = floppyDrives[i].floppyDrive->getCPU();
+      if (i < 4) {
+        if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+          p = floppyDrives[i].floppyDrive->getCPU();
+      }
+      else if (printer_ != (VC1526 *) 0)
+        p = printer_->getCPU();
       if (p)
         p->setBreakPointPriorityThreshold(n);
     }
@@ -1280,6 +1322,8 @@ namespace Plus4 {
       if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
         floppyDrives[i].floppyDrive->setNoBreakOnDataRead(n);
     }
+    if (printer_ != (VC1526 *) 0)
+      printer_->setNoBreakOnDataRead(n);
   }
 
   void Plus4VM::setSingleStepMode(int mode_)
@@ -1292,10 +1336,14 @@ namespace Plus4 {
   void Plus4VM::setBreakOnInvalidOpcode(bool isEnabled)
   {
     ted->setBreakOnInvalidOpcode(isEnabled);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       M7501   *p = (M7501 *) 0;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        p = floppyDrives[i].floppyDrive->getCPU();
+      if (i < 4) {
+        if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+          p = floppyDrives[i].floppyDrive->getCPU();
+      }
+      else if (printer_ != (VC1526 *) 0)
+        p = printer_->getCPU();
       if (p)
         p->setBreakOnInvalidOpcode(isEnabled);
     }
@@ -1313,16 +1361,24 @@ namespace Plus4 {
         floppyDrives[i].floppyDrive->setBreakPointCallback(breakPointCallback_,
                                                            userData_);
     }
+    if (printer_ != (VC1526 *) 0)
+      printer_->setBreakPointCallback(breakPointCallback_, userData_);
   }
 
   uint8_t Plus4VM::getMemoryPage(int n) const
   {
     if (currentDebugContext == 0)
       return ted->getMemoryPage(n);
-    else if (floppyDrives[currentDebugContext - 1].floppyDrive
-             != (FloppyDrive *) 0) {
-      // floppy drives are mapped to segments 60..6F
-      return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
+    else if (currentDebugContext <= 4) {
+      if (floppyDrives[currentDebugContext - 1].floppyDrive
+          != (FloppyDrive *) 0) {
+        // floppy drives are mapped to segments 60..6F
+        return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
+      }
+    }
+    else if (printer_ != (VC1526 *) 0) {
+      // printer is mapped to segments 50..53
+      return uint8_t(0x50 | (n & 3));
     }
     return uint8_t(0x7F);
   }
@@ -1333,12 +1389,14 @@ namespace Plus4 {
       if (currentDebugContext == 0) {
         return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
       }
-      else {
+      else if (currentDebugContext <= 4) {
         const FloppyDrive *p =
             floppyDrives[currentDebugContext - 1].floppyDrive;
         if (p)
           return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
       }
+      else if (printer_ != (VC1526 *) 0)
+        return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
     }
     else {
       uint8_t segment = uint8_t((addr >> 14) & 0xFF);
@@ -1362,6 +1420,13 @@ namespace Plus4 {
       case 0x31:
         if (floppyROM_1581_1)
           return floppyROM_1581_1[addr & 0x3FFFU];
+        break;
+      case 0x50:
+      case 0x51:
+      case 0x52:
+      case 0x53:
+        if (printer_ != (VC1526 *) 0)
+          return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
         break;
       case 0x60:
       case 0x61:
@@ -1402,20 +1467,26 @@ namespace Plus4 {
       if (currentDebugContext == 0) {
         ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
       }
-      else {
+      else if (currentDebugContext <= 4) {
         FloppyDrive *p = floppyDrives[currentDebugContext - 1].floppyDrive;
         if (p)
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
+      else if (printer_ != (VC1526 *) 0)
+        printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
     }
     else {
-      if (!(addr >= 0x00180000U && addr <= 0x001BFFFFU)) {
+      if (addr >= 0x00200000U) {
         ted->writeMemoryRaw(addr & uint32_t(0x003FFFFF), value);
       }
-      else {
+      else if (addr >= 0x00180000U && addr <= 0x001BFFFFU) {
         FloppyDrive *p = floppyDrives[(addr >> 16) & 3U].floppyDrive;
         if (p)
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+      }
+      else if (addr >= 0x00140000U && addr <= 0x0014FFFFU) {
+        if (printer_ != (VC1526 *) 0)
+          printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
     }
   }

@@ -26,11 +26,11 @@
 #include "soundio.hpp"
 #include "vm.hpp"
 #include "serial.hpp"
-#include "p4floppy.hpp"
 
 namespace Plus4 {
 
   class SID;
+  class FloppyDrive;
   class VC1526;
 
   class Plus4VM : public Plus4Emu::VirtualMachine {
@@ -128,24 +128,8 @@ namespace Plus4 {
     void addFloppyCallback(int n);
     void removeFloppyCallback(int n);
     void resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_);
-    inline M7501 * getDebugCPU()
-    {
-      if (currentDebugContext == 0)
-        return ted;
-      else if (floppyDrives[currentDebugContext - 1].floppyDrive
-               != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
-      return (M7501 *) 0;
-    }
-    inline const M7501 * getDebugCPU() const
-    {
-      if (currentDebugContext == 0)
-        return ted;
-      else if (floppyDrives[currentDebugContext - 1].floppyDrive
-               != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
-      return (M7501 *) 0;
-    }
+    M7501 * getDebugCPU();
+    const M7501 * getDebugCPU() const;
     static void tapeCallback(void *userData);
     static void sidCallback(void *userData);
     static void demoPlayCallback(void *userData);
@@ -300,6 +284,7 @@ namespace Plus4 {
      *   2: floppy drive (unit 9)
      *   3: floppy drive (unit 10)
      *   4: floppy drive (unit 11)
+     *   5: printer
      */
     virtual void setDebugContext(int n);
     /*!
@@ -307,10 +292,6 @@ namespace Plus4 {
      * bplist.hpp).
      */
     virtual void setBreakPoints(const Plus4Emu::BreakPointList& bpList);
-    /*!
-     * Returns the currently defined breakpoints.
-     */
-    virtual Plus4Emu::BreakPointList getBreakPoints();
     /*!
      * Clear all breakpoints.
      */

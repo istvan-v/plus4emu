@@ -972,6 +972,9 @@ void Plus4EmuGUIMonitor::command_printInfo(
   case 4:
     printMessage("Debug context:       floppy / unit 11");
     break;
+  case 5:
+    printMessage("Debug context:       printer");
+    break;
   }
   if (cpuAddressMode)
     printMessage("Address mode:        CPU (16 bit)");
@@ -1075,12 +1078,15 @@ void Plus4EmuGUIMonitor::command_setDebugContext(
   int     n = 0;
   if (args.size() < 2) {
     n = gui->vm.getDebugContext();
-    n = (n + 1) % 5;
+    n = (n + 1) % 6;
   }
   else {
     uint32_t  tmp = parseHexNumberEx(args[1].c_str());
     switch (tmp) {
     case 0U:
+      break;
+    case 4U:
+      n = 5;
       break;
     case 8U:
     case 9U:
@@ -1111,6 +1117,9 @@ void Plus4EmuGUIMonitor::command_setDebugContext(
     break;
   case 4:
     printMessage("Debug context set to floppy unit 11");
+    break;
+  case 5:
+    printMessage("Debug context set to printer");
     break;
   }
 }
@@ -1188,7 +1197,7 @@ void Plus4EmuGUIMonitor::command_load(const std::vector<std::string>& args,
         c = std::fgetc(f);
         if (c == EOF)
           break;
-        if (gui->vm.readMemory(addr, cpuAddressMode_) != uint8_t(c & 0xFF))
+        if (readMemoryForFileIO(addr, cpuAddressMode_) != uint8_t(c & 0xFF))
           diffCnt++;
         addr = (addr + 1U) & addressMask_;
       }
@@ -1233,7 +1242,7 @@ void Plus4EmuGUIMonitor::command_save(const std::vector<std::string>& args)
     if (std::fputc(int(loadAddr >> 8), f) == EOF)
       throw Plus4Emu::Exception("Error writing file");
     while (startAddr != endAddr) {
-      uint8_t c = gui->vm.readMemory(startAddr, cpuAddressMode);
+      uint8_t c = readMemoryForFileIO(startAddr, cpuAddressMode);
       if (std::fputc(int(c), f) == EOF)
         throw Plus4Emu::Exception("Error writing file");
       startAddr = (startAddr + 1U) & addressMask;
@@ -1389,6 +1398,7 @@ void Plus4EmuGUIMonitor::command_help(const std::vector<std::string>& args)
   else if (args[1] == "W") {
     printMessage("W       cycle debug context");
     printMessage("W0      set debug context to main CPU");
+    printMessage("W4      set debug context to printer");
     printMessage("W8      set debug context to floppy unit 8");
     printMessage("W9      set debug context to floppy unit 9");
     printMessage("W10     set debug context to floppy unit 10");
@@ -1724,7 +1734,8 @@ void Plus4EmuGUIMonitor::writeTraceFile(int debugContext_, uint16_t addr)
     bufp = bufp + n;
   }
   else {
-    int   n = std::sprintf(bufp, "[U%d] ", int(((debugContext_ - 1) & 3) | 8));
+    int   n = std::sprintf(bufp, "[U%d] ",
+                           int(((debugContext_ + 3) ^ 12) & 15));
     bufp = bufp + n;
   }
   int   n = std::sprintf(bufp, "%04X ", (unsigned int) (addr & 0xFFFF));
@@ -1756,5 +1767,31 @@ void Plus4EmuGUIMonitor::closeTraceFile()
     traceFile = (std::FILE *) 0;
     std::fclose(f);
   }
+}
+
+uint8_t Plus4EmuGUIMonitor::readMemoryForFileIO(uint32_t addr,
+                                                bool cpuAddressMode_) const
+{
+  if (cpuAddressMode_) {
+    uint32_t  addr_ = addr & 0xFFFFU;
+    if ((addr_ >= 0x8000U && addr_ <= 0xFCFFU) || addr_ >= 0xFF20U) {
+      if (gui->vm.getDebugContext() == 0) {
+        // always read RAM, regardless of FF3E/FF3F memory paging
+        uint8_t segment_ = gui->vm.getMemoryPage(int((addr_ >> 14) & 3U));
+        if (segment_ < 0x08) {
+          segment_ = gui->vm.getMemoryPage(1);
+          if (segment_ == 0xFF)
+            segment_ = gui->vm.getMemoryPage(0);        // 16K or 32K
+          else
+            segment_++;
+          if ((addr_ & 0x4000U) != 0U && segment_ != 0xFF)
+            segment_++;
+        }
+        addr_ = (addr_ & 0x3FFFU) | (uint32_t(segment_) << 14);
+        return gui->vm.readMemory(addr_, false);
+      }
+    }
+  }
+  return gui->vm.readMemory(addr, cpuAddressMode_);
 }
 
