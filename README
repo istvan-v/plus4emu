@@ -20,6 +20,7 @@ General
     saturation control; additional features in OpenGL mode only: single
     or double buffered (with synchronization to vertical refresh) mode,
     linear texture filtering, and some display effects
+  * high quality television (PAL and NTSC) emulation
   * real time audio output uses the PortAudio library (v18 or v19), with
     support for many native audio APIs (MME/DirectSound/ASIO on Windows,
     OSS/ALSA/JACK on Linux, and CoreAudio on MacOS X); high quality
@@ -31,17 +32,18 @@ General
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
     which can be played back with accurate timing)
-  * simple GUI debugger with support for breakpoints/watchpoints,
-    viewing the current state of CPU registers and memory paging,
-    displaying memory dump or loading from or saving to a file in ASCII
-    or binary format, modifying memory or searching for a pattern of
-    bytes, disassembler with support for all undocumented 6502 opcodes,
-    address offset for code that runs at a different location than where
-    it is at the time of disassembling, and saving disassembly to a
-    file. For memory operations and the disassembler, addresses can be
-    16 bit CPU (affected by current paging and includes memory mapped
-    I/O registers) or 22 bit physical (all ROM and RAM data can be
-    accessed, regardless of memory paging) addresses.
+  * GUI debugger with support for breakpoints/watchpoints, viewing the
+    current state of CPU registers and memory paging, displaying memory
+    dump or loading from or saving to a file in ASCII or binary format,
+    and disassembler with support for all undocumented 6502 opcodes.
+    The debugger also includes a TEDMON-like monitor with support for
+    all the commands, as well as some improvements and additional
+    features (assemble/disassemble offset, saving disassembly to a file,
+    physical (22 bit) memory addressing mode, undocumented CPU opcodes
+    in the assembler and disassembler, trace, search/replace pattern in
+    memory, and more).
+    It is also possible to debug the 6502 compatible CPUs in floppy
+    drives and printers.
   * configurable keyboard map for the emulated machine; it is also
     possible to use external game controller devices like joysticks and
     gamepads
@@ -72,6 +74,8 @@ Plus/4 emulation
   * hardware level emulation of the 1541, 1551, and 1581 floppy disk
     drives, with support for D64 and D81 files; compatibility with 1541
     fast loaders is fairly good in recent versions of the emulator
+  * light pen emulation (compatible with the Trojan Light Pen software)
+  * hardware level 1526/MPS-802 printer emulation
   * load and automatically start .PRG, .D64, or .D81 file on start-up
   * .PRG, .D64, and .D81 files can be associated with plus4emu on
     Windows
@@ -79,7 +83,7 @@ Plus/4 emulation
     library written by Dag Lem
   * optional extension ROM (p4fileio.rom) for direct access to .PRG
     files by the load/save commands on the host system in a single user
-    selectable directory
+    selectable directory; this ROM also includes a tape turbo
 
 Installation
 ============
@@ -313,18 +317,6 @@ Reset / Reset machine configuration (Shift + F11)
   Reverting the configuration can be useful after snapshot loading or
   demo playback, as these may change the settings.
 
-Enable SID emulation
-
-  Turn on SID emulation, making the SID registers appear at FD40-FD5F
-  and FE80-FE9F; this increases the CPU usage of the emulator.
-  SID emulation is also automatically enabled when a byte is written to
-  the above mentioned address ranges, but some programs detect if a SID
-  card is present by only reading the registers, and in those cases
-  using this option is needed. SID emulation remains active until the
-  next use of 'Force reset' or 'Reset machine configuration', and
-  snapshot data includes SID state and whether it was enabled or not at
-  the time of saving the snapshot.
-
 Quick configuration / Load config 1 (PageDown)
 
   Load the configuration file ~/.plus4emu/p4vmcfg1.cfg, and apply the
@@ -344,6 +336,18 @@ Quick configuration / Save config 2
 
   Save the current clock frequency and timing settings to
   ~/.plus4emu/p4vmcfg2.cfg.
+
+Enable SID emulation
+
+  Turn on SID emulation, making the SID registers appear at FD40-FD5F
+  and FE80-FE9F; this increases the CPU usage of the emulator.
+  SID emulation is also automatically enabled when a byte is written to
+  the above mentioned address ranges, but some programs detect if a SID
+  card is present by only reading the registers, and in those cases
+  using this option is needed. SID emulation remains active until the
+  next use of 'Force reset' or 'Reset machine configuration', and
+  snapshot data includes SID state and whether it was enabled or not at
+  the time of saving the snapshot.
 
 'Options' menu
 --------------

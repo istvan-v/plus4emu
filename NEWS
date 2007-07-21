@@ -14,6 +14,7 @@ Changes in version 1.2.0
     file; when debugging the main CPU, the TED video position at the
     first cycle of each opcode is also logged
   * light pen emulation
+  * hardware level 1526/MPS-802 printer emulation
   * the file I/O ROM module now also includes a tape turbo; to enable
     it, set $0647 to $17, $27, $37, or $47 to select speed (from slowest
     to fastest), and use device 7 when saving
