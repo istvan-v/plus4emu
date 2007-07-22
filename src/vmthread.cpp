@@ -274,6 +274,7 @@ namespace Plus4Emu {
     if (!lockCnt)
       threadLock1.notify();
     mutex_.unlock();
+    Timer::wait(0.0);           // allow the VM thread to actually wake up
   }
 
   // --------------------------------------------------------------------------
