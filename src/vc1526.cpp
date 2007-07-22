@@ -170,6 +170,7 @@ namespace Plus4 {
       pinState(0x00),
       prvPinState(0x00),
       viaInterruptFlag(false),
+      changeFlag(true),
       pageBuf((uint8_t *) 0),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
@@ -231,13 +232,14 @@ namespace Plus4 {
     if (pinState != prvPinState) {
       uint8_t tmp = (pinState ^ prvPinState) & pinState;
       if (tmp != 0x00 && headPosX >= 0 && headPosX < pageWidth) {
+        changeFlag = true;
         int     headPosYInt = yPosToPixel(headPosY);
         for (int i = 0; i < 8; i++) {
           if (tmp & 0x80) {
             int     y = headPosYInt + i;
             if (y >= 0 && y < pageHeight) {
               int     n = (y * pageWidth) + headPosX;
-              pageBuf[n] = pageBuf[n] >> 2;
+              pageBuf[n] = (pageBuf[n] >> 3) + (pageBuf[n] >> 4);
             }
           }
           tmp = tmp << 1;
@@ -396,6 +398,7 @@ namespace Plus4 {
 
   void VC1526::clearPage()
   {
+    changeFlag = true;
     for (size_t i = 0; i < size_t(pageWidth * pageHeight); i++)
       pageBuf[i] = 0xFF;        // clear to white
     headPosY = pixelToYPos(marginTop);
@@ -406,6 +409,38 @@ namespace Plus4 {
     return uint8_t(((riot2.getPortA() ^ 0xFF) & 0x20) >> 5);
   }
 
+  void VC1526::getHeadPosition(int& xPos, int& yPos)
+  {
+    xPos = headPosX;
+    yPos = yPosToPixel(headPosY);
+  }
+
+  bool VC1526::getIsOutputChanged() const
+  {
+    return changeFlag;
+  }
+
+  void VC1526::clearOutputChangedFlag()
+  {
+    changeFlag = false;
+  }
+
+  void VC1526::setEnable1525Mode(bool isEnabled)
+  {
+    if (isEnabled)
+      riot1.setPortB(riot1.getPortBInput() & 0x7F);
+    else
+      riot1.setPortB(riot1.getPortBInput() | 0x80);
+  }
+
+  void VC1526::setFormFeedOn(bool isEnabled)
+  {
+    if (isEnabled)
+      riot2.setPortA(riot2.getPortAInput() & 0xF7);
+    else
+      riot2.setPortA(riot2.getPortAInput() | 0x08);
+  }
+
   void VC1526::reset()
   {
     via.reset();
@@ -413,7 +448,7 @@ namespace Plus4 {
     riot2.reset();
     viaInterruptFlag = false;
     cpu.reset();
-    riot1.setPortB(uint8_t((deviceNumber & 3) | 0xF8));
+    riot1.setPortB((riot1.getPortBInput() & 0xF8) | uint8_t(deviceNumber & 3));
   }
 
   M7501 * VC1526::getCPU()

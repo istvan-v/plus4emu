@@ -121,6 +121,9 @@ namespace Plus4 {
     int       lightPenCycleCounter;
     VC1526    *printer_;
     int64_t   printerTimeRemaining;
+    bool      printerOutputChangedFlag;
+    bool      printer1525Mode;
+    bool      printerFormFeedOn;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -202,7 +205,7 @@ namespace Plus4 {
      */
     virtual void setEnablePrinter(bool isEnabled);
     /*!
-     * Get the current printer output as a 8-bit greyscale image.
+     * Get the current printer output as an 8-bit greyscale image.
      * 'buf_' contains 'w_' * 'h_' bytes. If there is no printer, a NULL
      * buffer pointer, and zero width and height will be returned.
      */
@@ -218,6 +221,28 @@ namespace Plus4 {
      * LED 1 is on, if bit 1 is set, LED 2 is on, etc.).
      */
     virtual uint8_t getPrinterLEDState() const;
+    /*!
+     * Returns the current position of the printer head. 'xPos' is in the
+     * range 0 (left) to page width - 1 (right), 'yPos' is in the range 0
+     * (top) to page height - 1 (bottom). The page width and height can be
+     * determined with getPrinterOutput().
+     * If printer emulation is not enabled, -1,-1 is returned.
+     */
+    virtual void getPrinterHeadPosition(int& xPos, int& yPos);
+    /*!
+     * Returns true if the printer output has changed since the last call of
+     * clearPrinterOutputChangedFlag().
+     */
+    virtual bool getIsPrinterOutputChanged() const;
+    virtual void clearPrinterOutputChangedFlag();
+    /*!
+     * Set printer mode (false: 1526, true: 1525).
+     */
+    virtual void setPrinter1525Mode(bool isEnabled);
+    /*!
+     * Set the state of the printer form feed button (false: off, true: on).
+     */
+    virtual void setPrinterFormFeedOn(bool isEnabled);
     /*!
      * Returns status information about the emulated machine (see also
      * struct VMStatus above, and the comments for functions that return

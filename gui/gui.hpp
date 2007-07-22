@@ -43,6 +43,7 @@ class Plus4EmuGUI_KbdConfigWindow;
 class Plus4EmuGUI_SoundConfigWindow;
 class Plus4EmuGUI_MachineConfigWindow;
 class Plus4EmuGUI_DebugWindow;
+class Plus4EmuGUI_PrinterWindow;
 class Plus4EmuGUI_AboutWindow;
 class Plus4EmuGUIMonitor;
 
@@ -53,6 +54,7 @@ class Plus4EmuGUIMonitor;
 #include "snd_cfg_fl.hpp"
 #include "vm_cfg_fl.hpp"
 #include "debug_fl.hpp"
+#include "printer_fl.hpp"
 #include "about_fl.hpp"
 #include "monitor.hpp"
 

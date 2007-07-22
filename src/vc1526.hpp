@@ -31,11 +31,11 @@ namespace Plus4 {
   class VC1526 {
    public:
     static const int    pageWidth = 700;
-    static const int    pageHeight = 1000;
+    static const int    pageHeight = 990;
     static const int    marginLeft = 36;
     static const int    marginRight = 24;
     static const int    marginTop = 30;
-    static const int    marginBottom = 30;
+    static const int    marginBottom = 140;
    private:
     static const int    updatePinReload = 10;           // 100 kHz
     static const int    updateMotorReload = 100;        // 10 kHz
@@ -75,6 +75,7 @@ namespace Plus4 {
     uint8_t     pinState;
     uint8_t     prvPinState;
     bool        viaInterruptFlag;
+    bool        changeFlag;
     uint8_t     *pageBuf;       // pageWidth * pageHeight bytes
     void        (*breakPointCallback)(void *userData,
                                       int debugContext_, int type,
@@ -109,16 +110,62 @@ namespace Plus4 {
    public:
     VC1526(int devNum_ = 4);
     virtual ~VC1526();
+    /*!
+     * Use 'romData_' (should point to 8192 bytes of data which is expected
+     * to remain valid until either a new address is set or the object is
+     * destroyed, or can be NULL for no ROM data) as the printer firmware.
+     */
     virtual void setROMImage(const uint8_t *romData_);
     /*!
      * Run printer emulation for one microsecond (1 MHz clock frequency).
      */
     virtual void runOneCycle(SerialBus& serialBus_);
+    /*!
+     * Returns a pointer to the page data, which is encoded as an 8-bit
+     * greyscale image. The data size is getPageWidth() * getPageHeight()
+     * bytes. The buffer should not be changed or freed, and remains valid
+     * until the next runOneCycle() or clearPage() call.
+     */
     virtual const uint8_t *getPageData() const;
+    /*!
+     * Returns the page width in pixels.
+     */
     virtual int getPageWidth() const;
+    /*!
+     * Returns the page height in pixels.
+     */
     virtual int getPageHeight() const;
+    /*!
+     * Clear page and set the head position at the top of the page.
+     */
     virtual void clearPage();
+    /*!
+     * Returns the current state of the printer LED (0: off, 1: on).
+     */
     virtual uint8_t getLEDState() const;
+    /*!
+     * Returns the current position of the head. 'xPos' is in the range
+     * 0 (left) to getPageWidth()-1 (right), 'yPos' is in the range 0 (top)
+     * to getPageHeight()-1 (bottom).
+     */
+    virtual void getHeadPosition(int& xPos, int& yPos);
+    /*!
+     * Returns true if the page has changed since the last call of
+     * clearOutputChangedFlag().
+     */
+    virtual bool getIsOutputChanged() const;
+    virtual void clearOutputChangedFlag();
+    /*!
+     * Set printer mode (false: 1526, true: 1525).
+     */
+    virtual void setEnable1525Mode(bool isEnabled);
+    /*!
+     * Set the state of the form feed button (false: off, true: on).
+     */
+    virtual void setFormFeedOn(bool isEnabled);
+    /*!
+     * Reset printer.
+     */
     virtual void reset();
     /*!
      * Returns pointer to the printer CPU.

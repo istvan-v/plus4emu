@@ -24,6 +24,8 @@ class Plus4EmuGUI {open
   }
   decl {friend class Plus4EmuGUIMonitor;} {public
   }
+  decl {friend class Plus4EmuGUI_PrinterWindow;} {public
+  }
   decl {friend class Plus4EmuGUI_AboutWindow;} {public
   }
   decl {Plus4Emu::VideoDisplay& display;} {}
@@ -78,6 +80,7 @@ class Plus4EmuGUI {open
   decl {Plus4EmuGUI_SoundConfigWindow *soundSettingsWindow;} {}
   decl {Plus4EmuGUI_MachineConfigWindow *machineConfigWindow;} {}
   decl {Plus4EmuGUI_DebugWindow *debugWindow;} {}
+  decl {Plus4EmuGUI_PrinterWindow *printerWindow;} {}
   decl {Plus4EmuGUI_AboutWindow *aboutWindow;} {}
   decl {Plus4Emu::JoystickInput joystickInput;} {}
   decl {void init_();} {}
@@ -141,6 +144,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_DeleteCPs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapeClose(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtMode(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Reset(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ColdReset(Fl_Widget *o, void *v);} {}
@@ -255,6 +259,7 @@ class Plus4EmuGUI {open
   soundSettingsWindow = new Plus4EmuGUI_SoundConfigWindow(*this);
   machineConfigWindow = new Plus4EmuGUI_MachineConfigWindow(*this);
   debugWindow = new Plus4EmuGUI_DebugWindow(*this);
+  printerWindow = new Plus4EmuGUI_PrinterWindow(*this);
   aboutWindow = new Plus4EmuGUI_AboutWindow(*this);
 }} {}
   }
@@ -270,6 +275,7 @@ class Plus4EmuGUI {open
   keyboardConfigWindow->hide();
   soundSettingsWindow->hide();
   machineConfigWindow->hide();
+  printerWindow->hide();
   aboutWindow->hide();
   mainWindow->hide();
   Fl::remove_check(&fltkCheckCallback, (void *) this);
@@ -283,6 +289,7 @@ class Plus4EmuGUI {open
   delete soundSettingsWindow;
   delete machineConfigWindow;
   delete debugWindow;
+  delete printerWindow;
   delete aboutWindow;
   delete mainWindow;
   config.sound.file = "";

@@ -193,7 +193,7 @@ plus4emu = plus4emuEnvironment.Program('plus4emu',
     ['gui/gui.cpp']
     + fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl', 'gui/disp_cfg.fl',
                     'gui/kbd_cfg.fl', 'gui/snd_cfg.fl', 'gui/vm_cfg.fl',
-                    'gui/debug.fl', 'gui/about.fl'])
+                    'gui/debug.fl', 'gui/printer.fl', 'gui/about.fl'])
     + ['gui/monitor.cpp', 'gui/main.cpp'])
 Depends(plus4emu, plus4emuLib)
 Depends(plus4emu, residLib)

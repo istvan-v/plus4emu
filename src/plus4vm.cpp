@@ -486,7 +486,7 @@ namespace Plus4 {
           != (FloppyDrive *) 0)
         return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
     }
-    else if (printer_ != (VC1526 *) 0)
+    else if (printer_)
       return printer_->getCPU();
     return (M7501 *) 0;
   }
@@ -500,7 +500,7 @@ namespace Plus4 {
           != (FloppyDrive *) 0)
         return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
     }
-    else if (printer_ != (VC1526 *) 0)
+    else if (printer_)
       return printer_->getCPU();
     return (M7501 *) 0;
   }
@@ -655,7 +655,10 @@ namespace Plus4 {
       lightPenPositionY(-1),
       lightPenCycleCounter(0),
       printer_((VC1526 *) 0),
-      printerTimeRemaining(0)
+      printerTimeRemaining(0),
+      printerOutputChangedFlag(true),
+      printer1525Mode(false),
+      printerFormFeedOn(false)
   {
     sid_ = new SID();
     try {
@@ -994,9 +997,11 @@ namespace Plus4 {
   void Plus4VM::setEnablePrinter(bool isEnabled)
   {
     if (isEnabled) {
-      if (printer_ == (VC1526 *) 0) {
+      if (!printer_) {
         printer_ = new VC1526(4);       // TODO: allow setting device number ?
         printer_->setROMImage(printerROM_1526);
+        printer_->setEnable1525Mode(printer1525Mode);
+        printer_->setFormFeedOn(printerFormFeedOn);
         printerTimeRemaining = 0;
         ted->setCallback(&printerCallback, this, 1);
         printer_->setBreakPointCallback(breakPointCallback,
@@ -1010,7 +1015,8 @@ namespace Plus4 {
         printer_->setNoBreakOnDataRead(noBreakOnDataRead);
       }
     }
-    else if (printer_ != (VC1526 *) 0) {
+    else if (printer_) {
+      printerOutputChangedFlag = true;
       ted->setCallback(&printerCallback, this, 0);
       ted->serialPort.removeDevice(4);
       delete printer_;
@@ -1043,6 +1049,44 @@ namespace Plus4 {
     if (printer_)
       return printer_->getLEDState();
     return 0x00;
+  }
+
+  void Plus4VM::getPrinterHeadPosition(int& xPos, int& yPos)
+  {
+    if (printer_) {
+      printer_->getHeadPosition(xPos, yPos);
+      return;
+    }
+    xPos = -1;
+    yPos = -1;
+  }
+
+  bool Plus4VM::getIsPrinterOutputChanged() const
+  {
+    if (printer_)
+      return printer_->getIsOutputChanged();
+    return printerOutputChangedFlag;
+  }
+
+  void Plus4VM::clearPrinterOutputChangedFlag()
+  {
+    if (printer_)
+      printer_->clearOutputChangedFlag();
+    printerOutputChangedFlag = false;
+  }
+
+  void Plus4VM::setPrinter1525Mode(bool isEnabled)
+  {
+    printer1525Mode = isEnabled;
+    if (printer_)
+      printer_->setEnable1525Mode(isEnabled);
+  }
+
+  void Plus4VM::setPrinterFormFeedOn(bool isEnabled)
+  {
+    printerFormFeedOn = isEnabled;
+    if (printer_)
+      printer_->setFormFeedOn(isEnabled);
   }
 
   void Plus4VM::getVMStatus(VMStatus& vmStatus_)
@@ -1241,7 +1285,7 @@ namespace Plus4 {
           if (floppyDrives[i - 1].floppyDrive != (FloppyDrive *) 0)
             p = floppyDrives[i - 1].floppyDrive->getCPU();
         }
-        else if (printer_ != (VC1526 *) 0)
+        else if (printer_)
           p = printer_->getCPU();
         if (p)
           p->setSingleStepMode(0);
@@ -1308,7 +1352,7 @@ namespace Plus4 {
         if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
           p = floppyDrives[i].floppyDrive->getCPU();
       }
-      else if (printer_ != (VC1526 *) 0)
+      else if (printer_)
         p = printer_->getCPU();
       if (p)
         p->setBreakPointPriorityThreshold(n);
@@ -1322,7 +1366,7 @@ namespace Plus4 {
       if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
         floppyDrives[i].floppyDrive->setNoBreakOnDataRead(n);
     }
-    if (printer_ != (VC1526 *) 0)
+    if (printer_)
       printer_->setNoBreakOnDataRead(n);
   }
 
@@ -1342,7 +1386,7 @@ namespace Plus4 {
         if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
           p = floppyDrives[i].floppyDrive->getCPU();
       }
-      else if (printer_ != (VC1526 *) 0)
+      else if (printer_)
         p = printer_->getCPU();
       if (p)
         p->setBreakOnInvalidOpcode(isEnabled);
@@ -1361,7 +1405,7 @@ namespace Plus4 {
         floppyDrives[i].floppyDrive->setBreakPointCallback(breakPointCallback_,
                                                            userData_);
     }
-    if (printer_ != (VC1526 *) 0)
+    if (printer_)
       printer_->setBreakPointCallback(breakPointCallback_, userData_);
   }
 
@@ -1376,7 +1420,7 @@ namespace Plus4 {
         return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
       }
     }
-    else if (printer_ != (VC1526 *) 0) {
+    else if (printer_) {
       // printer is mapped to segments 50..53
       return uint8_t(0x50 | (n & 3));
     }
@@ -1395,7 +1439,7 @@ namespace Plus4 {
         if (p)
           return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
       }
-      else if (printer_ != (VC1526 *) 0)
+      else if (printer_)
         return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
     }
     else {
@@ -1425,7 +1469,7 @@ namespace Plus4 {
       case 0x51:
       case 0x52:
       case 0x53:
-        if (printer_ != (VC1526 *) 0)
+        if (printer_)
           return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
         break;
       case 0x60:
@@ -1472,7 +1516,7 @@ namespace Plus4 {
         if (p)
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
-      else if (printer_ != (VC1526 *) 0)
+      else if (printer_)
         printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
     }
     else {
@@ -1485,7 +1529,7 @@ namespace Plus4 {
           p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
       else if (addr >= 0x00140000U && addr <= 0x0014FFFFU) {
-        if (printer_ != (VC1526 *) 0)
+        if (printer_)
           printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
     }

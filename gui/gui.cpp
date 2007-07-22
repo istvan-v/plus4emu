@@ -76,6 +76,7 @@ void Plus4EmuGUI::init_()
   soundSettingsWindow = (Plus4EmuGUI_SoundConfigWindow *) 0;
   machineConfigWindow = (Plus4EmuGUI_MachineConfigWindow *) 0;
   debugWindow = (Plus4EmuGUI_DebugWindow *) 0;
+  printerWindow = (Plus4EmuGUI_PrinterWindow *) 0;
   aboutWindow = (Plus4EmuGUI_AboutWindow *) 0;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
@@ -318,6 +319,8 @@ void Plus4EmuGUI::updateDisplay(double t)
     driveDStatusDisplay->color(ledColors_[(tmp >> 24) & 3U]);
     driveDStatusDisplay->redraw();
   }
+  if (printerWindow->window->shown())
+    printerWindow->updateWindow();
   Fl::wait(t);
   updateDisplayEntered = false;
 }
@@ -449,6 +452,8 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_QuickCfgS2, (void *) this);
   mainMenuBar->add("Machine/Printer/Enable printer",
                    (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
+  mainMenuBar->add("Machine/Printer/1525 mode",
+                   (char *) 0, &menuCallback_Machine_PrtMode, (void *) this);
   mainMenuBar->add("Machine/Printer/View printer output",
                    (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
   mainMenuBar->add("Machine/Enable light pen",
@@ -509,6 +514,9 @@ void Plus4EmuGUI::run()
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
   mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/Enable printer")
+                        - mainMenuBar->menu()),
+                    FL_MENU_TOGGLE);
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/1525 mode")
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
   mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Enable light pen")
@@ -1845,12 +1853,34 @@ void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
   }
 }
 
+void Plus4EmuGUI::menuCallback_Machine_PrtMode(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        const Fl_Menu_Item  *m =
+            gui_.mainMenuBar->find_item("Machine/Printer/1525 mode");
+        gui_.vm.setPrinter1525Mode(m->value() != 0);
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
 void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  // TODO: implement this
-  (void) gui_;
+  gui_.printerWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Machine_Reset(Fl_Widget *o, void *v)
