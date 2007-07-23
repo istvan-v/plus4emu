@@ -320,7 +320,7 @@ void Plus4EmuGUI::updateDisplay(double t)
     driveDStatusDisplay->redraw();
   }
   if (printerWindow->window->shown())
-    printerWindow->updateWindow();
+    printerWindow->updateWindow(vmThreadStatus);
   Fl::wait(t);
   updateDisplayEntered = false;
 }

@@ -46,7 +46,8 @@ class Plus4EmuGUI_PrinterWindow {open
   decl {Plus4Emu::Timer updateTimer;} {}
   decl {int prvHeadPosX;} {}
   decl {int prvHeadPosY;} {}
-  Function {Plus4EmuGUI_PrinterWindow(Plus4EmuGUI& gui_) : gui(gui_), updateTimer(), prvHeadPosX(-2), prvHeadPosY(-2)} {open
+  decl {uint8_t prvLEDState;} {}
+  Function {Plus4EmuGUI_PrinterWindow(Plus4EmuGUI& gui_) : gui(gui_), updateTimer(), prvHeadPosX(-2), prvHeadPosY(-2), prvLEDState(0x00)} {open
   } {
     Fl_Window window {
       label Printer
@@ -55,7 +56,7 @@ class Plus4EmuGUI_PrinterWindow {open
 }} open
       xywh {231 97 745 555} type Double color 37 visible
     } {
-      Fl_Scroll {} {open
+      Fl_Scroll printerDisplayScroll {open
         xywh {10 10 725 500} box DOWN_BOX color 36
       } {
         Fl_Box printerDisplay {
@@ -101,6 +102,8 @@ class Plus4EmuGUI_PrinterWindow {open
     if (gui.lockVMThread()) {
       try {
         gui.vm.clearPrinterOutput();
+        printerDisplayScroll->position(printerDisplayScroll->xposition(), 0);
+        printerDisplayScroll->redraw();
       }
       catch (...) {
         gui.unlockVMThread();
@@ -151,30 +154,36 @@ class Plus4EmuGUI_PrinterWindow {open
   return bool(window->shown());
 }} {}
   }
-  Function {updateWindow()} {open return_type void
+  Function {updateWindow(const Plus4Emu::VMThread::VMThreadStatus& vmThreadStatus)} {open return_type void
   } {
     code {{
-  if (updateTimer.getRealTime() < 0.08)
+  if (vmThreadStatus.printerHeadPositionX == prvHeadPosX &&
+      vmThreadStatus.printerHeadPositionY == prvHeadPosY &&
+      vmThreadStatus.printerLEDState == prvLEDState &&
+      !vmThreadStatus.printerOutputChanged)
+    return;
+  if (updateTimer.getRealTime() < 0.05)
     return;
   updateTimer.reset();
-  if (gui.vmThread.lock(250) == 0) {
-    try {
-      if (gui.vm.getPrinterLEDState() == 0x00)
-        printerLEDDisplay->color(FL_BLACK);
-      else
-        printerLEDDisplay->color(Fl_Color(128));
-      printerLEDDisplay->redraw();
-      int   headPosX = -1;
-      int   headPosY = -1;
-      gui.vm.getPrinterHeadPosition(headPosX, headPosY);
-      if (gui.vm.getIsPrinterOutputChanged() ||
-          headPosX != prvHeadPosX || headPosY != prvHeadPosY) {
-        printerDisplay->redraw();
-      }
+  if (vmThreadStatus.printerLEDState == 0x00)
+    printerLEDDisplay->color(FL_BLACK);
+  else
+    printerLEDDisplay->color(Fl_Color(128));
+  printerLEDDisplay->redraw();
+  prvLEDState = vmThreadStatus.printerLEDState;
+  if (vmThreadStatus.printerOutputChanged ||
+      vmThreadStatus.printerHeadPositionX != prvHeadPosX ||
+      vmThreadStatus.printerHeadPositionY != prvHeadPosY) {
+    int     scrollPosY = printerDisplayScroll->yposition();
+    if ((vmThreadStatus.printerHeadPositionY - scrollPosY) > 488) {
+      scrollPosY = vmThreadStatus.printerHeadPositionY - 488;
+      if (scrollPosY > 494)
+        scrollPosY = 494;
+      printerDisplayScroll->position(printerDisplayScroll->xposition(),
+                                     scrollPosY);
+      printerDisplayScroll->redraw();
     }
-    catch (...) {
-    }
-    gui.vmThread.unlock();
+    printerDisplay->redraw();
   }
 }} {}
   }
@@ -231,7 +240,113 @@ class Plus4EmuGUI_PrinterWindow {open
   Function {savePrinterOutput()} {open private return_type void
   } {
     code {{
-
+  try {
+    std::string fName;
+    std::FILE   *f = (std::FILE *) 0;
+    if (!gui.browseFile(fName, gui.screenshotDirectory, "TGA files (*.tga)",
+                        Fl_File_Chooser::CREATE, "Save printer output"))
+      return;
+    if (gui.lockVMThread()) {
+      try {
+        const uint8_t *buf = (uint8_t *) 0;
+        int     w_ = 0;
+        int     h_ = 0;
+        gui.vm.getPrinterOutput(buf, w_, h_);
+        if (buf == (uint8_t *) 0 || w_ <= 0 || h_ <= 0)
+          throw Plus4Emu::Exception("printer emulation is not enabled");
+        f = std::fopen(fName.c_str(), "wb");
+        if (!f)
+          throw Plus4Emu::Exception("error opening image file");
+        unsigned char tmpBuf[1032];
+        tmpBuf[0] = 0;                  // ID length
+        tmpBuf[1] = 1;                  // use colormap
+        tmpBuf[2] = 9;                  // image type (colormap/RLE)
+        tmpBuf[3] = 0;                  // color map specification
+        tmpBuf[4] = 0;                  // first entry index = 0
+        tmpBuf[5] = 0;
+        tmpBuf[6] = 1;                  // length = 256
+        tmpBuf[7] = 24;                 // colormap entry size
+        tmpBuf[8] = 0;                  // X origin
+        tmpBuf[9] = 0;
+        tmpBuf[10] = 0;                 // Y origin
+        tmpBuf[11] = 0;
+        tmpBuf[12] = (unsigned char) (w_ & 0xFF);   // image width
+        tmpBuf[13] = (unsigned char) (w_ >> 8);
+        tmpBuf[14] = (unsigned char) (h_ & 0xFF);   // image height
+        tmpBuf[15] = (unsigned char) (h_ >> 8);
+        tmpBuf[16] = 8;                 // bits per pixel
+        tmpBuf[17] = 0x20;              // image descriptor (origin: top/left)
+        for (int i = 0; i < 256; i++) {
+          tmpBuf[i * 3 + 18] = (unsigned char) i;
+          tmpBuf[i * 3 + 19] = (unsigned char) i;
+          tmpBuf[i * 3 + 20] = (unsigned char) i;
+        }
+        if (std::fwrite(&(tmpBuf[0]), sizeof(unsigned char), 786, f) != 786)
+          throw Plus4Emu::Exception("error writing image file "
+                                    "- is the disk full ?");
+        for (int yc = 0; yc < h_; yc++) {
+          const unsigned char *bufp = &(buf[yc * w_]);
+          // RLE encode line
+          unsigned char   *p = &(tmpBuf[0]);
+          int     xc = 0;
+          while (xc < w_) {
+            if (xc == (w_ - 1)) {
+              *(p++) = 0x00;
+              *(p++) = bufp[xc];
+              xc++;
+            }
+            else if (bufp[xc] == bufp[xc + 1]) {
+              int     tmp = xc + 2;
+              while (tmp < w_ && (tmp - xc) < 128) {
+                if (bufp[tmp] != bufp[xc])
+                  break;
+                tmp++;
+              }
+              *(p++) = (unsigned char) (((tmp - xc) - 1) | 0x80);
+              *(p++) = bufp[xc];
+              xc = tmp;
+            }
+            else {
+              int     tmp = xc + 2;
+              while (tmp < w_ && (tmp - xc) < 128) {
+                if (bufp[tmp] == bufp[tmp - 1]) {
+                  tmp--;
+                  break;
+                }
+                tmp++;
+              }
+              *(p++) = (unsigned char) ((tmp - xc) - 1);
+              while (xc < tmp) {
+                *(p++) = bufp[xc];
+                xc++;
+              }
+            }
+          }
+          size_t  nBytes = size_t(p - &(tmpBuf[0]));
+          if (std::fwrite(&(tmpBuf[0]), sizeof(unsigned char), nBytes, f)
+              != nBytes)
+            throw Plus4Emu::Exception("error writing image file "
+                                      "- is the disk full ?");
+        }
+      }
+      catch (...) {
+        gui.unlockVMThread();
+        if (f) {
+          std::fclose(f);
+          f = (std::FILE *) 0;
+          if (fName.length() > 0)
+            std::remove(fName.c_str());
+        }
+        throw;
+      }
+      gui.unlockVMThread();
+    }
+    if (f)
+      std::fclose(f);
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
 }} {}
   }
 } 

@@ -91,6 +91,10 @@ namespace Plus4Emu {
       //   0x01000000: drive 3 red LED is on
       //   0x02000000: drive 3 green LED is on
       uint32_t  floppyDriveLEDState;
+      int       printerHeadPositionX;
+      int       printerHeadPositionY;
+      bool      printerOutputChanged;
+      uint8_t   printerLEDState;
     };
     static const uint64_t defaultRAMPattern =
         (uint64_t(0x0000E000UL) | (uint64_t(0x000001F7UL) << 32));

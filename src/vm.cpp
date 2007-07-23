@@ -382,6 +382,10 @@ namespace Plus4Emu {
     vmStatus_.floppyDriveLEDState = getFloppyDriveLEDState();
     vmStatus_.isPlayingDemo = getIsPlayingDemo();
     vmStatus_.isRecordingDemo = getIsRecordingDemo();
+    getPrinterHeadPosition(vmStatus_.printerHeadPositionX,
+                           vmStatus_.printerHeadPositionY);
+    vmStatus_.printerOutputChanged = getIsPrinterOutputChanged();
+    vmStatus_.printerLEDState = getPrinterLEDState();
   }
 
   void VirtualMachine::setDiskImageFile(int n, const std::string& fileName_,

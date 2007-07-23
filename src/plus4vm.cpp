@@ -1103,6 +1103,18 @@ namespace Plus4 {
         n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
     }
     vmStatus_.floppyDriveLEDState = n;
+    if (!printer_) {
+      vmStatus_.printerHeadPositionX = -1;
+      vmStatus_.printerHeadPositionY = -1;
+      vmStatus_.printerOutputChanged = printerOutputChangedFlag;
+      vmStatus_.printerLEDState = 0x00;
+    }
+    else {
+      printer_->getHeadPosition(vmStatus_.printerHeadPositionX,
+                                vmStatus_.printerHeadPositionY);
+      vmStatus_.printerOutputChanged = printer_->getIsOutputChanged();
+      vmStatus_.printerLEDState = printer_->getLEDState();
+    }
     vmStatus_.isPlayingDemo = isPlayingDemo;
     if (demoFile != (Plus4Emu::File *) 0 && !isRecordingDemo)
       stopDemoRecording(true);

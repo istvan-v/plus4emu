@@ -29,29 +29,12 @@ namespace Plus4Emu {
   class VMThread : private Thread {
    public:
     VirtualMachine& vm;
-    struct VMThreadStatus {
+    struct VMThreadStatus : public VirtualMachine::VMStatus {
       // 'threadStatus' is zero if the emulation thread is running,
       // and non-zero if it has terminated (negative if the termination
       // occured due to an error).
       int       threadStatus;
       bool      isPaused;
-      bool      isRecordingDemo;
-      bool      isPlayingDemo;
-      bool      tapeReadOnly;
-      double    tapePosition;
-      double    tapeLength;
-      long      tapeSampleRate;
-      int       tapeSampleSize;
-      // floppy drive LED state is the sum of any of the following values:
-      //   0x00000001: drive 0 red LED is on
-      //   0x00000002: drive 0 green LED is on
-      //   0x00000100: drive 1 red LED is on
-      //   0x00000200: drive 1 green LED is on
-      //   0x00010000: drive 2 red LED is on
-      //   0x00020000: drive 2 green LED is on
-      //   0x01000000: drive 3 red LED is on
-      //   0x02000000: drive 3 green LED is on
-      uint32_t  floppyDriveLEDState;
       // --------
       VMThreadStatus(VMThread& vmThread_);
     };
@@ -69,14 +52,7 @@ namespace Plus4Emu {
     bool            joinFlag;
     bool            errorFlag;
     bool            pauseFlag;
-    bool            isRecordingDemo;
-    bool            isPlayingDemo;
-    bool            tapeReadOnly;
-    double          tapePosition;
-    double          tapeLength;
-    long            tapeSampleRate;
-    int             tapeSampleSize;
-    uint32_t        floppyDriveLEDState;
+    VirtualMachine::VMStatus  vmStatus;
     void            *userData;
     void            (*errorCallback)(void *userData_, const char *msg);
     void            (*processCallback)(void *userData_);

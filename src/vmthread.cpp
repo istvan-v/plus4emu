@@ -51,18 +51,22 @@ namespace Plus4Emu {
       joinFlag(false),
       errorFlag(false),
       pauseFlag(true),
-      isRecordingDemo(false),
-      isPlayingDemo(false),
-      tapeReadOnly(true),
-      tapePosition(-1.0),
-      tapeLength(-1.0),
-      tapeSampleRate(0L),
-      tapeSampleSize(0),
-      floppyDriveLEDState(0U),
       userData(userData_),
       errorCallback(&defaultErrorCallback),
       processCallback((void (*)(void *)) 0)
   {
+    vmStatus.isRecordingDemo = false;
+    vmStatus.isPlayingDemo = false;
+    vmStatus.tapeReadOnly = true;
+    vmStatus.tapePosition = -1.0;
+    vmStatus.tapeLength = -1.0;
+    vmStatus.tapeSampleRate = 0L;
+    vmStatus.tapeSampleSize = 0;
+    vmStatus.floppyDriveLEDState = 0U;
+    vmStatus.printerHeadPositionX = -1;
+    vmStatus.printerHeadPositionY = -1;
+    vmStatus.printerOutputChanged = true;
+    vmStatus.printerLEDState = 0x00;
     for (int i = 0; i < 128; i++)
       keyboardState[i] = false;
     this->start();
@@ -84,20 +88,24 @@ namespace Plus4Emu {
     catch (...) {
       errorFlag = true;
     }
-    isRecordingDemo = false;
-    isPlayingDemo = false;
+    vmStatus.isRecordingDemo = false;
+    vmStatus.isPlayingDemo = false;
     try {
       vm.setTapeFileName(std::string(""));
     }
     catch (...) {
       errorFlag = true;
     }
-    tapeReadOnly = true;
-    tapePosition = -1.0;
-    tapeLength = -1.0;
-    tapeSampleRate = 0L;
-    tapeSampleSize = 0;
-    floppyDriveLEDState = 0U;
+    vmStatus.tapeReadOnly = true;
+    vmStatus.tapePosition = -1.0;
+    vmStatus.tapeLength = -1.0;
+    vmStatus.tapeSampleRate = 0L;
+    vmStatus.tapeSampleSize = 0;
+    vmStatus.floppyDriveLEDState = 0U;
+    vmStatus.printerHeadPositionX = -1;
+    vmStatus.printerHeadPositionY = -1;
+    vmStatus.printerOutputChanged = true;
+    vmStatus.printerLEDState = 0x00;
     while (messageQueue) {
       Message *m = messageQueue;
       messageQueue = m->nextMessage;
@@ -181,16 +189,7 @@ namespace Plus4Emu {
     // update status information
     mutex_.lock();
     try {
-      VirtualMachine::VMStatus  vmStatus;
       vm.getVMStatus(vmStatus);
-      isRecordingDemo = vmStatus.isRecordingDemo;
-      isPlayingDemo = vmStatus.isPlayingDemo;
-      tapeReadOnly = vmStatus.tapeReadOnly;
-      tapePosition = vmStatus.tapePosition;
-      tapeLength = vmStatus.tapeLength;
-      tapeSampleRate = vmStatus.tapeSampleRate;
-      tapeSampleSize = vmStatus.tapeSampleSize;
-      floppyDriveLEDState = vmStatus.floppyDriveLEDState;
     }
     catch (...) {
       errorFlag = true;
@@ -223,14 +222,18 @@ namespace Plus4Emu {
   {
     vmThread_.mutex_.lock();
     isPaused = vmThread_.pauseFlag;
-    isRecordingDemo = vmThread_.isRecordingDemo;
-    isPlayingDemo = vmThread_.isPlayingDemo;
-    tapeReadOnly = vmThread_.tapeReadOnly;
-    tapePosition = vmThread_.tapePosition;
-    tapeLength = vmThread_.tapeLength;
-    tapeSampleRate = vmThread_.tapeSampleRate;
-    tapeSampleSize = vmThread_.tapeSampleSize;
-    floppyDriveLEDState = vmThread_.floppyDriveLEDState;
+    isRecordingDemo = vmThread_.vmStatus.isRecordingDemo;
+    isPlayingDemo = vmThread_.vmStatus.isPlayingDemo;
+    tapeReadOnly = vmThread_.vmStatus.tapeReadOnly;
+    tapePosition = vmThread_.vmStatus.tapePosition;
+    tapeLength = vmThread_.vmStatus.tapeLength;
+    tapeSampleRate = vmThread_.vmStatus.tapeSampleRate;
+    tapeSampleSize = vmThread_.vmStatus.tapeSampleSize;
+    floppyDriveLEDState = vmThread_.vmStatus.floppyDriveLEDState;
+    printerHeadPositionX = vmThread_.vmStatus.printerHeadPositionX;
+    printerHeadPositionY = vmThread_.vmStatus.printerHeadPositionY;
+    printerOutputChanged = vmThread_.vmStatus.printerOutputChanged;
+    printerLEDState = vmThread_.vmStatus.printerLEDState;
     if (vmThread_.exitFlag)
       threadStatus = (vmThread_.errorFlag ? -1 : 1);
     vmThread_.mutex_.unlock();
