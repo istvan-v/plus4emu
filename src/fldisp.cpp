@@ -112,9 +112,11 @@ namespace Plus4Emu {
       hsyncPeriodLength(570U),
       lineLengthCnt(0U),
       lineLength(570U),
+      lineStart(80U),
+      hsyncPeriodMin(494U),
+      hsyncPeriodMax(646U),
       lineLengthMin(513U),
       lineLengthMax(627U),
-      lineStart(75U),
       lineLengthFilter(570.0f),
       vsyncThreshold1(338),
       vsyncThreshold2(264),
@@ -204,9 +206,11 @@ namespace Plus4Emu {
         hsyncPeriodLength = 570U;
         lineLengthCnt = 0U;
         lineLength = 570U;
+        lineStart = 80U;
+        hsyncPeriodMin = 494U;
+        hsyncPeriodMax = 646U;
         lineLengthMin = 513U;
         lineLengthMax = 627U;
-        lineStart = 75U;
         lineLengthFilter = 570.0f;
         vsyncThreshold1 = 338;
         vsyncThreshold2 = 264;
@@ -220,9 +224,11 @@ namespace Plus4Emu {
         hsyncPeriodLength = 456U;
         lineLengthCnt = 0U;
         lineLength = 456U;
+        lineStart = 64U;
+        hsyncPeriodMin = 380U;
+        hsyncPeriodMax = 532U;
         lineLengthMin = 399U;
         lineLengthMax = 513U;
-        lineStart = 60U;
         lineLengthFilter = 456.0f;
         vsyncThreshold1 = 292;
         vsyncThreshold2 = 242;
@@ -243,9 +249,9 @@ namespace Plus4Emu {
   void FLTKDisplay_::lineDone()
   {
     lineLengthCnt = lineLengthCnt - lineLength;
-    while (hsyncCnt >= lineLengthMax) {
-      hsyncPeriodLength = (hsyncPeriodLength + lineLengthMax) >> 1;
+    while (hsyncCnt >= hsyncPeriodMax) {
       hsyncCnt -= hsyncPeriodLength;
+      hsyncPeriodLength = (hsyncPeriodLength * 3U + hsyncPeriodMax) >> 2;
     }
     lineLengthFilter =
         (lineLengthFilter * 0.9f) + (float(int(hsyncPeriodLength)) * 0.1f);
@@ -302,14 +308,13 @@ namespace Plus4Emu {
     const uint8_t *endp = buf + nBytes;
     while (bufp < endp) {
       uint8_t       c = *bufp;
-      unsigned int  l = ((unsigned int) c & 0x01U) ^ 0x05U;
       if (c & 0x80) {                                   // sync
         if (syncLengthCnt == 0U) {                      // hsync start
-          while (hsyncCnt >= lineLengthMax) {
-            hsyncPeriodLength = (hsyncPeriodLength + lineLengthMax) >> 1;
+          while (hsyncCnt >= hsyncPeriodMax) {
             hsyncCnt -= hsyncPeriodLength;
+            hsyncPeriodLength = (hsyncPeriodLength * 3U + hsyncPeriodMax) >> 2;
           }
-          if (hsyncCnt >= lineLengthMin) {
+          if (hsyncCnt >= hsyncPeriodMin) {
             hsyncPeriodLength = hsyncCnt;
             hsyncCnt = 0U;
           }
@@ -324,17 +329,15 @@ namespace Plus4Emu {
       }
       else
         syncLengthCnt = 0U;
-      {
-        uint8_t tmp = (c & uint8_t(0x09)) ^ burstValue;
-        nextLine->flags |= (tmp | ((tmp - uint8_t(1)) & uint8_t(0x80)));
-      }
-      bufp = bufp + size_t((c & 0x02) ? 5 : 2);
+      nextLine->flags |= uint8_t(0x80 - ((c ^ burstValue) & 0x09));
+      bufp = bufp + size_t((1 << (c & 0x02)) + 1);
+      unsigned int  l = ((unsigned int) c & 0x01U) ^ 0x05U;
+      lineLengthCnt = lineLengthCnt + l;
       if (lineLengthCnt < lineStart) {
         startp = bufp;
-        nextLine->lineLength = lineLengthCnt + l;
+        nextLine->lineLength = lineLengthCnt;
       }
-      lineLengthCnt = lineLengthCnt + l;
-      if (lineLengthCnt >= lineLength) {
+      else if (lineLengthCnt >= lineLength) {
         nextLine->lineLength = size_t(lineLengthCnt) - nextLine->lineLength;
         nextLine->appendData(startp, size_t(bufp - startp));
         startp = bufp;

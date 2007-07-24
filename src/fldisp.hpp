@@ -53,6 +53,7 @@ namespace Plus4Emu {
       int       lineNum;
       // bit 7: have burst signal
       // bit 0: resample needed
+      // other bits are undefined
       uint8_t   flags;
       size_t    lineLength;
       Message_LineData()
@@ -162,9 +163,11 @@ namespace Plus4Emu {
     unsigned int  hsyncPeriodLength;
     unsigned int  lineLengthCnt;
     unsigned int  lineLength;
+    unsigned int  lineStart;
+    unsigned int  hsyncPeriodMin;
+    unsigned int  hsyncPeriodMax;
     unsigned int  lineLengthMin;
     unsigned int  lineLengthMax;
-    unsigned int  lineStart;
     float         lineLengthFilter;
     int           vsyncThreshold1;
     int           vsyncThreshold2;
