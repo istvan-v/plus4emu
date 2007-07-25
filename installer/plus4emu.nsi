@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.0-beta.exe"
+  OutFile "plus4emu-1.2.0.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -230,6 +230,8 @@ Section "Download ROM images" SecDLRoms
   Push "dos1541.rom"
   Push "3plus1lo.rom"
   Push "3plus1hi.rom"
+  Push "1526_mod.rom"
+  Push "1526_07c.rom"
 
   downloadLoop:
 
@@ -306,6 +308,8 @@ Section "Uninstall"
   Delete "$INSTDIR\disk\disk.zip"
   RMDir "$INSTDIR\disk"
   RMDir "$INSTDIR\progs"
+  Delete "$INSTDIR\roms\1526_07c.rom"
+  Delete "$INSTDIR\roms\1526_mod.rom"
   Delete "$INSTDIR\roms\3plus1hi.rom"
   Delete "$INSTDIR\roms\3plus1lo.rom"
   Delete "$INSTDIR\roms\dos1541.rom"
