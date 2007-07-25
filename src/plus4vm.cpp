@@ -587,8 +587,15 @@ namespace Plus4 {
       uint16_t  n = (ted_.getVideoPositionY() << 7)
                     | uint16_t(ted_.getVideoPositionX() >> 1);
       if (vm.videoBreakPoints[n] != 0) {
-        if (int(vm.videoBreakPoints[n]) > ted_.getBreakPointPriorityThreshold())
+        if (int(vm.videoBreakPoints[n])
+            > ted_.getBreakPointPriorityThreshold()) {
+          // correct video position for FF1E read delay
+          if ((n & 0x007F) != 0)
+            n--;
+          else
+            n = n | 113;
           vm.breakPointCallback(vm.breakPointCallbackUserData, 0, 4, n, 0x00);
+        }
       }
     }
   }
@@ -1477,6 +1484,11 @@ namespace Plus4 {
         if (floppyROM_1581_1)
           return floppyROM_1581_1[addr & 0x3FFFU];
         break;
+      case 0x40:
+      case 0x41:
+      case 0x42:
+      case 0x43:
+        return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
       case 0x50:
       case 0x51:
       case 0x52:
@@ -1535,14 +1547,27 @@ namespace Plus4 {
       if (addr >= 0x00200000U) {
         ted->writeMemoryRaw(addr & uint32_t(0x003FFFFF), value);
       }
-      else if (addr >= 0x00180000U && addr <= 0x001BFFFFU) {
-        FloppyDrive *p = floppyDrives[(addr >> 16) & 3U].floppyDrive;
-        if (p)
-          p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
-      }
-      else if (addr >= 0x00140000U && addr <= 0x0014FFFFU) {
-        if (printer_)
-          printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+      else {
+        uint32_t  tmp = (addr >> 16) & 0x3FU;
+        switch (tmp) {
+        case 0x10U:
+          ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
+          break;
+        case 0x14U:
+          if (printer_)
+            printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+          break;
+        case 0x18U:
+        case 0x19U:
+        case 0x1AU:
+        case 0x1BU:
+          {
+            FloppyDrive *p = floppyDrives[tmp & 3U].floppyDrive;
+            if (p)
+              p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+          }
+          break;
+        }
       }
     }
   }
