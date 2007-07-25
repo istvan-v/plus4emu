@@ -28,7 +28,7 @@ General
     order highpass filters with configurable cutoff frequency, and an
     optional parametric equalizer can be applied to the audio signal
   * recording sound output to a WAV format sound file
-  * saving screenshots as 768x576 8-bit RLE compressed TGA files
+  * saving screenshots as 768x576 24-bit RLE compressed TGA files
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
     which can be played back with accurate timing)
@@ -276,10 +276,10 @@ Stop sound recording
 
 Save screenshot
 
-  Save a screenshot in 8 bit RLE compressed TGA format. The video output
-  is captured immediately after activating this menu item, and is saved
-  at a resolution of 768x576 without any processing (color correction,
-  effects, etc.).
+  Save a screenshot in 24 bit RLE compressed TGA format. The video
+  output is captured immediately after activating this menu item, and
+  is saved at a resolution of 768x576 without any processing (color
+  correction, effects, etc.).
 
 Quit
 
@@ -336,6 +336,33 @@ Quick configuration / Save config 2
 
   Save the current clock frequency and timing settings to
   ~/.plus4emu/p4vmcfg2.cfg.
+
+Printer / Enable printer
+
+  If enabled, a 1526/MPS-802 printer is emulated as device 4 on the
+  serial bus. Since the printer emulation is implemented at the hardware
+  level, turning this on will increase CPU usage.
+  NOTE: with the default printer ROM (1526_07c.rom), printing graphics
+  does not work in most programs. However, by using 1526_mod.rom as the
+  '1526' ROM in the machine configuration, this problem can be worked
+  around.
+
+Printer / View printer output
+
+  Shows the printer output in real time in a window. It is also possible
+  to save the page as a 700x990 8-bit RLE compressed TGA file. When the
+  printing reaches the bottom of the page, it stops, and the LED will
+  flash; you can then save the page to a file, click the 'Clear' button,
+  and turn on and then off 'Form feed' to continue printing.
+  NOTE: it is recommended to close this window while using the debugger,
+  since it cannot display printer output then, and may slow down the
+  GUI.
+
+Enable light pen
+
+  Emulate a Trojan Light Pen connected to the first joystick port. Light
+  pen input is only generated when a mouse button is held down while the
+  mouse cursor is in the emulation display area.
 
 Enable SID emulation
 
@@ -419,7 +446,80 @@ Floppy / Replace disk / All drives
 Set working directory
 
   Set the directory to be accessed by the optional file I/O ROM
-  extension modules.
+  extension modules. This directory is also used by monitor commands
+  that take a file name argument.
+
+'Debug' menu
+------------
+
+Start debugger (Alt+M)
+
+  Shows the debugger window. Many functions in the debugger can be used
+  either in CPU addressing mode where the 16 bit address space of the
+  currently selected CPU can be accessed, or physical address mode that
+  allows access to all memory in the emulated system, regardless of any
+  memory banking or the debug context selected. The following table
+  shows the memory map in physical address mode; the 8-bit codes on the
+  left are used in the 'Memory paging' window:
+
+    00      000000-003FFF   Basic ROM
+    01      004000-007FFF   Kernal ROM
+    02, 03  008000-00FFFF   Function (3-plus-1) ROM
+    04, 05  010000-017FFF   Cartridge 1
+    06, 07  018000-01FFFF   Cartridge 2 (used by the file I/O extension)
+    0C      030000-033FFF   Printer ROM
+    10      040000-043FFF   1541 floppy drive ROM
+    20      080000-083FFF   1551 floppy drive ROM
+    30, 31  0C0000-0C7FFF   1581 floppy drive ROM
+    40-43   100000-10FFFF   Main CPU address space
+    50-53   140000-14FFFF   Printer CPU address space
+    60-63   180000-18FFFF   Floppy unit 8 CPU address space
+    64-67   190000-19FFFF   Floppy unit 9 CPU address space
+    68-6B   1A0000-1AFFFF   Floppy unit 10 CPU address space
+    6C-6F   1B0000-1BFFFF   Floppy unit 11 CPU address space
+    FF      3FC000-3FFFFF   RAM (16K)
+    FE-FF   3F8000-3FFFFF   RAM (32K)
+    FC-FF   3F0000-3FFFFF   RAM (64K; also the default bank for >64K)
+    F0-FF   3C0000-3FFFFF   RAM (256K)
+    C0-FF   300000-3FFFFF   RAM (1024K)
+
+    TED and I/O registers are not mapped into the RAM or ROM areas in
+    physical address mode.
+
+  The monitor commands are mostly similar to those in TEDMON, although
+  most commands - with the exception of G and TR - support CPU/physical
+  address mode switching, and the following have some improvements:
+
+    A       supports undocumented opcodes (using opcode names from
+            64doc.txt), $ characters and leading zeros are optional,
+            assemble offset can be used to write the code to a different
+            area than where it will actually run
+    D       can disassemble to a file, supports undocumented opcodes and
+            disassemble offset
+    F       it is possible to fill memory with a pattern of any length,
+            not just a single byte
+    H       more advanced pattern matching (specific bits or bytes can
+            be ignored); note that strings should be enclosed within
+            double quote characters
+    T       allows the source and destination areas to overlap
+
+  There are also these new commands:
+
+    ?       prints the list of available commands
+    ? CMD   prints help for command 'CMD'
+    AM      set/toggle CPU/physical address mode
+    AO      set/clear assemble and disassemble offset
+    I       prints the current monitor settings (address mode, etc.)
+    SR      search for and replace pattern in memory; uses the same
+            rules as the H command, and can also ignore (not change)
+            bits or bytes when writing the replacement pattern
+    TR      logs CPU instructions to a file until the debugger is opened
+            again, or the number of instructions exceeds a specified
+            limit
+    W       set debug context
+    X       same as the 'Continue' button
+    Y       same as the 'Step over' button
+    Z       same as the 'Step' button
 
 Copyright
 =========
