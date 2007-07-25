@@ -130,12 +130,11 @@ namespace Plus4 {
           else if (dmaEnabled)
             dmaFlags = 2;
         }
-        videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
-                                   | ((((savedVideoLine | videoOutputFlags)
-                                        & 0x01) ^ 0x01) << 2));
         break;
       case 98:                          // increment line number
         if (!(videoOutputFlags & uint8_t(0x01))) {              // PAL
+          videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
+                                     | (((savedVideoLine & 1) ^ 1) << 2));
           savedVideoLine =
               (savedVideoLine != 311 ? ((videoLine + 1) & 0x01FF) : 0);
           switch (savedVideoLine) {
@@ -160,6 +159,7 @@ namespace Plus4 {
           }
         }
         else {                                                  // NTSC
+          videoOutputFlags &= uint8_t(0xF9);
           savedVideoLine =
               (savedVideoLine != 261 ? ((videoLine + 1) & 0x01FF) : 0);
           switch (savedVideoLine) {
@@ -203,6 +203,7 @@ namespace Plus4 {
           renderWindow = false;
           dmaWindow = false;
           bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x02;
+          dmaFlags = 0x00;
         }
         else if (renderWindow) {
           singleClockModeFlags |= uint8_t(0x01);
@@ -386,6 +387,10 @@ namespace Plus4 {
       break;
     case 75:
       incrementingDMAPosition = false;
+      if (videoLine == 205) {
+        dmaPosition = dmaPosition | 0x03FF;
+        dmaPositionReload = 0x03FF;
+      }
       // update character position reload (FF1A, FF1B)
       if (!bitmapAddressDisableFlags && prvCharacterLine == uint8_t(6)) {
         if (!(tedRegisterWriteMask & 0x0C000000U))
@@ -407,21 +412,17 @@ namespace Plus4 {
       }
       break;
     case 99:
-      if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
-        if (savedVideoLine == 0) {
-          renderWindow = true;
-          dmaEnabled = true;
+      if (savedVideoLine <= 8) {
+        if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
+          if (savedVideoLine == 0) {
+            renderWindow = true;
+            dmaEnabled = true;
+          }
+          if (savedVideoLine == (8 - (int(tedRegisters[0x06] & 0x08) >> 1)))
+            displayWindow = true;
         }
-        else if ((savedVideoLine == 4 &&
-                  (tedRegisters[0x06] & uint8_t(0x08)) != uint8_t(0)) ||
-                 (savedVideoLine == 8 &&
-                  (tedRegisters[0x06] & uint8_t(0x08)) == uint8_t(0)))
-          displayWindow = true;
       }
-      if ((savedVideoLine == 200 &&
-           (tedRegisters[0x06] & uint8_t(0x08)) == uint8_t(0)) ||
-          (savedVideoLine == 204 &&
-           (tedRegisters[0x06] & uint8_t(0x08)) != uint8_t(0)))
+      else if (savedVideoLine == (200 + (int(tedRegisters[0x06] & 0x08) >> 1)))
         displayWindow = false;
       checkDMAPositionReset();
       // delay video line reads by one cycle

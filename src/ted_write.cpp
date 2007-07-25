@@ -443,8 +443,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x1C] = value;
-    ted.videoLine =
-        (ted.videoLine & 0x00FF) | (int(value & uint8_t(0x01)) << 8);
+    ted.videoLine = int(ted.tedRegisters[0x1D]) | (int(value & 0x01) << 8);
     ted.checkDMAPositionReset();
     ted.checkVideoInterrupt();
   }
@@ -456,7 +455,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x1D] = value;
-    ted.videoLine = (ted.videoLine & 0x0100) | int(value);
+    ted.videoLine = int(value) | (int(ted.tedRegisters[0x1C] & 0x01) << 8);
     ted.checkDMAPositionReset();
     ted.checkVideoInterrupt();
   }
