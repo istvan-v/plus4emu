@@ -1,4 +1,4 @@
-plus4emu 1.2.0
+plus4emu 1.2.1
 ==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
@@ -62,7 +62,8 @@ Plus/4 emulation
   * RAM size can be 16, 32, 64, 256, or 1024 kilobytes (the latter two
     using the Hannes memory expansion)
   * up to 8 16 kilobyte banks of ROM can be loaded from external image
-    files
+    files; using custom ROM files for the emulated floppy drives and
+    printer is also possible
   * tape emulation with playback, recording, and setting tape position;
     markers can be created for quick positioning to specific tape
     locations (useful for tapes with multiple files); uses custom file
