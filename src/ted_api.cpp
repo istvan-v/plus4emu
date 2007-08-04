@@ -25,12 +25,12 @@
 #include <cmath>
 
 static const float brightnessToYTable[8] = {
-   0.180f,  0.235f,  0.261f,  0.341f,  0.506f,  0.661f,  0.753f,  0.993f
+   0.180f,  0.238f,  0.265f,  0.345f,  0.508f,  0.661f,  0.748f,  0.993f
 };
 
 static const float colorPhaseTable[16] = {
      0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-   124.5f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    1.5f,  213.0f
+   127.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    1.5f,  213.0f
 };
 
 namespace Plus4 {
@@ -40,7 +40,7 @@ namespace Plus4 {
   {
     uint8_t c = color & 0x0F;
     uint8_t b = (color & 0x70) >> 4;
-    float   y = 0.035f;
+    float   y = 0.032f;
     float   u = 0.0f, v = 0.0f;
     if (c)
       y = brightnessToYTable[b];
@@ -49,7 +49,6 @@ namespace Plus4 {
       u = float(std::cos(phs)) * 0.18f;
       v = float(std::sin(phs)) * 0.18f;
     }
-    y *= 0.96f;
     // R = (V / 0.877) + Y
     // B = (U / 0.492) + Y
     // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
@@ -263,7 +262,7 @@ namespace Plus4 {
   void TED7360::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000002);        // version number
+    buf.writeUInt32(0x01000003);        // version number
     uint8_t   romBitmap = 0;
     for (uint8_t i = 0; i < 8; i++) {
       // find non-empty ROM segments
@@ -290,29 +289,30 @@ namespace Plus4 {
     // save I/O and TED registers
     buf.writeByte(ioRegister_0000);
     buf.writeByte(ioRegister_0001);
-    for (uint8_t i = 0x00; i <= 0x1F; i++)
+    for (uint8_t i = 0x00; i <= 0x19; i++)
       buf.writeByte(readMemoryCPU(uint16_t(0xFF00) | uint16_t(i)));
+    for (uint8_t i = 0x1A; i <= 0x1F; i++)
+      buf.writeByte(tedRegisters[i]);
     // save memory paging
     buf.writeByte(hannesRegister);
     buf.writeByte((uint8_t(cpuMemoryReadMap) & uint8_t(0x80))
                   | (uint8_t(cpuMemoryReadMap >> 11) & uint8_t(0x0F)));
     // save internal registers
-    buf.writeUInt32(tedRegisterWriteMask);
     buf.writeByte(cycle_count);
     buf.writeByte(videoColumn);
     buf.writeUInt32(uint32_t(videoLine));
     buf.writeByte(uint8_t(characterLine));
     buf.writeUInt32(uint32_t(characterPosition));
+    buf.writeUInt32(uint32_t(nextCharacterPosition));
     buf.writeUInt32(uint32_t(characterPositionReload));
     buf.writeByte(uint8_t(characterColumn));
-    buf.writeUInt32(uint32_t(dmaPosition));
+    buf.writeUInt32(uint32_t(dmaPosition | (dmaBaseAddr & 0x0400)));
     buf.writeUInt32(uint32_t(dmaPositionReload));
     buf.writeByte(flashState);
     buf.writeBoolean(renderWindow);
     buf.writeBoolean(dmaWindow);
     buf.writeByte(bitmapAddressDisableFlags);
     buf.writeBoolean(displayWindow);
-    buf.writeBoolean(renderingDisplay);
     buf.writeBoolean(displayActive);
     buf.writeByte(videoOutputFlags);
     buf.writeBoolean(timer1_run);
@@ -330,29 +330,31 @@ namespace Plus4 {
     buf.writeByte(sound_channel_2_noise_output);
     buf.writeBoolean(videoShiftRegisterEnabled);
     buf.writeByte(shiftRegisterCharacter.bitmap_());
-    buf.writeByte(horiz_scroll);
     buf.writeByte(shiftRegisterCharacter.attr_());
     buf.writeByte(shiftRegisterCharacter.char_());
-    buf.writeBoolean(shiftRegisterCharacter.cursor_() != 0x00);
+    buf.writeByte(shiftRegisterCharacter.flags_() & uint8_t(0xF8));
     buf.writeByte(currentCharacter.attr_());
     buf.writeByte(currentCharacter.char_());
     buf.writeByte(currentCharacter.bitmap_());
-    buf.writeBoolean(currentCharacter.cursor_() != 0x00);
+    buf.writeByte(currentCharacter.flags_() & uint8_t(0xF8));
     buf.writeByte(nextCharacter.attr_());
     buf.writeByte(nextCharacter.char_());
     buf.writeByte(nextCharacter.bitmap_());
-    buf.writeBoolean(nextCharacter.cursor_() != 0x00);
+    buf.writeByte(nextCharacter.flags_() & uint8_t(0xF8));
     buf.writeBoolean(dmaEnabled);
-    buf.writeByte(prvSingleClockModeFlags);
-    buf.writeBoolean(!!(singleClockModeFlags & uint8_t(0x01)));
-    buf.writeByte(dmaCycleCounter);
+    buf.writeByte(singleClockModeFlags & uint8_t(0x83));
     buf.writeByte(dmaFlags);
     buf.writeBoolean(incrementingDMAPosition);
+    buf.writeBoolean(incrementingCharacterPosition);
+    buf.writeBoolean(cpuHaltedFlag);
+    buf.writeUInt32(uint32_t(delayedEvents0));
+    buf.writeUInt32(uint32_t(delayedEvents1));
     buf.writeUInt32(uint32_t(savedVideoLine));
     buf.writeBoolean(prvVideoInterruptState);
     buf.writeByte(prvCharacterLine);
     buf.writeByte(vsyncFlags);
     buf.writeByte(dataBusState);
+    buf.writeByte(dramRefreshAddrL);
     buf.writeUInt32(uint32_t(keyboard_row_select_mask));
     for (int i = 0; i < 16; i++)
       buf.writeByte(keyboard_matrix[i]);
@@ -374,7 +376,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (!(version >= 0x01000000 && version <= 0x01000002)) {
+    if (!(version >= 0x01000000 && version <= 0x01000003)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible Plus/4 snapshot format");
     }
@@ -418,6 +420,8 @@ namespace Plus4 {
           tedRegisters[i] = c;
       }
       tedRegisters[0x09] &= uint8_t(0x5E);
+      delayedEvents0 = 0U;
+      delayedEvents1 = 0U;
       // load memory paging
       hannesRegister = buf.readByte();
       uint8_t romSelect_ = buf.readByte() & uint8_t(0x8F);
@@ -429,22 +433,34 @@ namespace Plus4 {
         write_register_FF3F(this, 0xFF3F, 0x00);
       write_register_FDDx(this, uint16_t(0xFDD0) | uint16_t(romSelect_), 0x00);
       // load remaining internal registers from snapshot data
-      tedRegisterWriteMask = buf.readUInt32();
+      if (version < 0x01000003)
+        (void) buf.readUInt32();        // was tedRegisterWriteMask
       cycle_count = buf.readByte() & 0x03;
       videoColumn = buf.readByte() & 0x7F;
+      if (version < 0x01000002) {
+        videoColumn =
+            uint8_t(videoColumn != 113 ? ((videoColumn + 1) & 0x7F) : 0);
+      }
       videoLine = int(buf.readUInt32() & 0x01FF);
       characterLine = buf.readByte() & 7;
       characterPosition = int(buf.readUInt32() & 0x03FF);
+      if (version >= 0x01000003)
+        nextCharacterPosition = int(buf.readUInt32() & 0x03FF);
+      else
+        nextCharacterPosition = characterPosition;
       characterPositionReload = int(buf.readUInt32() & 0x03FF);
       characterColumn = buf.readByte() & 0x3F;
       dmaPosition = int(buf.readUInt32() & 0x07FF);
+      dmaBaseAddr = (dmaBaseAddr & 0xF800) | (dmaPosition & 0x0400);
+      dmaPosition = dmaPosition & 0x03FF;
       dmaPositionReload = int(buf.readUInt32() & 0x03FF);
       flashState = uint8_t(buf.readByte() == 0x00 ? 0x00 : 0xFF);
       renderWindow = buf.readBoolean();
       dmaWindow = buf.readBoolean();
       bitmapAddressDisableFlags = buf.readByte() & 0x03;
       displayWindow = buf.readBoolean();
-      renderingDisplay = buf.readBoolean();
+      if (version < 0x01000003)
+        (void) buf.readBoolean();       // was renderingDisplay
       displayActive = buf.readBoolean();
       if (version >= 0x01000002) {
         videoOutputFlags = uint8_t((videoOutputFlags & 0x01)
@@ -473,38 +489,84 @@ namespace Plus4 {
       shiftRegisterCharacter.bitmap_() = buf.readByte();
       if (version == 0x01000000)
         (void) buf.readUInt32();        // was bitmapMShiftRegister
-      horiz_scroll = buf.readByte() & 7;
+      if (version < 0x01000003)
+        (void) buf.readByte();          // was horiz_scroll
       shiftRegisterCharacter.attr_() = buf.readByte();
       shiftRegisterCharacter.char_() = buf.readByte();
-      shiftRegisterCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
+      if (version >= 0x01000003)
+        shiftRegisterCharacter.flags_() = buf.readByte() & 0xF8;
+      else
+        shiftRegisterCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
       currentCharacter.attr_() = buf.readByte();
       currentCharacter.char_() = buf.readByte();
       currentCharacter.bitmap_() = buf.readByte();
-      currentCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
+      if (version >= 0x01000003)
+        currentCharacter.flags_() = buf.readByte() & 0xF8;
+      else
+        currentCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
       nextCharacter.attr_() = buf.readByte();
       nextCharacter.char_() = buf.readByte();
       nextCharacter.bitmap_() = buf.readByte();
-      nextCharacter.cursor_() = (buf.readBoolean() ? 0xFF : 0x00);
+      if (version >= 0x01000003)
+        nextCharacter.flags_() = buf.readByte() & 0xF8;
+      else
+        nextCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
       dmaEnabled = buf.readBoolean();
-      prvSingleClockModeFlags = buf.readByte() & 0x03;
-      singleClockModeFlags &= uint8_t(0x02);
-      singleClockModeFlags |= uint8_t(buf.readBoolean() ? 0x01 : 0x00);
-      dmaCycleCounter = buf.readByte();
-      dmaFlags = buf.readByte() & 3;
+      singleClockModeFlags = buf.readByte() & 0x83;
+      if (version < 0x01000003) {
+        singleClockModeFlags = singleClockModeFlags & 0x03;
+        bool    singleClockModeFlag_ = buf.readBoolean();
+        uint8_t dmaCycleCounter = buf.readByte();
+        if (singleClockModeFlag_ != bool(singleClockModeFlags & 0x01)) {
+          if (singleClockModeFlag_)
+            delayedEvents0.singleClockModeOn();
+          else
+            delayedEvents0.singleClockModeOff();
+        }
+        cpuHaltedFlag = (dmaCycleCounter >= 6);
+        if (dmaCycleCounter >= 1 && dmaCycleCounter <= 5)
+          delayedEvents0.dmaCycle(dmaCycleCounter);
+      }
+      dmaFlags = buf.readByte() & 0x83;
+      if (version < 0x01000003) {
+        if (videoColumn >= 102 || videoColumn < 72)
+          dmaFlags = dmaFlags | 0x80;
+        else
+          dmaFlags = dmaFlags & 0x7F;
+      }
       incrementingDMAPosition = buf.readBoolean();
+      if (version >= 0x01000003) {
+        incrementingCharacterPosition = buf.readBoolean();
+        cpuHaltedFlag = buf.readBoolean();
+        delayedEvents0 = buf.readUInt32();
+        delayedEvents1 = buf.readUInt32();
+      }
+      else {
+        incrementingCharacterPosition =
+            (videoColumn >= 110 || videoColumn < 74);
+      }
+      delayedEvents0.setHorizontalScroll();
+      delayedEvents0.selectRenderer();
+      delayedEvents0.setForceSingleClockFlag();
+      for (uint8_t i = 0; i < 5; i++)
+        delayedEvents0.setColorRegister(i);
       savedVideoLine = int(buf.readUInt32() & 0x01FF);
       prvVideoInterruptState = buf.readBoolean();
+      if (version < 0x01000002)
+        checkVideoInterrupt();
       prvCharacterLine = buf.readByte() & 7;
       if (version >= 0x01000002)
         vsyncFlags = buf.readByte() & 0xC0;
       else
         (void) buf.readByte();  // was invertColorPhaseFlags in old versions
       dataBusState = buf.readByte();
+      if (version >= 0x01000003)
+        dramRefreshAddrL = buf.readByte();
       keyboard_row_select_mask = int(buf.readUInt32() & 0xFFFF);
       for (int i = 0; i < 16; i++)
         keyboard_matrix[i] = buf.readByte();
       user_port_state = buf.readByte();
-      selectRenderer();
+      updateVideoMode();
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "
                                   "Plus/4 snapshot data");
