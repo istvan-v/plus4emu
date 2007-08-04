@@ -278,11 +278,11 @@ namespace Plus4Emu {
       float   vTmp = baseColormap[j * 3 + 2];
       if (i >= 0x0800) {
         if (i < 0x0C00) {
-          uTmp = uTmp - 0.12728f;       // add PAL burst (135 degrees)
-          vTmp = vTmp + 0.12728f;
+          uTmp = uTmp - 0.11314f;       // add PAL burst (135 degrees)
+          vTmp = vTmp + 0.11314f;
         }
         else {
-          uTmp = uTmp - 0.18f;          // add NTSC burst (180 degrees)
+          uTmp = uTmp - 0.16f;          // add NTSC burst (180 degrees)
         }
       }
       float   phaseShift = phaseShiftTable[k] * 0.01745329f;
