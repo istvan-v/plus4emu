@@ -201,8 +201,11 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState =
-        uint8_t(ted.characterPositionReload >> 8) | uint8_t(0xFC);
+    ted.dataBusState = ted.tedRegisters[0x1A];
+    // if the counter has just been changed in this cycle,
+    // return the bitwise AND of the previous and the current value
+    ted.dataBusState &= uint8_t(ted.characterPositionReload >> 8);
+    ted.dataBusState |= uint8_t(0xFC);
     return ted.dataBusState;
   }
 
@@ -210,7 +213,10 @@ namespace Plus4 {
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = uint8_t(ted.characterPositionReload & 0xFF);
+    ted.dataBusState = ted.tedRegisters[0x1B];
+    // if the counter has just been changed in this cycle,
+    // return the bitwise AND of the previous and the current value
+    ted.dataBusState &= uint8_t(ted.characterPositionReload & 0xFF);
     return ted.dataBusState;
   }
 
@@ -235,11 +241,9 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = ted.tedRegisters[0x1F] | uint8_t(0x80);
-    if ((int(ted.tedRegisters[0x1F]) & 7) != ted.characterLine) {
-      // special case: if the counter has just been incremented in this
-      // cycle, return the bitwise AND of the previous and the current value
-      ted.dataBusState &= uint8_t(ted.characterLine | 0xF8);
-    }
+    // if the counter has just been incremented in this cycle,
+    // return the bitwise AND of the previous and the current value
+    ted.dataBusState &= uint8_t(ted.characterLine | 0xF8);
     return ted.dataBusState;
   }
 

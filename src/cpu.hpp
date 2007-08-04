@@ -215,6 +215,10 @@ namespace Plus4 {
     {
       haltFlag = !n;
     }
+    inline bool getIsCPURunning() const
+    {
+      return (!haltFlag);
+    }
     inline void setOverflowFlag()
     {
       reg_SR |= uint8_t(0x40);

@@ -199,20 +199,21 @@ namespace Plus4 {
       tedRegisters[0x07] = uint8_t(0x00);
       ntscModeChangeCallback(false);
     }
-    tedRegisterWriteMask = 0U;
     for (uint8_t i = 0x00; i <= 0x1F; i++)
       tedRegisters[i] = tedRegisterInit[i];
     // set internal TED registers
-    render_func = &render_invalid_mode;
-    prv_render_func = &render_invalid_mode;
+    render_func = &render_char_std;
+    current_render_func = &render_border;
     videoLine = 224;
     characterLine = 0;
+    prvCharacterPosition = 0x0000;
     characterPosition = 0x0000;
+    nextCharacterPosition = 0x0000;
     characterPositionReload = 0x0000;
     characterColumn = 0;
     dmaPosition = 0x03FF;
     dmaPositionReload = 0x03FF;
-    attr_base_addr = 0x0000;
+    dmaBaseAddr = 0x0000;
     bitmap_base_addr = 0x0000;
     charset_base_addr = 0x0000;
     cursor_position = 0x03FF;
@@ -222,9 +223,9 @@ namespace Plus4 {
     dmaWindow = false;
     bitmapAddressDisableFlags = 0x03;
     displayWindow = false;
-    renderingDisplay = false;
     displayActive = false;
     videoOutputFlags = 0x30;
+    vsyncFlags = 0x00;
     timer1_run = true;                          // timers
     timer2_run = true;
     timer3_run = true;
@@ -250,22 +251,26 @@ namespace Plus4 {
     prv_video_buf_pos = 0;
     video_buf_pos = 0;
     videoShiftRegisterEnabled = false;
-    horiz_scroll = 0;
     videoMode = 0x00;
     bitmapMode = false;
-    characterMask = uint8_t(0xFF);
+    characterMask = uint8_t(0x7F);
+    for (int i = 0; i < 5; i++)
+      colorRegisters[i] = uint8_t(0x80);
+    horiz_scroll = 0;
     dmaEnabled = false;
-    prvSingleClockModeFlags = 0x01;
     singleClockModeFlags = 0x01;
-    dmaCycleCounter = 0;
-    dmaFlags = 0;
+    dmaFlags = 0x00;
     incrementingDMAPosition = false;
+    incrementingCharacterPosition = false;
+    cpuHaltedFlag = false;
+    delayedEvents0 = 0U;
+    delayedEvents1 = 0U;
     savedVideoLine = 224;
     videoInterruptLine = 0;
     prvVideoInterruptState = false;
     prvCharacterLine = 0;
-    vsyncFlags = 0x00;
     dataBusState = uint8_t(0xFF);
+    dramRefreshAddrL = 0x00;
     keyboard_row_select_mask = 0xFFFF;
     tape_motor_state = false;
     tape_write_state = false;

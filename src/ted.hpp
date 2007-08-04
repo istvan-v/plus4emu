@@ -67,9 +67,165 @@ namespace Plus4 {
       {
         return (((unsigned char *) &(this->buf_))[2]);
       }
-      inline unsigned char& cursor_()
+      // used in standard character modes only:
+      //   bits 4 to 7 are set if the cursor is at this character
+      //   bit 3 is set if reverse mode is allowed
+      //   bits 0 to 2 are undefined
+      inline unsigned char& flags_()
       {
         return (((unsigned char *) &(this->buf_))[3]);
+      }
+    };
+    class DelayedEventsMask {
+     private:
+      uint32_t  mask_;
+     public:
+      DelayedEventsMask()
+        : mask_(0U)
+      {
+      }
+      DelayedEventsMask(const DelayedEventsMask& r)
+        : mask_(r.mask_)
+      {
+      }
+      DelayedEventsMask(uint32_t n)
+        : mask_(n)
+      {
+      }
+      inline DelayedEventsMask& operator=(const DelayedEventsMask& r)
+      {
+        this->mask_ = r.mask_;
+        return (*this);
+      }
+      inline DelayedEventsMask& operator=(uint32_t n)
+      {
+        this->mask_ = n;
+        return (*this);
+      }
+      inline operator uint32_t() const
+      {
+        return this->mask_;
+      }
+      inline operator bool() const
+      {
+        return (this->mask_ != 0U);
+      }
+      inline void singleClockModeOn()
+      {
+        this->mask_ |= uint32_t(0x00000001U);
+      }
+      inline void singleClockModeOff()
+      {
+        this->mask_ |= uint32_t(0x00000002U);
+      }
+      inline void incrementVideoLine()
+      {
+        this->mask_ |= uint32_t(0x00000004U);
+      }
+      inline bool incrementingVideoLine() const
+      {
+        return bool(this->mask_ & uint32_t(0x00000004U));
+      }
+      inline void updateVideoLineRegisters()
+      {
+        this->mask_ |= uint32_t(0x00000008U);
+      }
+      inline void stopIncrementingDMAPosition()
+      {
+        this->mask_ |= uint32_t(0x00000010U);
+      }
+      inline void latchDMAPosition()
+      {
+        this->mask_ |= uint32_t(0x00000020U);
+      }
+      inline void latchCharacterPosition()
+      {
+        this->mask_ |= uint32_t(0x00000040U);
+      }
+      inline void updateCharPosReloadRegisters()
+      {
+        this->mask_ |= uint32_t(0x00000080U);
+      }
+      inline void incrementVideoLineCycle2()
+      {
+        this->mask_ |= uint32_t(0x00000100U);
+      }
+      inline bool incrementingVideoLineCycle2() const
+      {
+        return bool(this->mask_ & uint32_t(0x00000100U));
+      }
+      inline void incrementVerticalSub()
+      {
+        this->mask_ |= uint32_t(0x00000200U);
+      }
+      inline void updateVerticalSubRegister()
+      {
+        this->mask_ |= uint32_t(0x00000400U);
+      }
+      inline void setColorRegister(uint8_t n)
+      {
+        this->mask_ |= uint32_t(0x00000800U << n);
+      }
+      inline void stopDMADelay2()
+      {
+        this->mask_ |= uint32_t(0x00010000U);
+      }
+      inline void startDMA()
+      {
+        this->mask_ &= uint32_t(0xFF00FFFFU);
+        this->mask_ |= uint32_t(0x00040001U);
+      }
+      inline void stopDMA()
+      {
+        this->mask_ &= uint32_t(0xFF00FFFFU);
+      }
+      inline void dmaCycle(uint8_t n)
+      {
+        this->mask_ |= uint32_t(0x00010000U << n);
+      }
+      inline bool dmaStarted() const
+      {
+        return bool(this->mask_ & 0x007E0000U);
+      }
+      inline void stopDMADelay1()
+      {
+        this->mask_ |= uint32_t(0x00800000U);
+      }
+      inline void dramRefreshOn()
+      {
+        this->mask_ |= uint32_t(0x01000000U);
+      }
+      inline void timer2Start()
+      {
+        this->mask_ |= uint32_t(0x02000000U);
+      }
+      inline void stopTimer2Start()
+      {
+        this->mask_ &= uint32_t(0xFDFFFFFFU);
+      }
+      inline void setHorizontalScroll()
+      {
+        this->mask_ |= uint32_t(0x04000000U);
+      }
+      inline void selectRenderer()
+      {
+        this->mask_ |= uint32_t(0x08000000U);
+      }
+      inline void setForceSingleClockFlag()
+      {
+        this->mask_ |= uint32_t(0x10000000U);
+      }
+      inline void singleClockModeOnDelay1()
+      {
+        this->mask_ |= uint32_t(0x20000000U);
+      }
+      inline void resetVerticalSub()
+      {
+        this->mask_ |= uint32_t(0x40000000U);
+      }
+      inline void incrementFlashCounter()
+      {
+        this->mask_ |= uint32_t(0x80000000U);
       }
     };
     // memory and register read functions
@@ -198,18 +354,19 @@ namespace Plus4 {
     static void     write_register_FF3F(void *userData,
                                         uint16_t addr, uint8_t value);
     // render functions
-    static REGPARM void render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM void render_BMM_multicolor(TED7360& ted,
-                                              uint8_t *bufp, int offs);
-    static REGPARM void render_char_std(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM void render_char_ECM(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM void render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM void render_invalid_mode(TED7360& ted,
-                                            uint8_t *bufp, int offs);
-    void selectRenderer();
+    static REGPARM int render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM int render_BMM_multicolor(TED7360& ted,
+                                             uint8_t *bufp, int offs);
+    static REGPARM int render_char_std(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM int render_char_ECM(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM int render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM int render_blank(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM int render_border(TED7360& ted, uint8_t *bufp, int offs);
+    void updateVideoMode();
     void initRegisters();
     void initializeRAMSegment(uint8_t *p);
     void runOneCycle_freezeMode();
+    void processDelayedEvents(uint32_t n);
     // -----------------------------------------------------------------
    protected:
     // CPU I/O registers
@@ -231,27 +388,30 @@ namespace Plus4 {
    protected:
     // copy of TED registers at FF00 to FF1F
     // NOTE: FF1E is stored shifted right by one bit
-    uint32_t    tedRegisterWriteMask;
     uint8_t     tedRegisters[32];
    private:
-    // currently selected render function (depending on bits of FF06 and FF07)
-    REGPARM void  (*render_func)(TED7360& ted, uint8_t *bufp, int offs);
-    // delay mode changes by one cycle
-    REGPARM void  (*prv_render_func)(TED7360& ted, uint8_t *bufp, int offs);
+    // render function selected by bits of FF06 and FF07
+    // returns the number of bytes written to 'bufp'
+    REGPARM int (*render_func)(TED7360& ted, uint8_t *bufp, int offs);
+    // currently used render function (may be blanking or border)
+    REGPARM int (*current_render_func)(TED7360& ted, uint8_t *bufp, int offs);
     // CPU clock multiplier
     int         cpu_clock_multiplier;
     // current video line (0 to 311, = (FF1D, FF1C))
     int         videoLine;
     // character sub-line (0 to 7, bits 0..2 of FF1F)
     int         characterLine;
-    // character line offset (FF1A, FF1B)
+    // character position (FF1A, FF1B)
+    int         prvCharacterPosition;
     int         characterPosition;
+    int         nextCharacterPosition;
     int         characterPositionReload;
     int         characterColumn;
     int         dmaPosition;
     int         dmaPositionReload;
-    // base address for attribute data (FF14 bits 3..7)
-    int         attr_base_addr;
+    // base address for attribute or character data (FF14 bits 3..7)
+    // bit 10 is 0 for attribute DMA, and 1 for character DMA
+    int         dmaBaseAddr;
     // base address for bitmap data (FF12 bits 3..5)
     int         bitmap_base_addr;
     // base address for character set (FF13 bits 2..7)
@@ -267,11 +427,10 @@ namespace Plus4 {
     bool        renderWindow;
     bool        dmaWindow;
     // if non-zero, disable address generation for bitmap fetches, and always
-    // read from FFFF; bit 0 is cleared at cycle 109 and set at cycle 75, bit 1
+    // read from FFFF; bit 0 is cleared at cycle 110 and set at cycle 76, bit 1
     // is cleared at the first character DMA and set at the end of the display
     uint8_t     bitmapAddressDisableFlags;
     bool        displayWindow;
-    bool        renderingDisplay;
     bool        displayActive;
     // bit 7: horizontal sync
     // bit 6: vertical sync
@@ -282,6 +441,9 @@ namespace Plus4 {
     // bit 1: always zero
     // bit 0: NTSC mode (FF07 bit 6)
     uint8_t     videoOutputFlags;
+    // bit 7: set if vertical sync is on
+    // bit 6: set if equalization is on
+    uint8_t     vsyncFlags;
     // timers (FF00 to FF05)
     bool        timer1_run;
     bool        timer2_run;
@@ -307,31 +469,42 @@ namespace Plus4 {
     int         prv_video_buf_pos;
     int         video_buf_pos;
     bool        videoShiftRegisterEnabled;
-    // horizontal scroll (0 to 7)
-    uint8_t     horiz_scroll;
-    uint8_t     videoMode;      // FF06 bit 5, 6 OR FF07 bit 4, 7
+    uint8_t     videoMode;      // (FF06 bit 5, 6 OR FF07 bit 4, 7) >> 4
+    bool        bitmapMode;
+    uint8_t     characterMask;
     VideoShiftRegisterCharacter shiftRegisterCharacter;
     VideoShiftRegisterCharacter currentCharacter;
     VideoShiftRegisterCharacter nextCharacter;
-    bool        bitmapMode;
-    uint8_t     characterMask;
+    // copy of color registers at FF15-FF19, used when rendering the first
+    // pixel in a cycle; the value stored is FF for one cycle after writing
+    // to a register
+    uint8_t     colorRegisters[5];
+    // horizontal scroll (0 to 7)
+    uint8_t     horiz_scroll;
     bool        dmaEnabled;
     // bit 0: single clock mode controlled by TED
     // bit 1: copied from FF13 bit 1
-    uint8_t     prvSingleClockModeFlags;
+    // bit 7: DRAM refresh
     uint8_t     singleClockModeFlags;
-    uint8_t     dmaCycleCounter;
-    uint8_t     dmaFlags;       // sum of: 1: attribute DMA; 2: character DMA
+    // sum of:
+    //    1: attribute DMA
+    //    2: character DMA
+    //  128: DMA enabled in this line
+    uint8_t     dmaFlags;
     bool        incrementingDMAPosition;
+    bool        incrementingCharacterPosition;
+    bool        cpuHaltedFlag;
+    DelayedEventsMask   delayedEvents0;
+    DelayedEventsMask   delayedEvents1;
     int         savedVideoLine;
     int         videoInterruptLine;
     bool        prvVideoInterruptState;
     uint8_t     prvCharacterLine;
-    uint8_t     vsyncFlags;
    protected:
     // for reading data from invalid memory address
     uint8_t     dataBusState;
    private:
+    uint8_t     dramRefreshAddrL;
     // keyboard matrix
     int         keyboard_row_select_mask;
     uint8_t     keyboard_matrix[16];
@@ -401,11 +574,30 @@ namespace Plus4 {
     inline void checkDMAPositionReset()
     {
       if (videoLine == 205) {
-        if (!incrementingDMAPosition) {
-          dmaPosition = dmaPosition | 0x03FF;
+        if (!incrementingDMAPosition)
           dmaPositionReload = 0x03FF;
-        }
       }
+    }
+    inline void selectRenderFunction()
+    {
+      if (videoOutputFlags & 0xB0)
+        current_render_func = &render_blank;
+      else if (!displayActive)
+        current_render_func = &render_border;
+      else
+        current_render_func = render_func;
+    }
+    inline void idleMemoryRead()
+    {
+      memoryReadMap = tedDMAReadMap;    // not sure if this is correct
+      if (!(singleClockModeFlags & 0x80)) {
+        (void) readMemory(0xFFFF);
+      }
+      else {
+        (void) readMemory(0xFF00 | uint16_t(dramRefreshAddrL));
+        dramRefreshAddrL = (dramRefreshAddrL + 1) & 0xFF;
+      }
+      memoryReadMap = cpuMemoryReadMap;
     }
    protected:
     virtual void playSample(int16_t sampleValue)

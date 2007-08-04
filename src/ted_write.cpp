@@ -69,7 +69,6 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     uint8_t   n = uint8_t(addr) & uint8_t(0xFF);
-    ted.tedRegisterWriteMask |= (uint32_t(1) << n);
     ted.tedRegisters[n] = value;
   }
 
@@ -102,8 +101,8 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x00000004U;
     ted.timer2_run = false;
+    ted.delayedEvents0.stopTimer2Start();
     ted.timer2_state = (ted.timer2_state & 0xFF00) | int(value);
   }
 
@@ -114,8 +113,10 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     if (!ted.timer2_run) {
-      ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x00000008U;
-      ted.timer2_run = true;
+      if (!(ted.videoColumn & 0x01))
+        ted.timer2_run = true;
+      else
+        ted.delayedEvents0.timer2Start();
     }
     ted.timer2_state = (ted.timer2_state & 0x00FF) | (int(value) << 8);
   }
@@ -148,50 +149,47 @@ namespace Plus4 {
     ted.dataBusState = value;
     uint8_t   bitsChanged = ted.tedRegisters[0x06] ^ value;
     ted.tedRegisters[0x06] = value;
-    ted.videoMode = (ted.videoMode & uint8_t(0x90)) | (value & uint8_t(0x60));
+    ted.videoMode = uint8_t((ted.videoMode & 0x09) | ((value >> 4) & 0x06));
     bool      dmaCheckFlag = bool(bitsChanged & uint8_t(0x07));
     if (bitsChanged & uint8_t(0x18)) {
       // display enabled or number of rows has changed
-      if (ted.videoColumn != 98) {
-        switch (ted.savedVideoLine) {
-        case 0:
-          if (value & uint8_t(0x10)) {
-            if (!ted.renderWindow) {
-              // turned on display enable during line 0: initialize internal
-              // registers (FIXME: the timing is not correct)
-              ted.renderWindow = true;
-              ted.dmaEnabled = true;
-              if (ted.videoColumn >= 100 || ted.videoColumn < 72)
-                ted.singleClockModeFlags |= uint8_t(0x01);
-              if (!(ted.videoColumn >= 99 && ted.videoColumn <= 101)) {
-                // FIXME: this check is a hack
-                if (ted.bitmapAddressDisableFlags & 0x02) {
-                  ted.characterLine = 7;
-                  ted.prvCharacterLine = uint8_t(7);
-                  ted.tedRegisters[0x1F] |= uint8_t(0x07);
-                }
-              }
-              dmaCheckFlag = true;
+      switch (ted.savedVideoLine) {
+      case 0:
+        if (value & uint8_t(0x10)) {
+          if (!ted.renderWindow) {
+            // turned on display enable during line 0: initialize internal
+            // registers
+            ted.renderWindow = true;
+            ted.dmaEnabled = true;
+            if ((ted.dmaFlags & 0x80) != 0 ||
+                ted.videoColumn == 100 || ted.videoColumn == 101) {
+              // single clock mode (FIXME: the timing is not always correct)
+              ted.delayedEvents0.singleClockModeOnDelay1();
+              // this is a hack and probably wrong:
+              if (ted.videoColumn >= 102 && ted.videoColumn < 108)
+                ted.characterColumn = (ted.videoColumn >> 1) + 9;
             }
+            ted.delayedEvents1.resetVerticalSub();
+            dmaCheckFlag = true;
           }
-          break;
-        case 4:
-          if ((value & uint8_t(0x18)) == uint8_t(0x18))
-            ted.displayWindow = true;
-          break;
-        case 8:
-          if ((value & uint8_t(0x18)) == uint8_t(0x10))
-            ted.displayWindow = true;
-          break;
-        case 200:
-          if (!(value & uint8_t(0x08)))
-            ted.displayWindow = false;
-          break;
-        case 204:
-          if (value & uint8_t(0x08))
-            ted.displayWindow = false;
-          break;
         }
+        break;
+      case 4:
+        if ((value & uint8_t(0x18)) == uint8_t(0x18))
+          ted.displayWindow = true;
+        break;
+      case 8:
+        if ((value & uint8_t(0x18)) == uint8_t(0x10))
+          ted.displayWindow = true;
+        break;
+      case 200:
+        if (!(value & uint8_t(0x08)))
+          ted.displayWindow = false;
+        break;
+      case 204:
+        if (value & uint8_t(0x08))
+          ted.displayWindow = false;
+        break;
       }
     }
     if (dmaCheckFlag) {
@@ -200,36 +198,31 @@ namespace Plus4 {
         // check if DMA should be requested
         if (!((uint8_t(ted.savedVideoLine) ^ value) & uint8_t(0x07))) {
           if (ted.dmaEnabled) {
-            switch (ted.videoColumn) {
-            case 96:
-            case 97:
+            if (!ted.delayedEvents0.incrementingVideoLineCycle2())
               ted.dmaWindow = true;
-              break;
-            case 98:
-            case 99:
-              break;
-            default:
-              ted.dmaWindow = true;
-              if (ted.dmaCycleCounter == 0 &&
-                  (ted.videoColumn >= 100 || ted.videoColumn < 76))
-                ted.dmaCycleCounter = 2;
-              ted.dmaFlags = ted.dmaFlags | 1;
-              ted.dmaPosition = ted.dmaPosition & 0x03FF;
-              break;
+            if ((ted.dmaFlags & 0x80) && !ted.delayedEvents0.dmaStarted()) {
+              ted.delayedEvents0.startDMA();
+              ted.dmaFlags = ted.dmaFlags | 0x01;
+              ted.dmaBaseAddr = ted.dmaBaseAddr & 0xF800;
             }
           }
         }
-        else if (ted.dmaFlags & 1) {
+        else if (ted.dmaFlags & 0x01) {
           // abort an already started DMA transfer
-          ted.dmaFlags = ted.dmaFlags & 2;
-          if (!ted.dmaFlags) {
-            ted.dmaCycleCounter = 0;
-            ted.setIsCPURunning(true);
-          }
+          ted.dmaFlags = ted.dmaFlags & 0x82;
+          if (!(ted.dmaFlags & 0x03))
+            ted.delayedEvents0.stopDMADelay2();
         }
       }
     }
-    ted.selectRenderer();
+    if (bitsChanged & uint8_t(0x60)) {
+      ted.updateVideoMode();
+      // delay video mode changes by one cycle
+      if (!(ted.videoColumn & 0x01))
+        ted.delayedEvents1.selectRenderer();
+      else
+        ted.delayedEvents0.selectRenderer();
+    }
   }
 
   void TED7360::write_register_FF07(void *userData,
@@ -241,12 +234,19 @@ namespace Plus4 {
     uint8_t   bitsChanged = value ^ ted.tedRegisters[0x07];
     ted.tedRegisters[0x07] = value;
     ted.ted_disabled = bool(value & uint8_t(0x20));
-    ted.videoMode = (ted.videoMode & uint8_t(0x60)) | (value & uint8_t(0x90));
+    ted.videoMode = uint8_t((ted.videoMode & 0x06) | ((value >> 4) & 0x09));
+    if (bitsChanged & uint8_t(0x07)) {
+      // delay horizontal scroll changes by one character
+      if (!(ted.videoColumn & 0x01))
+        ted.delayedEvents0.setHorizontalScroll();
+      else
+        ted.delayedEvents1.setHorizontalScroll();
+    }
     if (bitsChanged & uint8_t(0x60)) {
       if (bitsChanged & uint8_t(0x20)) {
         if (ted.ted_disabled) {
           if (!(ted.videoColumn & uint8_t(0x01)))
-            ted.singleClockModeFlags |= uint8_t(0x01);
+            ted.delayedEvents0.dramRefreshOn();
         }
       }
       if (bitsChanged & uint8_t(0x40)) {
@@ -260,7 +260,14 @@ namespace Plus4 {
         }
       }
     }
-    ted.selectRenderer();
+    if (bitsChanged & uint8_t(0x90)) {
+      ted.updateVideoMode();
+      // delay video mode changes by one cycle
+      if (!(ted.videoColumn & 0x01))
+        ted.delayedEvents1.selectRenderer();
+      else
+        ted.delayedEvents0.selectRenderer();
+    }
   }
 
   void TED7360::write_register_FF08(void *userData,
@@ -388,10 +395,10 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
+    if ((value ^ ted.tedRegisters[0x13]) & 0x02)
+      ted.delayedEvents0.setForceSingleClockFlag();
     ted.tedRegisters[0x13] = value;
-    ted.singleClockModeFlags &= uint8_t(0x01);
-    ted.singleClockModeFlags |= (value & uint8_t(0x02));
-    ted.selectRenderer();
+    ted.updateVideoMode();
   }
 
   void TED7360::write_register_FF14(void *userData,
@@ -401,7 +408,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x14] = value;
-    ted.attr_base_addr = int(value & uint8_t(0xF8)) << 8;
+    ted.dmaBaseAddr = (ted.dmaBaseAddr & 0x0400) | (int(value & 0xF8) << 8);
   }
 
   void TED7360::write_register_FF15_to_FF19(void *userData,
@@ -410,8 +417,13 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     uint8_t   n = uint8_t(addr) & uint8_t(0xFF);
-    ted.tedRegisterWriteMask |= (uint32_t(1) << n);
     ted.tedRegisters[n] = value | uint8_t(0x80);
+    n = n - 0x15;
+    ted.colorRegisters[n] = uint8_t(0xFF);
+    if (!(ted.videoColumn & 0x01))
+      ted.delayedEvents1.setColorRegister(n);
+    else
+      ted.delayedEvents0.setColorRegister(n);
   }
 
   void TED7360::write_register_FF1A(void *userData,
@@ -420,9 +432,9 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x04000000U;
-    ted.characterPositionReload &= 0x00FF;
-    ted.characterPositionReload |= (int(value & uint8_t(0x03)) << 8);
+    ted.tedRegisters[0x1A] = value;
+    ted.characterPositionReload =
+        (int(value & 0x03) << 8) | int(ted.tedRegisters[0x1B]);
   }
 
   void TED7360::write_register_FF1B(void *userData,
@@ -431,9 +443,9 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    ted.tedRegisterWriteMask = ted.tedRegisterWriteMask | 0x08000000U;
-    ted.characterPositionReload &= 0x0300;
-    ted.characterPositionReload |= int(value);
+    ted.tedRegisters[0x1B] = value;
+    ted.characterPositionReload =
+        (int(ted.tedRegisters[0x1A] & 0x03) << 8) | int(value);
   }
 
   void TED7360::write_register_FF1C(void *userData,
@@ -466,17 +478,6 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    // if there are read delays pending:
-    if (ted.videoColumn == 98) {
-      ted.checkDMAPositionReset();
-      ted.tedRegisters[0x1D] = uint8_t(ted.videoLine & 0x00FF);
-      ted.tedRegisters[0x1C] = uint8_t((ted.videoLine & 0x0100) >> 8);
-      ted.checkVideoInterrupt();
-    }
-    if (ted.videoColumn == 100) {
-      ted.tedRegisters[0x1F] =
-          (ted.tedRegisters[0x1F] & 0xF8) | uint8_t(ted.characterLine);
-    }
     // NOTE: values written to this register are inverted
     uint8_t   newVal = ((value ^ uint8_t(0xFF)) & uint8_t(0xFC)) >> 1;
     ted.videoColumn = (ted.videoColumn & uint8_t(0x01)) | newVal;
@@ -489,6 +490,14 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
+    if ((ted.tedRegisters[0x1F] ^ value) & 0x78) {
+      // flash state is inverted when the counter changes from 15
+      // (all bits 1) to any other value
+      // FIXME: writing anything other than 15 to the counter may "randomly"
+      // invert the flash state sometimes
+      if ((ted.tedRegisters[0x1F] & 0x78) == 0x78)
+        ted.flashState = uint8_t(ted.flashState == 0x00 ? 0xFF : 0x00);
+    }
     ted.tedRegisters[0x1F] = value;
     ted.characterLine = int(value & uint8_t(0x07));
   }

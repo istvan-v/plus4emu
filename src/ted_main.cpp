@@ -25,39 +25,63 @@ namespace Plus4 {
 
   void TED7360::runOneCycle_freezeMode()
   {
-    tedRegisterWriteMask = 0U;
-    dmaCycleCounter = 0;
+    delayedEvents0.stopDMA();
     M7501::setIsCPURunning(true);
-    TEDCallback *p = firstCallback0;
-    while (p) {
-      TEDCallback *nxt = p->nxt0;
-      p->func(p->userData);
-      p = nxt;
+    cpuHaltedFlag = false;
+    // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
+    if (!(videoColumn & 0x01)) {
+      if (delayedEvents0) {
+        DelayedEventsMask delayedEvents(delayedEvents0);
+        delayedEvents0 = 0U;
+        processDelayedEvents(delayedEvents);
+      }
+      TEDCallback *p = firstCallback0;
+      while (p) {
+        TEDCallback *nxt = p->nxt0;
+        p->func(p->userData);
+        p = nxt;
+      }
+      M7501::run(cpu_clock_multiplier);
+      prv_video_buf_pos = video_buf_pos;
+      uint8_t *bufp = &(video_buf[video_buf_pos]);
+      (void) render_blank(*this, bufp, 0);
+      bufp[0] = (bufp[0] & 0x01) | 0x30;
+      video_buf_pos = video_buf_pos + 2;
+      tedRegisters[0x1E] = videoColumn;
+      videoColumn |= uint8_t(0x01);
     }
-    M7501::run(cpu_clock_multiplier);
-    p = firstCallback1;
+    if (!ted_disabled) {
+      runOneCycle();
+      return;
+    }
+    // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
+    if (delayedEvents1) {
+      DelayedEventsMask delayedEvents(delayedEvents1);
+      delayedEvents1 = 0U;
+      processDelayedEvents(delayedEvents);
+    }
+    TEDCallback *p = firstCallback1;
     while (p) {
       TEDCallback *nxt = p->nxt1;
       p->func(p->userData);
       p = nxt;
     }
+    if (!singleClockModeFlags)
+      M7501::run(cpu_clock_multiplier);
+    else
+      idleMemoryRead();
+    prv_video_buf_pos = video_buf_pos;
+    uint8_t *bufp = &(video_buf[video_buf_pos]);
+    (void) render_blank(*this, bufp, 4);
+    bufp[0] = (bufp[0] & 0x01) | 0x30;
+    video_buf_pos = video_buf_pos + 2;
     if (!cycle_count)
       playSample(0);
-    prv_video_buf_pos = video_buf_pos;
-    video_buf[video_buf_pos] = uint8_t((videoOutputFlags & 0x01) | 0x30);
-    video_buf[video_buf_pos + 1] = 0x00;
-    video_buf[video_buf_pos + 2] = uint8_t((videoOutputFlags & 0x01) | 0x30);
-    video_buf[video_buf_pos + 3] = 0x00;
-    video_buf_pos = video_buf_pos + 4;
-    if (!prvSingleClockModeFlags)
-      videoColumn ^= uint8_t(0x01);
     tedRegisters[0x1E] = videoColumn;
-    if (!ted_disabled && !prvSingleClockModeFlags) {
-      videoColumn =
-          uint8_t(videoColumn != 113 ? ((videoColumn + 1) & 0x7F) : 0);
-    }
+    if (!ted_disabled)
+      videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
+    videoColumn &= uint8_t(0x7E);
     cycle_count = (cycle_count + 1) & 3;
-    prvSingleClockModeFlags = singleClockModeFlags;
   }
 
   void TED7360::runOneCycle()
@@ -66,221 +90,185 @@ namespace Plus4 {
       videoOutputCallback(&(video_buf[0]), video_buf_pos);
       video_buf_pos = 0;
     }
+
+    prvCharacterPosition = characterPosition;
+    characterPosition = 0x03FF;
     if (ted_disabled) {
       runOneCycle_freezeMode();
       return;
     }
-
     if (!(videoColumn & uint8_t(0x01))) {
       // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
+      DelayedEventsMask delayedEvents(delayedEvents0);
+      delayedEvents0 = 0U;
       switch (videoColumn) {
       case 0:                           // start display (40 column mode)
         if (displayWindow &&
             (tedRegisters[0x07] & uint8_t(0x08)) != uint8_t(0)) {
           displayActive = true;
+          selectRenderFunction();
         }
         break;
       case 2:                           // start display (38 column mode)
         if (displayWindow &&
             (tedRegisters[0x07] & uint8_t(0x08)) == uint8_t(0)) {
           displayActive = true;
+          selectRenderFunction();
         }
         break;
       case 38:                          // equalization pulse 1 start
         if (vsyncFlags) {
           videoOutputFlags =
               uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
+          selectRenderFunction();
+        }
+        break;
+      case 72:                          // disable DMA
+        dmaFlags = dmaFlags & 0x03;
+        if (incrementingDMAPosition)    // stop incrementing DMA position
+          delayedEvents0.stopIncrementingDMAPosition();
+        if (renderWindow) {
+          if (characterLine == 6)       // latch DMA pos. at character line 6
+            delayedEvents0.latchDMAPosition();
+          if (prvCharacterLine == 6)    // latch character position to reload
+            delayedEvents0.latchCharacterPosition();
         }
         break;
       case 74:                          // DRAM refresh start
-        singleClockModeFlags |= uint8_t(0x01);
+        delayedEvents0.dramRefreshOn();
+        incrementingCharacterPosition = false;
         break;
       case 76:
         bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x01;
-        renderingDisplay = false;
         // terminate DMA transfer
-        dmaCycleCounter = 0;
+        delayedEvents.stopDMA();
+        delayedEvents0.stopDMA();
         M7501::setIsCPURunning(true);
+        cpuHaltedFlag = false;
         break;
       case 78:                          // end of display (38 column mode)
-        if ((tedRegisters[0x07] & uint8_t(0x08)) == uint8_t(0))
+        if ((tedRegisters[0x07] & uint8_t(0x08)) == uint8_t(0)) {
           displayActive = false;
+          selectRenderFunction();
+        }
+        videoShiftRegisterEnabled = false;
         break;
       case 80:                          // end of display (40 column mode)
-        if ((tedRegisters[0x07] & uint8_t(0x08)) != uint8_t(0))
+        if ((tedRegisters[0x07] & uint8_t(0x08)) != uint8_t(0)) {
           displayActive = false;
-        videoShiftRegisterEnabled = displayActive;
+          selectRenderFunction();
+        }
         break;
       case 84:                          // DRAM refresh end
-        singleClockModeFlags &= uint8_t(0x02);
+        delayedEvents0.singleClockModeOff();
         break;
       case 88:                          // horizontal blanking start
         videoOutputFlags |= uint8_t(0x20);
+        current_render_func = &render_blank;
         break;
       case 90:                          // horizontal sync start
-        if (!vsyncFlags)
+        if (!vsyncFlags) {
           videoOutputFlags |= uint8_t(0x80);
+          current_render_func = &render_blank;
+        }
         break;
       case 96:
         if (renderWindow) {
+          dmaFlags = dmaFlags & 0x80;
           // if done attribute DMA in this line, continue with character
           // DMA in next one
-          if ((uint8_t(savedVideoLine) ^ tedRegisters[0x06]) & 0x07)
-            dmaFlags = 0;
-          else if (dmaEnabled)
-            dmaFlags = 2;
+          if (!((savedVideoLine ^ int(tedRegisters[0x06])) & 7) && dmaEnabled)
+            dmaFlags = dmaFlags | 0x02;
         }
+        delayedEvents0.incrementVideoLine();
         break;
       case 98:                          // increment line number
-        if (!(videoOutputFlags & uint8_t(0x01))) {              // PAL
-          videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
-                                     | (((savedVideoLine & 1) ^ 1) << 2));
-          savedVideoLine =
-              (savedVideoLine != 311 ? ((videoLine + 1) & 0x01FF) : 0);
-          switch (savedVideoLine) {
-          case 251:                     // vertical blanking, equalization start
-            videoOutputFlags |= uint8_t(0x10);
-            vsyncFlags |= uint8_t(0x40);
-            break;
-          case 254:                     // vertical sync start
-            videoOutputFlags |= uint8_t(0x40);
-            vsyncFlags |= uint8_t(0x80);
-            break;
-          case 257:                     // vertical sync end
-            videoOutputFlags &= uint8_t(0xBD);
-            vsyncFlags &= uint8_t(0x40);
-            break;
-          case 260:                     // equalization end
-            vsyncFlags &= uint8_t(0x80);
-            break;
-          case 269:                     // vertical blanking end
-            videoOutputFlags &= uint8_t(0xED);
-            break;
-          }
-        }
-        else {                                                  // NTSC
-          videoOutputFlags &= uint8_t(0xF9);
-          savedVideoLine =
-              (savedVideoLine != 261 ? ((videoLine + 1) & 0x01FF) : 0);
-          switch (savedVideoLine) {
-          case 226:                     // vertical blanking, equalization start
-            videoOutputFlags |= uint8_t(0x10);
-            vsyncFlags |= uint8_t(0x40);
-            break;
-          case 229:                     // vertical sync start
-            videoOutputFlags |= uint8_t(0x40);
-            vsyncFlags |= uint8_t(0x80);
-            break;
-          case 232:                     // vertical sync end
-            videoOutputFlags &= uint8_t(0xBD);
-            vsyncFlags &= uint8_t(0x40);
-            break;
-          case 235:                     // equalization end
-            vsyncFlags &= uint8_t(0x80);
-            break;
-          case 244:                     // vertical blanking end
-            videoOutputFlags &= uint8_t(0xED);
-            break;
-          }
-        }
-        videoLine = savedVideoLine;
-        if (savedVideoLine == 0) {      // end of screen
-          characterPosition = 0x0000;
+        if (savedVideoLine == ((videoOutputFlags & 0x01) ? 261 : 311)) {
+          videoLine = 0x01FF;           // end of screen
+          delayedEvents1.updateVideoLineRegisters();
+          characterPosition = 0x0000;   // reset character position
+          nextCharacterPosition = 0x0000;
           characterPositionReload = 0x0000;
+          delayedEvents1.updateCharPosReloadRegisters();
+          dramRefreshAddrL = 0x00;
         }
-        prvCharacterLine = uint8_t(characterLine);
-        if (!vsyncFlags)                // horizontal sync end
+        if (dmaWindow)
+          delayedEvents0.incrementVerticalSub();
+        if (!vsyncFlags) {              // horizontal sync end
           videoOutputFlags &= uint8_t(0x7D);
+          selectRenderFunction();
+        }
         if (!(videoOutputFlags & 0x10)) // burst start
           videoOutputFlags |= uint8_t(0x08);
         break;
-      case 100:
-        if (dmaWindow)                  // increment character sub-line
-          characterLine = (characterLine + 1) & 7;
-        if (savedVideoLine == 203)
-          dmaEnabled = false;
-        if (savedVideoLine == 204) {    // end of display
-          renderWindow = false;
-          dmaWindow = false;
-          bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x02;
-          dmaFlags = 0x00;
-        }
-        else if (renderWindow) {
-          singleClockModeFlags |= uint8_t(0x01);
-          if (dmaFlags & 2)
-            bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x01;
-          // check if DMA should be requested
-          if (!((uint8_t(savedVideoLine) ^ tedRegisters[0x06]) & 0x07) &&
-              dmaEnabled) {
-            // start a new DMA at character line 7
-            dmaWindow = true;
-            dmaCycleCounter = 1;
-            dmaFlags = dmaFlags | 1;
-            dmaPosition = dmaPosition & 0x03FF;
-          }
-          else if (dmaFlags & 2) {
-            // done reading attribute data in previous line,
-            // now continue DMA to get character data
-            dmaCycleCounter = 1;
-            dmaPosition = dmaPosition | 0x0400;
-          }
-        }
+      case 100:                         // external fetch single clock start
+        if (renderWindow)
+          delayedEvents0.singleClockModeOn();
         if (vsyncFlags) {               // equalization pulse 2 end
           videoOutputFlags =
               uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
+          selectRenderFunction();
         }
         break;
-      case 102:                         // external fetch single clock start
+      case 102:                         // enable / start DMA
+        dmaFlags = dmaFlags | 0x80;
         if (renderWindow) {
-          if (savedVideoLine == 0) {    // initialize character sub-line
-            // FIXME: this check is a hack
-            if (bitmapAddressDisableFlags & 0x02) {
-              characterLine = 7;
-              prvCharacterLine = uint8_t(7);
-              tedRegisters[0x1F] |= uint8_t(0x07);
-            }
+          characterColumn = 0x3C;
+          // check if DMA should be requested:
+          int     tmp = savedVideoLine;
+          // if line increment is pending, use new value for DMA condition test
+          if (delayedEvents.incrementingVideoLine())
+            tmp = videoLine + 1;
+          if (((tmp ^ int(tedRegisters[0x06])) & 7) == 0 && dmaEnabled) {
+            // start a new DMA at character line 7
+            delayedEvents0.stopDMA();
+            delayedEvents.startDMA();
+            dmaFlags = dmaFlags | 0x01;
+            dmaBaseAddr = dmaBaseAddr & 0xF800;
+          }
+          else if (dmaFlags & 0x02) {
+            // done reading attribute data in previous line,
+            // now continue DMA to get character data
+            delayedEvents0.stopDMA();
+            delayedEvents.startDMA();
+            dmaBaseAddr = dmaBaseAddr | 0x0400;
           }
         }
-        characterColumn = 0x3C;
         break;
       case 104:                         // burst end
         videoOutputFlags &= uint8_t(0xF5);
         break;
       case 106:                         // horizontal blanking end
         videoOutputFlags &= uint8_t(0xDD);
+        selectRenderFunction();
         break;
-      case 108:
-        dmaPosition = (dmaPosition & 0x0400) | dmaPositionReload;
-        incrementingDMAPosition = renderWindow;
+      case 108:                         // initialize DMA position
+        if (renderWindow) {
+          if (incrementingDMAPosition)
+            dmaPositionReload = dmaPositionReload & dmaPosition;
+          dmaPosition = dmaPositionReload;
+          incrementingDMAPosition = true;
+        }                               // initialize character position
+        nextCharacterPosition = characterPositionReload;
+        characterPosition = nextCharacterPosition;
         break;
       case 110:                         // start DMA and/or bitmap fetch
-        if (renderWindow | displayWindow | displayActive) {
-          bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x02;
-          renderingDisplay = true;
-        }                               // initialize character position
-        characterPosition = characterPositionReload;
+        bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x02;
+        if (!bitmapAddressDisableFlags)
+          incrementingCharacterPosition = true;
         break;
       case 112:
-        if (renderWindow | displayWindow | displayActive) {
-          renderingDisplay = true;
+        if (renderWindow | displayWindow | displayActive)
           videoShiftRegisterEnabled = true;
-        }
         break;
       }
-      // initialize DMA if requested
-      if (dmaCycleCounter != uint8_t(0)) {
-        dmaCycleCounter++;
-        switch (dmaCycleCounter) {
-        case 2:
-          singleClockModeFlags |= uint8_t(0x01);
-          break;
-        case 4:
-          M7501::setIsCPURunning(false);
-          break;
-        }
+      if (delayedEvents)
+        processDelayedEvents(delayedEvents);
+      if (incrementingCharacterPosition) {
+        nextCharacterPosition = (nextCharacterPosition + 1) & 0x03FF;
+        characterPosition = nextCharacterPosition;
       }
-      // run CPU and render display
-      tedRegisterWriteMask = 0U;
+      // run external callbacks
       {
         TEDCallback *p = firstCallback0;
         while (p) {
@@ -289,66 +277,35 @@ namespace Plus4 {
           p = nxt;
         }
       }
-      if (dmaCycleCounter < 7) {
+      // run CPU
+      if (!cpuHaltedFlag) {
         if (tedRegisters[0x09] & tedRegisters[0x0A])
           M7501::interruptRequest();
         M7501::run(cpu_clock_multiplier);
       }
       // perform DMA fetches on even cycle counts
-      if (incrementingDMAPosition) {
-        if (dmaCycleCounter >= 4) {
-          if (characterColumn < uint8_t(40)) {
-            if (dmaCycleCounter >= 7) {
-              memoryReadMap = tedDMAReadMap;
-              (void) readMemory(uint16_t(attr_base_addr | dmaPosition));
-              memoryReadMap = cpuMemoryReadMap;
-            }
-            if (dmaFlags & 1)
-              attr_buf_tmp[characterColumn] = dataBusState;
-            if (dmaFlags & 2)
-              char_buf[characterColumn] = dataBusState;
-          }
+      if (!(M7501::getIsCPURunning())) {
+        if (cpuHaltedFlag) {
+          memoryReadMap = tedDMAReadMap;
+          (void) readMemory(uint16_t(dmaBaseAddr | dmaPosition));
+          memoryReadMap = cpuMemoryReadMap;
         }
-        if (videoColumn != 74)
-          dmaPosition = (dmaPosition & 0x0400) | ((dmaPosition + 1) & 0x03FF);
+        if (characterColumn < uint8_t(40)) {
+          if (dmaFlags & 0x01)
+            attr_buf_tmp[characterColumn] = dataBusState;
+          if (dmaFlags & 0x02)
+            char_buf[characterColumn] = dataBusState;
+        }
       }
+      if (incrementingDMAPosition)
+        dmaPosition = (dmaPosition + 1) & 0x03FF;
       // calculate video output
       {
         prv_video_buf_pos = video_buf_pos;
         uint8_t *bufp = &(video_buf[video_buf_pos]);
-        if (videoOutputFlags & uint8_t(0xB0)) {
-          bufp[0] = videoOutputFlags;
-          bufp[1] = 0x00;
-          video_buf_pos = video_buf_pos + 2;
-          if (videoShiftRegisterEnabled)
-            render_invalid_mode(*this, (uint8_t *) 0, 0);
-        }
-        else if (!displayActive) {
-          if (!(tedRegisterWriteMask & 0x02000000U)) {
-            bufp[0] = videoOutputFlags;
-            bufp[1] = tedRegisters[0x19];
-            video_buf_pos = video_buf_pos + 2;
-          }
-          else {
-            bufp[0] = videoOutputFlags | uint8_t(0x02);
-            bufp[1] = 0xFF;
-            uint8_t c = tedRegisters[0x19];
-            bufp[2] = c;
-            bufp[3] = c;
-            bufp[4] = c;
-            video_buf_pos = video_buf_pos + 5;
-          }
-          if (videoShiftRegisterEnabled)
-            render_invalid_mode(*this, (uint8_t *) 0, 0);
-        }
-        else {
-          bufp[0] = videoOutputFlags | uint8_t(0x02);
-          prv_render_func(*this, &(bufp[1]), 0);
-          video_buf_pos = video_buf_pos + 5;
-        }
+        int     n = current_render_func(*this, bufp, 0);
+        video_buf_pos = video_buf_pos + n;
       }
-      // delay video mode changes by one cycle
-      prv_render_func = render_func;
       // check timer interrupts
       if (timer1_run) {
         if (!timer1_state) {
@@ -372,71 +329,37 @@ namespace Plus4 {
       videoColumn |= uint8_t(0x01);
     }
 
+    if (ted_disabled) {
+      runOneCycle_freezeMode();
+      return;
+    }
     // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
+    if (delayedEvents1) {
+      DelayedEventsMask delayedEvents(delayedEvents1);
+      delayedEvents1 = 0U;
+      processDelayedEvents(delayedEvents);
+    }
     switch (videoColumn) {
     case 43:                            // equalization pulse 1 end
       if (vsyncFlags) {
         videoOutputFlags =
             uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
+        selectRenderFunction();
       }
       break;
-    case 71:                            // update DMA read position
-      if (renderWindow && characterLine == 6)
-        dmaPositionReload =
-            (dmaPosition + (incrementingDMAPosition ? 1 : 0)) & 0x03FF;
-      break;
-    case 75:
-      incrementingDMAPosition = false;
-      if (videoLine == 205) {
-        dmaPosition = dmaPosition | 0x03FF;
-        dmaPositionReload = 0x03FF;
-      }
-      // update character position reload (FF1A, FF1B)
-      if (!bitmapAddressDisableFlags && prvCharacterLine == uint8_t(6)) {
-        if (!(tedRegisterWriteMask & 0x0C000000U))
-          characterPositionReload = (characterPosition + 1) & 0x03FF;
-      }
-      break;
-    case 89:                            // increment flash counter
-      if (videoLine == 205) {
-        tedRegisters[0x1F] =
-            (tedRegisters[0x1F] & uint8_t(0x7F)) + uint8_t(0x08);
-        if (tedRegisters[0x1F] & uint8_t(0x80))
-          flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
-      }
+    case 87:                            // increment flash counter
+      if (videoLine == 205)
+        delayedEvents1.incrementFlashCounter();
       break;
     case 95:                            // equalization pulse 2 start
       if (vsyncFlags) {
         videoOutputFlags =
             uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
+        selectRenderFunction();
       }
-      break;
-    case 99:
-      if (savedVideoLine <= 8) {
-        if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
-          if (savedVideoLine == 0) {
-            renderWindow = true;
-            dmaEnabled = true;
-          }
-          if (savedVideoLine == (8 - (int(tedRegisters[0x06] & 0x08) >> 1)))
-            displayWindow = true;
-        }
-      }
-      else if (savedVideoLine == (200 + (int(tedRegisters[0x06] & 0x08) >> 1)))
-        displayWindow = false;
-      checkDMAPositionReset();
-      // delay video line reads by one cycle
-      tedRegisters[0x1D] = uint8_t(videoLine & 0x00FF);
-      tedRegisters[0x1C] = uint8_t((videoLine & 0x0100) >> 8);
-      checkVideoInterrupt();
-      break;
-    case 101:
-      // delay character sub-line reads by one cycle
-      tedRegisters[0x1F] = (tedRegisters[0x1F] & 0xF8) | uint8_t(characterLine);
       break;
     }
-    // run CPU
-    tedRegisterWriteMask = 0U;
+    // run external callbacks
     {
       TEDCallback *p = firstCallback1;
       while (p) {
@@ -445,68 +368,27 @@ namespace Plus4 {
         p = nxt;
       }
     }
-    if (!prvSingleClockModeFlags) {
+    // run CPU
+    if (!singleClockModeFlags) {
       if (tedRegisters[0x09] & tedRegisters[0x0A])
         M7501::interruptRequest();
       M7501::run(cpu_clock_multiplier);
     }
-    // calculate video output
-    {
-      prv_video_buf_pos = video_buf_pos;
-      uint8_t *bufp = &(video_buf[video_buf_pos]);
-      if (videoOutputFlags & uint8_t(0xB0)) {
-        bufp[0] = videoOutputFlags;
-        bufp[1] = 0x00;
-        video_buf_pos = video_buf_pos + 2;
-        if (videoShiftRegisterEnabled)
-          render_invalid_mode(*this, (uint8_t *) 0, 4);
-      }
-      else if (!displayActive) {
-        if (!(tedRegisterWriteMask & 0x02000000U)) {
-          bufp[0] = videoOutputFlags;
-          bufp[1] = tedRegisters[0x19];
-          video_buf_pos = video_buf_pos + 2;
-        }
-        else {
-          bufp[0] = videoOutputFlags | uint8_t(0x02);
-          bufp[1] = 0xFF;
-          uint8_t c = tedRegisters[0x19];
-          bufp[2] = c;
-          bufp[3] = c;
-          bufp[4] = c;
-          video_buf_pos = video_buf_pos + 5;
-        }
-        if (videoShiftRegisterEnabled)
-          render_invalid_mode(*this, (uint8_t *) 0, 4);
-      }
-      else {
-        bufp[0] = videoOutputFlags | uint8_t(0x02);
-        prv_render_func(*this, &(bufp[1]), 4);
-        video_buf_pos = video_buf_pos + 5;
-      }
-    }
-    // delay video mode changes by one cycle
-    prv_render_func = render_func;
-    // delay horizontal scroll changes
-    horiz_scroll = tedRegisters[0x07] & 0x07;
-    // bitmap fetches and rendering display are done on odd cycle counts
-    if (videoShiftRegisterEnabled) {
-      currentCharacter = nextCharacter;
-      nextCharacter.bitmap_() = 0x00;
-    }
-    if (renderingDisplay) {
-      nextCharacter.attr_() = attr_buf[characterColumn];
-      nextCharacter.char_() = char_buf[characterColumn];
-      // read bitmap data from memory
+    else {
+      // bitmap fetches are done on odd cycle counts
+      // FIXME: if single clock mode is not turned on, the CPU and TED could
+      // both use the address bus at the same time, setting it to the bitwise
+      // AND of the two addresses
       if (!bitmapAddressDisableFlags) {
+        // read bitmap data from memory
         uint16_t  addr_ = uint16_t(characterLine);
         if (!(tedRegisters[0x06] & uint8_t(0x80))) {
           if (bitmapMode)
             addr_ |= uint16_t(bitmap_base_addr
-                              | (characterPosition << 3));
+                              | (prvCharacterPosition << 3));
           else
             addr_ |= uint16_t(charset_base_addr
-                              | (int(nextCharacter.char_() & characterMask)
+                              | (int(char_buf[characterColumn] & characterMask)
                                  << 3));
         }
         else {
@@ -514,47 +396,47 @@ namespace Plus4 {
           int     tmp = (int(attr_buf_tmp[characterColumn]) << 3) | 0xF800;
           if (bitmapMode)
             addr_ |= uint16_t(bitmap_base_addr
-                              | ((characterPosition << 3) & tmp));
+                              | ((prvCharacterPosition << 3) & tmp));
           else
             addr_ |= uint16_t(tmp);
         }
         if (addr_ >= uint16_t(0x8000) || !(tedBitmapReadMap & 0x80U)) {
           memoryReadMap = tedBitmapReadMap;
           (void) readMemory(addr_);
+          memoryReadMap = cpuMemoryReadMap;
         }
       }
-      else if (prvSingleClockModeFlags) {
-        memoryReadMap = tedDMAReadMap;  // not sure if this is correct
-        (void) readMemory(0xFFFF);
-      }
-      memoryReadMap = cpuMemoryReadMap;
-      nextCharacter.bitmap_() = dataBusState;
-      nextCharacter.cursor_() =
-          (characterPosition == cursor_position ? 0xFF : 0x00);
-      if (!(videoMode & 0x70)) {
-        if (nextCharacter.attr_() & 0x80) {
-          // FIXME: this should probably be done when loading the bitmap
-          // shift register in the render functions
-          if (!flashState && !nextCharacter.cursor_())
-            nextCharacter.bitmap_() = 0x00;
-        }
-        if (!(videoMode & 0x80)) {
-          if (nextCharacter.char_() & 0x80)
-            nextCharacter.bitmap_() ^= uint8_t(0xFF);
-        }
-      }
-      attr_buf[characterColumn] = attr_buf_tmp[characterColumn];
-      if (!bitmapAddressDisableFlags)
-        characterPosition = (characterPosition + 1) & 0x03FF;
       else
-        characterPosition = 0x03FF;
+        idleMemoryRead();
     }
-    characterColumn = (characterColumn + 1) & 0x3F;
+    // calculate video output
+    {
+      prv_video_buf_pos = video_buf_pos;
+      uint8_t *bufp = &(video_buf[video_buf_pos]);
+      int     n = current_render_func(*this, bufp, 4);
+      video_buf_pos = video_buf_pos + n;
+    }
+    // update video shift register
+    currentCharacter.bitmap_() = 0x00;
+    if (videoShiftRegisterEnabled)
+      currentCharacter = nextCharacter;
+    if (characterColumn != 40) {
+      nextCharacter.attr_() = attr_buf[characterColumn];
+      attr_buf[characterColumn] = attr_buf_tmp[characterColumn];
+      nextCharacter.char_() = char_buf[characterColumn];
+      characterColumn = (characterColumn + 1) & 0x3F;
+    }
+    else {
+      nextCharacter.attr_() = 0x00;
+      nextCharacter.char_() = 0x00;
+    }
+    nextCharacter.bitmap_() = dataBusState;
+    nextCharacter.flags_() =
+        uint8_t(prvCharacterPosition == cursor_position ? 0xFF : 0x0F)
+        ^ videoMode;
     // update timer 2 and 3 on odd cycle count (886 kHz rate)
-    if (timer2_run) {
-      if (!(tedRegisterWriteMask & 0x00000008U))
-        timer2_state = (timer2_state - 1) & 0xFFFF;
-    }
+    if (timer2_run)
+      timer2_state = (timer2_state - 1) & 0xFFFF;
     if (timer3_run)
       timer3_state = (timer3_state - 1) & 0xFFFF;
     // update sound generators on every 8th cycle (221 kHz)
@@ -614,13 +496,380 @@ namespace Plus4 {
     }
     // update horizontal position (reads are delayed by one cycle)
     tedRegisters[0x1E] = videoColumn;
-    if (!ted_disabled) {
-      videoColumn =
-          uint8_t(videoColumn != 113 ? ((videoColumn + 1) & 0x7F) : 0);
-    }
+    if (!ted_disabled)
+      videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
+    videoColumn &= uint8_t(0x7E);
     cycle_count = (cycle_count + 1) & 3;
-    // delay single/double clock mode switching by one cycle
-    prvSingleClockModeFlags = singleClockModeFlags;
+  }
+
+  void TED7360::processDelayedEvents(uint32_t n)
+  {
+    if (n & 0x0000FFFFU) {
+      if (n & 0x000000FFU) {
+        if (n & 0x00000001U) {
+          //   bit 0:   internal single clock mode flag on
+          singleClockModeFlags |= uint8_t(0x01);
+          if (!(n & 0xFFFFFFFEU))
+            return;
+        }
+        if (n & 0x00000002U) {
+          //   bit 1:   internal single clock mode flag off
+          singleClockModeFlags &= uint8_t(0x02);
+          if (!(n & 0xFFFFFFFCU))
+            return;
+        }
+        if (n & 0x00000004U) {
+          //   bit 2:   increment video line
+          bool    updateRenderFunctionFlag = false;
+          if (!(videoOutputFlags & uint8_t(0x01))) {            // PAL
+            videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
+                                       | (((savedVideoLine & 1) ^ 1) << 2));
+            savedVideoLine = (videoLine + 1) & 0x01FF;
+            switch (savedVideoLine) {
+            case 251:                   // vertical blanking, equalization start
+              videoOutputFlags |= uint8_t(0x10);
+              vsyncFlags |= uint8_t(0x40);
+              updateRenderFunctionFlag = true;
+              break;
+            case 254:                   // vertical sync start
+              videoOutputFlags |= uint8_t(0x40);
+              vsyncFlags |= uint8_t(0x80);
+              break;
+            case 257:                   // vertical sync end
+              videoOutputFlags &= uint8_t(0xBD);
+              vsyncFlags &= uint8_t(0x40);
+              break;
+            case 260:                   // equalization end
+              videoOutputFlags &= uint8_t(0x7D);
+              vsyncFlags &= uint8_t(0x80);
+              updateRenderFunctionFlag = true;
+              break;
+            case 269:                   // vertical blanking end
+              videoOutputFlags &= uint8_t(0xED);
+              updateRenderFunctionFlag = true;
+              break;
+            }
+          }
+          else {                                                // NTSC
+            videoOutputFlags &= uint8_t(0xF9);
+            savedVideoLine = (videoLine + 1) & 0x01FF;
+            switch (savedVideoLine) {
+            case 226:                   // vertical blanking, equalization start
+              videoOutputFlags |= uint8_t(0x10);
+              vsyncFlags |= uint8_t(0x40);
+              updateRenderFunctionFlag = true;
+              break;
+            case 229:                   // vertical sync start
+              videoOutputFlags |= uint8_t(0x40);
+              vsyncFlags |= uint8_t(0x80);
+              break;
+            case 232:                   // vertical sync end
+              videoOutputFlags &= uint8_t(0xBD);
+              vsyncFlags &= uint8_t(0x40);
+              break;
+            case 235:                   // equalization end
+              videoOutputFlags &= uint8_t(0x7D);
+              vsyncFlags &= uint8_t(0x80);
+              updateRenderFunctionFlag = true;
+              break;
+            case 244:                   // vertical blanking end
+              videoOutputFlags &= uint8_t(0xED);
+              updateRenderFunctionFlag = true;
+              break;
+            }
+          }
+          if (updateRenderFunctionFlag)
+            selectRenderFunction();
+          if (savedVideoLine <= 8) {
+            if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
+              if (savedVideoLine == 0)
+                renderWindow = true;
+              if (savedVideoLine == (8 - (int(tedRegisters[0x06] & 0x08) >> 1)))
+                displayWindow = true;
+            }
+          }
+          else if (savedVideoLine >= 200 && savedVideoLine <= 204) {
+            if (savedVideoLine == (200 + (int(tedRegisters[0x06] & 0x08) >> 1)))
+              displayWindow = false;
+            if (savedVideoLine == 204)
+              renderWindow = false;
+          }
+          videoLine = savedVideoLine;
+          prvCharacterLine = uint8_t(characterLine);
+          delayedEvents1.updateVideoLineRegisters();
+          delayedEvents0.incrementVideoLineCycle2();
+          if (!(n & 0xFFFFFFF8U))
+            return;
+        }
+        if (n & 0x00000008U) {
+          //   bit 3:   update video line registers, check interrupt
+          checkDMAPositionReset();
+          // delay video line reads by one cycle
+          tedRegisters[0x1D] = uint8_t(videoLine & 0x00FF);
+          tedRegisters[0x1C] = uint8_t((videoLine & 0x0100) >> 8);
+          checkVideoInterrupt();
+          if (!(n & 0xFFFFFFF0U))
+            return;
+        }
+        if (n & 0x00000010U) {
+          //   bit 4:   stop incrementing DMA position
+          incrementingDMAPosition = false;
+          if (videoLine == 205)
+            dmaPositionReload = 0x03FF;
+          if (!(n & 0xFFFFFFE0U))
+            return;
+        }
+        if (n & 0x00000020U) {
+          //   bit 5:   latch DMA position
+          dmaPositionReload = dmaPosition;
+          if (!(n & 0xFFFFFFC0U))
+            return;
+        }
+        if (n & 0x00000040U) {
+          //   bit 6:   latch character position
+          characterPositionReload = (prvCharacterPosition + 1) & 0x03FF;
+          delayedEvents1.updateCharPosReloadRegisters();
+          if (!(n & 0xFFFFFF80U))
+            return;
+        }
+        if (n & 0x00000080U) {
+          //   bit 7:   update character position reload registers (FF1A, FF1B)
+          tedRegisters[0x1A] = uint8_t(characterPositionReload >> 8);
+          tedRegisters[0x1B] = uint8_t(characterPositionReload & 0xFF);
+          if (!(n & 0xFFFFFF00U))
+            return;
+        }
+      }
+      if (n & 0x0000FF00U) {
+        if (n & 0x00000100U) {
+          //   bit 8:   increment video line, second cycle
+          if (savedVideoLine == 203)
+            dmaEnabled = false;
+          if (savedVideoLine == 204) {  // end of display
+            dmaWindow = false;
+            bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x02;
+            dmaFlags = 0x00;
+          }
+          else if (renderWindow) {
+            if (savedVideoLine == 0) {  // initialize character sub-line
+              delayedEvents1.resetVerticalSub();
+              dmaEnabled = true;
+            }
+            if (!((savedVideoLine ^ int(tedRegisters[0x06])) & 7) && dmaEnabled)
+              dmaWindow = true;
+            if (dmaFlags & 0x02)
+              bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x01;
+          }
+          if (!(n & 0xFFFFFE00U))
+            return;
+        }
+        if (n & 0x00000200U) {
+          //   bit 9:   increment vertical sub-address
+          characterLine = (characterLine + 1) & 7;
+          delayedEvents1.updateVerticalSubRegister();
+          if (!(n & 0xFFFFFC00U))
+            return;
+        }
+        if (n & 0x00000400U) {
+          //   bit 10:  update vertical sub-address register (FF1F)
+          tedRegisters[0x1F] =
+              uint8_t((tedRegisters[0x1F] & 0xF8) | characterLine);
+          if (!(n & 0xFFFFF800U))
+            return;
+        }
+        if (n & 0x00000800U) {
+          //   bit 11:  FF15 write
+          colorRegisters[0] = tedRegisters[0x15];
+          if (!(n & 0xFFFFF000U))
+            return;
+        }
+        if (n & 0x00001000U) {
+          //   bit 12:  FF16 write
+          colorRegisters[1] = tedRegisters[0x16];
+          if (!(n & 0xFFFFE000U))
+            return;
+        }
+        if (n & 0x00002000U) {
+          //   bit 13:  FF17 write
+          colorRegisters[2] = tedRegisters[0x17];
+          if (!(n & 0xFFFFC000U))
+            return;
+        }
+        if (n & 0x00004000U) {
+          //   bit 14:  FF18 write
+          colorRegisters[3] = tedRegisters[0x18];
+          if (!(n & 0xFFFF8000U))
+            return;
+        }
+        if (n & 0x00008000U) {
+          //   bit 15:  FF19 write
+          colorRegisters[4] = tedRegisters[0x19];
+          if (!(n & 0xFFFF0000U))
+            return;
+        }
+      }
+    }
+    if (n & 0xFFFF0000U) {
+      if (n & 0x00FF0000U) {
+        if (n & 0x00010000U) {
+          //   bit 16:  abort DMA after one cycle (on writing to FF06)
+          delayedEvents0.stopDMADelay1();
+          if (!(n & 0xFFFE0000U))
+            return;
+        }
+        if (n & 0x00020000U) {
+          //   bit 17:  DMA cycle 1
+          delayedEvents0.singleClockModeOn();
+          delayedEvents0.dmaCycle(2);
+          if (!(n & 0xFFFC0000U))
+            return;
+        }
+        if (n & 0x00040000U) {
+          //   bit 18:  DMA cycle 2
+          delayedEvents0.dmaCycle(3);
+          if (!(n & 0xFFF80000U))
+            return;
+        }
+        if (n & 0x00080000U) {
+          //   bit 19:  DMA cycle 3
+          M7501::setIsCPURunning(false);
+          delayedEvents0.dmaCycle(4);
+          if (!(n & 0xFFF00000U))
+            return;
+        }
+        if (n & 0x00100000U) {
+          //   bit 20:  DMA cycle 4
+          delayedEvents0.dmaCycle(5);
+          if (!(n & 0xFFE00000U))
+            return;
+        }
+        if (n & 0x00200000U) {
+          //   bit 21:  DMA cycle 5
+          delayedEvents0.dmaCycle(6);
+          if (!(n & 0xFFC00000U))
+            return;
+        }
+        if (n & 0x00400000U) {
+          //   bit 22:  DMA cycle 6
+          cpuHaltedFlag = true;
+          if (!(n & 0xFF800000U))
+            return;
+        }
+        if (n & 0x00800000U) {
+          //   bit 23:  abort an already started DMA (on writing to FF06)
+          delayedEvents0.stopDMA();
+          M7501::setIsCPURunning(true);
+          cpuHaltedFlag = false;
+          if (!(n & 0xFF000000U))
+            return;
+        }
+      }
+      if (n & 0xFF000000U) {
+        if (n & 0x01000000U) {
+          //   bit 24:  DRAM refresh / single clock mode on
+          singleClockModeFlags |= uint8_t(0x81);
+          if (!(n & 0xFE000000U))
+            return;
+        }
+        if (n & 0x02000000U) {
+          //   bit 25:  start timer 2
+          timer2_run = true;
+          if (!(n & 0xFC000000U))
+            return;
+        }
+        if (n & 0x04000000U) {
+          //   bit 26:  horizontal scroll write
+          horiz_scroll = tedRegisters[0x07] & 0x07;
+          if (!(n & 0xF8000000U))
+            return;
+        }
+        if (n & 0x08000000U) {
+          //   bit 27:  select renderer
+          switch (videoMode) {
+          case 0x00:
+            render_func = &render_char_std;
+            break;
+          case 0x01:
+            render_func = &render_char_MCM;
+            break;
+          case 0x02:
+            render_func = &render_BMM_hires;
+            break;
+          case 0x03:
+            render_func = &render_BMM_multicolor;
+            break;
+          case 0x04:
+            render_func = &render_char_ECM;
+            break;
+          case 0x05:
+            render_func = &render_blank;
+            break;
+          case 0x06:
+            render_func = &render_blank;
+            break;
+          case 0x07:
+            render_func = &render_blank;
+            break;
+          case 0x08:
+            render_func = &render_char_std;
+            break;
+          case 0x09:
+            render_func = &render_char_MCM;
+            break;
+          case 0x0A:
+            render_func = &render_BMM_hires;
+            break;
+          case 0x0B:
+            render_func = &render_BMM_multicolor;
+            break;
+          case 0x0C:
+            render_func = &render_char_ECM;
+            break;
+          case 0x0D:
+            render_func = &render_blank;
+            break;
+          case 0x0E:
+            render_func = &render_blank;
+            break;
+          case 0x0F:
+            render_func = &render_blank;
+            break;
+          }
+          selectRenderFunction();
+          if (!(n & 0xF0000000U))
+            return;
+        }
+        if (n & 0x10000000U) {
+          //   bit 28:  FF13 write (single clock mode control)
+          singleClockModeFlags = uint8_t((singleClockModeFlags & 0x81)
+                                         | (tedRegisters[0x13] & 0x02));
+          if (!(n & 0xE0000000U))
+            return;
+        }
+        if (n & 0x20000000U) {
+          //   bit 29:  internal single clock mode flag on (1 cycle delay)
+          delayedEvents0.singleClockModeOn();
+          if (!(n & 0xC0000000U))
+            return;
+        }
+        if (n & 0x40000000U) {
+          //   bit 30:  reset vertical sub-address
+          // FIXME: this check is a hack
+          if (bitmapAddressDisableFlags & 0x02) {
+            characterLine = 7;
+            prvCharacterLine = uint8_t(7);
+            delayedEvents0.updateVerticalSubRegister();
+          }
+        }
+        if (n & 0x80000000U) {
+          //   bit 31:  increment flash counter
+          tedRegisters[0x1F] =
+              (tedRegisters[0x1F] & uint8_t(0x7F)) + uint8_t(0x08);
+          if (tedRegisters[0x1F] & uint8_t(0x80))
+            flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
+        }
+      }
+    }
   }
 
 }       // namespace Plus4
