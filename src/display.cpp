@@ -198,11 +198,14 @@ namespace Plus4Emu {
   template <>
   uint16_t VideoDisplayColormap<uint16_t>::pixelConv(float r, float g, float b)
   {
-    uint16_t  ri, gi, bi;
-    ri = uint16_t(r >= 0.0f ? (r < 1.0f ? (r * 31.0f + 0.5f) : 31.0f) : 0.0f);
-    gi = uint16_t(g >= 0.0f ? (g < 1.0f ? (g * 63.0f + 0.5f) : 63.0f) : 0.0f);
-    bi = uint16_t(b >= 0.0f ? (b < 1.0f ? (b * 31.0f + 0.5f) : 31.0f) : 0.0f);
-    return ((ri << 11) | (gi << 5) | bi);
+    int ri = int(r >= 0.0f ? (r < 1.0f ? (r * 248.0f + 4.0f) : 252.0f) : 4.0f);
+    int gi = int(g >= 0.0f ? (g < 1.0f ? (g * 504.0f + 4.0f) : 508.0f) : 4.0f);
+    int bi = int(b >= 0.0f ? (b < 1.0f ? (b * 248.0f + 4.0f) : 252.0f) : 4.0f);
+    if (((ri | bi) & 7) < 2 && (gi & 7) >= 6)
+      gi = gi + 4;
+    if (((ri & bi) & 7) >= 6 && (gi & 7) < 2)
+      gi = gi - 4;
+    return uint16_t(((ri & 0x00F8) << 8) | ((gi & 0x01F8) << 2) | (bi >> 3));
   }
 
   template <>
