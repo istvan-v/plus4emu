@@ -123,8 +123,7 @@ namespace Plus4 {
           selectRenderFunction();
         }
         break;
-      case 72:                          // disable DMA
-        dmaFlags = dmaFlags & 0x03;
+      case 72:
         if (incrementingDMAPosition)    // stop incrementing DMA position
           delayedEvents0.stopIncrementingDMAPosition();
         if (renderWindow) {
@@ -136,6 +135,7 @@ namespace Plus4 {
         break;
       case 74:                          // DRAM refresh start
         delayedEvents0.dramRefreshOn();
+        dmaFlags = dmaFlags & 0x03;     // disable DMA
         incrementingCharacterPosition = false;
         break;
       case 76:
@@ -172,17 +172,10 @@ namespace Plus4 {
           current_render_func = &render_blank;
         }
         break;
-      case 96:
-        if (renderWindow) {
-          dmaFlags = dmaFlags & 0x80;
-          // if done attribute DMA in this line, continue with character
-          // DMA in next one
-          if (!((savedVideoLine ^ int(tedRegisters[0x06])) & 7) && dmaEnabled)
-            dmaFlags = dmaFlags | 0x02;
-        }
+      case 96:                          // increment line number
         delayedEvents0.incrementVideoLine();
         break;
-      case 98:                          // increment line number
+      case 98:
         if (savedVideoLine == ((videoOutputFlags & 0x01) ? 261 : 311)) {
           videoLine = 0x01FF;           // end of screen
           delayedEvents1.updateVideoLineRegisters();
@@ -192,7 +185,7 @@ namespace Plus4 {
           delayedEvents1.updateCharPosReloadRegisters();
           dramRefreshAddrL = 0x00;
         }
-        if (dmaWindow)
+        if (incrementingCharacterLine)
           delayedEvents0.incrementVerticalSub();
         if (!vsyncFlags) {              // horizontal sync end
           videoOutputFlags &= uint8_t(0x7D);
@@ -215,11 +208,7 @@ namespace Plus4 {
         if (renderWindow) {
           characterColumn = 0x3C;
           // check if DMA should be requested:
-          int     tmp = savedVideoLine;
-          // if line increment is pending, use new value for DMA condition test
-          if (delayedEvents.incrementingVideoLine())
-            tmp = videoLine + 1;
-          if (((tmp ^ int(tedRegisters[0x06])) & 7) == 0 && dmaEnabled) {
+          if (savedVideoLineBits0to2 == verticalScroll && dmaEnabled) {
             // start a new DMA at character line 7
             delayedEvents0.stopDMA();
             delayedEvents.startDMA();
@@ -507,8 +496,8 @@ namespace Plus4 {
     if (n & 0x0000FFFFU) {
       if (n & 0x000000FFU) {
         if (n & 0x00000001U) {
-          //   bit 0:   internal single clock mode flag on
-          singleClockModeFlags |= uint8_t(0x01);
+          //   bit 0:   DRAM refresh / single clock mode on
+          singleClockModeFlags |= uint8_t(0x81);
           if (!(n & 0xFFFFFFFEU))
             return;
         }
@@ -520,6 +509,13 @@ namespace Plus4 {
         }
         if (n & 0x00000004U) {
           //   bit 2:   increment video line
+          if (renderWindow) {
+            dmaFlags = dmaFlags & 0x80;
+            // if done attribute DMA in the previous line,
+            // continue with character DMA in next one
+            if (savedVideoLineBits0to2 == verticalScroll && dmaEnabled)
+              dmaFlags = dmaFlags | 0x02;
+          }
           bool    updateRenderFunctionFlag = false;
           if (!(videoOutputFlags & uint8_t(0x01))) {            // PAL
             videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
@@ -583,7 +579,7 @@ namespace Plus4 {
           if (savedVideoLine <= 8) {
             if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
               if (savedVideoLine == 0)
-                renderWindow = true;
+                delayedEvents0.initializeDisplay();
               if (savedVideoLine == (8 - (int(tedRegisters[0x06] & 0x08) >> 1)))
                 displayWindow = true;
             }
@@ -633,9 +629,19 @@ namespace Plus4 {
             return;
         }
         if (n & 0x00000080U) {
-          //   bit 7:   update character position reload registers (FF1A, FF1B)
-          tedRegisters[0x1A] = uint8_t(characterPositionReload >> 8);
-          tedRegisters[0x1B] = uint8_t(characterPositionReload & 0xFF);
+          //   bit 7:   initialize display (at line 0, if FF06 bit 4 is set)
+          dmaEnabled = true;
+          if (!renderWindow) {
+            renderWindow = true;
+            delayedEvents1.resetVerticalSub();
+            if (videoColumn == 100 || videoColumn == 101 ||
+                (dmaFlags & 0x80) != 0) {
+              delayedEvents0.singleClockModeOn();
+            }
+            // this is a hack and probably wrong:
+            if (videoColumn >= 102 && videoColumn < 110)
+              characterColumn = (videoColumn >> 1) + 9;
+          }
           if (!(n & 0xFFFFFF00U))
             return;
         }
@@ -643,22 +649,26 @@ namespace Plus4 {
       if (n & 0x0000FF00U) {
         if (n & 0x00000100U) {
           //   bit 8:   increment video line, second cycle
+          savedVideoLineBits0to2 = uint8_t(savedVideoLine & 7);
           if (savedVideoLine == 203)
             dmaEnabled = false;
           if (savedVideoLine == 204) {  // end of display
-            dmaWindow = false;
+            incrementingCharacterLine = false;
             bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x02;
             dmaFlags = 0x00;
           }
           else if (renderWindow) {
-            if (savedVideoLine == 0) {  // initialize character sub-line
-              delayedEvents1.resetVerticalSub();
-              dmaEnabled = true;
+            if (savedVideoLineBits0to2
+                == (tedRegisters[0x06] & uint8_t(0x07)) && dmaEnabled) {
+              incrementingCharacterLine = true;
             }
-            if (!((savedVideoLine ^ int(tedRegisters[0x06])) & 7) && dmaEnabled)
-              dmaWindow = true;
             if (dmaFlags & 0x02)
               bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x01;
+          }
+          if (videoColumn != 100) {     // if horizontal counter was changed:
+            DelayedEventsMask   tmp(n);
+            tmp.setVerticalScroll();    // check DMA
+            n = tmp;
           }
           if (!(n & 0xFFFFFE00U))
             return;
@@ -709,166 +719,183 @@ namespace Plus4 {
         }
       }
     }
-    if (n & 0xFFFF0000U) {
-      if (n & 0x00FF0000U) {
-        if (n & 0x00010000U) {
-          //   bit 16:  abort DMA after one cycle (on writing to FF06)
-          delayedEvents0.stopDMADelay1();
-          if (!(n & 0xFFFE0000U))
-            return;
-        }
-        if (n & 0x00020000U) {
-          //   bit 17:  DMA cycle 1
-          delayedEvents0.singleClockModeOn();
-          delayedEvents0.dmaCycle(2);
-          if (!(n & 0xFFFC0000U))
-            return;
-        }
-        if (n & 0x00040000U) {
-          //   bit 18:  DMA cycle 2
-          delayedEvents0.dmaCycle(3);
-          if (!(n & 0xFFF80000U))
-            return;
-        }
-        if (n & 0x00080000U) {
-          //   bit 19:  DMA cycle 3
-          M7501::setIsCPURunning(false);
-          delayedEvents0.dmaCycle(4);
-          if (!(n & 0xFFF00000U))
-            return;
-        }
-        if (n & 0x00100000U) {
-          //   bit 20:  DMA cycle 4
-          delayedEvents0.dmaCycle(5);
-          if (!(n & 0xFFE00000U))
-            return;
-        }
-        if (n & 0x00200000U) {
-          //   bit 21:  DMA cycle 5
-          delayedEvents0.dmaCycle(6);
-          if (!(n & 0xFFC00000U))
-            return;
-        }
-        if (n & 0x00400000U) {
-          //   bit 22:  DMA cycle 6
-          cpuHaltedFlag = true;
-          if (!(n & 0xFF800000U))
-            return;
-        }
-        if (n & 0x00800000U) {
-          //   bit 23:  abort an already started DMA (on writing to FF06)
-          delayedEvents0.stopDMA();
-          M7501::setIsCPURunning(true);
-          cpuHaltedFlag = false;
-          if (!(n & 0xFF000000U))
-            return;
-        }
+    if (n & 0x00FF0000U) {
+      if (n & 0x00010000U) {
+        //   bit 16:  internal single clock mode flag on
+        singleClockModeFlags |= uint8_t(0x01);
+        if (!(n & 0xFFFE0000U))
+          return;
       }
-      if (n & 0xFF000000U) {
-        if (n & 0x01000000U) {
-          //   bit 24:  DRAM refresh / single clock mode on
-          singleClockModeFlags |= uint8_t(0x81);
-          if (!(n & 0xFE000000U))
-            return;
-        }
-        if (n & 0x02000000U) {
-          //   bit 25:  start timer 2
-          timer2_run = true;
-          if (!(n & 0xFC000000U))
-            return;
-        }
-        if (n & 0x04000000U) {
-          //   bit 26:  horizontal scroll write
-          horiz_scroll = tedRegisters[0x07] & 0x07;
-          if (!(n & 0xF8000000U))
-            return;
-        }
-        if (n & 0x08000000U) {
-          //   bit 27:  select renderer
-          switch (videoMode) {
-          case 0x00:
-            render_func = &render_char_std;
-            break;
-          case 0x01:
-            render_func = &render_char_MCM;
-            break;
-          case 0x02:
-            render_func = &render_BMM_hires;
-            break;
-          case 0x03:
-            render_func = &render_BMM_multicolor;
-            break;
-          case 0x04:
-            render_func = &render_char_ECM;
-            break;
-          case 0x05:
-            render_func = &render_blank;
-            break;
-          case 0x06:
-            render_func = &render_blank;
-            break;
-          case 0x07:
-            render_func = &render_blank;
-            break;
-          case 0x08:
-            render_func = &render_char_std;
-            break;
-          case 0x09:
-            render_func = &render_char_MCM;
-            break;
-          case 0x0A:
-            render_func = &render_BMM_hires;
-            break;
-          case 0x0B:
-            render_func = &render_BMM_multicolor;
-            break;
-          case 0x0C:
-            render_func = &render_char_ECM;
-            break;
-          case 0x0D:
-            render_func = &render_blank;
-            break;
-          case 0x0E:
-            render_func = &render_blank;
-            break;
-          case 0x0F:
-            render_func = &render_blank;
-            break;
-          }
-          selectRenderFunction();
-          if (!(n & 0xF0000000U))
-            return;
-        }
-        if (n & 0x10000000U) {
-          //   bit 28:  FF13 write (single clock mode control)
-          singleClockModeFlags = uint8_t((singleClockModeFlags & 0x81)
-                                         | (tedRegisters[0x13] & 0x02));
-          if (!(n & 0xE0000000U))
-            return;
-        }
-        if (n & 0x20000000U) {
-          //   bit 29:  internal single clock mode flag on (1 cycle delay)
-          delayedEvents0.singleClockModeOn();
-          if (!(n & 0xC0000000U))
-            return;
-        }
-        if (n & 0x40000000U) {
-          //   bit 30:  reset vertical sub-address
-          // FIXME: this check is a hack
-          if (bitmapAddressDisableFlags & 0x02) {
-            characterLine = 7;
-            prvCharacterLine = uint8_t(7);
-            delayedEvents0.updateVerticalSubRegister();
+      if (n & 0x00020000U) {
+        //   bit 17:  DMA cycle 1
+        delayedEvents0.dmaCycle(2);
+        if (!(n & 0xFFFC0000U))
+          return;
+      }
+      if (n & 0x00040000U) {
+        //   bit 18:  DMA cycle 2
+        singleClockModeFlags |= uint8_t(0x01);
+        delayedEvents0.dmaCycle(3);
+        if (!(n & 0xFFF80000U))
+          return;
+      }
+      if (n & 0x00080000U) {
+        //   bit 19:  DMA cycle 3
+        M7501::setIsCPURunning(false);
+        delayedEvents0.dmaCycle(4);
+        if (!(n & 0xFFF00000U))
+          return;
+      }
+      if (n & 0x00100000U) {
+        //   bit 20:  DMA cycle 4
+        delayedEvents0.dmaCycle(5);
+        if (!(n & 0xFFE00000U))
+          return;
+      }
+      if (n & 0x00200000U) {
+        //   bit 21:  DMA cycle 5
+        delayedEvents0.dmaCycle(6);
+        if (!(n & 0xFFC00000U))
+          return;
+      }
+      if (n & 0x00400000U) {
+        //   bit 22:  DMA cycle 6
+        cpuHaltedFlag = true;
+        if (!(n & 0xFF800000U))
+          return;
+      }
+      if (n & 0x00800000U) {
+        //   bit 23:  abort an already started DMA (on writing to FF06)
+        delayedEvents0.stopDMA();
+        M7501::setIsCPURunning(true);
+        cpuHaltedFlag = false;
+        if (!(n & 0xFF000000U))
+          return;
+      }
+    }
+    if (n & 0x01000000U) {
+      //   bit 24:  start timer 2
+      timer2_run = true;
+      if (!(n & 0xFE000000U))
+        return;
+    }
+    if (n & 0x02000000U) {
+      //   bit 25:  vertical scroll write
+      verticalScroll = tedRegisters[0x06] & 0x07;
+      if (renderWindow) {
+        // check if DMA should be requested
+        if (savedVideoLineBits0to2 == verticalScroll) {
+          if (dmaEnabled) {
+            incrementingCharacterLine = true;
+            if (videoColumn == 98)
+              delayedEvents0.incrementVerticalSub();
+            if ((dmaFlags & 0x80) != 0) {
+              if (!delayedEvents0.dmaStarted()) {
+                singleClockModeFlags |= uint8_t(0x01);
+                delayedEvents0.dmaCycle(3);
+              }
+              dmaFlags = dmaFlags | 0x01;
+              dmaBaseAddr = dmaBaseAddr & 0xF800;
+            }
           }
         }
-        if (n & 0x80000000U) {
-          //   bit 31:  increment flash counter
-          tedRegisters[0x1F] =
-              (tedRegisters[0x1F] & uint8_t(0x7F)) + uint8_t(0x08);
-          if (tedRegisters[0x1F] & uint8_t(0x80))
-            flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
+        else if (dmaFlags & 0x01) {
+          // abort an already started DMA transfer
+          dmaFlags = dmaFlags & 0x82;
+          if (!(dmaFlags & 0x03))
+            delayedEvents0.stopDMADelay1();
         }
       }
+      if (!(n & 0xFC000000U))
+        return;
+    }
+    if (n & 0x04000000U) {
+      //   bit 26:  horizontal scroll write
+      horizontalScroll = tedRegisters[0x07] & 0x07;
+      if (!(n & 0xF8000000U))
+        return;
+    }
+    if (n & 0x08000000U) {
+      //   bit 27:  select renderer
+      switch (videoMode) {
+      case 0x00:
+        render_func = &render_char_std;
+        break;
+      case 0x01:
+        render_func = &render_char_MCM;
+        break;
+      case 0x02:
+        render_func = &render_BMM_hires;
+        break;
+      case 0x03:
+        render_func = &render_BMM_multicolor;
+        break;
+      case 0x04:
+        render_func = &render_char_ECM;
+        break;
+      case 0x05:
+        render_func = &render_blank;
+        break;
+      case 0x06:
+        render_func = &render_blank;
+        break;
+      case 0x07:
+        render_func = &render_blank;
+        break;
+      case 0x08:
+        render_func = &render_char_std;
+        break;
+      case 0x09:
+        render_func = &render_char_MCM;
+        break;
+      case 0x0A:
+        render_func = &render_BMM_hires;
+        break;
+      case 0x0B:
+        render_func = &render_BMM_multicolor;
+        break;
+      case 0x0C:
+        render_func = &render_char_ECM;
+        break;
+      case 0x0D:
+        render_func = &render_blank;
+        break;
+      case 0x0E:
+        render_func = &render_blank;
+        break;
+      case 0x0F:
+        render_func = &render_blank;
+        break;
+      }
+      selectRenderFunction();
+      if (!(n & 0xF0000000U))
+        return;
+    }
+    if (n & 0x10000000U) {
+      //   bit 28:  FF13 write (single clock mode control)
+      singleClockModeFlags = uint8_t((singleClockModeFlags & 0x81)
+                                     | (tedRegisters[0x13] & 0x02));
+      if (!(n & 0xE0000000U))
+        return;
+    }
+    if (n & 0x20000000U) {
+      //   bit 29:  update character position reload registers (FF1A, FF1B)
+      tedRegisters[0x1A] = uint8_t(characterPositionReload >> 8);
+      tedRegisters[0x1B] = uint8_t(characterPositionReload & 0xFF);
+      if (!(n & 0xC0000000U))
+        return;
+    }
+    if (n & 0x40000000U) {
+      //   bit 30:  reset vertical sub-address
+      characterLine = 7;
+      prvCharacterLine = uint8_t(7);
+      delayedEvents0.updateVerticalSubRegister();
+    }
+    if (n & 0x80000000U) {
+      //   bit 31:  increment flash counter
+      tedRegisters[0x1F] = (tedRegisters[0x1F] & uint8_t(0x7F)) + uint8_t(0x08);
+      if (tedRegisters[0x1F] & uint8_t(0x80))
+        flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
     }
   }
 

@@ -35,7 +35,7 @@ namespace Plus4 {
   REGPARM int TED7360::render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs)
   {
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -112,7 +112,7 @@ namespace Plus4 {
                                              uint8_t *bufp, int offs)
   {
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c_[4];
     c_[0] = ted.colorRegisters[0];
     c_[3] = ted.colorRegisters[1];
@@ -201,7 +201,7 @@ namespace Plus4 {
   REGPARM int TED7360::render_char_std(TED7360& ted, uint8_t *bufp, int offs)
   {
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c0 = ted.colorRegisters[0];
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
@@ -296,7 +296,7 @@ namespace Plus4 {
   REGPARM int TED7360::render_char_ECM(TED7360& ted, uint8_t *bufp, int offs)
   {
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -373,7 +373,7 @@ namespace Plus4 {
   REGPARM int TED7360::render_char_MCM(TED7360& ted, uint8_t *bufp, int offs)
   {
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c_[4];
     c_[0] = ted.colorRegisters[0];
     c_[1] = ted.colorRegisters[1];
@@ -525,7 +525,7 @@ namespace Plus4 {
 
   REGPARM int TED7360::render_blank(TED7360& ted, uint8_t *bufp, int offs)
   {
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();
@@ -545,7 +545,7 @@ namespace Plus4 {
 
   REGPARM int TED7360::render_border(TED7360& ted, uint8_t *bufp, int offs)
   {
-    int     nextCharCnt = int(ted.horiz_scroll) - offs;
+    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();

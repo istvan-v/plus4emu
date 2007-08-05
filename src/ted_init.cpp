@@ -220,7 +220,7 @@ namespace Plus4 {
     ted_disabled = false;
     flashState = 0x00;
     renderWindow = false;
-    dmaWindow = false;
+    incrementingCharacterLine = false;
     bitmapAddressDisableFlags = 0x03;
     displayWindow = false;
     displayActive = false;
@@ -256,7 +256,9 @@ namespace Plus4 {
     characterMask = uint8_t(0x7F);
     for (int i = 0; i < 5; i++)
       colorRegisters[i] = uint8_t(0x80);
-    horiz_scroll = 0;
+    horizontalScroll = 0;
+    verticalScroll = 3;
+    savedVideoLineBits0to2 = 0;
     dmaEnabled = false;
     singleClockModeFlags = 0x01;
     dmaFlags = 0x00;

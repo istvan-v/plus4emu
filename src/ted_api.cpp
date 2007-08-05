@@ -310,7 +310,7 @@ namespace Plus4 {
     buf.writeUInt32(uint32_t(dmaPositionReload));
     buf.writeByte(flashState);
     buf.writeBoolean(renderWindow);
-    buf.writeBoolean(dmaWindow);
+    buf.writeBoolean(incrementingCharacterLine);
     buf.writeByte(bitmapAddressDisableFlags);
     buf.writeBoolean(displayWindow);
     buf.writeBoolean(displayActive);
@@ -341,6 +341,7 @@ namespace Plus4 {
     buf.writeByte(nextCharacter.char_());
     buf.writeByte(nextCharacter.bitmap_());
     buf.writeByte(nextCharacter.flags_() & uint8_t(0xF8));
+    buf.writeByte(savedVideoLineBits0to2);
     buf.writeBoolean(dmaEnabled);
     buf.writeByte(singleClockModeFlags & uint8_t(0x83));
     buf.writeByte(dmaFlags);
@@ -456,7 +457,7 @@ namespace Plus4 {
       dmaPositionReload = int(buf.readUInt32() & 0x03FF);
       flashState = uint8_t(buf.readByte() == 0x00 ? 0x00 : 0xFF);
       renderWindow = buf.readBoolean();
-      dmaWindow = buf.readBoolean();
+      incrementingCharacterLine = buf.readBoolean();
       bitmapAddressDisableFlags = buf.readByte() & 0x03;
       displayWindow = buf.readBoolean();
       if (version < 0x01000003)
@@ -490,7 +491,7 @@ namespace Plus4 {
       if (version == 0x01000000)
         (void) buf.readUInt32();        // was bitmapMShiftRegister
       if (version < 0x01000003)
-        (void) buf.readByte();          // was horiz_scroll
+        (void) buf.readByte();          // was horizontalScroll
       shiftRegisterCharacter.attr_() = buf.readByte();
       shiftRegisterCharacter.char_() = buf.readByte();
       if (version >= 0x01000003)
@@ -507,8 +508,10 @@ namespace Plus4 {
       nextCharacter.attr_() = buf.readByte();
       nextCharacter.char_() = buf.readByte();
       nextCharacter.bitmap_() = buf.readByte();
-      if (version >= 0x01000003)
+      if (version >= 0x01000003) {
         nextCharacter.flags_() = buf.readByte() & 0xF8;
+        savedVideoLineBits0to2 = buf.readByte() & 0x07;
+      }
       else
         nextCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
       dmaEnabled = buf.readBoolean();
@@ -545,12 +548,18 @@ namespace Plus4 {
         incrementingCharacterPosition =
             (videoColumn >= 110 || videoColumn < 74);
       }
+      delayedEvents0.setVerticalScroll();
       delayedEvents0.setHorizontalScroll();
       delayedEvents0.selectRenderer();
       delayedEvents0.setForceSingleClockFlag();
       for (uint8_t i = 0; i < 5; i++)
         delayedEvents0.setColorRegister(i);
       savedVideoLine = int(buf.readUInt32() & 0x01FF);
+      if (version < 0x01000003) {
+        savedVideoLineBits0to2 = uint8_t(savedVideoLine & 7);
+        if (videoColumn == 99)
+          savedVideoLineBits0to2 = (savedVideoLineBits0to2 - 1) & 0x07;
+      }
       prvVideoInterruptState = buf.readBoolean();
       if (version < 0x01000002)
         checkVideoInterrupt();

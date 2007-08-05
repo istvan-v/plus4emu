@@ -110,7 +110,7 @@ namespace Plus4 {
       {
         return (this->mask_ != 0U);
       }
-      inline void singleClockModeOn()
+      inline void dramRefreshOn()
       {
         this->mask_ |= uint32_t(0x00000001U);
       }
@@ -121,10 +121,6 @@ namespace Plus4 {
       inline void incrementVideoLine()
       {
         this->mask_ |= uint32_t(0x00000004U);
-      }
-      inline bool incrementingVideoLine() const
-      {
-        return bool(this->mask_ & uint32_t(0x00000004U));
       }
       inline void updateVideoLineRegisters()
       {
@@ -142,17 +138,13 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000040U);
       }
-      inline void updateCharPosReloadRegisters()
+      inline void initializeDisplay()
       {
         this->mask_ |= uint32_t(0x00000080U);
       }
       inline void incrementVideoLineCycle2()
       {
         this->mask_ |= uint32_t(0x00000100U);
-      }
-      inline bool incrementingVideoLineCycle2() const
-      {
-        return bool(this->mask_ & uint32_t(0x00000100U));
       }
       inline void incrementVerticalSub()
       {
@@ -166,18 +158,18 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000800U << n);
       }
-      inline void stopDMADelay2()
+      inline void singleClockModeOn()
       {
         this->mask_ |= uint32_t(0x00010000U);
       }
       inline void startDMA()
       {
-        this->mask_ &= uint32_t(0xFF00FFFFU);
-        this->mask_ |= uint32_t(0x00040001U);
+        this->mask_ &= uint32_t(0xFF01FFFFU);
+        this->mask_ |= uint32_t(0x00040000U);
       }
       inline void stopDMA()
       {
-        this->mask_ &= uint32_t(0xFF00FFFFU);
+        this->mask_ &= uint32_t(0xFF01FFFFU);
       }
       inline void dmaCycle(uint8_t n)
       {
@@ -191,17 +183,17 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00800000U);
       }
-      inline void dramRefreshOn()
+      inline void timer2Start()
       {
         this->mask_ |= uint32_t(0x01000000U);
       }
-      inline void timer2Start()
-      {
-        this->mask_ |= uint32_t(0x02000000U);
-      }
       inline void stopTimer2Start()
       {
-        this->mask_ &= uint32_t(0xFDFFFFFFU);
+        this->mask_ &= uint32_t(0xFEFFFFFFU);
+      }
+      inline void setVerticalScroll()
+      {
+        this->mask_ |= uint32_t(0x02000000U);
       }
       inline void setHorizontalScroll()
       {
@@ -215,7 +207,7 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x10000000U);
       }
-      inline void singleClockModeOnDelay1()
+      inline void updateCharPosReloadRegisters()
       {
         this->mask_ |= uint32_t(0x20000000U);
       }
@@ -425,7 +417,7 @@ namespace Plus4 {
     uint8_t     flashState;
     // display state flags, set depending on video line and column
     bool        renderWindow;
-    bool        dmaWindow;
+    bool        incrementingCharacterLine;
     // if non-zero, disable address generation for bitmap fetches, and always
     // read from FFFF; bit 0 is cleared at cycle 110 and set at cycle 76, bit 1
     // is cleared at the first character DMA and set at the end of the display
@@ -480,7 +472,12 @@ namespace Plus4 {
     // to a register
     uint8_t     colorRegisters[5];
     // horizontal scroll (0 to 7)
-    uint8_t     horiz_scroll;
+    uint8_t     horizontalScroll;
+    // vertical scroll (0 to 7)
+    uint8_t     verticalScroll;
+    // least significant bits (delayed by one cycle) of video line
+    // for DMA checking
+    uint8_t     savedVideoLineBits0to2;
     bool        dmaEnabled;
     // bit 0: single clock mode controlled by TED
     // bit 1: copied from FF13 bit 1
@@ -504,6 +501,7 @@ namespace Plus4 {
     // for reading data from invalid memory address
     uint8_t     dataBusState;
    private:
+    // lower 8 bits of DRAM refresh address (upper 8 bits are always 1)
     uint8_t     dramRefreshAddrL;
     // keyboard matrix
     int         keyboard_row_select_mask;

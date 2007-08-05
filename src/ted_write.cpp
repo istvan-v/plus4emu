@@ -150,28 +150,19 @@ namespace Plus4 {
     uint8_t   bitsChanged = ted.tedRegisters[0x06] ^ value;
     ted.tedRegisters[0x06] = value;
     ted.videoMode = uint8_t((ted.videoMode & 0x09) | ((value >> 4) & 0x06));
-    bool      dmaCheckFlag = bool(bitsChanged & uint8_t(0x07));
+    if (bitsChanged & uint8_t(0x07)) {
+      // delay vertical scroll changes by one cycle
+      ted.delayedEvents0.setVerticalScroll();
+    }
     if (bitsChanged & uint8_t(0x18)) {
       // display enabled or number of rows has changed
       switch (ted.savedVideoLine) {
       case 0:
         if (value & uint8_t(0x10)) {
-          if (!ted.renderWindow) {
-            // turned on display enable during line 0: initialize internal
-            // registers
-            ted.renderWindow = true;
-            ted.dmaEnabled = true;
-            if ((ted.dmaFlags & 0x80) != 0 ||
-                ted.videoColumn == 100 || ted.videoColumn == 101) {
-              // single clock mode (FIXME: the timing is not always correct)
-              ted.delayedEvents0.singleClockModeOnDelay1();
-              // this is a hack and probably wrong:
-              if (ted.videoColumn >= 102 && ted.videoColumn < 108)
-                ted.characterColumn = (ted.videoColumn >> 1) + 9;
-            }
-            ted.delayedEvents1.resetVerticalSub();
-            dmaCheckFlag = true;
-          }
+          // turned on display enable during line 0:
+          // initialize internal registers
+          ted.delayedEvents0.initializeDisplay();
+          ted.delayedEvents0.setVerticalScroll();
         }
         break;
       case 4:
@@ -190,29 +181,6 @@ namespace Plus4 {
         if (value & uint8_t(0x08))
           ted.displayWindow = false;
         break;
-      }
-    }
-    if (dmaCheckFlag) {
-      // if vertical scroll has changed:
-      if (ted.renderWindow) {
-        // check if DMA should be requested
-        if (!((uint8_t(ted.savedVideoLine) ^ value) & uint8_t(0x07))) {
-          if (ted.dmaEnabled) {
-            if (!ted.delayedEvents0.incrementingVideoLineCycle2())
-              ted.dmaWindow = true;
-            if ((ted.dmaFlags & 0x80) && !ted.delayedEvents0.dmaStarted()) {
-              ted.delayedEvents0.startDMA();
-              ted.dmaFlags = ted.dmaFlags | 0x01;
-              ted.dmaBaseAddr = ted.dmaBaseAddr & 0xF800;
-            }
-          }
-        }
-        else if (ted.dmaFlags & 0x01) {
-          // abort an already started DMA transfer
-          ted.dmaFlags = ted.dmaFlags & 0x82;
-          if (!(ted.dmaFlags & 0x03))
-            ted.delayedEvents0.stopDMADelay2();
-        }
       }
     }
     if (bitsChanged & uint8_t(0x60)) {
