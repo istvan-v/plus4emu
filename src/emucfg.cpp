@@ -429,6 +429,7 @@ namespace Plus4Emu {
     }
     if (soundSettingsChanged) {
       vm_.setEnableAudioOutput(sound.enabled);
+      videoDisplay.limitFrameRate(!sound.enabled);
       if (!sound.enabled) {
         // close device if sound is disabled
         audioOutput.closeDevice();

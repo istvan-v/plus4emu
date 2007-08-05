@@ -124,6 +124,7 @@ namespace Plus4Emu {
       lineReload(-6),
       videoResampleEnabled(false),
       exitFlag(false),
+      limitFrameRateFlag(false),
       displayParameters(),
       savedDisplayParameters(),
       fltkEventCallback(&defaultFLTKEventCallback),
@@ -377,6 +378,11 @@ namespace Plus4Emu {
     fltkEventCallbackUserData = userData_;
   }
 
+  void FLTKDisplay_::limitFrameRate(bool isEnabled)
+  {
+    limitFrameRateFlag = isEnabled;
+  }
+
   void FLTKDisplay_::checkScreenshotCallback()
   {
     if (!screenshotCallbackCnt)
@@ -465,11 +471,20 @@ namespace Plus4Emu {
     bool    skippedFrame = skippingFrame;
     if (!skippedFrame)
       framesPending++;
-    skippingFrame = (framesPending > 3);    // should this be configurable ?
+    bool    overrunFlag = (framesPending > 3);  // should this be configurable ?
+    skippingFrame = overrunFlag;
+    if (limitFrameRateFlag) {
+      if (limitFrameRateTimer.getRealTime() < 0.02)
+        skippingFrame = true;
+      else
+        limitFrameRateTimer.reset();
+    }
     messageQueueMutex.unlock();
     if (skippedFrame) {
-      Fl::awake();
-      threadLock.wait(1);
+      if (overrunFlag || !limitFrameRateFlag) {
+        Fl::awake();
+        threadLock.wait(1);
+      }
       return;
     }
     Message *m = allocateMessage<Message_FrameDone>();

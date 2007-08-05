@@ -4,6 +4,8 @@ Changes in version 1.2.1
   * TED emulation improvements; also fixed a bug introduced in version
     1.1.1
   * fixed reading snapshots saved by versions earlier than 1.2.0
+  * the frame rate in full speed mode is now limited to a maximum of
+    50 Hz to improve performance
 
 Changes in version 1.2.0
 ------------------------

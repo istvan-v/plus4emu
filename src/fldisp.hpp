@@ -175,8 +175,10 @@ namespace Plus4Emu {
     int           lineReload;
     volatile bool videoResampleEnabled;
     volatile bool exitFlag;
+    volatile bool limitFrameRateFlag;
     DisplayParameters   displayParameters;
     DisplayParameters   savedDisplayParameters;
+    Timer         limitFrameRateTimer;
     ThreadLock    threadLock;
     int           (*fltkEventCallback)(void *, int);
     void          *fltkEventCallbackUserData;
@@ -227,6 +229,11 @@ namespace Plus4Emu {
      */
     virtual void setFLTKEventCallback(int (*func)(void *userData, int event),
                                       void *userData_ = (void *) 0);
+    /*!
+     * If enabled, limit the number of frames displayed per second to a
+     * maximum of 50.
+     */
+    virtual void limitFrameRate(bool isEnabled);
    protected:
     virtual void draw();
    public:

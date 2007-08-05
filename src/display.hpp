@@ -116,6 +116,11 @@ namespace Plus4Emu {
      *     1: NTSC mode (dot clock multiplied by 1.25)
      */
     virtual void sendVideoOutput(const uint8_t *buf, size_t nBytes) = 0;
+    /*!
+     * If enabled, limit the number of frames displayed per second to a
+     * maximum of 50.
+     */
+    virtual void limitFrameRate(bool isEnabled);
   };
 
   template <typename T>

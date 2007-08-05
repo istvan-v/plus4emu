@@ -193,6 +193,11 @@ namespace Plus4Emu {
   {
   }
 
+  void VideoDisplay::limitFrameRate(bool isEnabled)
+  {
+    (void) isEnabled;
+  }
+
   // --------------------------------------------------------------------------
 
   template <>
