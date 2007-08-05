@@ -1004,19 +1004,8 @@ namespace Plus4Emu {
       ringBufferReadPos = ringBufferReadPos + d;
       if (ringBufferReadPos >= 4.0)
         ringBufferReadPos -= 4.0;
-      bool    blendEnabled_ = true;
-      if (readPosFrac >= 0.002 && readPosFrac <= 0.998)
-        glEnable(GL_BLEND);
-      else {
+      if (readPosFrac <= 0.998) {
         glDisable(GL_BLEND);
-        blendEnabled_ = false;
-      }
-      if (blendEnabled_) {
-        glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                      GLclampf(1.0 - readPosFrac));
-        glBlendFunc(GL_CONSTANT_ALPHA, GL_ZERO);
-      }
-      if (blendEnabled_ || readPosFrac < 0.5) {
         switch (displayParameters.displayQuality) {
         case 0:
           // half horizontal resolution, no interlace (384x288)
@@ -1037,12 +1026,15 @@ namespace Plus4Emu {
           break;
         }
       }
-      if (blendEnabled_) {
-        glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
-                      GLclampf(readPosFrac));
-        glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE);
-      }
-      if (blendEnabled_ || readPosFrac > 0.5) {
+      if (readPosFrac >= 0.002) {
+        if (readPosFrac <= 0.9975) {
+          glEnable(GL_BLEND);
+          glBlendColor_(GLclampf(1.0), GLclampf(1.0), GLclampf(1.0),
+                        GLclampf(readPosFrac));
+          glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+        }
+        else
+          glDisable(GL_BLEND);
         switch (displayParameters.displayQuality) {
         case 0:
           // half horizontal resolution, no interlace (384x288)
