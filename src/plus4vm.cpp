@@ -511,7 +511,10 @@ namespace Plus4 {
     vm.tapeTimeRemaining += vm.tedTimesliceLength;
     if (vm.tapeTimeRemaining > 0) {
       // assume tape sample rate < single clock frequency
-      vm.tapeTimeRemaining -= vm.tapeTimesliceLength;
+      int64_t timesliceLength = vm.tapeTimesliceLength;
+      if (timesliceLength <= 0)
+        timesliceLength = vm.tedTimesliceLength << 2;
+      vm.tapeTimeRemaining -= timesliceLength;
       vm.setTapeMotorState(vm.ted->getTapeMotorState());
       bool    tedTapeOutput = vm.ted->getTapeOutput();
       bool    tedTapeInput = (vm.runTape(tedTapeOutput ? 1 : 0) > 0);
