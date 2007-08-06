@@ -55,7 +55,7 @@ Plus/4 emulation
     documented and undocumented opcodes, and fully compatible decimal
     mode
   * TED 7360/8360 emulation with high level of compatibility, implements
-    all documented video modes, PAL/NTSC mode switching, as well as most
+    all documented video modes, PAL/NTSC mode switching, as well as all
     known display artifacts; all registers can be read and written, and
     the internal operation and timing is reproduced with very good
     accuracy
