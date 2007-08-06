@@ -303,7 +303,7 @@ namespace Plus4 {
     buf.writeUInt32(uint32_t(videoLine));
     buf.writeByte(uint8_t(characterLine));
     buf.writeUInt32(uint32_t(characterPosition));
-    buf.writeUInt32(uint32_t(nextCharacterPosition));
+    buf.writeUInt32(uint32_t(savedCharacterPosition));
     buf.writeUInt32(uint32_t(characterPositionReload));
     buf.writeByte(uint8_t(characterColumn));
     buf.writeUInt32(uint32_t(dmaPosition | (dmaBaseAddr & 0x0400)));
@@ -344,6 +344,7 @@ namespace Plus4 {
     buf.writeByte(savedVideoLineBits0to2);
     buf.writeBoolean(dmaEnabled);
     buf.writeByte(singleClockModeFlags & uint8_t(0x83));
+    buf.writeBoolean(externalFetchSingleClockFlag);
     buf.writeByte(dmaFlags);
     buf.writeBoolean(incrementingDMAPosition);
     buf.writeBoolean(incrementingCharacterPosition);
@@ -446,9 +447,9 @@ namespace Plus4 {
       characterLine = buf.readByte() & 7;
       characterPosition = int(buf.readUInt32() & 0x03FF);
       if (version >= 0x01000003)
-        nextCharacterPosition = int(buf.readUInt32() & 0x03FF);
+        savedCharacterPosition = int(buf.readUInt32() & 0x03FF);
       else
-        nextCharacterPosition = characterPosition;
+        savedCharacterPosition = characterPosition;
       characterPositionReload = int(buf.readUInt32() & 0x03FF);
       characterColumn = buf.readByte() & 0x3F;
       dmaPosition = int(buf.readUInt32() & 0x07FF);
@@ -516,7 +517,10 @@ namespace Plus4 {
         nextCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
       dmaEnabled = buf.readBoolean();
       singleClockModeFlags = buf.readByte() & 0x83;
-      if (version < 0x01000003) {
+      if (version >= 0x01000003) {
+        externalFetchSingleClockFlag = buf.readBoolean();
+      }
+      else {
         singleClockModeFlags = singleClockModeFlags & 0x03;
         bool    singleClockModeFlag_ = buf.readBoolean();
         uint8_t dmaCycleCounter = buf.readByte();
@@ -526,13 +530,14 @@ namespace Plus4 {
           else
             delayedEvents0.singleClockModeOff();
         }
-        cpuHaltedFlag = (dmaCycleCounter >= 6);
-        if (dmaCycleCounter >= 1 && dmaCycleCounter <= 5)
-          delayedEvents0.dmaCycle(dmaCycleCounter);
+        cpuHaltedFlag = (dmaCycleCounter >= 7);
+        if (dmaCycleCounter >= 2 && dmaCycleCounter <= 6)
+          delayedEvents0.dmaCycle(dmaCycleCounter - 1);
+        externalFetchSingleClockFlag = (videoColumn >= 101 || videoColumn < 75);
       }
       dmaFlags = buf.readByte() & 0x83;
       if (version < 0x01000003) {
-        if (videoColumn >= 102 || videoColumn < 72)
+        if (videoColumn >= 103 || videoColumn < 75)
           dmaFlags = dmaFlags | 0x80;
         else
           dmaFlags = dmaFlags & 0x7F;
@@ -546,7 +551,7 @@ namespace Plus4 {
       }
       else {
         incrementingCharacterPosition =
-            (videoColumn >= 110 || videoColumn < 74);
+            (videoColumn >= 111 || videoColumn < 75);
       }
       delayedEvents0.setVerticalScroll();
       delayedEvents0.setHorizontalScroll();
@@ -557,7 +562,7 @@ namespace Plus4 {
       savedVideoLine = int(buf.readUInt32() & 0x01FF);
       if (version < 0x01000003) {
         savedVideoLineBits0to2 = uint8_t(savedVideoLine & 7);
-        if (videoColumn == 99)
+        if (videoColumn == 99 || videoColumn == 100)
           savedVideoLineBits0to2 = (savedVideoLineBits0to2 - 1) & 0x07;
       }
       prvVideoInterruptState = buf.readBoolean();

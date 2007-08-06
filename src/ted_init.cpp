@@ -206,9 +206,8 @@ namespace Plus4 {
     current_render_func = &render_border;
     videoLine = 224;
     characterLine = 0;
-    prvCharacterPosition = 0x0000;
     characterPosition = 0x0000;
-    nextCharacterPosition = 0x0000;
+    savedCharacterPosition = 0x0000;
     characterPositionReload = 0x0000;
     characterColumn = 0;
     dmaPosition = 0x03FF;
@@ -260,7 +259,8 @@ namespace Plus4 {
     verticalScroll = 3;
     savedVideoLineBits0to2 = 0;
     dmaEnabled = false;
-    singleClockModeFlags = 0x01;
+    singleClockModeFlags = 0x00;
+    externalFetchSingleClockFlag = true;
     dmaFlags = 0x00;
     incrementingDMAPosition = false;
     incrementingCharacterPosition = false;

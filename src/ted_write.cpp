@@ -213,8 +213,11 @@ namespace Plus4 {
     if (bitsChanged & uint8_t(0x60)) {
       if (bitsChanged & uint8_t(0x20)) {
         if (ted.ted_disabled) {
-          if (!(ted.videoColumn & uint8_t(0x01)))
+          if (!(ted.videoColumn & uint8_t(0x01))) {
             ted.delayedEvents0.dramRefreshOn();
+            ted.videoOutputFlags |= uint8_t(0x20);
+            ted.current_render_func = &TED7360::render_blank;
+          }
         }
       }
       if (bitsChanged & uint8_t(0x40)) {

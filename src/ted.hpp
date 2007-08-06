@@ -158,26 +158,31 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000800U << n);
       }
-      inline void singleClockModeOn()
+      inline void reloadCharacterPosition()
       {
         this->mask_ |= uint32_t(0x00010000U);
       }
+      inline void singleClockModeOn()
+      {
+        this->mask_ |= uint32_t(0x00020000U);
+      }
       inline void startDMA()
       {
-        this->mask_ &= uint32_t(0xFF01FFFFU);
+        this->mask_ &= uint32_t(0xFF03FFFFU);
         this->mask_ |= uint32_t(0x00040000U);
       }
       inline void stopDMA()
       {
-        this->mask_ &= uint32_t(0xFF01FFFFU);
+        this->mask_ &= uint32_t(0xFF03FFFFU);
       }
+      // 'n' should be in the range 1 to 5
       inline void dmaCycle(uint8_t n)
       {
-        this->mask_ |= uint32_t(0x00010000U << n);
+        this->mask_ |= uint32_t(0x00020000U << n);
       }
       inline bool dmaStarted() const
       {
-        return bool(this->mask_ & 0x007E0000U);
+        return bool(this->mask_ & 0x007C0000U);
       }
       inline void stopDMADelay1()
       {
@@ -358,6 +363,8 @@ namespace Plus4 {
     void initRegisters();
     void initializeRAMSegment(uint8_t *p);
     void runOneCycle_freezeMode();
+    // called at single clock frequency / 4
+    void calculateSoundOutput();
     void processDelayedEvents(uint32_t n);
     // -----------------------------------------------------------------
    protected:
@@ -394,9 +401,8 @@ namespace Plus4 {
     // character sub-line (0 to 7, bits 0..2 of FF1F)
     int         characterLine;
     // character position (FF1A, FF1B)
-    int         prvCharacterPosition;
     int         characterPosition;
-    int         nextCharacterPosition;
+    int         savedCharacterPosition;
     int         characterPositionReload;
     int         characterColumn;
     int         dmaPosition;
@@ -483,6 +489,8 @@ namespace Plus4 {
     // bit 1: copied from FF13 bit 1
     // bit 7: DRAM refresh
     uint8_t     singleClockModeFlags;
+    // turned on at cycle 100, and turned off at cycle 74
+    bool        externalFetchSingleClockFlag;
     // sum of:
     //    1: attribute DMA
     //    2: character DMA

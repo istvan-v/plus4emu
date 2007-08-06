@@ -30,6 +30,11 @@ namespace Plus4 {
     cpuHaltedFlag = false;
     // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
     if (!(videoColumn & 0x01)) {
+      characterPosition = 0x03FF;
+      if (incrementingCharacterPosition) {
+        savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
+        characterPosition = savedCharacterPosition;
+      }
       if (delayedEvents0) {
         DelayedEventsMask delayedEvents(delayedEvents0);
         delayedEvents0 = 0U;
@@ -42,6 +47,8 @@ namespace Plus4 {
         p = nxt;
       }
       M7501::run(cpu_clock_multiplier);
+      if (incrementingDMAPosition)
+        dmaPosition = (dmaPosition + 1) & 0x03FF;
       prv_video_buf_pos = video_buf_pos;
       uint8_t *bufp = &(video_buf[video_buf_pos]);
       (void) render_blank(*this, bufp, 0);
@@ -76,7 +83,7 @@ namespace Plus4 {
     bufp[0] = (bufp[0] & 0x01) | 0x30;
     video_buf_pos = video_buf_pos + 2;
     if (!cycle_count)
-      playSample(0);
+      calculateSoundOutput();
     tedRegisters[0x1E] = videoColumn;
     if (!ted_disabled)
       videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
@@ -91,14 +98,17 @@ namespace Plus4 {
       video_buf_pos = 0;
     }
 
-    prvCharacterPosition = characterPosition;
-    characterPosition = 0x03FF;
     if (ted_disabled) {
       runOneCycle_freezeMode();
       return;
     }
     if (!(videoColumn & uint8_t(0x01))) {
       // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
+      characterPosition = 0x03FF;
+      if (incrementingCharacterPosition) {
+        savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
+        characterPosition = savedCharacterPosition;
+      }
       DelayedEventsMask delayedEvents(delayedEvents0);
       delayedEvents0 = 0U;
       switch (videoColumn) {
@@ -135,6 +145,7 @@ namespace Plus4 {
         break;
       case 74:                          // DRAM refresh start
         delayedEvents0.dramRefreshOn();
+        externalFetchSingleClockFlag = false;
         dmaFlags = dmaFlags & 0x03;     // disable DMA
         incrementingCharacterPosition = false;
         break;
@@ -180,7 +191,7 @@ namespace Plus4 {
           videoLine = 0x01FF;           // end of screen
           delayedEvents1.updateVideoLineRegisters();
           characterPosition = 0x0000;   // reset character position
-          nextCharacterPosition = 0x0000;
+          savedCharacterPosition = 0x0000;
           characterPositionReload = 0x0000;
           delayedEvents1.updateCharPosReloadRegisters();
           dramRefreshAddrL = 0x00;
@@ -195,6 +206,7 @@ namespace Plus4 {
           videoOutputFlags |= uint8_t(0x08);
         break;
       case 100:                         // external fetch single clock start
+        externalFetchSingleClockFlag = true;
         if (renderWindow)
           delayedEvents0.singleClockModeOn();
         if (vsyncFlags) {               // equalization pulse 2 end
@@ -205,8 +217,8 @@ namespace Plus4 {
         break;
       case 102:                         // enable / start DMA
         dmaFlags = dmaFlags | 0x80;
+        characterColumn = 0x3C;
         if (renderWindow) {
-          characterColumn = 0x3C;
           // check if DMA should be requested:
           if (savedVideoLineBits0to2 == verticalScroll && dmaEnabled) {
             // start a new DMA at character line 7
@@ -238,8 +250,7 @@ namespace Plus4 {
           dmaPosition = dmaPositionReload;
           incrementingDMAPosition = true;
         }                               // initialize character position
-        nextCharacterPosition = characterPositionReload;
-        characterPosition = nextCharacterPosition;
+        delayedEvents0.reloadCharacterPosition();
         break;
       case 110:                         // start DMA and/or bitmap fetch
         bitmapAddressDisableFlags = bitmapAddressDisableFlags & 0x02;
@@ -253,10 +264,6 @@ namespace Plus4 {
       }
       if (delayedEvents)
         processDelayedEvents(delayedEvents);
-      if (incrementingCharacterPosition) {
-        nextCharacterPosition = (nextCharacterPosition + 1) & 0x03FF;
-        characterPosition = nextCharacterPosition;
-      }
       // run external callbacks
       {
         TEDCallback *p = firstCallback0;
@@ -279,7 +286,7 @@ namespace Plus4 {
           (void) readMemory(uint16_t(dmaBaseAddr | dmaPosition));
           memoryReadMap = cpuMemoryReadMap;
         }
-        if (characterColumn < uint8_t(40)) {
+        if (characterColumn < 40) {
           if (dmaFlags & 0x01)
             attr_buf_tmp[characterColumn] = dataBusState;
           if (dmaFlags & 0x02)
@@ -374,7 +381,7 @@ namespace Plus4 {
         if (!(tedRegisters[0x06] & uint8_t(0x80))) {
           if (bitmapMode)
             addr_ |= uint16_t(bitmap_base_addr
-                              | (prvCharacterPosition << 3));
+                              | (characterPosition << 3));
           else
             addr_ |= uint16_t(charset_base_addr
                               | (int(char_buf[characterColumn] & characterMask)
@@ -385,7 +392,7 @@ namespace Plus4 {
           int     tmp = (int(attr_buf_tmp[characterColumn]) << 3) | 0xF800;
           if (bitmapMode)
             addr_ |= uint16_t(bitmap_base_addr
-                              | ((prvCharacterPosition << 3) & tmp));
+                              | ((characterPosition << 3) & tmp));
           else
             addr_ |= uint16_t(tmp);
         }
@@ -413,7 +420,8 @@ namespace Plus4 {
       nextCharacter.attr_() = attr_buf[characterColumn];
       attr_buf[characterColumn] = attr_buf_tmp[characterColumn];
       nextCharacter.char_() = char_buf[characterColumn];
-      characterColumn = (characterColumn + 1) & 0x3F;
+      if (++characterColumn >= 64)
+        characterColumn = (renderWindow ? 0 : 40);
     }
     else {
       nextCharacter.attr_() = 0x00;
@@ -421,74 +429,77 @@ namespace Plus4 {
     }
     nextCharacter.bitmap_() = dataBusState;
     nextCharacter.flags_() =
-        uint8_t(prvCharacterPosition == cursor_position ? 0xFF : 0x0F)
-        ^ videoMode;
+        uint8_t(characterPosition == cursor_position ? 0xFF : 0x0F) ^ videoMode;
     // update timer 2 and 3 on odd cycle count (886 kHz rate)
     if (timer2_run)
       timer2_state = (timer2_state - 1) & 0xFFFF;
     if (timer3_run)
       timer3_state = (timer3_state - 1) & 0xFFFF;
     // update sound generators on every 8th cycle (221 kHz)
-    if (!cycle_count) {
-      int     sound_output = 0;
-      int     sound_volume;
-      uint8_t sound_register = tedRegisters[0x11];
-      sound_volume = int(sound_register & uint8_t(0x0F)) << 10;
-      sound_volume = (sound_volume < 8192 ? sound_volume : 8192);
-      if (sound_register & uint8_t(0x80)) {
-        // DAC mode
-        sound_channel_1_cnt = sound_channel_1_reload;
-        sound_channel_2_cnt = sound_channel_2_reload;
-        sound_channel_1_state = uint8_t(1);
-        sound_channel_2_state = uint8_t(1);
-        sound_channel_2_noise_state = uint8_t(0xFF);
-        sound_channel_2_noise_output = uint8_t(1);
-      }
-      else {
-        sound_channel_1_cnt = (sound_channel_1_cnt + 1) & 1023;
-        if (sound_channel_1_cnt == 1023) {
-          // channel 1 square wave
-          sound_channel_1_cnt = sound_channel_1_reload;
-          if (sound_channel_1_reload != 1022) {
-            sound_channel_1_state ^= uint8_t(1);
-            sound_channel_1_state &= uint8_t(1);
-          }
-        }
-        sound_channel_2_cnt = (sound_channel_2_cnt + 1) & 1023;
-        if (sound_channel_2_cnt == 1023) {
-          // channel 2 square wave
-          sound_channel_2_cnt = sound_channel_2_reload;
-          if (sound_channel_2_reload != 1022) {
-            sound_channel_2_state ^= uint8_t(1);
-            sound_channel_2_state &= uint8_t(1);
-            // channel 2 noise, 8 bit polycnt (10110011)
-            uint8_t tmp = sound_channel_2_noise_state & uint8_t(0xB3);
-            tmp = tmp ^ (tmp >> 1);
-            tmp = tmp ^ (tmp >> 2);
-            tmp = (tmp ^ (tmp >> 4)) & uint8_t(1);
-            sound_channel_2_noise_output ^= tmp;
-            sound_channel_2_noise_output &= uint8_t(1);
-            sound_channel_2_noise_state <<= 1;
-            sound_channel_2_noise_state |= sound_channel_2_noise_output;
-          }
-        }
-      }
-      // mix sound outputs
-      if (sound_register & uint8_t(0x10))
-        sound_output += (sound_channel_1_state ? sound_volume : 0);
-      if (sound_register & uint8_t(0x20))
-        sound_output += (sound_channel_2_state ? sound_volume : 0);
-      else if (sound_register & uint8_t(0x40))
-        sound_output += (sound_channel_2_noise_output ? 0 : sound_volume);
-      // send sound output signal (sample rate = 221 kHz)
-      playSample(int16_t(sound_output));
-    }
+    if (!cycle_count)
+      calculateSoundOutput();
     // update horizontal position (reads are delayed by one cycle)
     tedRegisters[0x1E] = videoColumn;
     if (!ted_disabled)
       videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
     videoColumn &= uint8_t(0x7E);
     cycle_count = (cycle_count + 1) & 3;
+  }
+
+  void TED7360::calculateSoundOutput()
+  {
+    int     sound_output = 0;
+    int     sound_volume;
+    uint8_t sound_register = tedRegisters[0x11];
+    sound_volume = int(sound_register & uint8_t(0x0F)) << 10;
+    sound_volume = (sound_volume < 8192 ? sound_volume : 8192);
+    if (sound_register & uint8_t(0x80)) {
+      // DAC mode
+      sound_channel_1_cnt = sound_channel_1_reload;
+      sound_channel_2_cnt = sound_channel_2_reload;
+      sound_channel_1_state = uint8_t(1);
+      sound_channel_2_state = uint8_t(1);
+      sound_channel_2_noise_state = uint8_t(0xFF);
+      sound_channel_2_noise_output = uint8_t(1);
+    }
+    else {
+      sound_channel_1_cnt = (sound_channel_1_cnt + 1) & 1023;
+      if (sound_channel_1_cnt == 1023) {
+        // channel 1 square wave
+        sound_channel_1_cnt = sound_channel_1_reload;
+        if (sound_channel_1_reload != 1022) {
+          sound_channel_1_state ^= uint8_t(1);
+          sound_channel_1_state &= uint8_t(1);
+        }
+      }
+      sound_channel_2_cnt = (sound_channel_2_cnt + 1) & 1023;
+      if (sound_channel_2_cnt == 1023) {
+        // channel 2 square wave
+        sound_channel_2_cnt = sound_channel_2_reload;
+        if (sound_channel_2_reload != 1022) {
+          sound_channel_2_state ^= uint8_t(1);
+          sound_channel_2_state &= uint8_t(1);
+          // channel 2 noise, 8 bit polycnt (10110011)
+          uint8_t tmp = sound_channel_2_noise_state & uint8_t(0xB3);
+          tmp = tmp ^ (tmp >> 1);
+          tmp = tmp ^ (tmp >> 2);
+          tmp = (tmp ^ (tmp >> 4)) & uint8_t(1);
+          sound_channel_2_noise_output ^= tmp;
+          sound_channel_2_noise_output &= uint8_t(1);
+          sound_channel_2_noise_state <<= 1;
+          sound_channel_2_noise_state |= sound_channel_2_noise_output;
+        }
+      }
+    }
+    // mix sound outputs
+    if (sound_register & uint8_t(0x10))
+      sound_output += (sound_channel_1_state ? sound_volume : 0);
+    if (sound_register & uint8_t(0x20))
+      sound_output += (sound_channel_2_state ? sound_volume : 0);
+    else if (sound_register & uint8_t(0x40))
+      sound_output += (sound_channel_2_noise_output ? 0 : sound_volume);
+    // send sound output signal (sample rate = 221 kHz)
+    playSample(int16_t(sound_output));
   }
 
   void TED7360::processDelayedEvents(uint32_t n)
@@ -587,8 +598,13 @@ namespace Plus4 {
           else if (savedVideoLine >= 200 && savedVideoLine <= 204) {
             if (savedVideoLine == (200 + (int(tedRegisters[0x06] & 0x08) >> 1)))
               displayWindow = false;
-            if (savedVideoLine == 204)
+            if (savedVideoLine == 204) {
               renderWindow = false;
+              if (externalFetchSingleClockFlag) {
+                if ((singleClockModeFlags & 0x81) == 0x01)
+                  delayedEvents0.singleClockModeOff();
+              }
+            }
           }
           videoLine = savedVideoLine;
           prvCharacterLine = uint8_t(characterLine);
@@ -623,7 +639,7 @@ namespace Plus4 {
         }
         if (n & 0x00000040U) {
           //   bit 6:   latch character position
-          characterPositionReload = (prvCharacterPosition + 1) & 0x03FF;
+          characterPositionReload = (characterPosition + 1) & 0x03FF;
           delayedEvents1.updateCharPosReloadRegisters();
           if (!(n & 0xFFFFFF80U))
             return;
@@ -634,13 +650,8 @@ namespace Plus4 {
           if (!renderWindow) {
             renderWindow = true;
             delayedEvents1.resetVerticalSub();
-            if (videoColumn == 100 || videoColumn == 101 ||
-                (dmaFlags & 0x80) != 0) {
+            if (externalFetchSingleClockFlag)
               delayedEvents0.singleClockModeOn();
-            }
-            // this is a hack and probably wrong:
-            if (videoColumn >= 102 && videoColumn < 110)
-              characterColumn = (videoColumn >> 1) + 9;
           }
           if (!(n & 0xFFFFFF00U))
             return;
@@ -721,45 +732,46 @@ namespace Plus4 {
     }
     if (n & 0x00FF0000U) {
       if (n & 0x00010000U) {
-        //   bit 16:  internal single clock mode flag on
-        singleClockModeFlags |= uint8_t(0x01);
+        //   bit 16:  reload character position
+        savedCharacterPosition = characterPositionReload;
+        characterPosition = savedCharacterPosition;
         if (!(n & 0xFFFE0000U))
           return;
       }
       if (n & 0x00020000U) {
-        //   bit 17:  DMA cycle 1
-        delayedEvents0.dmaCycle(2);
+        //   bit 17:  internal single clock mode flag on
+        singleClockModeFlags |= uint8_t(0x01);
         if (!(n & 0xFFFC0000U))
           return;
       }
       if (n & 0x00040000U) {
-        //   bit 18:  DMA cycle 2
+        //   bit 18:  DMA cycle 1
         singleClockModeFlags |= uint8_t(0x01);
-        delayedEvents0.dmaCycle(3);
+        delayedEvents0.dmaCycle(2);
         if (!(n & 0xFFF80000U))
           return;
       }
       if (n & 0x00080000U) {
-        //   bit 19:  DMA cycle 3
+        //   bit 19:  DMA cycle 2
         M7501::setIsCPURunning(false);
-        delayedEvents0.dmaCycle(4);
+        delayedEvents0.dmaCycle(3);
         if (!(n & 0xFFF00000U))
           return;
       }
       if (n & 0x00100000U) {
-        //   bit 20:  DMA cycle 4
-        delayedEvents0.dmaCycle(5);
+        //   bit 20:  DMA cycle 3
+        delayedEvents0.dmaCycle(4);
         if (!(n & 0xFFE00000U))
           return;
       }
       if (n & 0x00200000U) {
-        //   bit 21:  DMA cycle 5
-        delayedEvents0.dmaCycle(6);
+        //   bit 21:  DMA cycle 4
+        delayedEvents0.dmaCycle(5);
         if (!(n & 0xFFC00000U))
           return;
       }
       if (n & 0x00400000U) {
-        //   bit 22:  DMA cycle 6
+        //   bit 22:  DMA cycle 5
         cpuHaltedFlag = true;
         if (!(n & 0xFF800000U))
           return;
@@ -792,7 +804,7 @@ namespace Plus4 {
             if ((dmaFlags & 0x80) != 0) {
               if (!delayedEvents0.dmaStarted()) {
                 singleClockModeFlags |= uint8_t(0x01);
-                delayedEvents0.dmaCycle(3);
+                delayedEvents0.dmaCycle(2);
               }
               dmaFlags = dmaFlags | 0x01;
               dmaBaseAddr = dmaBaseAddr & 0xF800;
