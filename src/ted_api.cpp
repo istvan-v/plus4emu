@@ -521,15 +521,10 @@ namespace Plus4 {
         externalFetchSingleClockFlag = buf.readBoolean();
       }
       else {
-        singleClockModeFlags = singleClockModeFlags & 0x03;
-        bool    singleClockModeFlag_ = buf.readBoolean();
+        singleClockModeFlags = (singleClockModeFlags & 0x02)
+                               | ((singleClockModeFlags & 0x01) << 7);
+        (void) buf.readBoolean();       // was singleClockModeFlags
         uint8_t dmaCycleCounter = buf.readByte();
-        if (singleClockModeFlag_ != bool(singleClockModeFlags & 0x01)) {
-          if (singleClockModeFlag_)
-            delayedEvents0.singleClockModeOn();
-          else
-            delayedEvents0.singleClockModeOff();
-        }
         cpuHaltedFlag = (dmaCycleCounter >= 7);
         if (dmaCycleCounter >= 2 && dmaCycleCounter <= 6)
           delayedEvents0.dmaCycle(dmaCycleCounter - 1);

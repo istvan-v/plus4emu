@@ -114,11 +114,11 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000001U);
       }
-      inline void singleClockModeOff()
+      inline void dramRefreshOff()
       {
         this->mask_ |= uint32_t(0x00000002U);
       }
-      inline void incrementVideoLine()
+      inline void incrementVideoLineCycle2()
       {
         this->mask_ |= uint32_t(0x00000004U);
       }
@@ -142,7 +142,7 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000080U);
       }
-      inline void incrementVideoLineCycle2()
+      inline void incrementVideoLine()
       {
         this->mask_ |= uint32_t(0x00000100U);
       }
@@ -485,7 +485,7 @@ namespace Plus4 {
     // for DMA checking
     uint8_t     savedVideoLineBits0to2;
     bool        dmaEnabled;
-    // bit 0: single clock mode controlled by TED
+    // bit 0: external fetch single clock mode
     // bit 1: copied from FF13 bit 1
     // bit 7: DRAM refresh
     uint8_t     singleClockModeFlags;

@@ -303,6 +303,8 @@ namespace Plus4 {
       // force RAM testing
       writeMemory(0x0508, 0x00);
     }
+    // reset ROM banking
+    writeMemory(0xFDD0, 0x00);
     // reset CPU
     writeMemory(0x0000, 0x00);
     writeMemory(0x0001, 0x00);
