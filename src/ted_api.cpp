@@ -341,8 +341,8 @@ namespace Plus4 {
     buf.writeByte(nextCharacter.char_());
     buf.writeByte(nextCharacter.bitmap_());
     buf.writeByte(nextCharacter.flags_() & uint8_t(0xF8));
-    buf.writeByte(savedVideoLineBits0to2);
     buf.writeBoolean(dmaEnabled);
+    buf.writeUInt32(uint32_t(savedVideoLineDelay1));
     buf.writeByte(singleClockModeFlags & uint8_t(0x83));
     buf.writeBoolean(externalFetchSingleClockFlag);
     buf.writeByte(dmaFlags);
@@ -511,16 +511,15 @@ namespace Plus4 {
       nextCharacter.bitmap_() = buf.readByte();
       if (version >= 0x01000003) {
         nextCharacter.flags_() = buf.readByte() & 0xF8;
-        savedVideoLineBits0to2 = buf.readByte() & 0x07;
-      }
-      else
-        nextCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
-      dmaEnabled = buf.readBoolean();
-      singleClockModeFlags = buf.readByte() & 0x83;
-      if (version >= 0x01000003) {
+        dmaEnabled = buf.readBoolean();
+        savedVideoLineDelay1 = int(buf.readUInt32() & 0x01FF);
+        singleClockModeFlags = buf.readByte() & 0x83;
         externalFetchSingleClockFlag = buf.readBoolean();
       }
       else {
+        nextCharacter.flags_() = (buf.readBoolean() ? 0xF8 : 0x08);
+        dmaEnabled = buf.readBoolean();
+        singleClockModeFlags = buf.readByte();
         singleClockModeFlags = (singleClockModeFlags & 0x02)
                                | ((singleClockModeFlags & 0x01) << 7);
         (void) buf.readBoolean();       // was singleClockModeFlags
@@ -548,6 +547,7 @@ namespace Plus4 {
         incrementingCharacterPosition =
             (videoColumn >= 111 || videoColumn < 75);
       }
+      dmaActive = (cpuHaltedFlag || delayedEvents0.dmaStarted());
       delayedEvents0.setVerticalScroll();
       delayedEvents0.setHorizontalScroll();
       delayedEvents0.selectRenderer();
@@ -556,9 +556,13 @@ namespace Plus4 {
         delayedEvents0.setColorRegister(i);
       savedVideoLine = int(buf.readUInt32() & 0x01FF);
       if (version < 0x01000003) {
-        savedVideoLineBits0to2 = uint8_t(savedVideoLine & 7);
-        if (videoColumn == 99 || videoColumn == 100)
-          savedVideoLineBits0to2 = (savedVideoLineBits0to2 - 1) & 0x07;
+        savedVideoLineDelay1 = savedVideoLine;
+        if (videoColumn == 99 || videoColumn == 100) {
+          if (savedVideoLineDelay1 > 0)
+            savedVideoLineDelay1--;
+          else
+            savedVideoLineDelay1 = ((tedRegisters[0x07] & 0x40) ? 261 : 311);
+        }
       }
       prvVideoInterruptState = buf.readBoolean();
       if (version < 0x01000002)

@@ -118,7 +118,7 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000002U);
       }
-      inline void incrementVideoLineCycle2()
+      inline void incrementVideoLine()
       {
         this->mask_ |= uint32_t(0x00000004U);
       }
@@ -142,7 +142,7 @@ namespace Plus4 {
       {
         this->mask_ |= uint32_t(0x00000080U);
       }
-      inline void incrementVideoLine()
+      inline void incrementVideoLineCycle2()
       {
         this->mask_ |= uint32_t(0x00000100U);
       }
@@ -481,10 +481,9 @@ namespace Plus4 {
     uint8_t     horizontalScroll;
     // vertical scroll (0 to 7)
     uint8_t     verticalScroll;
-    // least significant bits (delayed by one cycle) of video line
-    // for DMA checking
-    uint8_t     savedVideoLineBits0to2;
     bool        dmaEnabled;
+    // latched video line delayed by one cycle
+    int         savedVideoLineDelay1;
     // bit 0: external fetch single clock mode
     // bit 1: copied from FF13 bit 1
     // bit 7: DRAM refresh
@@ -496,6 +495,7 @@ namespace Plus4 {
     //    2: character DMA
     //  128: DMA enabled in this line
     uint8_t     dmaFlags;
+    bool        dmaActive;
     bool        incrementingDMAPosition;
     bool        incrementingCharacterPosition;
     bool        cpuHaltedFlag;

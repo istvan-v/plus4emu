@@ -257,11 +257,12 @@ namespace Plus4 {
       colorRegisters[i] = uint8_t(0x80);
     horizontalScroll = 0;
     verticalScroll = 3;
-    savedVideoLineBits0to2 = 0;
     dmaEnabled = false;
+    savedVideoLineDelay1 = 223;
     singleClockModeFlags = 0x00;
     externalFetchSingleClockFlag = true;
     dmaFlags = 0x00;
+    dmaActive = false;
     incrementingDMAPosition = false;
     incrementingCharacterPosition = false;
     cpuHaltedFlag = false;
