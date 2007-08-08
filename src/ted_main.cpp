@@ -493,8 +493,8 @@ namespace Plus4 {
     }
     // mix sound outputs
     static const int soundVolumeTable[16] = {
-         0,  688, 1760, 2832, 3904, 4976, 6048, 7120,
-      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192
+         0,  699, 1788, 2876, 3965, 5054, 6143, 7231,
+      8320, 8320, 8320, 8320, 8320, 8320, 8320, 8320
     };
     int     sound_volume = soundVolumeTable[sound_register & 0x0F];
     int     sound_output = 0;
