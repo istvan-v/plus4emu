@@ -82,7 +82,7 @@ namespace Plus4Emu {
       }
       bool operator==(const Message_LineData& r) const
       {
-        if (r.nBytes_ != nBytes_)
+        if (r.nBytes_ != nBytes_ || r.flags != this->flags)
           return false;
         size_t  n = (nBytes_ + 3) >> 2;
         for (size_t i = 0; i < n; i++) {

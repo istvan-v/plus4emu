@@ -452,11 +452,7 @@ namespace Plus4 {
 
   void TED7360::calculateSoundOutput()
   {
-    int     sound_output = 0;
-    int     sound_volume;
     uint8_t sound_register = tedRegisters[0x11];
-    sound_volume = int(sound_register & uint8_t(0x0F)) << 10;
-    sound_volume = (sound_volume < 8192 ? sound_volume : 8192);
     if (sound_register & uint8_t(0x80)) {
       // DAC mode
       sound_channel_1_cnt = sound_channel_1_reload;
@@ -496,8 +492,14 @@ namespace Plus4 {
       }
     }
     // mix sound outputs
+    static const int soundVolumeTable[16] = {
+         0,  688, 1760, 2832, 3904, 4976, 6048, 7120,
+      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192
+    };
+    int     sound_volume = soundVolumeTable[sound_register & 0x0F];
+    int     sound_output = 0;
     if (sound_register & uint8_t(0x10))
-      sound_output += (sound_channel_1_state ? sound_volume : 0);
+      sound_output = (sound_channel_1_state ? sound_volume : 0);
     if (sound_register & uint8_t(0x20))
       sound_output += (sound_channel_2_state ? sound_volume : 0);
     else if (sound_register & uint8_t(0x40))

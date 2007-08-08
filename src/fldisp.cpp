@@ -308,7 +308,7 @@ namespace Plus4Emu {
     const uint8_t *startp = bufp;
     const uint8_t *endp = buf + nBytes;
     while (bufp < endp) {
-      uint8_t       c = *bufp;
+      uint8_t   c = *bufp;
       if (c & 0x80) {                                   // sync
         if (syncLengthCnt == 0U) {                      // hsync start
           while (hsyncCnt >= hsyncPeriodMax) {
@@ -331,12 +331,11 @@ namespace Plus4Emu {
       else
         syncLengthCnt = 0U;
       nextLine->flags |= uint8_t(0x80 - ((c ^ burstValue) & 0x09));
-      bufp = bufp + size_t((1 << (c & 0x02)) + 1);
+      const uint8_t *nextBufPtr = bufp + size_t((1 << (c & 0x02)) + 1);
       unsigned int  l = ((unsigned int) c & 0x01U) ^ 0x05U;
-      lineLengthCnt = lineLengthCnt + l;
       if (lineLengthCnt < lineStart) {
-        startp = bufp;
-        nextLine->lineLength = lineLengthCnt;
+        startp = nextBufPtr;
+        nextLine->lineLength = lineLengthCnt + l;
       }
       else if (lineLengthCnt >= lineLength) {
         nextLine->lineLength = size_t(lineLengthCnt) - nextLine->lineLength;
@@ -344,6 +343,8 @@ namespace Plus4Emu {
         startp = bufp;
         lineDone();
       }
+      bufp = nextBufPtr;
+      lineLengthCnt = lineLengthCnt + l;
       hsyncCnt = hsyncCnt + l;
     }
     nextLine->appendData(startp, size_t(bufp - startp));
@@ -422,7 +423,7 @@ namespace Plus4Emu {
           if (displayParameters.ntscMode)
             videoFlags = videoFlags | 0x10;
           uint32_t  tmpBuf[4];
-          size_t    pixelSample1 = 990;
+          size_t    pixelSample1 = 980;
           size_t    pixelSampleCnt = 0;
           uint8_t   readPos = 4;
           do {
@@ -430,7 +431,7 @@ namespace Plus4Emu {
               readPos = readPos & 3;
               if (bufPos >= nBytes)
                 break;
-              pixelSample1 = ((bufp[bufPos] & 0x01) ? 792 : 990);
+              pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
               size_t  n = colormap_.convertFourPixels(&(tmpBuf[0]),
                                                       &(bufp[bufPos]),
                                                       videoFlags);
@@ -580,8 +581,8 @@ namespace Plus4Emu {
       int     curLine_ = 2;
       int     fracY_ = 0;
       bool    skippingLines_ = true;
-      size_t  pixelSample1p = 495 * size_t(displayWidth_);
-      size_t  pixelSample1n = 396 * size_t(displayWidth_);
+      size_t  pixelSample1p = 490 * size_t(displayWidth_);
+      size_t  pixelSample1n = 392 * size_t(displayWidth_);
       int     lineNumbers_[5];
       lineNumbers_[3] = -2;
       for (int yc = 0; yc < displayHeight_; yc++) {
