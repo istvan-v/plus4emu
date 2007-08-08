@@ -324,7 +324,7 @@ namespace Plus4Emu {
         if (syncLengthCnt >= 26U) {                     // vsync
           if (vsyncCnt >= vsyncThreshold2) {
             vsyncCnt = vsyncReload;
-            oddFrame = ((lineLengthCnt + 10U) > (lineLength >> 1));
+            oddFrame = ((lineLengthCnt + 6U) > (lineLength >> 1));
           }
         }
       }
@@ -340,7 +340,7 @@ namespace Plus4Emu {
       else if (lineLengthCnt >= lineLength) {
         nextLine->lineLength = size_t(lineLengthCnt) - nextLine->lineLength;
         nextLine->appendData(startp, size_t(bufp - startp));
-        startp = bufp;
+        startp = nextBufPtr;
         lineDone();
       }
       bufp = nextBufPtr;
