@@ -417,7 +417,8 @@ namespace Plus4Emu {
           const unsigned char *bufp = (unsigned char *) 0;
           size_t    nBytes = 0;
           size_t    bufPos = 0;
-          uint8_t   videoFlags = uint8_t((yc & 2) | ((l->flags & 0x80) >> 2));
+          uint8_t   videoFlags =
+              uint8_t(((~yc) & 2) | ((l->flags & 0x80) >> 2));
           size_t    pixelSample2 = l->lineLength;
           l->getLineData(bufp, nBytes);
           if (displayParameters.ntscMode)
@@ -639,7 +640,7 @@ namespace Plus4Emu {
                 uint32_t  tmpBuf[4];
                 size_t    bufPos = 0;
                 uint8_t   videoFlags =
-                    uint8_t((lineNum & 2) | ((l->flags & 0x80) >> 2));
+                    uint8_t(((~lineNum) & 2) | ((l->flags & 0x80) >> 2));
                 size_t    pixelSample2 = l->lineLength * 384;
                 if (displayParameters.ntscMode)
                   videoFlags = videoFlags | 0x10;

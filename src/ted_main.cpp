@@ -191,7 +191,6 @@ namespace Plus4 {
       case 98:                          // end of screen
         if (savedVideoLineDelay1 == ((videoOutputFlags & 0x01) ? 261 : 311)) {
           videoLine = 0x01FF;           // FIXME
-          delayedEvents1.updateVideoLineRegisters();
           characterPosition = 0x0000;   // reset character position
           savedCharacterPosition = 0x0000;
           characterPositionReload = 0x0000;
@@ -493,8 +492,8 @@ namespace Plus4 {
     }
     // mix sound outputs
     static const int soundVolumeTable[16] = {
-         0,  699, 1788, 2876, 3965, 5054, 6143, 7231,
-      8320, 8320, 8320, 8320, 8320, 8320, 8320, 8320
+         0,  688, 1760, 2832, 3904, 4976, 6048, 7120,
+      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192
     };
     int     sound_volume = soundVolumeTable[sound_register & 0x0F];
     int     sound_output = 0;
@@ -538,7 +537,7 @@ namespace Plus4 {
           bool    updateRenderFunctionFlag = false;
           if (!(videoOutputFlags & uint8_t(0x01))) {            // PAL
             videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
-                                       | (((savedVideoLine & 1) ^ 1) << 2));
+                                       | ((savedVideoLine & 1) << 2));
             savedVideoLine = (videoLine + 1) & 0x01FF;
             switch (savedVideoLine) {
             case 251:                   // vertical blanking, equalization start

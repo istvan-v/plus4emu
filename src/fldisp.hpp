@@ -205,7 +205,7 @@ namespace Plus4Emu {
      *    32: horizontal blanking
      *    16: vertical blanking
      *     8: burst
-     *     4: PAL odd line
+     *     4: PAL even line
      *     2: number of data bytes: 0: 1 byte, 1: 4 bytes
      *     1: NTSC mode (dot clock multiplied by 1.25)
      */

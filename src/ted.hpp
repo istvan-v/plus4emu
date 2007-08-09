@@ -435,7 +435,7 @@ namespace Plus4 {
     // bit 5: horizontal blanking
     // bit 4: vertical blanking
     // bit 3: burst
-    // bit 2: PAL odd line (FF1D bit 0)
+    // bit 2: PAL even line (FF1D bit 0 in previous line)
     // bit 1: always zero
     // bit 0: NTSC mode (FF07 bit 6)
     uint8_t     videoOutputFlags;
@@ -621,7 +621,7 @@ namespace Plus4 {
      *    32: horizontal blanking
      *    16: vertical blanking
      *     8: burst
-     *     4: PAL odd line (FF1D bit 0)
+     *     4: PAL even line (FF1D bit 0 in previous line)
      *     2: number of data bytes: 0: 1 byte, 1: 4 bytes
      *     1: NTSC mode (dot clock multiplied by 1.25)
      */
