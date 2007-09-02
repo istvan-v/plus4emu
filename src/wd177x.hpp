@@ -86,6 +86,14 @@ namespace Plus4Emu {
     virtual bool getIsWriteProtected() const;
     void setEnableBusyFlagHack(bool isEnabled);
     virtual void reset();
+    inline uint16_t getHeadPosition() const
+    {
+      if (!imageFile)
+        return 0xFFFF;
+      return ((uint16_t(currentTrack & 0x7F) << 8)
+              | (uint16_t(currentSide & 0x01) << 7)
+              | (uint16_t(sectorRegister & 0x7F)));
+    }
    protected:
     virtual void interruptRequest();
     virtual void clearInterruptRequest();

@@ -150,6 +150,13 @@ namespace Plus4 {
      * is on, and bit 1 is set if the green LED is on.
      */
     virtual uint8_t getLEDState() const;
+    /*!
+     * Returns the current head position (track * 256 + sector), or 0xFFFF
+     * if there is no disk. Bit 7 is set depending on which side is selected
+     * (1581 only), and bit 15 is set if there are 80 tracks (i.e. emulating
+     * the 1581).
+     */
+    virtual uint16_t getHeadPosition() const;
     // snapshot save/load functions
     virtual void saveState(Plus4Emu::File::Buffer&);
     virtual void saveState(Plus4Emu::File&);

@@ -393,6 +393,11 @@ namespace Plus4 {
     return uint8_t((n >> 5) | (n >> 6));
   }
 
+  uint16_t VC1581::getHeadPosition() const
+  {
+    return uint16_t(wd177x.getHeadPosition() | 0x8000);
+  }
+
   void VC1581::saveState(Plus4Emu::File::Buffer& buf)
   {
     // TODO: implement this
