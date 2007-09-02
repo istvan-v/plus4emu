@@ -24,55 +24,6 @@
 #include "p4floppy.hpp"
 #include "vc1541.hpp"
 
-static const int d64TrackOffsetTable[41] = {
-      -1,      0,   5376,  10752,  16128,  21504,  26880,  32256,
-   37632,  43008,  48384,  53760,  59136,  64512,  69888,  75264,
-   80640,  86016,  91392,  96256, 101120, 105984, 110848, 115712,
-  120576, 125440, 130048, 134656, 139264, 143872, 148480, 153088,
-  157440, 161792, 166144, 170496, 174848, 179200, 183552, 187904,
-  192256
-};
-
-static const int sectorsPerTrackTable[41] = {
-   0, 21, 21, 21, 21, 21, 21, 21,
-  21, 21, 21, 21, 21, 21, 21, 21,
-  21, 21, 19, 19, 19, 19, 19, 19,
-  19, 18, 18, 18, 18, 18, 18, 17,
-  17, 17, 17, 17, 17, 17, 17, 17,
-  17
-};
-
-static const int trackSizeTable[41] = {
-  7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
-  7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
-  7692, 7692, 7143, 7143, 7143, 7143, 7143, 7143,
-  7143, 6667, 6667, 6667, 6667, 6667, 6667, 6250,
-  6250, 6250, 6250, 6250, 6250, 6250, 6250, 6250,
-  6250
-};
-
-// number of bits per 1 MHz cycle, multiplied by 65536
-static const int trackSpeedTable[41] = {
-  0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
-  0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
-  0x4EC5, 0x4EC5, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925,
-  0x4925, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4000,
-  0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000,
-  0x4000
-};
-
-static const uint8_t gcrEncodeTable[16] = {
-  0x0A, 0x0B, 0x12, 0x13, 0x0E, 0x0F, 0x16, 0x17,
-  0x09, 0x19, 0x1A, 0x1B, 0x0D, 0x1D, 0x1E, 0x15
-};
-
-static const uint8_t gcrDecodeTable[32] = {
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-  0xFF, 0x08, 0x00, 0x01, 0xFF, 0x0C, 0x04, 0x05,
-  0xFF, 0xFF, 0x02, 0x03, 0xFF, 0x0F, 0x06, 0x07,
-  0xFF, 0x09, 0x0A, 0x0B, 0xFF, 0x0D, 0x0E, 0xFF
-};
-
 static void defaultBreakPointCallback(void *userData,
                                       int debugContext_, int type,
                                       uint16_t addr, uint8_t value)
@@ -85,6 +36,491 @@ static void defaultBreakPointCallback(void *userData,
 }
 
 namespace Plus4 {
+
+  const int D64Image::d64TrackOffsetTable[42] = {
+        -1,      0,   5376,  10752,  16128,  21504,  26880,  32256,
+     37632,  43008,  48384,  53760,  59136,  64512,  69888,  75264,
+     80640,  86016,  91392,  96256, 101120, 105984, 110848, 115712,
+    120576, 125440, 130048, 134656, 139264, 143872, 148480, 153088,
+    157440, 161792, 166144, 170496, 174848, 179200, 183552, 187904,
+    192256, 196608
+  };
+
+  const int D64Image::sectorsPerTrackTable[42] = {
+     0, 21, 21, 21, 21, 21, 21, 21,
+    21, 21, 21, 21, 21, 21, 21, 21,
+    21, 21, 19, 19, 19, 19, 19, 19,
+    19, 18, 18, 18, 18, 18, 18, 17,
+    17, 17, 17, 17, 17, 17, 17, 17,
+    17, 17
+  };
+
+  const int D64Image::trackSizeTable[42] = {
+    7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
+    7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
+    7692, 7692, 7143, 7143, 7143, 7143, 7143, 7143,
+    7143, 6667, 6667, 6667, 6667, 6667, 6667, 6250,
+    6250, 6250, 6250, 6250, 6250, 6250, 6250, 6250,
+    6250, 6250
+  };
+
+  // number of bits per 1 MHz cycle, multiplied by 65536
+  const int D64Image::trackSpeedTable[42] = {
+    0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
+    0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
+    0x4EC5, 0x4EC5, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925,
+    0x4925, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4000,
+    0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000,
+    0x4000, 0x4000
+  };
+
+  const uint8_t D64Image::gcrEncodeTable[16] = {
+    0x0A, 0x0B, 0x12, 0x13, 0x0E, 0x0F, 0x16, 0x17,
+    0x09, 0x19, 0x1A, 0x1B, 0x0D, 0x1D, 0x1E, 0x15
+  };
+
+  const uint8_t D64Image::gcrDecodeTable[32] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0x08, 0x00, 0x01, 0xFF, 0x0C, 0x04, 0x05,
+    0xFF, 0xFF, 0x02, 0x03, 0xFF, 0x0F, 0x06, 0x07,
+    0xFF, 0x09, 0x0A, 0x0B, 0xFF, 0x0D, 0x0E, 0xFF
+  };
+
+  // --------------------------------------------------------------------------
+
+  void D64Image::gcrEncodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf)
+  {
+    uint8_t bitBuf = 0;
+    uint8_t bitCnt = 0;
+    for (int i = 0; i < 8; i++) {
+      uint8_t n = inBuf[i >> 1];
+      n = ((i & 1) == 0 ? (n >> 4) : n) & 0x0F;
+      n = gcrEncodeTable[n];
+      for (int j = 0; j < 5; j++) {
+        bitBuf = (bitBuf << 1) | ((n & 0x10) >> 4);
+        n = n << 1;
+        if (++bitCnt >= 8) {
+          *(outBuf++) = bitBuf;
+          bitBuf = 0;
+          bitCnt = 0;
+        }
+      }
+    }
+  }
+
+  bool D64Image::gcrDecodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf)
+  {
+    bool    retval = true;
+    uint8_t bitBuf = 0;
+    uint8_t bitCnt = 0;
+    for (int i = 0; i < 8; i++) {
+      uint8_t n = 0;
+      for (int j = 0; j < 5; j++) {
+        if (bitCnt == 0) {
+          bitBuf = *(inBuf++);
+          bitCnt = 8;
+        }
+        bitCnt--;
+        n = (n << 1) | ((bitBuf & 0x80) >> 7);
+        bitBuf = bitBuf << 1;
+      }
+      n = gcrDecodeTable[n];
+      if (n >= 0x80) {          // return false on invalid GCR data
+        n = 0x00;
+        retval = false;
+      }
+      if (!(i & 1))
+        outBuf[i >> 1] = n << 4;
+      else
+        outBuf[i >> 1] = outBuf[i >> 1] | n;
+    }
+    return retval;
+  }
+
+  void D64Image::gcrEncodeTrack(int trackNum, int nSectors, int nBytes)
+  {
+    int     readPos = 0;
+    int     writePos = 0;
+    uint8_t tmpBuf1[8];
+    uint8_t tmpBuf2[5];
+    for (int i = 0; i < nSectors; i++) {
+      int     gapSize = 9;
+      if (i & 1) {
+        switch (nSectors) {
+        case 19:
+          gapSize = 19;
+          break;
+        case 18:
+          gapSize = 13;
+          break;
+        case 17:
+          gapSize = 10;
+          break;
+        }
+      }
+      if (badSectorTable[i] & 0xFA) {
+        // bad sector, fill with zero bytes
+        for (int j = 0; j < (354 + gapSize); j++)
+          trackBuffer_GCR[writePos++] = 0x00;
+        readPos += 256;
+        continue;
+      }
+      // write header sync
+      for (int j = 0; j < 5; j++)
+        trackBuffer_GCR[writePos++] = 0xFF;
+      // write header
+      tmpBuf1[0] = 0x08;                // block ID
+      tmpBuf1[2] = uint8_t(i);          // sector (0 to 20)
+      tmpBuf1[3] = uint8_t(trackNum);   // track (1 to 35)
+      tmpBuf1[4] = idCharacter2;        // format ID
+      tmpBuf1[5] = idCharacter1;        // -"-
+      tmpBuf1[6] = 0x0F;                // padding
+      tmpBuf1[7] = 0x0F;                // -"-
+      uint8_t crcValue = 0;
+      for (int j = 2; j < 6; j++)
+        crcValue = crcValue ^ tmpBuf1[j];
+      if (badSectorTable[i] == 0x05)
+        crcValue = (~crcValue);     // CRC error
+      tmpBuf1[1] = crcValue;            // checksum
+      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
+      for (int j = 0; j < 5; j++)
+        trackBuffer_GCR[writePos++] = tmpBuf2[j];
+      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[4]));
+      for (int j = 0; j < 5; j++)
+        trackBuffer_GCR[writePos++] = tmpBuf2[j];
+      // write gap
+      for (int j = 0; j < 9; j++)
+        trackBuffer_GCR[writePos++] = 0x55;
+      // write sector data sync
+      for (int j = 0; j < 5; j++)
+        trackBuffer_GCR[writePos++] = 0xFF;
+      int     bufPos = 0;
+      tmpBuf1[bufPos++] = 0x07;         // block ID
+      if (badSectorTable[i] == 0x04)
+        tmpBuf1[0] = 0x00;          // invalid data block
+      // write sector data
+      crcValue = 0;
+      for (int j = 0; j < 256; j++) {
+        uint8_t tmp = trackBuffer_D64[readPos++];
+        tmpBuf1[bufPos++] = tmp;
+        crcValue = crcValue ^ tmp;
+        if (bufPos >= 4) {
+          bufPos = 0;
+          gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
+          for (int k = 0; k < 5; k++)
+            trackBuffer_GCR[writePos++] = tmpBuf2[k];
+        }
+      }
+      tmpBuf1[1] = crcValue;            // checksum
+      tmpBuf1[2] = 0x00;                // padding
+      tmpBuf1[3] = 0x00;                // -"-
+      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
+      for (int j = 0; j < 5; j++)
+        trackBuffer_GCR[writePos++] = tmpBuf2[j];
+      // write gap
+      do {
+        trackBuffer_GCR[writePos++] = 0x55;
+      } while (--gapSize);
+    }
+    // pad track data to requested length
+    for ( ; writePos < nBytes; writePos++)
+      trackBuffer_GCR[writePos] = 0x55;
+  }
+
+  int D64Image::gcrDecodeTrack(int trackNum, int nSectors, int nBytes)
+  {
+    int     sectorsDecoded = 0;
+    int     readPos = 0;
+    int     firstSyncPos = -1;
+    for (int i = 0; i < nSectors; i++)
+      badSectorTable[i] = 0x02;
+    // find first header sync
+    while (readPos <= (nBytes - 4)) {
+      if (trackBuffer_GCR[readPos] == 0xFF) {
+        if (trackBuffer_GCR[readPos + 1] == 0xFF) {
+          if (trackBuffer_GCR[readPos + 2] == 0x52) {
+            if ((trackBuffer_GCR[readPos + 3] & 0xC0) == 0x40) {
+              firstSyncPos = readPos;
+              break;
+            }
+          }
+        }
+      }
+      readPos++;
+    }
+    if (firstSyncPos < 0 || nBytes <= 0)
+      return 0;
+    // process track data
+    readPos = firstSyncPos;
+    int     syncCnt = 0;
+    // 0: searching for header sync, 1: reading header,
+    // 2: searching for sector data sync, 3: reading sector data
+    int     currentMode = 0;
+    int     gcrBytesToDecode = 0;
+    int     gcrByteCnt = 0;
+    int     currentSector = 0;
+    uint8_t tmpBuf1[325];
+    uint8_t tmpBuf2[260];
+    do {
+      uint8_t c = trackBuffer_GCR[readPos];
+      switch (currentMode) {
+      case 0:                           // search for header sync
+        if (c == 0xFF)
+          syncCnt++;
+        else {
+          if (syncCnt >= 2) {
+            currentMode = 1;
+            gcrBytesToDecode = 10;
+            gcrByteCnt = 0;
+            readPos = (readPos != 0 ? readPos : nBytes) - 1;
+          }
+          syncCnt = 0;
+        }
+        break;
+      case 1:                           // read header
+        if (gcrByteCnt < gcrBytesToDecode) {
+          tmpBuf1[gcrByteCnt++] = c;
+        }
+        else {
+          int     j = 0;
+          bool    errorFlag = false;
+          for (int i = 0; i < gcrBytesToDecode; i += 5) {
+            if (!gcrDecodeFourBytes(&(tmpBuf2[j]), &(tmpBuf1[i])))
+              errorFlag = true;
+            j += 4;
+          }
+          uint8_t crcValue = 0;
+          for (int i = 1; i < 6; i++)
+            crcValue = crcValue ^ tmpBuf2[i];
+          if (errorFlag || tmpBuf2[0] != 0x08 || int(tmpBuf2[3]) != trackNum ||
+              int(tmpBuf2[2]) >= nSectors || crcValue != 0x00) {
+            currentMode = 0;
+          }
+          else {
+            currentSector = int(tmpBuf2[2]);
+            currentMode = 2;
+            idCharacter2 = tmpBuf2[4];
+            idCharacter1 = tmpBuf2[5];
+          }
+        }
+        break;
+      case 2:                           // search for sector data sync
+        if (c == 0xFF)
+          syncCnt++;
+        else {
+          if (syncCnt >= 2) {
+            currentMode = 3;
+            gcrBytesToDecode = 325;
+            gcrByteCnt = 0;
+            readPos = (readPos != 0 ? readPos : nBytes) - 1;
+          }
+          syncCnt = 0;
+        }
+        break;
+      case 3:                           // read sector data
+        if (gcrByteCnt < gcrBytesToDecode) {
+          tmpBuf1[gcrByteCnt++] = c;
+        }
+        else {
+          int     j = 0;
+          bool    errorFlag = false;
+          for (int i = 0; i < gcrBytesToDecode; i += 5) {
+            if (!gcrDecodeFourBytes(&(tmpBuf2[j]), &(tmpBuf1[i])))
+              errorFlag = true;
+            j += 4;
+          }
+          uint8_t crcValue = 0;
+          for (int i = 1; i < 258; i++)
+            crcValue = crcValue ^ tmpBuf2[i];
+          if (!(errorFlag || tmpBuf2[0] != 0x07 || crcValue != 0x00)) {
+            j = currentSector * 256;
+            for (int i = 0; i < 256; i++)
+              trackBuffer_D64[j + i] = tmpBuf2[i + 1];
+            badSectorTable[currentSector] = 0x01;
+            sectorsDecoded++;
+          }
+          currentSector = 0;
+          currentMode = 0;
+        }
+        break;
+      }
+      if (++readPos >= nBytes)
+        readPos = 0;
+    } while (readPos != firstSyncPos);
+    // return the number of sectors successfully decoded
+    return sectorsDecoded;
+  }
+
+  bool D64Image::readTrack(int trackNum)
+  {
+    bool    retval = true;
+    if (trackNum < 0)
+      trackNum = currentTrack;
+    for (int i = 0; i < trackSizeTable[trackNum]; i++)
+      trackBuffer_GCR[i] = 0x00;
+    for (int i = 0; i < 24; i++)
+      badSectorTable[i] = 0x00;
+    if (trackNum >= 1 && trackNum <= nTracks) {
+      retval = false;
+      int     nSectors = sectorsPerTrackTable[trackNum];
+      if (haveBadSectorTable) {
+        // read bad sector table (FIXME: errors are ignored)
+        if (std::fseek(imageFile, long((d64TrackOffsetTable[trackNum] >> 8)
+                                       + d64TrackOffsetTable[nTracks + 1]),
+                       SEEK_SET) >= 0) {
+          std::fread(&(badSectorTable[0]),
+                     sizeof(uint8_t), size_t(nSectors), imageFile);
+        }
+      }
+      if (std::fseek(imageFile, long(d64TrackOffsetTable[trackNum]),
+                     SEEK_SET) >= 0) {
+        if (std::fread(&(trackBuffer_D64[0]), sizeof(uint8_t),
+                       (size_t(nSectors) * 256), imageFile)
+            == (size_t(nSectors) * 256)) {
+          gcrEncodeTrack(trackNum, nSectors, trackSizeTable[trackNum]);
+          retval = true;
+        }
+      }
+    }
+    // return true on success
+    return retval;
+  }
+
+  bool D64Image::flushTrack(int trackNum)
+  {
+    bool    retval = true;
+    if (trackNum < 0)
+      trackNum = currentTrack;
+    if (trackDirtyFlag && !writeProtectFlag &&
+        (trackNum >= 1 && trackNum <= nTracks)) {
+      int     nSectors = sectorsPerTrackTable[trackNum];
+      if (gcrDecodeTrack(trackNum, nSectors, trackSizeTable[trackNum]) > 0) {
+        retval = false;
+        if (std::fseek(imageFile, long(d64TrackOffsetTable[trackNum]),
+                       SEEK_SET) >= 0) {
+          if (std::fwrite(&(trackBuffer_D64[0]), sizeof(uint8_t),
+                          (size_t(nSectors) * 256), imageFile)
+              == (size_t(nSectors) * 256)) {
+            if (std::fflush(imageFile) == 0)
+              retval = true;
+          }
+        }
+      }
+      if (haveBadSectorTable) {
+        retval = false;
+        // update bad sector table
+        if (std::fseek(imageFile, long((d64TrackOffsetTable[trackNum] >> 8)
+                                       + d64TrackOffsetTable[nTracks + 1]),
+                       SEEK_SET) >= 0) {
+          if (std::fwrite(&(badSectorTable[0]),
+                          sizeof(uint8_t), size_t(nSectors), imageFile)
+              == size_t(nSectors)) {
+            if (std::fflush(imageFile) == 0)
+              retval = true;
+          }
+        }
+      }
+    }
+    trackDirtyFlag = false;
+    // return true on success
+    return retval;
+  }
+
+  bool D64Image::setCurrentTrack(int trackNum)
+  {
+    bool    retval = true;
+    trackNum = (trackNum >= 1 ? (trackNum <= 40 ? trackNum : 40) : 1);
+    if (trackNum != currentTrack) {
+      // write old track to disk if it has been changed
+      if (!flushTrack(currentTrack))
+        retval = false;
+      // read new track from disk
+      currentTrack = trackNum;
+      if (!readTrack(currentTrack))
+        retval = false;
+    }
+    return retval;
+  }
+
+  // --------------------------------------------------------------------------
+
+  D64Image::D64Image()
+    : trackDirtyFlag(false),
+      currentTrack(40),
+      nTracks(0),
+      imageFile((std::FILE *) 0),
+      writeProtectFlag(false),
+      diskID(0x00),
+      idCharacter1(0x41),
+      idCharacter2(0x41),
+      haveBadSectorTable(false)
+  {
+    // clear track buffers
+    for (int i = 0; i < 8192; i++)
+      trackBuffer_GCR[i] = 0x00;
+    for (int i = 0; i < 5376; i++)
+      trackBuffer_D64[i] = 0x00;
+    for (int i = 0; i < 24; i++)
+      badSectorTable[i] = 0x00;
+  }
+
+  D64Image::~D64Image()
+  {
+    if (imageFile) {
+      (void) flushTrack();
+      std::fclose(imageFile);
+      imageFile = (std::FILE *) 0;
+      nTracks = 0;
+    }
+  }
+
+  void D64Image::setImageFile(const std::string& fileName_)
+  {
+    if (imageFile) {
+      (void) flushTrack();              // FIXME: should report errors ?
+      std::fclose(imageFile);
+      imageFile = (std::FILE *) 0;
+      nTracks = 0;
+    }
+    writeProtectFlag = false;
+    (void) setCurrentTrack(18);         // FIXME: should report errors ?
+    if (fileName_.length() > 0) {
+      bool    isReadOnly = false;
+      imageFile = std::fopen(fileName_.c_str(), "r+b");
+      if (!imageFile) {
+        imageFile = std::fopen(fileName_.c_str(), "rb");
+        isReadOnly = true;
+      }
+      if (!imageFile)
+        throw Plus4Emu::Exception("error opening disk image file");
+      if (std::fseek(imageFile, 0L, SEEK_END) < 0) {
+        std::fclose(imageFile);
+        imageFile = (std::FILE *) 0;
+        throw Plus4Emu::Exception("error seeking to end of disk image file");
+      }
+      long    fSize = std::ftell(imageFile);
+      if (fSize != 174848L && fSize != 175531L &&
+          fSize != 196608L && fSize != 197376L) {
+        std::fclose(imageFile);
+        imageFile = (std::FILE *) 0;
+        throw Plus4Emu::Exception("D64 image file has invalid length");
+      }
+      std::fseek(imageFile, 0L, SEEK_SET);
+      writeProtectFlag = isReadOnly;
+      nTracks = (fSize < 196608L ? 35 : 40);
+      haveBadSectorTable = (fSize == 175531L || fSize == 197376L);
+      diskID = (diskID + 1) & 0xFF;
+      if (((diskID >> 4) + 0x41) == idCharacter1 &&
+          ((diskID & 0x0F) + 0x41) == idCharacter2)
+        diskID = (diskID + 1) & 0xFF;   // make sure that the disk ID changes
+      idCharacter1 = (diskID >> 4) + 0x41;
+      idCharacter2 = (diskID & 0x0F) + 0x41;
+      currentTrack = 40;
+      (void) setCurrentTrack(18);       // FIXME: should report errors ?
+    }
+  }
+
+  // --------------------------------------------------------------------------
 
   VC1541::M7501_::M7501_(VC1541& vc1541_)
     : M7501(),
@@ -216,256 +652,6 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  void VC1541::gcrEncodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf)
-  {
-    uint8_t bitBuf = 0;
-    uint8_t bitCnt = 0;
-    for (int i = 0; i < 8; i++) {
-      uint8_t n = inBuf[i >> 1];
-      n = ((i & 1) == 0 ? (n >> 4) : n) & 0x0F;
-      n = gcrEncodeTable[n];
-      for (int j = 0; j < 5; j++) {
-        bitBuf = (bitBuf << 1) | ((n & 0x10) >> 4);
-        n = n << 1;
-        if (++bitCnt >= 8) {
-          *(outBuf++) = bitBuf;
-          bitBuf = 0;
-          bitCnt = 0;
-        }
-      }
-    }
-  }
-
-  bool VC1541::gcrDecodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf)
-  {
-    bool    retval = true;
-    uint8_t bitBuf = 0;
-    uint8_t bitCnt = 0;
-    for (int i = 0; i < 8; i++) {
-      uint8_t n = 0;
-      for (int j = 0; j < 5; j++) {
-        if (bitCnt == 0) {
-          bitBuf = *(inBuf++);
-          bitCnt = 8;
-        }
-        bitCnt--;
-        n = (n << 1) | ((bitBuf & 0x80) >> 7);
-        bitBuf = bitBuf << 1;
-      }
-      n = gcrDecodeTable[n];
-      if (n >= 0x80) {          // return false on invalid GCR data
-        n = 0x00;
-        retval = false;
-      }
-      if (!(i & 1))
-        outBuf[i >> 1] = n << 4;
-      else
-        outBuf[i >> 1] = outBuf[i >> 1] | n;
-    }
-    return retval;
-  }
-
-  void VC1541::gcrEncodeTrack(int trackNum, int nSectors, int nBytes)
-  {
-    int     readPos = 0;
-    int     writePos = 0;
-    uint8_t tmpBuf1[8];
-    uint8_t tmpBuf2[5];
-    for (int i = 0; i < nSectors; i++) {
-      uint8_t crcValue;
-      // write header sync
-      for (int j = 0; j < 5; j++)
-        trackBuffer_GCR[writePos++] = 0xFF;
-      // write header
-      tmpBuf1[0] = 0x08;                // block ID
-      tmpBuf1[2] = uint8_t(i);          // sector (0 to 20)
-      tmpBuf1[3] = uint8_t(trackNum);   // track (1 to 35)
-      tmpBuf1[4] = idCharacter2;        // format ID
-      tmpBuf1[5] = idCharacter1;        // -"-
-      tmpBuf1[6] = 0x0F;                // padding
-      tmpBuf1[7] = 0x0F;                // -"-
-      crcValue = 0;
-      for (int j = 2; j < 6; j++)
-        crcValue = crcValue ^ tmpBuf1[j];
-      tmpBuf1[1] = crcValue;            // checksum
-      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
-      for (int j = 0; j < 5; j++)
-        trackBuffer_GCR[writePos++] = tmpBuf2[j];
-      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[4]));
-      for (int j = 0; j < 5; j++)
-        trackBuffer_GCR[writePos++] = tmpBuf2[j];
-      // write gap
-      for (int j = 0; j < 9; j++)
-        trackBuffer_GCR[writePos++] = 0x55;
-      // write sector data sync
-      for (int j = 0; j < 5; j++)
-        trackBuffer_GCR[writePos++] = 0xFF;
-      int     bufPos = 0;
-      tmpBuf1[bufPos++] = 0x07;         // block ID
-      // write sector data
-      crcValue = 0;
-      for (int j = 0; j < 256; j++) {
-        uint8_t tmp = trackBuffer_D64[readPos++];
-        tmpBuf1[bufPos++] = tmp;
-        crcValue = crcValue ^ tmp;
-        if (bufPos >= 4) {
-          bufPos = 0;
-          gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
-          for (int k = 0; k < 5; k++)
-            trackBuffer_GCR[writePos++] = tmpBuf2[k];
-        }
-      }
-      tmpBuf1[1] = crcValue;            // checksum
-      tmpBuf1[2] = 0x00;                // padding
-      tmpBuf1[3] = 0x00;                // -"-
-      gcrEncodeFourBytes(&(tmpBuf2[0]), &(tmpBuf1[0]));
-      for (int j = 0; j < 5; j++)
-        trackBuffer_GCR[writePos++] = tmpBuf2[j];
-      // write gap
-      int   j = 9;
-      if (i & 1) {
-        switch (nSectors) {
-        case 19:
-          j = 19;
-          break;
-        case 18:
-          j = 13;
-          break;
-        case 17:
-          j = 10;
-          break;
-        }
-      }
-      do {
-        trackBuffer_GCR[writePos++] = 0x55;
-      } while (--j);
-    }
-    // pad track data to requested length
-    for ( ; writePos < nBytes; writePos++)
-      trackBuffer_GCR[writePos] = 0x55;
-  }
-
-  int VC1541::gcrDecodeTrack(int trackNum, int nSectors, int nBytes)
-  {
-    int     sectorsDecoded = 0;
-    int     readPos = 0;
-    int     firstSyncPos = -1;
-    // find first header sync
-    while (readPos <= (nBytes - 4)) {
-      if (trackBuffer_GCR[readPos] == 0xFF) {
-        if (trackBuffer_GCR[readPos + 1] == 0xFF) {
-          if (trackBuffer_GCR[readPos + 2] == 0x52) {
-            if ((trackBuffer_GCR[readPos + 3] & 0xC0) == 0x40) {
-              firstSyncPos = readPos;
-              break;
-            }
-          }
-        }
-      }
-      readPos++;
-    }
-    if (firstSyncPos < 0 || nBytes <= 0)
-      return 0;
-    // process track data
-    readPos = firstSyncPos;
-    int     syncCnt = 0;
-    // 0: searching for header sync, 1: reading header,
-    // 2: searching for sector data sync, 3: reading sector data
-    int     currentMode = 0;
-    int     gcrBytesToDecode = 0;
-    int     gcrByteCnt = 0;
-    int     currentSector = 0;
-    uint8_t tmpBuf1[325];
-    uint8_t tmpBuf2[260];
-    do {
-      uint8_t c = trackBuffer_GCR[readPos];
-      switch (currentMode) {
-      case 0:                           // search for header sync
-        if (c == 0xFF)
-          syncCnt++;
-        else {
-          if (syncCnt >= 2) {
-            currentMode = 1;
-            gcrBytesToDecode = 10;
-            gcrByteCnt = 0;
-            readPos = (readPos != 0 ? readPos : nBytes) - 1;
-          }
-          syncCnt = 0;
-        }
-        break;
-      case 1:                           // read header
-        if (gcrByteCnt < gcrBytesToDecode) {
-          tmpBuf1[gcrByteCnt++] = c;
-        }
-        else {
-          int     j = 0;
-          bool    errorFlag = false;
-          for (int i = 0; i < gcrBytesToDecode; i += 5) {
-            if (!gcrDecodeFourBytes(&(tmpBuf2[j]), &(tmpBuf1[i])))
-              errorFlag = true;
-            j += 4;
-          }
-          uint8_t crcValue = 0;
-          for (int i = 1; i < 6; i++)
-            crcValue = crcValue ^ tmpBuf2[i];
-          if (errorFlag || tmpBuf2[0] != 0x08 || int(tmpBuf2[3]) != trackNum ||
-              int(tmpBuf2[2]) >= nSectors || crcValue != 0x00) {
-            currentMode = 0;
-          }
-          else {
-            currentSector = int(tmpBuf2[2]);
-            currentMode = 2;
-            idCharacter2 = tmpBuf2[4];
-            idCharacter1 = tmpBuf2[5];
-          }
-        }
-        break;
-      case 2:                           // search for sector data sync
-        if (c == 0xFF)
-          syncCnt++;
-        else {
-          if (syncCnt >= 2) {
-            currentMode = 3;
-            gcrBytesToDecode = 325;
-            gcrByteCnt = 0;
-            readPos = (readPos != 0 ? readPos : nBytes) - 1;
-          }
-          syncCnt = 0;
-        }
-        break;
-      case 3:                           // read sector data
-        if (gcrByteCnt < gcrBytesToDecode) {
-          tmpBuf1[gcrByteCnt++] = c;
-        }
-        else {
-          int     j = 0;
-          bool    errorFlag = false;
-          for (int i = 0; i < gcrBytesToDecode; i += 5) {
-            if (!gcrDecodeFourBytes(&(tmpBuf2[j]), &(tmpBuf1[i])))
-              errorFlag = true;
-            j += 4;
-          }
-          uint8_t crcValue = 0;
-          for (int i = 1; i < 258; i++)
-            crcValue = crcValue ^ tmpBuf2[i];
-          if (!(errorFlag || tmpBuf2[0] != 0x07 || crcValue != 0x00)) {
-            j = currentSector * 256;
-            for (int i = 0; i < 256; i++)
-              trackBuffer_D64[j + i] = tmpBuf2[i + 1];
-            sectorsDecoded++;
-          }
-          currentSector = 0;
-          currentMode = 0;
-        }
-        break;
-      }
-      if (++readPos >= nBytes)
-        readPos = 0;
-    } while (readPos != firstSyncPos);
-    // return the number of sectors successfully decoded
-    return sectorsDecoded;
-  }
-
   bool VC1541::updateMotors()
   {
     int     prvTrackPosFrac = currentTrackFrac;
@@ -526,72 +712,15 @@ namespace Plus4 {
             (currentTrack >= 1 && currentTrack <= nTracks));
   }
 
-  bool VC1541::readTrack(int trackNum)
-  {
-    bool    retval = true;
-    if (trackNum < 0)
-      trackNum = currentTrack;
-    for (int i = 0; i < trackSizeTable[trackNum]; i++)
-      trackBuffer_GCR[i] = 0x00;
-    if (trackNum >= 1 && trackNum <= nTracks) {
-      retval = false;
-      if (std::fseek(imageFile, long(d64TrackOffsetTable[trackNum]),
-                     SEEK_SET) >= 0) {
-        int     nSectors = sectorsPerTrackTable[trackNum];
-        if (std::fread(&(trackBuffer_D64[0]), sizeof(uint8_t),
-                       (size_t(nSectors) * 256), imageFile)
-            == (size_t(nSectors) * 256)) {
-          gcrEncodeTrack(trackNum, nSectors, trackSizeTable[trackNum]);
-          retval = true;
-        }
-      }
-    }
-    // return true on success
-    return retval;
-  }
-
-  bool VC1541::flushTrack(int trackNum)
-  {
-    bool    retval = true;
-    if (trackNum < 0)
-      trackNum = currentTrack;
-    if (trackDirtyFlag && !writeProtectFlag &&
-        (trackNum >= 1 && trackNum <= nTracks)) {
-      int     nSectors = sectorsPerTrackTable[trackNum];
-      if (gcrDecodeTrack(trackNum, nSectors, trackSizeTable[trackNum]) > 0) {
-        retval = false;
-        if (std::fseek(imageFile, long(d64TrackOffsetTable[trackNum]),
-                       SEEK_SET) >= 0) {
-          if (std::fwrite(&(trackBuffer_D64[0]), sizeof(uint8_t),
-                          (size_t(nSectors) * 256), imageFile)
-              == (size_t(nSectors) * 256)) {
-            if (std::fflush(imageFile) == 0)
-              retval = true;
-          }
-        }
-      }
-    }
-    trackDirtyFlag = false;
-    // return true on success
-    return retval;
-  }
-
   bool VC1541::setCurrentTrack(int trackNum)
   {
-    bool    retval = true;
-    trackNum = (trackNum >= 1 ? (trackNum <= 40 ? trackNum : 40) : 1);
     currentTrackFrac = 0;
-    if (trackNum != currentTrack) {
+    int     oldTrackNum = currentTrack;
+    bool    retval = D64Image::setCurrentTrack(trackNum);
+    if (currentTrack != oldTrackNum) {
       // recalculate head position
       headPosition = (headPosition * trackSizeTable[trackNum])
                      / trackSizeTable[currentTrack];
-      // write old track to disk if it has been changed
-      if (!flushTrack(currentTrack))
-        retval = false;
-      // read new track from disk
-      currentTrack = trackNum;
-      if (!readTrack(currentTrack))
-        retval = false;
     }
     return retval;
   }
@@ -647,6 +776,7 @@ namespace Plus4 {
 
   VC1541::VC1541(int driveNum_)
     : FloppyDrive(driveNum_),
+      D64Image(),
       cpu(*this),
       via1(*this),
       via2(*this),
@@ -657,7 +787,6 @@ namespace Plus4 {
       via1PortBOutput(0x00),
       halfCycleFlag(false),
       interruptRequestFlag(false),
-      trackDirtyFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
       via2PortBInput(0xEF),
@@ -665,29 +794,18 @@ namespace Plus4 {
       shiftRegisterBitCnt(0),
       shiftRegisterBitCntFrac(0x0000),
       headPosition(0),
-      currentTrack(40),
       currentTrackFrac(0),
       steppingDirection(0),
       currentTrackStepperMotorPhase(0),
       spindleMotorSpeed(0),
-      nTracks(0),
       diskChangeCnt(15625),
-      writeProtectFlag(false),
-      diskID(0x00),
-      idCharacter1(0x41),
-      idCharacter2(0x41),
-      imageFile((std::FILE *) 0),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
       noBreakOnDataRead(false)
   {
-    // clear RAM and track buffers
+    // clear RAM
     for (int i = 0; i < 2048; i++)
       memory_ram[i] = 0x00;
-    for (int i = 0; i < 8192; i++)
-      trackBuffer_GCR[i] = 0x00;
-    for (int i = 0; i < 5376; i++)
-      trackBuffer_D64[i] = 0x00;
     // set device number
     via1PortBInput = uint8_t(0x9F | ((deviceNumber & 0x03) << 5));
     via1.setPortB(via1PortBInput);
@@ -698,12 +816,6 @@ namespace Plus4 {
 
   VC1541::~VC1541()
   {
-    if (imageFile) {
-      (void) flushTrack();
-      std::fclose(imageFile);
-      imageFile = (std::FILE *) 0;
-      nTracks = 0;
-    }
   }
 
   void VC1541::setROMImage(int n, const uint8_t *romData_)
@@ -714,55 +826,15 @@ namespace Plus4 {
 
   void VC1541::setDiskImageFile(const std::string& fileName_)
   {
-    if (imageFile) {
-      (void) flushTrack();              // FIXME: should report errors ?
-      std::fclose(imageFile);
-      imageFile = (std::FILE *) 0;
-      nTracks = 0;
-    }
-    writeProtectFlag = false;
     headLoadedFlag = false;
     prvByteWasFF = false;
-    via2PortBInput &= uint8_t(0xEF);
     spindleMotorSpeed = 0;
     diskChangeCnt = 15625;
-    (void) setCurrentTrack(18);         // FIXME: should report errors ?
     currentTrackStepperMotorPhase = 0;
+    (void) setCurrentTrack(18);         // FIXME: should report errors ?
+    via2PortBInput &= uint8_t(0xEF);
     via2.setPortB(via2PortBInput);
-    if (fileName_.length() > 0) {
-      bool    isReadOnly = false;
-      imageFile = std::fopen(fileName_.c_str(), "r+b");
-      if (!imageFile) {
-        imageFile = std::fopen(fileName_.c_str(), "rb");
-        isReadOnly = true;
-      }
-      if (!imageFile)
-        throw Plus4Emu::Exception("error opening disk image file");
-      if (std::fseek(imageFile, 0L, SEEK_END) < 0) {
-        std::fclose(imageFile);
-        imageFile = (std::FILE *) 0;
-        throw Plus4Emu::Exception("error seeking to end of disk image file");
-      }
-      long    fSize = std::ftell(imageFile);
-      if (fSize != 174848L && fSize != 175531L && fSize != 196608L) {
-        std::fclose(imageFile);
-        imageFile = (std::FILE *) 0;
-        throw Plus4Emu::Exception("disk image file has invalid length "
-                                  "- must be 174848, 175531, or 196608 bytes");
-      }
-      std::fseek(imageFile, 0L, SEEK_SET);
-      writeProtectFlag = isReadOnly;
-      nTracks = (fSize != 196608L ? 35 : 40);
-      diskID = (diskID + 1) & 0xFF;
-      if (((diskID >> 4) + 0x41) == idCharacter1 &&
-          ((diskID & 0x0F) + 0x41) == idCharacter2)
-        diskID = (diskID + 1) & 0xFF;   // make sure that the disk ID changes
-      idCharacter1 = (diskID >> 4) + 0x41;
-      idCharacter2 = (diskID & 0x0F) + 0x41;
-      currentTrack = 40;
-      (void) setCurrentTrack(18);       // FIXME: should report errors ?
-      currentTrackStepperMotorPhase = 0;
-    }
+    D64Image::setImageFile(fileName_);
     // invert write protect sense input for 0.25 seconds so that the DOS can
     // detect the disk change
     via2PortBInput = uint8_t(writeProtectFlag ? (via2PortBInput | 0x10)
@@ -903,6 +975,16 @@ namespace Plus4 {
   uint8_t VC1541::getLEDState() const
   {
     return uint8_t((via2.getPortB() & 0x08) >> 3);
+  }
+
+  uint16_t VC1541::getHeadPosition() const
+  {
+    if (!imageFile)
+      return 0xFFFF;
+    uint16_t  retval = uint16_t((currentTrack & 0x7F) << 8);
+    // FIXME: this is not accurate
+    retval |= uint16_t((headPosition / 367) & 0x7F);
+    return retval;
   }
 
   void VC1541::saveState(Plus4Emu::File::Buffer& buf)

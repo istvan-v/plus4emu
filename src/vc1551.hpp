@@ -24,6 +24,7 @@
 #include "cpu.hpp"
 #include "serial.hpp"
 #include "p4floppy.hpp"
+#include "vc1541.hpp"
 
 namespace Plus4 {
 
@@ -151,7 +152,7 @@ namespace Plus4 {
     }
   };
 
-  class VC1551 : public FloppyDrive {
+  class VC1551 : public FloppyDrive, public D64Image {
    private:
     class M7501_ : public M7501 {
      private:
@@ -165,15 +166,10 @@ namespace Plus4 {
     M7501_      cpu;
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
     uint8_t     memory_ram[2048];       // 2K RAM, 0000..0FFF
-    uint8_t     trackBuffer_GCR[8192];
-    uint8_t     trackBuffer_D64[5376];  // for 21 256-byte sectors
     TPI6523     tpi1;                   // disk controller (1551 4000..7FFF)
     TPI6523     tpi2;                   // parallel port (Plus/4 FEC0..FEFF)
     uint8_t     deviceNumber;
-    uint8_t     diskID;
     uint8_t     dataBusState;
-    bool        writeProtectFlag;
-    bool        trackDirtyFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
     bool        syncFlag;               // true if found sync
@@ -183,19 +179,13 @@ namespace Plus4 {
     int         interruptTimer;         // decrements from 8325 to -7 at 1 MHz,
                                         // IRQ is active when negative
     int         headPosition;           // index to track buffer
-    int         currentTrack;           // 0 to 40 (1 to 35 are valid tracks)
     int         currentTrackFrac;       // -65536 to 65536 (-32768 and 32768
                                         // are "half tracks")
     int         steppingDirection;      // 1: stepping in, -1: stepping out,
                                         // 0: not stepping
     int         currentTrackStepperMotorPhase;
     int         spindleMotorSpeed;      // 0 (stopped) to 65536 (full speed)
-    int         nTracks;                // number of tracks (35, 40, or zero
-                                        // if there is no disk image file)
     int         diskChangeCnt;          // decrements from 15625 to 0
-    uint8_t     idCharacter1;
-    uint8_t     idCharacter2;
-    std::FILE   *imageFile;
     void        (*breakPointCallback)(void *userData,
                                       int debugContext_, int type,
                                       uint16_t addr, uint8_t value);
@@ -210,15 +200,10 @@ namespace Plus4 {
     static void writeMemory_0001(void *userData, uint16_t addr, uint8_t value);
     static void writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value);
     static void writeMemory_TIA(void *userData, uint16_t addr, uint8_t value);
-    static void gcrEncodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf);
-    static bool gcrDecodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf);
-    void gcrEncodeTrack(int trackNum, int nSectors, int nBytes);
-    int gcrDecodeTrack(int trackNum, int nSectors, int nBytes);
     bool updateMotors();
-    bool readTrack(int trackNum = -1);
-    bool flushTrack(int trackNum = -1);
-    bool setCurrentTrack(int trackNum);
     void updateParallelInterface();
+   protected:
+    virtual bool setCurrentTrack(int trackNum);
    public:
     VC1551(int driveNum_ = 8);
     virtual ~VC1551();
@@ -288,6 +273,13 @@ namespace Plus4 {
      * is on, and bit 1 is set if the green LED is on.
      */
     virtual uint8_t getLEDState() const;
+    /*!
+     * Returns the current head position (track * 256 + sector), or 0xFFFF
+     * if there is no disk. Bit 7 is set depending on which side is selected
+     * (1581 only), and bit 15 is set if there are 80 tracks (i.e. emulating
+     * the 1581).
+     */
+    virtual uint16_t getHeadPosition() const;
     // snapshot save/load functions
     virtual void saveState(Plus4Emu::File::Buffer&);
     virtual void saveState(Plus4Emu::File&);
