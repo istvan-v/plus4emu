@@ -1,6 +1,9 @@
 Changes in version 1.2.2
 ------------------------
 
+  * added limited support for error information in D64 files
+  * P00 format files can be loaded
+
 Changes in version 1.2.1
 ------------------------
 
