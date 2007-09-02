@@ -136,36 +136,35 @@ namespace Plus4 {
         }
         std::FILE *f = (std::FILE *) 0;
         int       err = vm.openFileInWorkingDirectory(f, fileName, "rb");
+        uint16_t  addr = 0x0000;
         if (!err) {
-          reg_AC = 0xF9;
-          int     c;
-          c = std::fgetc(f);
-          if (c != EOF) {
-            uint16_t  addr = uint16_t(c & 0xFF);
-            c = std::fgetc(f);
-            if (c != EOF) {
-              addr |= (uint16_t(c & 0xFF) << 8);
-              reg_AC = 0x00;
-              if (readMemoryCPU(0x00AD) == 0x00)
-                addr = uint16_t(readMemoryCPU(0x00B4))
-                       | (uint16_t(readMemoryCPU(0x00B5)) << 8);
-              unsigned int  nBytes = 0U;
-              do {
-                c = std::fgetc(f);
-                if (c == EOF)
-                  break;
-                if (n == 0x01)          // load
-                  writeMemoryCPU(addr, uint8_t(c & 0xFF));
-                else if (uint8_t(c & 0xFF) != readMemoryCPU(addr, true)) {
-                  reg_AC = 0xF8;        // verify error
-                  break;
-                }
-                addr = (addr + 1) & 0xFFFF;
-              } while (++nBytes < 0xFFFFU);
-              writeMemoryCPU(0x009D, uint8_t(addr) & 0xFF);
-              writeMemoryCPU(0x009E, uint8_t(addr >> 8) & 0xFF);
-            }
+          try {
+            addr = TED7360::readPRGFileHeader(f, fileName.c_str());
           }
+          catch (...) {
+            err = -7;
+          }
+        }
+        if (!err) {
+          reg_AC = 0x00;
+          if (readMemoryCPU(0x00AD) == 0x00)
+            addr = uint16_t(readMemoryCPU(0x00B4))
+                   | (uint16_t(readMemoryCPU(0x00B5)) << 8);
+          unsigned int  nBytes = 0U;
+          do {
+            int     c = std::fgetc(f);
+            if (c == EOF)
+              break;
+            if (n == 0x01)              // load
+              writeMemoryCPU(addr, uint8_t(c & 0xFF));
+            else if (uint8_t(c & 0xFF) != readMemoryCPU(addr, true)) {
+              reg_AC = 0xF8;            // verify error
+              break;
+            }
+            addr = (addr + 1) & 0xFFFF;
+          } while (++nBytes < 0xFFFFU);
+          writeMemoryCPU(0x009D, uint8_t(addr) & 0xFF);
+          writeMemoryCPU(0x009E, uint8_t(addr >> 8) & 0xFF);
           std::fclose(f);
         }
         else
@@ -1106,13 +1105,18 @@ namespace Plus4 {
     vmStatus_.tapeLength = getTapeLength();
     vmStatus_.tapeSampleRate = getTapeSampleRate();
     vmStatus_.tapeSampleSize = getTapeSampleSize();
+    uint64_t  h = 0UL;
     uint32_t  n = 0U;
     for (int i = 3; i >= 0; i--) {
       n = n << 8;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+      h = h << 16;
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0) {
         n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
+        h |= uint64_t(floppyDrives[i].floppyDrive->getHeadPosition() ^ 0xFFFF);
+      }
     }
     vmStatus_.floppyDriveLEDState = n;
+    vmStatus_.floppyDriveHeadPositions = (~h);
     if (!printer_) {
       vmStatus_.printerHeadPositionX = -1;
       vmStatus_.printerHeadPositionY = -1;
@@ -1150,7 +1154,8 @@ namespace Plus4 {
         if (f) {
           if (std::fseek(f, 0L, SEEK_END) >= 0) {
             long    fSize = std::ftell(f);
-            isD64 = (fSize == 174848L || fSize == 175531L || fSize == 196608L);
+            isD64 = (fSize == 174848L || fSize == 175531L ||
+                     fSize == 196608L || fSize == 197376L);
           }
           std::fclose(f);
         }
@@ -1222,6 +1227,17 @@ namespace Plus4 {
         n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
     }
     return n;
+  }
+
+  uint64_t Plus4VM::getFloppyDriveHeadPositions() const
+  {
+    uint64_t  h = 0UL;
+    for (int i = 3; i >= 0; i--) {
+      h = h << 16;
+      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
+        h |= uint64_t(floppyDrives[i].floppyDrive->getHeadPosition() ^ 0xFFFF);
+    }
+    return (~h);
   }
 
   void Plus4VM::setFloppyDriveHighAccuracy(bool isEnabled)

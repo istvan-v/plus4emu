@@ -272,6 +272,18 @@ namespace Plus4 {
      */
     virtual uint32_t getFloppyDriveLEDState() const;
     /*!
+     * Returns the current head position for all floppy drives.
+     * For each drive, the head position is encoded as a 16-bit value (bits
+     * 0 to 15 for drive 0, bits 16 to 31 for drive 1, etc.):
+     *   bits 0 to 6:   sector number
+     *   bit 7:         side selected
+     *   bits 8 to 14:  track number
+     *   bit 15:        0: 40 tracks, 1: 80 tracks
+     * If a particular drive does not exist, or no disk image is set, 0xFFFF
+     * is returned as head position.
+     */
+    virtual uint64_t getFloppyDriveHeadPositions() const;
+    /*!
      * Set if the floppy drive emulation should use higher timing resolution
      * at the expense of increased CPU usage. The default is 'true'.
      */
