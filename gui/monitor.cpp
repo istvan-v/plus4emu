@@ -19,6 +19,7 @@
 
 #include "gui.hpp"
 #include "monitor.hpp"
+#include "ted.hpp"
 
 #include <cstdio>
 #include <vector>
@@ -1152,6 +1153,17 @@ void Plus4EmuGUIMonitor::command_load(const std::vector<std::string>& args,
     throw Plus4Emu::Exception("address is out of range");
   std::FILE *f = (std::FILE *) 0;
   int       err = gui->vm.openFileInWorkingDirectory(f, fileName, "rb");
+  if (err == 0) {
+    try {
+      uint16_t  tmpAddr =
+          Plus4::TED7360::readPRGFileHeader(f, fileName.c_str());
+      if (!haveStartAddr)
+        startAddr = tmpAddr;
+    }
+    catch (...) {
+      err = -1;
+    }
+  }
   if (err != 0) {
     if (err >= -6 && err <= -2)
       printMessage(fileOpenErrorMessages[(-err) - 1]);
@@ -1160,20 +1172,11 @@ void Plus4EmuGUIMonitor::command_load(const std::vector<std::string>& args,
     return;
   }
   try {
-    int     c = std::fgetc(f);
-    if (c == EOF)
-      throw Plus4Emu::Exception("Error reading file");
-    if (!haveStartAddr)
-      startAddr = uint32_t(c & 0xFF);
-    c = std::fgetc(f);
-    if (c == EOF)
-      throw Plus4Emu::Exception("Error reading file");
-    if (!haveStartAddr)
-      startAddr |= (uint32_t(c & 0xFF) << 8);
     if (!haveEndAddr)
       endAddr = (startAddr - 1U) & addressMask_;
     char      tmpBuf[64];
     uint32_t  addr = startAddr;
+    int       c = 0;
     if (!verifyMode) {
       // load
       while (addr != endAddr) {

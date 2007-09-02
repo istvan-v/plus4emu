@@ -22,6 +22,7 @@
 #include "cpu.hpp"
 #include "ted.hpp"
 
+#include <cstring>
 #include <cmath>
 
 static const float brightnessToYTable[8] = {
@@ -690,30 +691,84 @@ namespace Plus4 {
     writeMemory(0x009E, uint8_t((addr >> 8) & 0xFF));
   }
 
+  uint16_t TED7360::readPRGFileHeader(std::FILE*& f, const char *fileName)
+  {
+    if (fileName == (char *) 0 || fileName[0] == '\0') {
+      if (f) {
+        std::fclose(f);
+        f = (std::FILE *) 0;
+      }
+      throw Plus4Emu::Exception("invalid plus4 program file name");
+    }
+    if (!f) {
+      f = std::fopen(fileName, "rb");
+      if (!f)
+        throw Plus4Emu::Exception("error opening plus4 program file");
+    }
+    uint16_t  addr = 0x0000;
+    int       c = std::fgetc(f);
+    bool      eofFlag = (c == EOF);
+    if (!eofFlag) {
+      addr = uint16_t(c & 0xFF);
+      c = std::fgetc(f);
+      eofFlag = (c == EOF);
+      if (!eofFlag) {
+        addr |= uint16_t((c & 0xFF) << 8);
+        // check for P00 format
+        if (addr == 0x3643) {           // "C6"
+          size_t  nameLen = std::strlen(fileName);
+          if (nameLen >= 4) {
+            if (fileName[nameLen - 4] == '.' &&
+                (fileName[nameLen - 3] == 'P' ||
+                 fileName[nameLen - 3] == 'p') &&
+                fileName[nameLen - 2] == '0' && fileName[nameLen - 1] == '0') {
+              static const char *p00HeaderMagic = "C64File";
+              int     i = 2;
+              do {
+                c = std::fgetc(f);
+                eofFlag = (c == EOF);
+              } while (!eofFlag && c == p00HeaderMagic[i] && ++i < 8);
+              if (i == 8) {
+                for ( ; i < 26 && !eofFlag; i++) {
+                  c = std::fgetc(f);
+                  eofFlag = (c == EOF);
+                }
+                if (!eofFlag) {
+                  c = std::fgetc(f);
+                  eofFlag = (c == EOF);
+                  if (!eofFlag) {
+                    addr = uint16_t(c & 0xFF);
+                    c = std::fgetc(f);
+                    eofFlag = (c == EOF);
+                    if (!eofFlag)
+                      addr |= uint16_t((c & 0xFF) << 8);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (eofFlag) {
+      std::fclose(f);
+      f = (std::FILE *) 0;
+      throw Plus4Emu::Exception("unexpected end of plus4 program file");
+    }
+    return addr;
+  }
+
   void TED7360::loadProgram(const char *fileName)
   {
-    if (fileName == (char *) 0 || fileName[0] == '\0')
-      throw Plus4Emu::Exception("invalid plus4 program file name");
-    std::FILE *f = std::fopen(fileName, "rb");
-    if (!f)
-      throw Plus4Emu::Exception("error opening plus4 program file");
-    uint16_t  addr;
-    int       c;
-    c = std::fgetc(f);
-    if (c == EOF)
-      throw Plus4Emu::Exception("unexpected end of plus4 program file");
-    addr = uint16_t(c & 0xFF);
-    c = std::fgetc(f);
-    if (c == EOF)
-      throw Plus4Emu::Exception("unexpected end of plus4 program file");
-    addr |= uint16_t((c & 0xFF) << 8);
+    std::FILE *f = (std::FILE *) 0;
+    uint16_t  addr = readPRGFileHeader(f, fileName);
 #if 0
     writeMemory(0x002B, uint8_t(addr & 0xFF));
     writeMemory(0x002C, uint8_t((addr >> 8) & 0xFF));
 #endif
     size_t  len = 0;
     while (true) {
-      c = std::fgetc(f);
+      int     c = std::fgetc(f);
       if (c == EOF)
         break;
       if (++len > 0xFFFF) {

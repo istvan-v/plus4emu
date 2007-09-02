@@ -764,6 +764,11 @@ namespace Plus4 {
     // load program
     void loadProgram(Plus4Emu::File::Buffer&);
     void loadProgram(const char *fileName);
+    // Read PRG or P00 file header, and return load address.
+    // If 'f' is NULL, the file is opened, and the file handle is stored in
+    // 'f'. On error, Plus4Emu::Exception is thrown, the file is closed,
+    // and 'f' is set to NULL.
+    static uint16_t readPRGFileHeader(std::FILE*& f, const char *fileName);
     void registerChunkTypes(Plus4Emu::File&);
   };
 
