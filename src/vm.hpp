@@ -91,6 +91,15 @@ namespace Plus4Emu {
       //   0x01000000: drive 3 red LED is on
       //   0x02000000: drive 3 green LED is on
       uint32_t  floppyDriveLEDState;
+      // for each drive, the head position is encoded as a 16-bit value (bits
+      // 0 to 15 for drive 0, bits 16 to 31 for drive 1, etc.):
+      //   bits 0 to 6:   sector number
+      //   bit 7:         side selected
+      //   bits 8 to 14:  track number
+      //   bit 15:        0: 40 tracks, 1: 80 tracks
+      // if a particular drive does not exist, or no disk image is set, 0xFFFF
+      // is returned as head position
+      uint64_t  floppyDriveHeadPositions;
       int       printerHeadPositionX;
       int       printerHeadPositionY;
       bool      printerOutputChanged;
@@ -270,6 +279,18 @@ namespace Plus4Emu {
      *   0x02000000: drive 3 green LED is on
      */
     virtual uint32_t getFloppyDriveLEDState() const;
+    /*!
+     * Returns the current head position for all floppy drives.
+     * For each drive, the head position is encoded as a 16-bit value (bits
+     * 0 to 15 for drive 0, bits 16 to 31 for drive 1, etc.):
+     *   bits 0 to 6:   sector number
+     *   bit 7:         side selected
+     *   bits 8 to 14:  track number
+     *   bit 15:        0: 40 tracks, 1: 80 tracks
+     * If a particular drive does not exist, or no disk image is set, 0xFFFF
+     * is returned as head position.
+     */
+    virtual uint64_t getFloppyDriveHeadPositions() const;
     /*!
      * Set if the floppy drive emulation should use higher timing resolution
      * at the expense of increased CPU usage. The default is 'true'.

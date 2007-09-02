@@ -380,6 +380,7 @@ namespace Plus4Emu {
     vmStatus_.tapeSampleRate = getTapeSampleRate();
     vmStatus_.tapeSampleSize = getTapeSampleSize();
     vmStatus_.floppyDriveLEDState = getFloppyDriveLEDState();
+    vmStatus_.floppyDriveHeadPositions = getFloppyDriveHeadPositions();
     vmStatus_.isPlayingDemo = getIsPlayingDemo();
     vmStatus_.isRecordingDemo = getIsRecordingDemo();
     getPrinterHeadPosition(vmStatus_.printerHeadPositionX,
@@ -399,6 +400,11 @@ namespace Plus4Emu {
   uint32_t VirtualMachine::getFloppyDriveLEDState() const
   {
     return 0U;
+  }
+
+  uint64_t VirtualMachine::getFloppyDriveHeadPositions() const
+  {
+    return (~(uint64_t(0)));
   }
 
   void VirtualMachine::setFloppyDriveHighAccuracy(bool isEnabled)
