@@ -588,6 +588,31 @@ class Plus4EmuGUI_MachineConfigWindow {open
             }
           }
         }
+        Fl_Group {} {
+          label SID open
+          xywh {10 35 380 370} color 38 selection_color 38 labelcolor 52 hide
+        } {
+          Fl_Group {} {open
+            xywh {20 45 360 95} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          } {
+            Fl_Light_Button vmSIDModel6581Valuator {
+              label {6581 emulation}
+              callback {{
+  gui.config.vm.sidModel6581 = (o->value() != 0);
+  gui.config.vmConfigurationChanged = true;
+}}
+              tooltip {The MOS 6581 is emulated if this button is checked, and the MOS 8580 otherwise, if SID emulation is enabled} xywh {30 60 240 25} color 39 labelcolor 52
+            }
+            Fl_Light_Button vmSIDDigiBlasterValuator {
+              label {Enable Digi-Blaster}
+              callback {{
+  gui.config.vm.sidDigiBlaster = (o->value() != 0);
+  gui.config.vmConfigurationChanged = true;
+}}
+              xywh {30 100 240 25} color 39 labelcolor 52
+            }
+          }
+        }
       }
     }
   }
@@ -657,6 +682,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   tapeEnableFilterValuator->value(gui.config.tape.enableSoundFileFilter ? 1 : 0);
   tapeMinFreqValuator->value(gui.config.tape.soundFileFilterMinFreq);
   tapeMaxFreqValuator->value(gui.config.tape.soundFileFilterMaxFreq);
+  vmSIDModel6581Valuator->value(gui.config.vm.sidModel6581 ? 1 : 0);
+  vmSIDDigiBlasterValuator->value(gui.config.vm.sidDigiBlaster ? 1 : 0);
 }} {}
   }
   Function {setROMImageFile(uint8_t segment_, const std::string& fileName_)} {open private return_type void

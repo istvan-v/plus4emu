@@ -90,6 +90,15 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.videoClockFrequency",
                                 vm.videoClockFrequency, 17734475U,
                                 vmConfigurationChanged, 7159090.0, 35468950.0);
+    defineConfigurationVariable(*this, "vm.speedPercentage",
+                                vm.speedPercentage, 100U,
+                                soundSettingsChanged, 0.0, 1000.0);
+    defineConfigurationVariable(*this, "vm.sidModel6581",
+                                vm.sidModel6581, false,
+                                vmConfigurationChanged);
+    defineConfigurationVariable(*this, "vm.sidDigiBlaster",
+                                vm.sidDigiBlaster, false,
+                                vmConfigurationChanged);
     defineConfigurationVariable(*this, "vm.enableFileIO",
                                 vm.enableFileIO, false,
                                 vmConfigurationChanged);
@@ -353,6 +362,7 @@ namespace Plus4Emu {
       // assume none of these will throw exceptions
       vm_.setCPUFrequency(vm.cpuClockFrequency);
       vm_.setVideoFrequency(vm.videoClockFrequency);
+      vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster);
       vm_.setEnableFileIO(vm.enableFileIO);
       vmConfigurationChanged = false;
     }
@@ -428,9 +438,10 @@ namespace Plus4Emu {
       displaySettingsChanged = false;
     }
     if (soundSettingsChanged) {
-      vm_.setEnableAudioOutput(sound.enabled);
-      videoDisplay.limitFrameRate(!sound.enabled);
-      if (!sound.enabled) {
+      bool    soundEnableFlag = (sound.enabled && vm.speedPercentage == 100U);
+      videoDisplay.limitFrameRate(vm.speedPercentage == 0U);
+      vm_.setEnableAudioOutput(soundEnableFlag);
+      if (!soundEnableFlag) {
         // close device if sound is disabled
         audioOutput.closeDevice();
       }

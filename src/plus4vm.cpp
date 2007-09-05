@@ -96,8 +96,8 @@ namespace Plus4 {
       tmp = (tmp * int32_t(3)) / int32_t(176);
       tmp = (tmp >= -24576 ? (tmp < 24576 ? tmp : 24576) : -24576);
     }
-    tmp += int32_t(sampleValue);
-    vm.sendMonoAudioOutput(tmp);
+    vm.soundOutputSignal = tmp + int32_t(sampleValue);
+    vm.sendMonoAudioOutput(vm.soundOutputSignal);
   }
 
   void Plus4VM::TED7360_::videoOutputCallback(const uint8_t *buf, size_t nBytes)
@@ -243,8 +243,23 @@ namespace Plus4 {
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     if (ted.vm.sidEnabled) {
-      ted.dataBusState =
-          uint8_t(ted.vm.sid_->read(uint8_t(addr) & uint8_t(0x1F)));
+      uint8_t regNum = uint8_t(addr & 0x001F);
+      if (ted.vm.digiBlasterEnabled && regNum >= 0x1E) {
+        if (regNum == 0x1E) {
+          ted.dataBusState = ted.vm.digiBlasterOutput;
+        }
+        else if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
+          int     tmp = ted.vm.soundOutputSignal;
+          tmp += 32768;
+          tmp = (tmp >= 0 ? (tmp < 65536 ? tmp : 65535) : 0);
+          ted.dataBusState = uint8_t(tmp >> 8);
+        }
+        else {
+          ted.dataBusState = 0x80;
+        }
+      }
+      else
+        ted.dataBusState = uint8_t(ted.vm.sid_->read(regNum));
     }
     return ted.dataBusState;
   }
@@ -258,7 +273,13 @@ namespace Plus4 {
       ted.vm.sidEnabled = true;
       ted.setCallback(&(ted.vm.sidCallback), &(ted.vm), 1);
     }
-    ted.vm.sid_->write(uint8_t(addr) & uint8_t(0x1F), value);
+    uint8_t regNum = uint8_t(addr & 0x001F);
+    if (regNum == 0x1E) {
+      ted.vm.digiBlasterOutput = value;
+      if (ted.vm.digiBlasterEnabled)
+        ted.vm.sid_->input((int(value) << 8) - 32768);
+    }
+    ted.vm.sid_->write(regNum, value);
   }
 
   uint8_t Plus4VM::TED7360_::parallelIECRead(void *userData, uint16_t addr)
@@ -648,7 +669,11 @@ namespace Plus4 {
       demoTimeCnt(0U),
       sid_((SID *) 0),
       soundOutputAccumulator(0),
+      soundOutputSignal(0),
       sidEnabled(false),
+      sidModel6581(false),
+      digiBlasterEnabled(false),
+      digiBlasterOutput(0x80),
       tapeCallbackFlag(false),
       is1541HighAccuracy(true),
       floppyROM_1541((uint8_t *) 0),
@@ -767,6 +792,8 @@ namespace Plus4 {
     ted->reset(isColdReset);
     setTapeMotorState(false);
     sid_->reset();
+    digiBlasterOutput = 0x80;
+    sid_->input(0);
     if (isColdReset) {
       sidEnabled = false;
       ted->setCallback(&sidCallback, this, 0);
@@ -951,6 +978,24 @@ namespace Plus4 {
     stopDemoRecording(false);   // any demo playback or recording
     tedInputClockFrequency = freq;
     updateTimingParameters(ted->getIsNTSCMode());
+  }
+
+  void Plus4VM::setSIDConfiguration(bool is6581, bool enableDigiBlaster)
+  {
+    if (is6581 != sidModel6581) {
+      sidModel6581 = is6581;
+      if (is6581)
+        sid_->set_chip_model(MOS6581);
+      else
+        sid_->set_chip_model(MOS8580);
+    }
+    if (enableDigiBlaster != digiBlasterEnabled) {
+      digiBlasterEnabled = enableDigiBlaster;
+      if (enableDigiBlaster)
+        sid_->input((int(digiBlasterOutput) << 8) - 32768);
+      else
+        sid_->input(0);
+    }
   }
 
   void Plus4VM::setKeyboardState(int keyCode, bool isPressed)
@@ -1674,11 +1719,14 @@ namespace Plus4 {
     {
       Plus4Emu::File::Buffer  buf;
       buf.setPosition(0);
-      buf.writeUInt32(0x01000000);      // version number
+      buf.writeUInt32(0x01000001);      // version number
       buf.writeUInt32(uint32_t(cpuClockFrequency));
       buf.writeUInt32(uint32_t(tedInputClockFrequency));
       buf.writeUInt32(uint32_t(soundClockFrequency));
       buf.writeBoolean(sidEnabled);
+      buf.writeBoolean(sidModel6581);
+      buf.writeBoolean(digiBlasterEnabled);
+      buf.writeByte(digiBlasterOutput);
       f.addChunk(Plus4Emu::File::PLUS4EMU_CHUNKTYPE_P4VM_STATE, buf);
     }
   }
@@ -1758,7 +1806,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000) {
+    if (version != 0x01000000 && version != 0x01000001) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 snapshot format");
     }
@@ -1775,6 +1823,24 @@ namespace Plus4 {
       (void) tmpTEDInputClockFrequency;
       (void) tmpSoundClockFrequency;
       sidEnabled = buf.readBoolean();
+      if (version != 0x01000000) {
+        sidModel6581 = buf.readBoolean();
+        digiBlasterEnabled = buf.readBoolean();
+        digiBlasterOutput = buf.readByte();
+      }
+      else {
+        sidModel6581 = false;
+        digiBlasterEnabled = false;
+        digiBlasterOutput = 0x80;
+      }
+      if (sidModel6581)
+        sid_->set_chip_model(MOS6581);
+      else
+        sid_->set_chip_model(MOS8580);
+      if (digiBlasterEnabled)
+        sid_->input((int(digiBlasterOutput) << 8) - 32768);
+      else
+        sid_->input(0);
       ted->setCallback(&sidCallback, this, (sidEnabled ? 1 : 0));
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "

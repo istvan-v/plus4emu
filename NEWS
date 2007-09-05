@@ -1,8 +1,14 @@
 Changes in version 1.2.2
 ------------------------
 
+  * implemented Digi-Blaster emulation
   * added limited support for error information in D64 files
+  * new option for setting SID model (6581 or 8580) to be emulated
   * P00 format files can be loaded
+  * emulation speed percentage is now displayed on the title bar; it is
+    also possible to set half, double, etc. speed in the menu
+  * the head position (track, side, and sector) of all floppy drives
+    can be displayed in a window
 
 Changes in version 1.2.1
 ------------------------

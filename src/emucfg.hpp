@@ -43,6 +43,9 @@ namespace Plus4Emu {
     struct {
       unsigned int  cpuClockFrequency;
       unsigned int  videoClockFrequency;
+      unsigned int  speedPercentage;    // NOTE: this uses soundSettingsChanged
+      bool          sidModel6581;
+      bool          sidDigiBlaster;
       bool          enableFileIO;
     } vm;
     bool          vmConfigurationChanged;

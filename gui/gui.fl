@@ -44,10 +44,12 @@ class Plus4EmuGUI {open
   decl {int oldWindowHeight;} {}
   decl {int oldDisplayMode;} {}
   decl {int oldDemoStatus;} {}
+  decl {int32_t oldSpeedPercentage;} {}
   decl {bool oldPauseFlag;} {}
   decl {long oldTapeSampleRate;} {}
   decl {int oldTapeSampleSize;} {}
   decl {uint32_t oldFloppyDriveLEDState;} {}
+  decl {uint64_t oldFloppyDriveHeadPositions;} {}
   decl {bool oldTapeReadOnlyFlag;} {}
   decl {long oldTapePosition;} {}
   decl {uint32_t functionKeyState;} {}
@@ -83,7 +85,13 @@ class Plus4EmuGUI {open
   decl {Plus4EmuGUI_PrinterWindow *printerWindow;} {}
   decl {Plus4EmuGUI_AboutWindow *aboutWindow;} {}
   decl {Plus4Emu::JoystickInput joystickInput;} {}
+  decl {Plus4Emu::Timer statsTimer;} {}
+  decl {char windowTitleBuf[48];} {}
   decl {void init_();} {}
+  decl {void updateDisplay_windowTitle();} {}
+  decl {void updateDisplay_windowMode();} {}
+  decl {void updateDisplay_windowSize();} {}
+  decl {void updateDisplay_floppyStats(uint64_t newFloppyDriveHeadPositions);} {}
   decl {void updateDisplay(double t = 0.025);} {public
   }
   decl {void errorMessage(const char *msg);} {public
@@ -128,6 +136,12 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_File_Quit(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Pause(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_FullSpeed(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_10(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_25(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_50(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_100(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_200(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_Speed_400(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_OpenTape(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapePlay(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapeStop(Fl_Widget *o, void *v);} {}
@@ -179,6 +193,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_KbdConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Debug_DriveStats(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Help_About(Fl_Widget *o, void *v);} {}
   Function {Plus4EmuGUI(Plus4Emu::VideoDisplay& display_, Plus4Emu::AudioOutput& audioOutput_, Plus4Emu::VirtualMachine& vm_, Plus4Emu::VMThread& vmThread_, Plus4Emu::EmulatorConfiguration& config_) : display(display_), audioOutput(audioOutput_), vm(vm_), vmThread(vmThread_), config(config_), joystickInput(true)} {open
   } {
@@ -197,16 +212,16 @@ class Plus4EmuGUI {open
         label {Disk: } open
         xywh {345 0 30 30} box PLASTIC_THIN_UP_BOX color 0 labelsize 12 labelcolor 52 align 4
       } {
-        Fl_Box driveAStatusDisplay {
+        Fl_Box driveALEDDisplay {
           xywh {351 2 18 5} box THIN_DOWN_BOX color 0
         }
-        Fl_Box driveBStatusDisplay {
+        Fl_Box driveBLEDDisplay {
           xywh {351 9 18 5} box THIN_DOWN_BOX color 0
         }
-        Fl_Box driveCStatusDisplay {
+        Fl_Box driveCLEDDisplay {
           xywh {351 16 18 5} box THIN_DOWN_BOX color 0
         }
-        Fl_Box driveDStatusDisplay {
+        Fl_Box driveDLEDDisplay {
           xywh {351 23 18 5} box THIN_DOWN_BOX color 0
         }
       }
@@ -252,6 +267,86 @@ class Plus4EmuGUI {open
         xywh {105 115 70 25} color 38 selection_color 39 labelcolor 52
       }
     }
+    Fl_Window floppyStatsWindow {
+      label {Drive head positions} open
+      xywh {550 452 270 270} type Double color 37 visible
+    } {
+      Fl_Group {} {
+        label {Unit 8} open
+        xywh {10 10 250 50} box THIN_UP_BOX color 38 labelsize 13 labelcolor 52 align 21
+      } {
+        Fl_Value_Output driveATrackDisplay {
+          label Track
+          xywh {55 30 35 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveASideDisplay {
+          label Side
+          xywh {135 30 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveASectorDisplay {
+          label Sector
+          xywh {220 30 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+      }
+      Fl_Group {} {
+        label {Unit 9} open
+        xywh {10 65 250 50} box THIN_UP_BOX color 38 labelsize 13 labelcolor 52 align 21
+      } {
+        Fl_Value_Output driveBTrackDisplay {
+          label Track
+          xywh {55 85 35 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveBSideDisplay {
+          label Side
+          xywh {135 85 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveBSectorDisplay {
+          label Sector
+          xywh {220 85 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+      }
+      Fl_Group {} {
+        label {Unit 10} open
+        xywh {10 120 250 50} box THIN_UP_BOX color 38 labelsize 13 labelcolor 52 align 21
+      } {
+        Fl_Value_Output driveCTrackDisplay {
+          label Track
+          xywh {55 140 35 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveCSideDisplay {
+          label Side
+          xywh {135 140 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveCSectorDisplay {
+          label Sector
+          xywh {220 140 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+      }
+      Fl_Group {} {
+        label {Unit 11} open
+        xywh {10 175 250 50} box THIN_UP_BOX color 38 labelsize 13 labelcolor 52 align 21
+      } {
+        Fl_Value_Output driveDTrackDisplay {
+          label Track
+          xywh {55 195 35 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveDSideDisplay {
+          label Side
+          xywh {135 195 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+        Fl_Value_Output driveDSectorDisplay {
+          label Sector
+          xywh {220 195 30 20} box THIN_DOWN_BOX color 36 selection_color 238 labelsize 12 labelcolor 52 minimum -1 maximum 127 value -1 textcolor 52
+        }
+      }
+      Fl_Button {} {
+        label OK
+        callback {{
+  floppyStatsWindow->hide();
+}}
+        xywh {100 235 70 25} color 38 selection_color 39 labelcolor 52
+      }
+    }
     code {{
   diskConfigWindow = new Plus4EmuGUI_DiskConfigWindow(*this);
   displaySettingsWindow = new Plus4EmuGUI_DisplayConfigWindow(*this);
@@ -276,6 +371,7 @@ class Plus4EmuGUI {open
   soundSettingsWindow->hide();
   machineConfigWindow->hide();
   printerWindow->hide();
+  floppyStatsWindow->hide();
   aboutWindow->hide();
   mainWindow->hide();
   Fl::remove_check(&fltkCheckCallback, (void *) this);
@@ -290,8 +386,10 @@ class Plus4EmuGUI {open
   delete machineConfigWindow;
   delete debugWindow;
   delete printerWindow;
+  delete floppyStatsWindow;
   delete aboutWindow;
   delete mainWindow;
+  config.vm.speedPercentage = 100U;
   config.sound.file = "";
   config.tape.imageFile = "";
 }} {}

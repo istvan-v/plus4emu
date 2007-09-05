@@ -313,6 +313,12 @@ namespace Plus4Emu {
     (void) freq_;
   }
 
+  void VirtualMachine::setSIDConfiguration(bool is6581, bool enableDigiBlaster)
+  {
+    (void) is6581;
+    (void) enableDigiBlaster;
+  }
+
   void VirtualMachine::setKeyboardState(int keyCode, bool isPressed)
   {
     (void) keyCode;

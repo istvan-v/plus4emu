@@ -52,10 +52,12 @@ void Plus4EmuGUI::init_()
   oldWindowHeight = -1;
   oldDisplayMode = 0;
   oldDemoStatus = -1;
+  oldSpeedPercentage = 100;
   oldPauseFlag = true;
   oldTapeSampleRate = -1L;
   oldTapeSampleSize = -1;
   oldFloppyDriveLEDState = 0U;
+  oldFloppyDriveHeadPositions = (~(uint64_t(0)));
   oldTapeReadOnlyFlag = false;
   oldTapePosition = -2L;
   functionKeyState = 0U;
@@ -105,6 +107,158 @@ void Plus4EmuGUI::init_()
   Fl::add_check(&fltkCheckCallback, (void *) this);
 }
 
+void Plus4EmuGUI::updateDisplay_windowTitle()
+{
+  if (oldPauseFlag) {
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 beta (paused)");
+  }
+  else {
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 beta (%d%%)",
+                 int(oldSpeedPercentage));
+  }
+  mainWindow->label(&(windowTitleBuf[0]));
+}
+
+void Plus4EmuGUI::updateDisplay_windowMode()
+{
+  if (((displayMode ^ oldDisplayMode) & 2) != 0) {
+    if ((displayMode & 2) != 0)
+      mainWindow->fullscreen();
+    else
+      mainWindow->fullscreen_off(32, 32,
+                                 config.display.width, config.display.height);
+  }
+  resizeWindow(config.display.width, config.display.height);
+  Fl::redraw();
+  Fl::flush();
+  int     newWindowWidth = mainWindow->w();
+  int     newWindowHeight = mainWindow->h();
+  if ((displayMode & 1) == 0) {
+    if (newWindowWidth >= 745)
+      statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
+    else
+      statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
+                                 360, 30);
+    statusDisplayGroup->show();
+    mainMenuBar->resize(0, 0, 300, 30);
+    mainMenuBar->show();
+    diskStatusDisplayGroup->resize(345, 0, 30, 30);
+    diskStatusDisplayGroup->show();
+  }
+  else {
+    statusDisplayGroup->hide();
+    mainMenuBar->hide();
+    diskStatusDisplayGroup->hide();
+  }
+  oldWindowWidth = -1;
+  oldWindowHeight = -1;
+  oldDisplayMode = displayMode;
+  if ((displayMode & 1) == 0)
+    emulatorWindow->cursor(FL_CURSOR_DEFAULT);
+  else
+    emulatorWindow->cursor(FL_CURSOR_NONE);
+  mainWindow->redraw();
+  mainMenuBar->redraw();
+  diskStatusDisplayGroup->redraw();
+  statusDisplayGroup->redraw();
+}
+
+void Plus4EmuGUI::updateDisplay_windowSize()
+{
+  int     newWindowWidth = mainWindow->w();
+  int     newWindowHeight = mainWindow->h();
+  if ((displayMode & 1) == 0) {
+    int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
+    emulatorWindow->resize(0, 30, newWindowWidth, h);
+    if ((displayMode & 2) == 0) {
+      config.display.width = newWindowWidth;
+      config.display.height = h;
+    }
+    if (newWindowWidth >= 745)
+      statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
+    else
+      statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
+                                 360, 30);
+    mainMenuBar->resize(0, 0, 300, 30);
+    diskStatusDisplayGroup->resize(345, 0, 30, 30);
+  }
+  else {
+    emulatorWindow->resize(0, 0, newWindowWidth, newWindowHeight);
+    if ((displayMode & 2) == 0) {
+      config.display.width = newWindowWidth;
+      config.display.height = newWindowHeight;
+    }
+  }
+  oldWindowWidth = newWindowWidth;
+  oldWindowHeight = newWindowHeight;
+  mainWindow->redraw();
+  mainMenuBar->redraw();
+  diskStatusDisplayGroup->redraw();
+  statusDisplayGroup->redraw();
+}
+
+void Plus4EmuGUI::updateDisplay_floppyStats(
+    uint64_t newFloppyDriveHeadPositions)
+{
+  uint16_t  oldHeadPos = uint16_t(oldFloppyDriveHeadPositions) & 0xFFFF;
+  uint16_t  headPos = uint16_t(newFloppyDriveHeadPositions) & 0xFFFF;
+  if (headPos != oldHeadPos) {
+    if (headPos == 0xFFFF) {
+      driveATrackDisplay->value(-1.0);
+      driveASideDisplay->value(-1.0);
+      driveASectorDisplay->value(-1.0);
+    }
+    else {
+      driveATrackDisplay->value(double((headPos >> 8) & 0x7F));
+      driveASideDisplay->value(double((headPos >> 7) & 0x01));
+      driveASectorDisplay->value(double(headPos & 0x7F));
+    }
+  }
+  oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 16) & 0xFFFF;
+  headPos = uint16_t(newFloppyDriveHeadPositions >> 16) & 0xFFFF;
+  if (headPos != oldHeadPos) {
+    if (headPos == 0xFFFF) {
+      driveBTrackDisplay->value(-1.0);
+      driveBSideDisplay->value(-1.0);
+      driveBSectorDisplay->value(-1.0);
+    }
+    else {
+      driveBTrackDisplay->value(double((headPos >> 8) & 0x7F));
+      driveBSideDisplay->value(double((headPos >> 7) & 0x01));
+      driveBSectorDisplay->value(double(headPos & 0x7F));
+    }
+  }
+  oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 32) & 0xFFFF;
+  headPos = uint16_t(newFloppyDriveHeadPositions >> 32) & 0xFFFF;
+  if (headPos != oldHeadPos) {
+    if (headPos == 0xFFFF) {
+      driveCTrackDisplay->value(-1.0);
+      driveCSideDisplay->value(-1.0);
+      driveCSectorDisplay->value(-1.0);
+    }
+    else {
+      driveCTrackDisplay->value(double((headPos >> 8) & 0x7F));
+      driveCSideDisplay->value(double((headPos >> 7) & 0x01));
+      driveCSectorDisplay->value(double(headPos & 0x7F));
+    }
+  }
+  oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 48) & 0xFFFF;
+  headPos = uint16_t(newFloppyDriveHeadPositions >> 48) & 0xFFFF;
+  if (headPos != oldHeadPos) {
+    if (headPos == 0xFFFF) {
+      driveDTrackDisplay->value(-1.0);
+      driveDSideDisplay->value(-1.0);
+      driveDSectorDisplay->value(-1.0);
+    }
+    else {
+      driveDTrackDisplay->value(double((headPos >> 8) & 0x7F));
+      driveDSideDisplay->value(double((headPos >> 7) & 0x01));
+      driveDSectorDisplay->value(double(headPos & 0x7F));
+    }
+  }
+  oldFloppyDriveHeadPositions = newFloppyDriveHeadPositions;
+}
+
 void Plus4EmuGUI::updateDisplay(double t)
 {
 #ifdef WIN32
@@ -136,8 +290,6 @@ void Plus4EmuGUI::updateDisplay(double t)
     return;
   }
   updateDisplayEntered = true;
-  int     newWindowWidth = mainWindow->w();
-  int     newWindowHeight = mainWindow->h();
   Plus4Emu::VMThread::VMThreadStatus  vmThreadStatus(vmThread);
   if (vmThreadStatus.threadStatus != 0) {
     exitFlag = true;
@@ -145,84 +297,15 @@ void Plus4EmuGUI::updateDisplay(double t)
       errorFlag = true;
   }
   if (displayMode != oldDisplayMode) {
-    if (((displayMode ^ oldDisplayMode) & 2) != 0) {
-      if ((displayMode & 2) != 0)
-        mainWindow->fullscreen();
-      else
-        mainWindow->fullscreen_off(32, 32,
-                                   config.display.width, config.display.height);
-    }
-    resizeWindow(config.display.width, config.display.height);
-    Fl::redraw();
-    Fl::flush();
-    newWindowWidth = mainWindow->w();
-    newWindowHeight = mainWindow->h();
-    if ((displayMode & 1) == 0) {
-      if (newWindowWidth >= 745)
-        statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
-      else
-        statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
-                                   360, 30);
-      statusDisplayGroup->show();
-      mainMenuBar->resize(0, 0, 300, 30);
-      mainMenuBar->show();
-      diskStatusDisplayGroup->resize(345, 0, 30, 30);
-      diskStatusDisplayGroup->show();
-    }
-    else {
-      statusDisplayGroup->hide();
-      mainMenuBar->hide();
-      diskStatusDisplayGroup->hide();
-    }
-    oldWindowWidth = -1;
-    oldWindowHeight = -1;
-    oldDisplayMode = displayMode;
-    if ((displayMode & 1) == 0)
-      emulatorWindow->cursor(FL_CURSOR_DEFAULT);
-    else
-      emulatorWindow->cursor(FL_CURSOR_NONE);
-    mainWindow->redraw();
-    mainMenuBar->redraw();
-    diskStatusDisplayGroup->redraw();
-    statusDisplayGroup->redraw();
+    updateDisplay_windowMode();
   }
-  else if (newWindowWidth != oldWindowWidth ||
-           newWindowHeight != oldWindowHeight) {
-    if ((displayMode & 1) == 0) {
-      int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
-      emulatorWindow->resize(0, 30, newWindowWidth, h);
-      if ((displayMode & 2) == 0) {
-        config.display.width = newWindowWidth;
-        config.display.height = h;
-      }
-      if (newWindowWidth >= 745)
-        statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
-      else
-        statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
-                                   360, 30);
-      mainMenuBar->resize(0, 0, 300, 30);
-      diskStatusDisplayGroup->resize(345, 0, 30, 30);
-    }
-    else {
-      emulatorWindow->resize(0, 0, newWindowWidth, newWindowHeight);
-      if ((displayMode & 2) == 0) {
-        config.display.width = newWindowWidth;
-        config.display.height = newWindowHeight;
-      }
-    }
-    oldWindowWidth = newWindowWidth;
-    oldWindowHeight = newWindowHeight;
-    mainWindow->redraw();
-    mainMenuBar->redraw();
-    diskStatusDisplayGroup->redraw();
-    statusDisplayGroup->redraw();
+  else if (mainWindow->w() != oldWindowWidth ||
+           mainWindow->h() != oldWindowHeight) {
+    updateDisplay_windowSize();
   }
   if (vmThreadStatus.isPaused != oldPauseFlag) {
     oldPauseFlag = vmThreadStatus.isPaused;
-    if (vmThreadStatus.isPaused)
-      mainWindow->label("plus4emu 1.2.2 beta (paused)");
-    else
-      mainWindow->label("plus4emu 1.2.2 beta");
+    updateDisplay_windowTitle();
   }
   int   newDemoStatus = (vmThreadStatus.isRecordingDemo ?
                          2 : (vmThreadStatus.isPlayingDemo ? 1 : 0));
@@ -310,17 +393,27 @@ void Plus4EmuGUI::updateDisplay(double t)
     Fl_Color  ledColors_[4] = {
       FL_BLACK, Fl_Color(128), FL_GREEN, Fl_Color(87)
     };
-    driveAStatusDisplay->color(ledColors_[tmp & 3U]);
-    driveAStatusDisplay->redraw();
-    driveBStatusDisplay->color(ledColors_[(tmp >> 8) & 3U]);
-    driveBStatusDisplay->redraw();
-    driveCStatusDisplay->color(ledColors_[(tmp >> 16) & 3U]);
-    driveCStatusDisplay->redraw();
-    driveDStatusDisplay->color(ledColors_[(tmp >> 24) & 3U]);
-    driveDStatusDisplay->redraw();
+    driveALEDDisplay->color(ledColors_[tmp & 3U]);
+    driveALEDDisplay->redraw();
+    driveBLEDDisplay->color(ledColors_[(tmp >> 8) & 3U]);
+    driveBLEDDisplay->redraw();
+    driveCLEDDisplay->color(ledColors_[(tmp >> 16) & 3U]);
+    driveCLEDDisplay->redraw();
+    driveDLEDDisplay->color(ledColors_[(tmp >> 24) & 3U]);
+    driveDLEDDisplay->redraw();
   }
   if (printerWindow->window->shown())
     printerWindow->updateWindow(vmThreadStatus);
+  if (statsTimer.getRealTime() >= 0.25) {
+    statsTimer.reset();
+    int32_t newSpeedPercentage = int32_t(vmThreadStatus.speedPercentage + 0.5f);
+    if (newSpeedPercentage != oldSpeedPercentage) {
+      oldSpeedPercentage = newSpeedPercentage;
+      updateDisplay_windowTitle();
+    }
+    if (vmThreadStatus.floppyDriveHeadPositions != oldFloppyDriveHeadPositions)
+      updateDisplay_floppyStats(vmThreadStatus.floppyDriveHeadPositions);
+  }
   Fl::wait(t);
   updateDisplayEntered = false;
 }
@@ -363,6 +456,7 @@ void Plus4EmuGUI::run()
   mainWindow->resizable((Fl_Widget *) 0);
   emulatorWindow->color(36, 36);
   resizeWindow(config.display.width, config.display.height);
+  updateDisplay_windowTitle();
   // create menu bar
   mainMenuBar->add("File/Configuration/Load from ASCII file",
                    (char *) 0, &menuCallback_File_LoadConfig, (void *) this);
@@ -402,8 +496,20 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_SavePRG, (void *) this);
   mainMenuBar->add("File/Quit",
                    (char *) 0, &menuCallback_File_Quit, (void *) this);
-  mainMenuBar->add("Machine/Full speed (Alt+W)",
+  mainMenuBar->add("Machine/Speed/No limit (Alt+W)",
                    (char *) 0, &menuCallback_Machine_FullSpeed, (void *) this);
+  mainMenuBar->add("Machine/Speed/10%",
+                   (char *) 0, &menuCallback_Machine_Speed_10, (void *) this);
+  mainMenuBar->add("Machine/Speed/25%",
+                   (char *) 0, &menuCallback_Machine_Speed_25, (void *) this);
+  mainMenuBar->add("Machine/Speed/50%",
+                   (char *) 0, &menuCallback_Machine_Speed_50, (void *) this);
+  mainMenuBar->add("Machine/Speed/100%",
+                   (char *) 0, &menuCallback_Machine_Speed_100, (void *) this);
+  mainMenuBar->add("Machine/Speed/200%",
+                   (char *) 0, &menuCallback_Machine_Speed_200, (void *) this);
+  mainMenuBar->add("Machine/Speed/400%",
+                   (char *) 0, &menuCallback_Machine_Speed_400, (void *) this);
   mainMenuBar->add("Machine/Tape/Select image file (F6)",
                    (char *) 0, &menuCallback_Machine_OpenTape, (void *) this);
   mainMenuBar->add("Machine/Tape/Play (Shift + F9)",
@@ -508,9 +614,11 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FileIODir, (void *) this);
   mainMenuBar->add("Debug/Start debugger (Alt+M)",
                    (char *) 0, &menuCallback_Debug_OpenDebugger, (void *) this);
+  mainMenuBar->add("Debug/Show drive stats",
+                   (char *) 0, &menuCallback_Debug_DriveStats, (void *) this);
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Full speed (Alt+W)")
+  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Speed/No limit (Alt+W)")
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
   mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/Enable printer")
@@ -931,6 +1039,9 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
     try {
       bool    updateMenuFlag_ = config.soundSettingsChanged;
       config.applySettings();
+      vmThread.setSpeedPercentage(config.vm.speedPercentage == 100U &&
+                                  config.sound.enabled ?
+                                  0 : int(config.vm.speedPercentage));
       if (config.joystickSettingsChanged) {
         joystickInput.setConfiguration(config.joystick);
         config.joystickSettingsChanged = false;
@@ -963,11 +1074,11 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 void Plus4EmuGUI::updateMenu()
 {
   const Fl_Menu_Item  *m;
-  m = mainMenuBar->find_item("Machine/Full speed (Alt+W)");
-  if (config.sound.enabled)
-    const_cast<Fl_Menu_Item *>(m)->clear();
-  else
+  m = mainMenuBar->find_item("Machine/Speed/No limit (Alt+W)");
+  if (config.vm.speedPercentage == 0U)
     const_cast<Fl_Menu_Item *>(m)->set();
+  else
+    const_cast<Fl_Menu_Item *>(m)->clear();
   m = mainMenuBar->find_item("File/Stop sound recording");
   if (config.sound.file.length() > 0)
     const_cast<Fl_Menu_Item *>(m)->activate();
@@ -1596,7 +1707,87 @@ void Plus4EmuGUI::menuCallback_Machine_FullSpeed(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
-    gui_.config["sound.enabled"] = !gui_.config.sound.enabled;
+    Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
+        gui_.config["vm.speedPercentage"];
+    cv = ((unsigned int) cv == 0U ? 100U : 0U);
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_10(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 10U;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_25(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 25U;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_50(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 50U;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_100(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 100U;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_200(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 200U;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_Speed_400(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    gui_.config["vm.speedPercentage"] = 400U;
     gui_.applyEmulatorConfiguration();
   }
   catch (std::exception& e) {
@@ -2366,6 +2557,13 @@ void Plus4EmuGUI::menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v)
     gui_.debugWindowOpenFlag = true;
   }
   gui_.debugWindow->show();
+}
+
+void Plus4EmuGUI::menuCallback_Debug_DriveStats(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  gui_.floppyStatsWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Help_About(Fl_Widget *o, void *v)

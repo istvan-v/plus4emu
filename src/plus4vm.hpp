@@ -97,7 +97,11 @@ namespace Plus4 {
     uint64_t  demoTimeCnt;
     SID       *sid_;
     int32_t   soundOutputAccumulator;
+    int32_t   soundOutputSignal;
     bool      sidEnabled;
+    bool      sidModel6581;
+    bool      digiBlasterEnabled;
+    uint8_t   digiBlasterOutput;
     bool      tapeCallbackFlag;
     bool      is1541HighAccuracy;
     struct FloppyDrive_ {
@@ -190,6 +194,10 @@ namespace Plus4 {
      * Set TED input clock frequency (defaults to 17734475 Hz).
      */
     virtual void setVideoFrequency(size_t freq_);
+    /*!
+     * Set SID emulation parameters.
+     */
+    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
     /*!
      * Set state of key 'keyCode' (0 to 127).
      */

@@ -201,6 +201,10 @@ namespace Plus4Emu {
      */
     virtual void setVideoFrequency(size_t freq_);
     /*!
+     * Set SID emulation parameters.
+     */
+    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
+    /*!
      * Set state of key 'keyCode' (0 to 127).
      */
     virtual void setKeyboardState(int keyCode, bool isPressed);

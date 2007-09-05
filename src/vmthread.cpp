@@ -51,6 +51,10 @@ namespace Plus4Emu {
       joinFlag(false),
       errorFlag(false),
       pauseFlag(true),
+      timesliceLength(0.0f),
+      avgTimesliceLength(0.002f),
+      prvTime(0.0),
+      nxtTime(0.0),
       userData(userData_),
       errorCallback(&defaultErrorCallback),
       processCallback((void (*)(void *)) 0)
@@ -63,6 +67,7 @@ namespace Plus4Emu {
     vmStatus.tapeSampleRate = 0L;
     vmStatus.tapeSampleSize = 0;
     vmStatus.floppyDriveLEDState = 0U;
+    vmStatus.floppyDriveHeadPositions = (~(uint64_t(0)));
     vmStatus.printerHeadPositionX = -1;
     vmStatus.printerHeadPositionY = -1;
     vmStatus.printerOutputChanged = true;
@@ -102,6 +107,7 @@ namespace Plus4Emu {
     vmStatus.tapeSampleRate = 0L;
     vmStatus.tapeSampleSize = 0;
     vmStatus.floppyDriveLEDState = 0U;
+    vmStatus.floppyDriveHeadPositions = (~(uint64_t(0)));
     vmStatus.printerHeadPositionX = -1;
     vmStatus.printerHeadPositionY = -1;
     vmStatus.printerOutputChanged = true;
@@ -161,16 +167,25 @@ namespace Plus4Emu {
       m->nextMessage = freeMessageStack;
       freeMessageStack = m;
     }
+    nxtTime += double(timesliceLength);
     mutex_.unlock();
     // run emulation, or wait if paused
+    double  curTime = prvTime;
     try {
       if (processCallback)
         processCallback(userData);
       if (!pauseFlag) {
         vm.run(2000);
+        curTime = speedTimer.getRealTime();
+        if (curTime < nxtTime)
+          Timer::wait(nxtTime - curTime);
+        else if (curTime > (nxtTime + 0.25))
+          nxtTime = curTime;
       }
       else {
         Timer::wait(0.01);
+        curTime = speedTimer.getRealTime();
+        nxtTime = curTime;
       }
     }
     catch (Exception& e) {
@@ -188,6 +203,11 @@ namespace Plus4Emu {
     }
     // update status information
     mutex_.lock();
+    float   deltaTime = float(curTime - prvTime);
+    prvTime = curTime;
+    deltaTime = (deltaTime > 0.0f ? deltaTime : 0.0f);
+    deltaTime = (deltaTime < 1.0f ? deltaTime : 1.0f);
+    avgTimesliceLength = (avgTimesliceLength * 0.995f) + (deltaTime * 0.005f);
     try {
       vm.getVMStatus(vmStatus);
     }
@@ -221,6 +241,10 @@ namespace Plus4Emu {
     : threadStatus(0)
   {
     vmThread_.mutex_.lock();
+    if (vmThread_.avgTimesliceLength > 0.0000002f)
+      speedPercentage = 0.2f / vmThread_.avgTimesliceLength;
+    else
+      speedPercentage = 1000000.0f;
     isPaused = vmThread_.pauseFlag;
     isRecordingDemo = vmThread_.vmStatus.isRecordingDemo;
     isPlayingDemo = vmThread_.vmStatus.isPlayingDemo;
@@ -230,6 +254,7 @@ namespace Plus4Emu {
     tapeSampleRate = vmThread_.vmStatus.tapeSampleRate;
     tapeSampleSize = vmThread_.vmStatus.tapeSampleSize;
     floppyDriveLEDState = vmThread_.vmStatus.floppyDriveLEDState;
+    floppyDriveHeadPositions = vmThread_.vmStatus.floppyDriveHeadPositions;
     printerHeadPositionX = vmThread_.vmStatus.printerHeadPositionX;
     printerHeadPositionY = vmThread_.vmStatus.printerHeadPositionY;
     printerOutputChanged = vmThread_.vmStatus.printerOutputChanged;
@@ -380,6 +405,16 @@ namespace Plus4Emu {
   void VMThread::setProcessCallback(void (*func)(void *userData_))
   {
     processCallback = func;
+  }
+
+  void VMThread::setSpeedPercentage(int speedPercentage_)
+  {
+    mutex_.lock();
+    if (speedPercentage_ > 0)
+      timesliceLength = 0.2f / float(speedPercentage_);
+    else
+      timesliceLength = 0.0f;
+    mutex_.unlock();
   }
 
   VMThread::Message * VMThread::allocateMessage_()

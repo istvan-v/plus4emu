@@ -482,7 +482,7 @@ namespace Plus4 {
           uint8_t tmp = sound_channel_2_noise_state & uint8_t(0xB3);
           tmp = tmp ^ (tmp >> 1);
           tmp = tmp ^ (tmp >> 2);
-          tmp = (tmp ^ (tmp >> 4)) & uint8_t(1);
+          tmp = tmp ^ (tmp >> 4);
           sound_channel_2_noise_output ^= tmp;
           sound_channel_2_noise_output &= uint8_t(1);
           sound_channel_2_noise_state <<= 1;

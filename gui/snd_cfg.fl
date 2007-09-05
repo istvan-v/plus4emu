@@ -49,7 +49,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.sound.enabled = (o->value() != 0);
   gui.config.soundSettingsChanged = true;
 }}
-          tooltip {Note: disabling sound output will also make the emulation run faster than real time} xywh {20 55 170 25} color 39 labelcolor 52
+          xywh {20 55 170 25} color 39 labelcolor 52
         }
         Fl_Light_Button soundHighQualityValuator {
           label {High quality}

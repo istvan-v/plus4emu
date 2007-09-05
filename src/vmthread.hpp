@@ -34,6 +34,7 @@ namespace Plus4Emu {
       // and non-zero if it has terminated (negative if the termination
       // occured due to an error).
       int       threadStatus;
+      float     speedPercentage;
       bool      isPaused;
       // --------
       VMThreadStatus(VMThread& vmThread_);
@@ -44,6 +45,7 @@ namespace Plus4Emu {
     unsigned long   lockCnt;
     ThreadLock      threadLock1;
     ThreadLock      threadLock2;
+    Timer           speedTimer;
     Message         *messageQueue;
     Message         *lastMessage;
     Message         *freeMessageStack;
@@ -52,6 +54,10 @@ namespace Plus4Emu {
     bool            joinFlag;
     bool            errorFlag;
     bool            pauseFlag;
+    float           timesliceLength;
+    float           avgTimesliceLength;
+    double          prvTime;
+    double          nxtTime;
     VirtualMachine::VMStatus  vmStatus;
     void            *userData;
     void            (*errorCallback)(void *userData_, const char *msg);
@@ -153,6 +159,11 @@ namespace Plus4Emu {
      * case the error callback will be called to display the error message.
      */
     void setProcessCallback(void (*func)(void *userData_));
+    /*!
+     * Set maximum emulation speed as a percentage (100 = normal speed).
+     * A zero or negative value means no limit.
+     */
+    void setSpeedPercentage(int speedPercentage_);
   // --------------------------------------------------------------------------
    private:
     virtual void run();
