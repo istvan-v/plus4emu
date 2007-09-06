@@ -313,8 +313,8 @@ class Plus4EmuDisplaySndConfiguration {
     sound.latency = 0.05;
     sound.hwPeriods = 8;
 #else
-    sound.latency = 0.075;
-    sound.hwPeriods = 12;
+    sound.latency = 0.1;
+    sound.hwPeriods = 16;
 #endif
     sound.dcBlockFilter1Freq = 10.0;
     sound.dcBlockFilter2Freq = 10.0;
