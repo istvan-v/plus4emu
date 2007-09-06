@@ -1,5 +1,5 @@
-plus4emu 1.2.2 beta
-===================
+plus4emu 1.2.2
+==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -77,14 +77,16 @@ Plus/4 emulation
     fast loaders is fairly good in recent versions of the emulator
   * light pen emulation (compatible with the Trojan Light Pen software)
   * hardware level 1526/MPS-802 printer emulation
-  * load and automatically start .PRG, .D64, or .D81 file on start-up
-  * .PRG, .D64, and .D81 files can be associated with plus4emu on
+  * load and automatically start .PRG, .P00, .D64, or .D81 file on
+    start-up
+  * .PRG, .P00, .D64, and .D81 files can be associated with plus4emu on
     Windows
-  * SID chip (MOS 8580) emulation using version 0.16 of the reSID
-    library written by Dag Lem
-  * optional extension ROM (p4fileio.rom) for direct access to .PRG
-    files by the load/save commands on the host system in a single user
-    selectable directory; this ROM also includes a tape turbo
+  * SID chip (MOS 6581 and 8580) emulation using version 0.16 of the
+    reSID library written by Dag Lem; the Digi-Blaster expansion by
+    Solder is also supported
+  * optional extension ROM (p4fileio.rom) for direct access to .PRG and
+    .P00 files by the load/save commands on the host system in a single
+    user selectable directory; this ROM also includes a tape turbo
 
 Installation
 ============
@@ -308,7 +310,8 @@ Reset / Reset clock frequencies
 
   Reset clock frequency and timing settings to those specified in the
   machine configuration; this is normally only useful after demo
-  playback, which may override the settings.
+  playback, which may override the settings. The SID configuration,
+  which may be changed by snapshot or demo loading, is also reset.
 
 Reset / Reset machine configuration (Shift + F11)
 

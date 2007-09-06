@@ -110,10 +110,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 beta (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 beta (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.2 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -1632,7 +1632,7 @@ void Plus4EmuGUI::menuCallback_File_LoadPRG(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files (*.prg)",
+    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files (*.{prg,p00})",
                         Fl_File_Chooser::SINGLE, "Load program file")) {
       if (gui_.lockVMThread()) {
         try {

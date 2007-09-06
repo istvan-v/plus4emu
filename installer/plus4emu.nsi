@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.2-beta.exe"
+  OutFile "plus4emu-1.2.2.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -199,9 +199,10 @@ Section "Source code" SecSrc
 
 SectionEnd
 
-Section "Associate .prg, .d64, and .d81 files with plus4emu" SecAssoc
+Section "Associate .prg, .p00, .d64, and .d81 files with plus4emu" SecAssoc
 
   WriteRegStr HKCR ".prg" "" "Plus4Emu.PRGFile"
+  WriteRegStr HKCR ".p00" "" "Plus4Emu.PRGFile"
   WriteRegStr HKCR "Plus4Emu.PRGFile" "" "Plus/4 program"
   WriteRegStr HKCR "Plus4Emu.PRGFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,0"
   WriteRegStr HKCR "Plus4Emu.PRGFile\shell" "" "open"
@@ -254,7 +255,7 @@ SectionEnd
   ;Language strings
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
   LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
-  LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg, .d64, and .d81 files with plus4emu"
+  LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg, .p00, .d64, and .d81 files with plus4emu"
   LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
 
   ;Assign language strings to sections
