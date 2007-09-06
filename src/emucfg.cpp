@@ -135,7 +135,7 @@ namespace Plus4Emu {
                                 display.bufferingMode, int(0),
                                 displaySettingsChanged, 0.0, 2.0);
     defineConfigurationVariable(*this, "display.quality",
-                                display.quality, int(2),
+                                display.quality, int(1),
                                 displaySettingsChanged, 0.0, 3.0);
     defineConfigurationVariable(*this, "display.brightness",
                                 display.brightness, 0.0,
@@ -177,13 +177,13 @@ namespace Plus4Emu {
                                 display.blue.gamma, 1.0,
                                 displaySettingsChanged, 0.25, 4.0);
     defineConfigurationVariable(*this, "display.effects.param1",
-                                display.effects.param1, 0.35,
+                                display.effects.param1, 0.4,
                                 displaySettingsChanged, 0.0, 0.5);
     defineConfigurationVariable(*this, "display.effects.param2",
-                                display.effects.param2, 0.7,
+                                display.effects.param2, 0.75,
                                 displaySettingsChanged, 0.0, 1.0);
     defineConfigurationVariable(*this, "display.effects.param3",
-                                display.effects.param3, 0.3,
+                                display.effects.param3, 0.25,
                                 displaySettingsChanged, 0.0, 1.0);
     defineConfigurationVariable(*this, "display.width",
                                 display.width, 768,
@@ -199,7 +199,7 @@ namespace Plus4Emu {
                                 sound.enabled, true,
                                 soundSettingsChanged);
     defineConfigurationVariable(*this, "sound.highQuality",
-                                sound.highQuality, false,
+                                sound.highQuality, true,
                                 soundSettingsChanged);
     defineConfigurationVariable(*this, "sound.device",
                                 sound.device, int(0),
@@ -211,7 +211,7 @@ namespace Plus4Emu {
                                 sound.latency, 0.1,
                                 soundSettingsChanged, 0.005, 0.5);
     defineConfigurationVariable(*this, "sound.hwPeriods",
-                                sound.hwPeriods, int(4),
+                                sound.hwPeriods, int(16),
                                 soundSettingsChanged, 2.0, 16.0);
     defineConfigurationVariable(*this, "sound.swPeriods",
                                 sound.swPeriods, int(3),
@@ -229,13 +229,13 @@ namespace Plus4Emu {
                                 sound.dcBlockFilter2Freq, 10.0,
                                 soundSettingsChanged, 1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.equalizer.mode",
-                                sound.equalizer.mode, int(-1),
+                                sound.equalizer.mode, int(2),
                                 soundSettingsChanged, -1.0, 2.0);
     defineConfigurationVariable(*this, "sound.equalizer.frequency",
-                                sound.equalizer.frequency, 1000.0,
+                                sound.equalizer.frequency, 14000.0,
                                 soundSettingsChanged, 1.0, 100000.0);
     defineConfigurationVariable(*this, "sound.equalizer.level",
-                                sound.equalizer.level, 1.0,
+                                sound.equalizer.level, 0.355,
                                 soundSettingsChanged, 0.0001, 100.0);
     defineConfigurationVariable(*this, "sound.equalizer.q",
                                 sound.equalizer.q, 0.7071,

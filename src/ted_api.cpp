@@ -31,7 +31,7 @@ static const float brightnessToYTable[8] = {
 
 static const float colorPhaseTable[16] = {
      0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-   127.5f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    1.5f,  213.0f
+   128.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    2.0f,  213.0f
 };
 
 namespace Plus4 {
@@ -47,11 +47,10 @@ namespace Plus4 {
       y = brightnessToYTable[b];
     if (c > 1) {
       float   phs = colorPhaseTable[c] * 3.14159265f / 180.0f;
-      u = float(std::cos(phs)) * 0.18f;
-      v = float(std::sin(phs)) * 0.18f;
-      if (y > 0.975f)
-        y = 0.975f;
+      u = float(std::cos(phs)) * 0.178f;
+      v = float(std::sin(phs)) * 0.178f;
     }
+    y *= 0.985f;
     // R = (V / 0.877) + Y
     // B = (U / 0.492) + Y
     // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
