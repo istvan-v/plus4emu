@@ -541,7 +541,7 @@ namespace Plus4 {
             savedVideoLine = (videoLine + 1) & 0x01FF;
             switch (savedVideoLine) {
             case 251:                   // vertical blanking, equalization start
-              videoOutputFlags |= uint8_t(0x10);
+              videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
               vsyncFlags |= uint8_t(0x40);
               updateRenderFunctionFlag = true;
               break;
@@ -560,6 +560,8 @@ namespace Plus4 {
               break;
             case 269:                   // vertical blanking end
               videoOutputFlags &= uint8_t(0xED);
+              if (videoColumn == 98)
+                videoOutputFlags |= uint8_t(0x08);
               updateRenderFunctionFlag = true;
               break;
             }
@@ -569,7 +571,7 @@ namespace Plus4 {
             savedVideoLine = (videoLine + 1) & 0x01FF;
             switch (savedVideoLine) {
             case 226:                   // vertical blanking, equalization start
-              videoOutputFlags |= uint8_t(0x10);
+              videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
               vsyncFlags |= uint8_t(0x40);
               updateRenderFunctionFlag = true;
               break;
@@ -588,6 +590,8 @@ namespace Plus4 {
               break;
             case 244:                   // vertical blanking end
               videoOutputFlags &= uint8_t(0xED);
+              if (videoColumn == 98)
+                videoOutputFlags |= uint8_t(0x08);
               updateRenderFunctionFlag = true;
               break;
             }
