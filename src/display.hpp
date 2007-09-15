@@ -41,10 +41,11 @@ namespace Plus4Emu {
       // false: PAL (this is the default)
       // true:  NTSC
       bool    ntscMode;
-      // function to convert 8-bit color indices to red, green, and blue
-      // levels (in the range 0.0 to 1.0); if NULL, greyscale is assumed
-      void    (*indexToRGBFunc)(uint8_t color,
-                                float& red, float& green, float& blue);
+      // function to convert 8-bit color indices to Y, U, and V levels
+      // (in the range 0.0 to 1.0, -0.436 to 0.436, and -0.615 to 0.615);
+      // if NULL, greyscale is assumed
+      void    (*indexToYUVFunc)(uint8_t color, bool isNTSC,
+                                float& y, float& u, float& v);
       // brightness (default: 0.0)
       double  brightness;
       // contrast (default: 1.0)
@@ -81,14 +82,15 @@ namespace Plus4Emu {
       // (calculated as (screen_width / screen_height) / (X_res / Y_res))
       double  pixelAspectRatio;
      private:
-      static void defaultIndexToRGBFunc(uint8_t color,
-                                        float& red, float& green, float& blue);
+      static void defaultIndexToYUVFunc(uint8_t color, bool isNTSC,
+                                        float& y, float& u, float& v);
       void copyDisplayParameters(const DisplayParameters& src);
      public:
       DisplayParameters();
       DisplayParameters(const DisplayParameters& dp);
       DisplayParameters& operator=(const DisplayParameters& dp);
-      void applyColorCorrection(float& red, float& green, float& blue) const;
+      void yuvToRGBWithColorCorrection(float& red, float& green, float& blue,
+                                       float y, float u, float v) const;
     };
     // ----------------
     VideoDisplay()
@@ -126,11 +128,11 @@ namespace Plus4Emu {
   template <typename T>
   class VideoDisplayColormap {
    private:
-    // 16x256 colormap entries:
-    //   0x0000-0x00FF: normal colors (no phase shift)
+    // 18x256 colormap entries:
+    //   0x0000-0x00FF: normal PAL colors (no phase shift)
     //   0x0100-0x01FF: +33 degrees phase shift (PAL input on NTSC display)
     //   0x0200-0x02FF: -33 degrees phase shift (NTSC input on PAL display)
-    //   0x0300-0x03FF: invert phase
+    //   0x0300-0x03FF: PAL colors, invert phase
     //   0x0400-0x04FF: +33 degrees phase shift, invert phase
     //   0x0500-0x05FF: -33 degrees phase shift, invert phase
     //   0x0600-0x06FF: no colors (U = 0, V = 0)
@@ -143,6 +145,8 @@ namespace Plus4Emu {
     //   0x0D00-0x0DFF: NTSC burst, -33 degrees phase shift
     //   0x0E00-0x0EFF: NTSC burst, -33 degrees phase shift, invert phase
     //   0x0F00-0x0FFF: NTSC burst, invert phase
+    //   0x1000-0x10FF: normal NTSC colors (no phase shift)
+    //   0x1100-0x11FF: NTSC colors, invert phase
     T       *colormapData;
     T       **colormapTable;
     static T pixelConv(float r, float g, float b);

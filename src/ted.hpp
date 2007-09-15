@@ -614,7 +614,7 @@ namespace Plus4 {
      * 'buf' contains 'nBytes' bytes of video data. A group of four pixels
      * is encoded as a flags byte followed by 1 or 4 colormap indices (in the
      * first case, all four pixels have the same color) which can be converted
-     * to RGB format with the convertPixelToRGB() function.
+     * to YUV format with the convertPixelToYUV() function.
      * The flags byte can be the sum of any of the following values:
      *   128: composite sync
      *    64: vertical sync
@@ -750,8 +750,8 @@ namespace Plus4 {
     // callbacks can be set.
     void setCallback(void (*func)(void *userData), void *userData_,
                      int flags_ = 1);
-    static void convertPixelToRGB(uint8_t color,
-                                  float& red, float& green, float& blue);
+    static void convertPixelToYUV(uint8_t color, bool isNTSC,
+                                  float& y, float& u, float& v);
     // save snapshot
     void saveState(Plus4Emu::File::Buffer&);
     void saveState(Plus4Emu::File&);

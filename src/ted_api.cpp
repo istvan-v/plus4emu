@@ -25,38 +25,44 @@
 #include <cstring>
 #include <cmath>
 
-static const float brightnessToYTable[8] = {
-   0.180f,  0.238f,  0.265f,  0.345f,  0.508f,  0.661f,  0.748f,  0.993f
+static const float brightnessToYTable[9] = {
+  2.00f,  2.40f,  2.55f,  2.70f,  2.90f,  3.30f,  3.60f,  4.10f,  4.80f
 };
 
-static const float colorPhaseTable[16] = {
-     0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-   128.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    2.0f,  213.0f
+static const float colorPhaseTablePAL[16] = {
+    0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
+  129.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    2.5f,  213.0f
+};
+
+static const float colorPhaseTableNTSC[16] = {
+    0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
+  125.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,   23.0f,  213.0f
 };
 
 namespace Plus4 {
 
-  void TED7360::convertPixelToRGB(uint8_t color,
-                                  float& red, float& green, float& blue)
+  void TED7360::convertPixelToYUV(uint8_t color, bool isNTSC,
+                                  float& y, float& u, float& v)
   {
+    const float yMin = 0.032f;
+    const float yMax = 0.975f;
     uint8_t c = color & 0x0F;
     uint8_t b = (color & 0x70) >> 4;
-    float   y = 0.032f;
-    float   u = 0.0f, v = 0.0f;
-    if (c)
-      y = brightnessToYTable[b];
+    y = brightnessToYTable[(c != 0 ? (b + 1) : 0)] - brightnessToYTable[0];
+    y = y * (yMax - yMin) / (brightnessToYTable[8] - brightnessToYTable[0]);
+    y = y + yMin;
+    u = 0.0f;
+    v = 0.0f;
     if (c > 1) {
-      float   phs = colorPhaseTable[c] * 3.14159265f / 180.0f;
+      float   phs = 0.0f;
+      if (!isNTSC)
+        phs = colorPhaseTablePAL[c];
+      else
+        phs = colorPhaseTableNTSC[c];
+      phs *= (3.14159265f / 180.0f);
       u = float(std::cos(phs)) * 0.178f;
       v = float(std::sin(phs)) * 0.178f;
     }
-    y *= 0.985f;
-    // R = (V / 0.877) + Y
-    // B = (U / 0.492) + Y
-    // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
-    red = (v / 0.877f) + y;
-    blue = (u / 0.492f) + y;
-    green = (y - ((red * 0.299f) + (blue * 0.114f))) / 0.587f;
   }
 
   void TED7360::setCPUClockMultiplier(int clk)

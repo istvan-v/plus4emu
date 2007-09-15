@@ -402,7 +402,7 @@ namespace Plus4Emu {
     try {
       VideoDisplayColormap<uint32_t>  colormap_;
       VideoDisplay::DisplayParameters dp;
-      dp.indexToRGBFunc = displayParameters.indexToRGBFunc;
+      dp.indexToYUVFunc = displayParameters.indexToYUVFunc;
       colormap_.setDisplayParameters(dp);
       imageBuf_ = new unsigned char[768 * 576 * 3];
       for (size_t yc = 2; yc < 578; yc++) {

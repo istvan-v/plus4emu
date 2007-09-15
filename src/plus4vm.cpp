@@ -712,7 +712,7 @@ namespace Plus4 {
       // use PLUS/4 colormap
       Plus4Emu::VideoDisplay::DisplayParameters
           dp(display.getDisplayParameters());
-      dp.indexToRGBFunc = &TED7360::convertPixelToRGB;
+      dp.indexToYUVFunc = &TED7360::convertPixelToYUV;
       display.setDisplayParameters(dp);
     }
     catch (...) {
