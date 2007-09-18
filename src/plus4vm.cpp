@@ -22,6 +22,7 @@
 #include "soundio.hpp"
 #include "plus4vm.hpp"
 #include "disasm.hpp"
+#include "videorec.hpp"
 
 #include <cstdio>
 #include <cmath>
@@ -650,6 +651,12 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::videoCaptureCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.videoCapture->runOneCycle(vm.ted->getVideoOutput(), vm.soundOutputSignal);
+  }
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -692,7 +699,8 @@ namespace Plus4 {
       printerTimeRemaining(0),
       printerOutputChangedFlag(true),
       printer1525Mode(false),
-      printerFormFeedOn(false)
+      printerFormFeedOn(false),
+      videoCapture((Plus4Emu::VideoCapture *) 0)
   {
     sid_ = new SID();
     try {
@@ -721,10 +729,18 @@ namespace Plus4 {
       delete sid_;
       throw;
     }
+    // --------
+    videoCapture = new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV);
+    videoCapture->openFile("/tmp/test.avi");
+    ted->setCallback(&videoCaptureCallback, this, 3);
   }
 
   Plus4VM::~Plus4VM()
   {
+    if (videoCapture) {
+      delete videoCapture;
+      videoCapture = (Plus4Emu::VideoCapture *) 0;
+    }
     try {
       // FIXME: cannot handle errors here
       stopDemo();

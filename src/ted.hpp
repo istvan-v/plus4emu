@@ -740,6 +740,12 @@ namespace Plus4 {
     // returns true if the raster position is at xPos (0..455), yPos (0..311),
     // and the pixel at that position is not black
     bool checkLightPen(int xPos, int yPos) const;
+    // returns a pointer to the video output generated in the last cycle (four
+    // pixels); the format is the same as in the case of videoOutputCallback()
+    inline const uint8_t * getVideoOutput() const
+    {
+      return (&(video_buf[prv_video_buf_pos]));
+    }
     // Set function to be called by runOneCycle(). 'flags_' can be one of
     // the following values:
     //   0: do not call the function (removes a previously set callback)

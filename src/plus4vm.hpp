@@ -27,6 +27,10 @@
 #include "vm.hpp"
 #include "serial.hpp"
 
+namespace Plus4Emu {
+  class VideoCapture;
+}
+
 namespace Plus4 {
 
   class SID;
@@ -128,6 +132,7 @@ namespace Plus4 {
     bool      printerOutputChangedFlag;
     bool      printer1525Mode;
     bool      printerFormFeedOn;
+    Plus4Emu::VideoCapture  *videoCapture;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -144,6 +149,7 @@ namespace Plus4 {
     static void videoBreakPointCheckCallback(void *userData);
     static void lightPenCallback(void *userData);
     static void printerCallback(void *userData);
+    static void videoCaptureCallback(void *userData);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();

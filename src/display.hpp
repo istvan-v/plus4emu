@@ -214,6 +214,16 @@ namespace Plus4Emu {
       outBuf[7] = tmp;
       return 2;
     }
+    inline T * getFirstEntry()
+    {
+      return colormapData;
+    }
+    inline T *getNextEntry(T *p)
+    {
+      if (p == &(colormapData[0x11FF]))
+        return (T *) 0;
+      return (p + 1);
+    }
   };
 
 }       // namespace Plus4Emu
