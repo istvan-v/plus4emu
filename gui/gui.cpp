@@ -1635,8 +1635,10 @@ void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
                          "Record video output to AVI file")) {
       return;
     }
-    if (tmp.length() < 1)
+    if (tmp.length() < 1) {
       gui_.menuCallback_File_StopAVIRecord(o, v);
+      return;
+    }
     if (gui_.lockVMThread()) {
       try {
         gui_.vm.openVideoCapture(&Plus4EmuGUI::errorMessageCallback,

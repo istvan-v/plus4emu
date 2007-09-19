@@ -218,7 +218,7 @@ namespace Plus4Emu {
     {
       return colormapData;
     }
-    inline T *getNextEntry(T *p)
+    inline T * getNextEntry(T *p)
     {
       if (p == &(colormapData[0x11FF]))
         return (T *) 0;
