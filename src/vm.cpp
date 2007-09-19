@@ -395,6 +395,30 @@ namespace Plus4Emu {
     vmStatus_.printerLEDState = getPrinterLEDState();
   }
 
+  void VirtualMachine::openVideoCapture(
+        void (*errorCallback_)(void *userData, const char *msg),
+        void (*fileNameCallback_)(void *userData, std::string& fileName),
+        void *userData_)
+  {
+    (void) errorCallback_;
+    (void) fileNameCallback_;
+    (void) userData_;
+  }
+
+  void VirtualMachine::setVideoCaptureFile(const std::string& fileName_)
+  {
+    (void) fileName_;
+  }
+
+  void VirtualMachine::setVideoCaptureNTSCMode(bool ntscMode)
+  {
+    (void) ntscMode;
+  }
+
+  void VirtualMachine::closeVideoCapture()
+  {
+  }
+
   void VirtualMachine::setDiskImageFile(int n, const std::string& fileName_,
                                         int driveType)
   {

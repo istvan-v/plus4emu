@@ -132,6 +132,7 @@ namespace Plus4 {
     bool      printerOutputChangedFlag;
     bool      printer1525Mode;
     bool      printerFormFeedOn;
+    bool      videoCaptureNTSCMode;
     Plus4Emu::VideoCapture  *videoCapture;
     // ----------------
     void stopDemoPlayback();
@@ -263,6 +264,32 @@ namespace Plus4 {
      * individual status values).
      */
     virtual void getVMStatus(VirtualMachine::VMStatus& vmStatus_);
+    /*!
+     * Create video capture object if it does not exist yet, and optionally
+     * set callbacks for printing error messages and asking for a new output
+     * file on reaching 2 GB file size.
+     */
+    virtual void openVideoCapture(
+        void (*errorCallback_)(void *userData, const char *msg) =
+            (void (*)(void *, const char *)) 0,
+        void (*fileNameCallback_)(void *userData, std::string& fileName) =
+            (void (*)(void *, std::string&)) 0,
+        void *userData_ = (void *) 0);
+    /*!
+     * Set output file name for video capture (an empty file name means no
+     * file is written). openVideoCapture() should be called first.
+     */
+    virtual void setVideoCaptureFile(const std::string& fileName_);
+    /*!
+     * Set if the TV standard for video capture should be PAL (false, default)
+     * or NTSC (true).
+     */
+    virtual void setVideoCaptureNTSCMode(bool ntscMode);
+    /*!
+     * Destroy video capture object, freeing all allocated memory and closing
+     * the output file.
+     */
+    virtual void closeVideoCapture();
     // -------------------------- DISK AND FILE I/O ---------------------------
     /*!
      * Load disk image for drive 'n' (counting from zero); an empty file

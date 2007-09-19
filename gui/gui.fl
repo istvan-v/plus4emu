@@ -130,6 +130,8 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_File_StopDemo(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_RecordSound(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_StopSndRecord(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_File_RecordVideo(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_File_StopAVIRecord(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_Screenshot(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_LoadPRG(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_File_SavePRG(Fl_Widget *o, void *v);} {}

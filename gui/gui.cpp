@@ -484,10 +484,14 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_StopDemo, (void *) this);
   mainMenuBar->add("File/Load demo (F7)",
                    (char *) 0, &menuCallback_File_LoadFile, (void *) this);
-  mainMenuBar->add("File/Record sound file",
+  mainMenuBar->add("File/Record audio/Start...",
                    (char *) 0, &menuCallback_File_RecordSound, (void *) this);
-  mainMenuBar->add("File/Stop sound recording",
+  mainMenuBar->add("File/Record audio/Stop",
                    (char *) 0, &menuCallback_File_StopSndRecord, (void *) this);
+  mainMenuBar->add("File/Record video/Start...",
+                   (char *) 0, &menuCallback_File_RecordVideo, (void *) this);
+  mainMenuBar->add("File/Record video/Stop",
+                   (char *) 0, &menuCallback_File_StopAVIRecord, (void *) this);
   mainMenuBar->add("File/Save screenshot",
                    (char *) 0, &menuCallback_File_Screenshot, (void *) this);
   mainMenuBar->add("File/Load program (F8)",
@@ -618,6 +622,8 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Debug_DriveStats, (void *) this);
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
+  const_cast<Fl_Menu_Item *>(mainMenuBar->find_item(
+                                 "File/Record video/Stop"))->deactivate();
   mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Speed/No limit (Alt+W)")
                         - mainMenuBar->menu()),
                     FL_MENU_TOGGLE);
@@ -1079,7 +1085,7 @@ void Plus4EmuGUI::updateMenu()
     const_cast<Fl_Menu_Item *>(m)->set();
   else
     const_cast<Fl_Menu_Item *>(m)->clear();
-  m = mainMenuBar->find_item("File/Stop sound recording");
+  m = mainMenuBar->find_item("File/Record audio/Stop");
   if (config.sound.file.length() > 0)
     const_cast<Fl_Menu_Item *>(m)->activate();
   else
@@ -1613,6 +1619,62 @@ void Plus4EmuGUI::menuCallback_File_StopSndRecord(Fl_Widget *o, void *v)
   try {
     gui_.config["sound.file"] = std::string("");
     gui_.applyEmulatorConfiguration(true);
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
+{
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    std::string tmp;
+    if (!gui_.browseFile(tmp, gui_.soundFileDirectory, "AVI files (*.avi)",
+                         Fl_File_Chooser::CREATE,
+                         "Record video output to AVI file")) {
+      return;
+    }
+    if (tmp.length() < 1)
+      gui_.menuCallback_File_StopAVIRecord(o, v);
+    if (gui_.lockVMThread()) {
+      try {
+        gui_.vm.openVideoCapture(&Plus4EmuGUI::errorMessageCallback,
+                                 &Plus4EmuGUI::fileNameCallback, v);
+        const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(
+                                       "File/Record video/Stop"))->activate();
+        gui_.vm.setVideoCaptureFile(tmp);
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
+  }
+  catch (std::exception& e) {
+    gui_.menuCallback_File_StopAVIRecord(o, v);
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_File_StopAVIRecord(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  try {
+    if (gui_.lockVMThread()) {
+      try {
+        gui_.vm.closeVideoCapture();
+        const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(
+                                       "File/Record video/Stop"))->deactivate();
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+    }
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());

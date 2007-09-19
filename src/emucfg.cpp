@@ -412,6 +412,7 @@ namespace Plus4Emu {
     if (displaySettingsChanged) {
       // assume that changing the display settings will not fail
       vm_.setEnableDisplay(display.enabled);
+      vm_.setVideoCaptureNTSCMode(display.ntscMode);
       VideoDisplay::DisplayParameters dp(videoDisplay.getDisplayParameters());
       dp.displayQuality = display.quality;
       dp.bufferingMode = display.bufferingMode;

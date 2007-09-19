@@ -99,6 +99,10 @@ namespace Plus4Emu {
     VideoDisplay::DisplayParameters displayParameters;
     AudioConverter                  *audioConverter;
     VideoDisplayColormap<uint32_t>  colormap;
+    void        (*errorCallback)(void *userData, const char *msg);
+    void        *errorCallbackUserData;
+    void        (*fileNameCallback)(void *userData, std::string& fileName);
+    void        *fileNameCallbackUserData;
     // ----------------
     void lineDone();
     void decodeLine();
@@ -107,9 +111,12 @@ namespace Plus4Emu {
     void writeFrame();
     void writeAVIHeader();
     void closeFile();
+    void errorMessage(const char *msg);
     static void aviHeader_writeFourCC(uint8_t*& bufp, const char *s);
     static void aviHeader_writeUInt16(uint8_t*& bufp, uint16_t n);
     static void aviHeader_writeUInt32(uint8_t*& bufp, uint32_t n);
+    static void defaultErrorCallback(void *userData, const char *msg);
+    static void defaultFileNameCallback(void *userData, std::string& fileName);
    public:
     VideoCapture(void indexToYUVFunc(uint8_t color, bool isNTSC,
                                      float& y, float& u, float& v) =
@@ -119,6 +126,11 @@ namespace Plus4Emu {
     void setClockFrequency(size_t freq_);
     void setNTSCMode(bool ntscMode);
     void openFile(const char *fileName);
+    void setErrorCallback(void (*func)(void *userData, const char *msg),
+                          void *userData_);
+    void setFileNameCallback(void (*func)(void *userData,
+                                          std::string& fileName),
+                             void *userData_);
   };
 
 }       // namespace Plus4Emu

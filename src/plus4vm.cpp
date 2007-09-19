@@ -458,6 +458,8 @@ namespace Plus4 {
     if ((singleClockFreq >> 2) != soundClockFrequency) {
       soundClockFrequency = singleClockFreq >> 2;
       setAudioConverterSampleRate(float(long(soundClockFrequency)));
+      if (videoCapture)
+        videoCapture->setClockFrequency(soundClockFrequency << 3);
     }
   }
 
@@ -654,7 +656,8 @@ namespace Plus4 {
   void Plus4VM::videoCaptureCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
-    vm.videoCapture->runOneCycle(vm.ted->getVideoOutput(), vm.soundOutputSignal);
+    vm.videoCapture->runOneCycle(vm.ted->getVideoOutput(),
+                                 vm.soundOutputSignal);
   }
 
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
@@ -700,6 +703,7 @@ namespace Plus4 {
       printerOutputChangedFlag(true),
       printer1525Mode(false),
       printerFormFeedOn(false),
+      videoCaptureNTSCMode(false),
       videoCapture((Plus4Emu::VideoCapture *) 0)
   {
     sid_ = new SID();
@@ -729,10 +733,6 @@ namespace Plus4 {
       delete sid_;
       throw;
     }
-    // --------
-    videoCapture = new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV);
-    videoCapture->openFile("/tmp/test.avi");
-    ted->setCallback(&videoCaptureCallback, this, 3);
   }
 
   Plus4VM::~Plus4VM()
@@ -1194,6 +1194,46 @@ namespace Plus4 {
     if (demoFile != (Plus4Emu::File *) 0 && !isRecordingDemo)
       stopDemoRecording(true);
     vmStatus_.isRecordingDemo = isRecordingDemo;
+  }
+
+  void Plus4VM::openVideoCapture(
+        void (*errorCallback_)(void *userData, const char *msg),
+        void (*fileNameCallback_)(void *userData, std::string& fileName),
+        void *userData_)
+  {
+    if (!videoCapture) {
+      videoCapture = new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV);
+      videoCapture->setClockFrequency(soundClockFrequency << 3);
+      ted->setCallback(&videoCaptureCallback, this, 3);
+    }
+    videoCapture->setErrorCallback(errorCallback_, userData_);
+    videoCapture->setFileNameCallback(fileNameCallback_, userData_);
+    videoCapture->setNTSCMode(videoCaptureNTSCMode);
+  }
+
+  void Plus4VM::setVideoCaptureFile(const std::string& fileName_)
+  {
+    if (!videoCapture) {
+      throw Plus4Emu::Exception("internal error: "
+                                "video capture object does not exist");
+    }
+    videoCapture->openFile(fileName_.c_str());
+  }
+
+  void Plus4VM::setVideoCaptureNTSCMode(bool ntscMode)
+  {
+    videoCaptureNTSCMode = ntscMode;
+    if (videoCapture)
+      videoCapture->setNTSCMode(ntscMode);
+  }
+
+  void Plus4VM::closeVideoCapture()
+  {
+    if (videoCapture) {
+      ted->setCallback(&videoCaptureCallback, this, 0);
+      delete videoCapture;
+      videoCapture = (Plus4Emu::VideoCapture *) 0;
+    }
   }
 
   void Plus4VM::setDiskImageFile(int n, const std::string& fileName_,

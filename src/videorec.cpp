@@ -52,6 +52,19 @@ namespace Plus4Emu {
     }
   }
 
+  void VideoCapture::defaultErrorCallback(void *userData, const char *msg)
+  {
+    (void) userData;
+    throw Exception(msg);
+  }
+
+  void VideoCapture::defaultFileNameCallback(void *userData,
+                                             std::string& fileName)
+  {
+    (void) userData;
+    fileName.clear();
+  }
+
   // --------------------------------------------------------------------------
 
   VideoCapture::VideoCapture(
@@ -110,7 +123,11 @@ namespace Plus4Emu {
       framesWritten(0),
       displayParameters(),
       audioConverter((AudioConverter *) 0),
-      colormap()
+      colormap(),
+      errorCallback(&defaultErrorCallback),
+      errorCallbackUserData((void *) this),
+      fileNameCallback(&defaultFileNameCallback),
+      fileNameCallbackUserData((void *) this)
   {
     try {
       size_t  bufSize1 = size_t(videoWidth * videoHeight);
@@ -592,6 +609,23 @@ namespace Plus4Emu {
     if (!aviFile)
       return;
     try {
+      size_t  headerSize = 0x0146;
+      size_t  frameSize = size_t(((videoWidth * videoHeight * 3) / 2)
+                                 + ((sampleRate / frameRate) * 2) + 16);
+      size_t  fileSize = headerSize + (frameSize * framesWritten);
+      if (fileSize >= 0x7F800000) {
+        closeFile();
+        try {
+          errorMessage("AVI file is too large, starting new output file");
+        }
+        catch (...) {
+        }
+        std::string fileName = "";
+        fileNameCallback(fileNameCallbackUserData, fileName);
+        if (fileName.length() > 0) {
+          openFile(fileName.c_str());
+        }
+      }
       if (std::fseek(aviFile, 0L, SEEK_END) < 0)
         throw Exception("error seeking AVI file");
       size_t  nBytes = size_t((videoWidth * videoHeight * 3) / 2);
@@ -620,13 +654,20 @@ namespace Plus4Emu {
           throw Exception("error writing AVI file");
       }
     }
-    catch (...) {
+    catch (std::exception& e) {
       closeFile();
-      throw;
+      errorMessage(e.what());
+      return;
     }
     framesWritten++;
-    if (!(framesWritten & 15))
-      writeAVIHeader();
+    if (!(framesWritten & 15)) {
+      try {
+        writeAVIHeader();
+      }
+      catch (std::exception& e) {
+        errorMessage(e.what());
+      }
+    }
   }
 
   void VideoCapture::aviHeader_writeFourCC(uint8_t*& bufp, const char *s)
@@ -849,16 +890,58 @@ namespace Plus4Emu {
     }
   }
 
+  void VideoCapture::errorMessage(const char *msg)
+  {
+    if (msg == (char *) 0 || msg[0] == '\0')
+      msg = "unknown video capture error";
+    errorCallback(errorCallbackUserData, msg);
+  }
+
   void VideoCapture::openFile(const char *fileName)
   {
     closeFile();
     if (fileName == (char *) 0 || fileName[0] == '\0')
       return;
     aviFile = std::fopen(fileName, "wb");
-    if (!aviFile)
-      throw Exception("error opening AVI file");
+    if (!aviFile) {
+      errorMessage("error opening AVI file");
+      return;
+    }
     framesWritten = 0;
-    writeAVIHeader();
+    try {
+      writeAVIHeader();
+    }
+    catch (std::exception& e) {
+      errorMessage(e.what());
+    }
+  }
+
+  void VideoCapture::setErrorCallback(void (*func)(void *userData,
+                                                   const char *msg),
+                                      void *userData_)
+  {
+    if (func) {
+      errorCallback = func;
+      errorCallbackUserData = userData_;
+    }
+    else {
+      errorCallback = &defaultErrorCallback;
+      errorCallbackUserData = (void *) this;
+    }
+  }
+
+  void VideoCapture::setFileNameCallback(void (*func)(void *userData,
+                                                      std::string& fileName),
+                                         void *userData_)
+  {
+    if (func) {
+      fileNameCallback = func;
+      fileNameCallbackUserData = userData_;
+    }
+    else {
+      fileNameCallback = &defaultFileNameCallback;
+      fileNameCallbackUserData = (void *) this;
+    }
   }
 
 }       // namespace Plus4Emu
