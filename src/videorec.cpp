@@ -22,6 +22,10 @@
 #include "snd_conv.hpp"
 #include "videorec.hpp"
 
+#include <cmath>
+
+static const size_t aviHeaderSize = 0x0146;
+
 namespace Plus4Emu {
 
   VideoCapture::AudioConverter_::AudioConverter_(VideoCapture& videoCapture_,
@@ -71,7 +75,6 @@ namespace Plus4Emu {
       void (*indexToYUVFunc)(uint8_t color, bool isNTSC,
                              float& y, float& u, float& v))
     : aviFile((std::FILE *) 0),
-      videoBuf((uint32_t *) 0),
       lineBuf((uint8_t *) 0),
       frameBuf0Y((uint8_t *) 0),
       frameBuf0V((uint8_t *) 0),
@@ -86,6 +89,7 @@ namespace Plus4Emu {
       outBufV((uint8_t *) 0),
       outBufU((uint8_t *) 0),
       audioBuf((int16_t *) 0),
+      duplicateFrameBitmap((uint8_t *) 0),
       audioBufReadPos(0),
       audioBufWritePos(0),
       audioBufSamples(0),
@@ -121,6 +125,8 @@ namespace Plus4Emu {
       lineBufLength(0),
       lineBufFlags(0x00),
       framesWritten(0),
+      duplicateFrames(0),
+      fileSize(0),
       displayParameters(),
       audioConverter((AudioConverter *) 0),
       colormap(),
@@ -130,17 +136,15 @@ namespace Plus4Emu {
       fileNameCallbackUserData((void *) this)
   {
     try {
-      size_t  bufSize1 = size_t(videoWidth * videoHeight);
-      size_t  bufSize2 = 720 / 4;
-      size_t  bufSize3 = (bufSize1 + 3) >> 2;
-      size_t  bufSize4 = (bufSize3 + 3) >> 2;
-      size_t  totalSize = bufSize1 + bufSize2;
+      size_t    bufSize1 = size_t(videoWidth * videoHeight);
+      size_t    bufSize2 = 720 / 4;
+      size_t    bufSize3 = (bufSize1 + 3) >> 2;
+      size_t    bufSize4 = (bufSize3 + 3) >> 2;
+      size_t    totalSize = bufSize2;
       totalSize += (3 * (bufSize3 + bufSize4 + bufSize4));
       totalSize += (bufSize1 + bufSize3 + bufSize3);
-      videoBuf = new uint32_t[totalSize];
-      for (size_t i = 0; i < bufSize1; i++)
-        videoBuf[i] = 0x08020010U;
-      totalSize = bufSize1;
+      uint32_t  *videoBuf = new uint32_t[totalSize];
+      totalSize = 0;
       lineBuf = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
       std::memset(lineBuf, 0x00, 720);
       totalSize += bufSize2;
@@ -185,6 +189,9 @@ namespace Plus4Emu {
       audioBuf = new int16_t[audioBufSize * 8];
       for (int i = 0; i < (audioBufSize * 8); i++)
         audioBuf[i] = int16_t(0);
+      size_t  nBytes = 0x08000000 / size_t(audioBufSize);
+      duplicateFrameBitmap = new uint8_t[nBytes];
+      std::memset(duplicateFrameBitmap, 0x00, nBytes);
       if (indexToYUVFunc)
         displayParameters.indexToYUVFunc = indexToYUVFunc;
       // scale video signal to YCrCb range
@@ -195,18 +202,24 @@ namespace Plus4Emu {
       // change pixel format for more efficient processing
       uint32_t  *p = colormap.getFirstEntry();
       while (p) {
-        (*p) = (((*p) & 0x00FF0000U) << 4) | (((*p) & 0x0000FF00U) << 2)
-               | ((*p) & 0x000000FFU);
+        uint32_t  tmp = *p;
+        tmp = ((tmp & 0x00FF0000U) << 4) | ((tmp & 0x0000FF00U) << 2)
+              | (tmp & 0x000000FFU);
+        if (!(tmp & 0x000000F0U))
+          tmp = (tmp & 0x0FF3FC00U) | 0x00000010U;
+        (*p) = tmp;
         p = colormap.getNextEntry(p);
       }
       audioConverter = new AudioConverter_(*this, 221681.0f, float(sampleRate));
       audioConverter->setEqualizerParameters(2, 14000.0f, 0.355f, 0.7071f);
     }
     catch (...) {
-      if (videoBuf)
-        delete[] videoBuf;
+      if (lineBuf)
+        delete[] lineBuf;
       if (audioBuf)
         delete[] audioBuf;
+      if (duplicateFrameBitmap)
+        delete[] duplicateFrameBitmap;
       if (audioConverter)
         delete audioConverter;
       throw;
@@ -217,8 +230,9 @@ namespace Plus4Emu {
   VideoCapture::~VideoCapture()
   {
     closeFile();
-    delete[] videoBuf;
+    delete[] lineBuf;
     delete[] audioBuf;
+    delete[] duplicateFrameBitmap;
     delete audioConverter;
   }
 
@@ -376,21 +390,23 @@ namespace Plus4Emu {
 
   void VideoCapture::decodeLine()
   {
-    if (curLine < 2 || curLine >= 578)
+    int       lineNum = (curLine - 2);
+    if (lineNum < 0 || lineNum >= 576)
       return;
+    lineNum = lineNum >> 1;
     int       xc = 0;
     size_t    bufPos = 0;
-    uint8_t   videoFlags =
-        uint8_t(((~curLine) & 2) | ((lineBufFlags & 0x80) >> 2));
+    uint8_t   videoFlags = uint8_t(((lineNum & 1) << 1)
+                                   | ((lineBufFlags & 0x80) >> 2));
     size_t    pixelSample2 = lineBufLength;
     if (displayParameters.ntscMode)
       videoFlags = videoFlags | 0x10;
-    uint32_t  *bufp = &(videoBuf[((curLine - 2) >> 1) * videoWidth]);
+    uint32_t  tmpBuf2[512];
     if (pixelSample2 == (displayParameters.ntscMode ? 392 : 490) &&
         !(lineBufFlags & 0x01)) {
       // faster code for the case when resampling is not needed
       do {
-        size_t  n = colormap.convertFourPixels(&(bufp[xc]),
+        size_t  n = colormap.convertFourPixels(&(tmpBuf2[xc]),
                                                &(lineBuf[bufPos]),
                                                videoFlags);
         bufPos = bufPos + n;
@@ -436,10 +452,39 @@ namespace Plus4Emu {
           readPos++;
         }
         // average two pixels for improved quality
-        bufp[xc++] = ((pixel0 + pixel1 + 0x00100401U) >> 1) & 0x0FF3FCFFU;
+        tmpBuf2[xc++] = ((pixel0 + pixel1 + 0x00100401U) >> 1) & 0x0FF3FCFFU;
       } while (xc < videoWidth);
       for ( ; xc < videoWidth; xc++)
-        bufp[xc] = 0x08020010U;
+        tmpBuf2[xc] = 0x08020010U;
+    }
+    int       offs = lineNum * videoWidth;
+    uint8_t   *yPtr = &(frameBuf1Y[offs]);
+    offs = (lineNum >> 1) * (videoWidth >> 1);
+    uint8_t   *vPtr = &(frameBuf1V[offs]);
+    uint8_t   *uPtr = &(frameBuf1U[offs]);
+    if (!(lineNum & 1)) {
+      for (xc = 0; xc < videoWidth; xc += 2) {
+        uint32_t  pixel0 = tmpBuf2[xc + 0];
+        uint32_t  pixel1 = tmpBuf2[xc + 1];
+        yPtr[xc + 0] = uint8_t(pixel0 & 0xFFU);
+        yPtr[xc + 1] = uint8_t(pixel1 & 0xFFU);
+        pixel0 = pixel0 + pixel1 + 0x00100400U;
+        vPtr[xc >> 1] = uint8_t((pixel0 >> 21) & 0xFFU);
+        uPtr[xc >> 1] = uint8_t((pixel0 >> 11) & 0xFFU);
+      }
+    }
+    else {
+      for (xc = 0; xc < videoWidth; xc += 2) {
+        uint32_t  pixel0 = tmpBuf2[xc + 0];
+        uint32_t  pixel1 = tmpBuf2[xc + 1];
+        yPtr[xc + 0] = uint8_t(pixel0 & 0xFFU);
+        yPtr[xc + 1] = uint8_t(pixel1 & 0xFFU);
+        pixel0 = pixel0 + pixel1 + 0x00100400U;
+        uint32_t  v = ((pixel0 >> 21) & 0xFFU) + uint32_t(vPtr[xc >> 1]) + 1U;
+        vPtr[xc >> 1] = uint8_t(v >> 1);
+        uint32_t  u = ((pixel0 >> 11) & 0xFFU) + uint32_t(uPtr[xc >> 1]) + 1U;
+        uPtr[xc >> 1] = uint8_t(u >> 1);
+      }
     }
   }
 
@@ -455,69 +500,35 @@ namespace Plus4Emu {
           int32_t(((frameTime - frame0Time) + int64_t(0x80000000UL)) >> 32);
       int32_t   t1 =
           int32_t(((frame1Time - frameTime) + int64_t(0x80000000UL)) >> 32);
-      double    tt = double(t0) / (double(t0) + double(t1));
-      int32_t   scaleFac0 = int32_t(t1 * (1.0 - tt) + 0.5);
-      int32_t   scaleFac1 = int32_t(t1 * (1.0 + tt) + 0.5);
+      double    tt = 3.1415926535898 * (double(t1) / (double(t0) + double(t1)));
+      tt = 0.3183098861838 * (tt - std::sin(tt));
+      int32_t   scaleFac0 = int32_t(double(t1) * tt + 0.5);
+      int32_t   scaleFac1 = int32_t(double(t1) * (2.0 - tt) + 0.5);
       int32_t   outScale = int32_t(0x20000000) / (interpTime - t1);
       interpTime = t1;
-      for (int y = 0; y < videoHeight; y += 2) {
-        uint8_t   *frameBuf0Line0Y = &(frameBuf0Y[(y + 0) * videoWidth]);
-        uint8_t   *frameBuf0Line1Y = &(frameBuf0Y[(y + 1) * videoWidth]);
-        uint8_t   *frameBuf0VPtr = &(frameBuf0V[(y >> 1) * (videoWidth >> 1)]);
-        uint8_t   *frameBuf0UPtr = &(frameBuf0U[(y >> 1) * (videoWidth >> 1)]);
-        uint8_t   *frameBuf1Line0Y = &(frameBuf1Y[(y + 0) * videoWidth]);
-        uint8_t   *frameBuf1Line1Y = &(frameBuf1Y[(y + 1) * videoWidth]);
-        uint8_t   *frameBuf1VPtr = &(frameBuf1V[(y >> 1) * (videoWidth >> 1)]);
-        uint8_t   *frameBuf1UPtr = &(frameBuf1U[(y >> 1) * (videoWidth >> 1)]);
-        int32_t   *interpBufLine0Y = &(interpBufY[(y + 0) * videoWidth]);
-        int32_t   *interpBufLine1Y = &(interpBufY[(y + 1) * videoWidth]);
-        int32_t   *interpBufVPtr = &(interpBufV[(y >> 1) * (videoWidth >> 1)]);
-        int32_t   *interpBufUPtr = &(interpBufU[(y >> 1) * (videoWidth >> 1)]);
-        uint8_t   *outBufLine0Y = &(outBufY[(y + 0) * videoWidth]);
-        uint8_t   *outBufLine1Y = &(outBufY[(y + 1) * videoWidth]);
-        uint8_t   *outBufVPtr = &(outBufV[(y >> 1) * (videoWidth >> 1)]);
-        uint8_t   *outBufUPtr = &(outBufU[(y >> 1) * (videoWidth >> 1)]);
-        for (int x = 0; x < videoWidth; x += 2) {
-          int32_t   tmp;
-          tmp = (int32_t(frameBuf0Line0Y[x + 0]) * scaleFac0)
-                + (int32_t(frameBuf1Line0Y[x + 0]) * scaleFac1);
-          outBufLine0Y[x + 0] =
-              uint8_t(((((interpBufLine0Y[x + 0] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufLine0Y[x + 0] = tmp;
-          tmp = (int32_t(frameBuf0Line0Y[x + 1]) * scaleFac0)
-                + (int32_t(frameBuf1Line0Y[x + 1]) * scaleFac1);
-          outBufLine0Y[x + 1] =
-              uint8_t(((((interpBufLine0Y[x + 1] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufLine0Y[x + 1] = tmp;
-          tmp = (int32_t(frameBuf0Line1Y[x + 0]) * scaleFac0)
-                + (int32_t(frameBuf1Line1Y[x + 0]) * scaleFac1);
-          outBufLine1Y[x + 0] =
-              uint8_t(((((interpBufLine1Y[x + 0] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufLine1Y[x + 0] = tmp;
-          tmp = (int32_t(frameBuf0Line1Y[x + 1]) * scaleFac0)
-                + (int32_t(frameBuf1Line1Y[x + 1]) * scaleFac1);
-          outBufLine1Y[x + 1] =
-              uint8_t(((((interpBufLine1Y[x + 1] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufLine1Y[x + 1] = tmp;
-          tmp = (int32_t(frameBuf0VPtr[x >> 1]) * scaleFac0)
-                + (int32_t(frameBuf1VPtr[x >> 1]) * scaleFac1);
-          outBufVPtr[x >> 1] =
-              uint8_t(((((interpBufVPtr[x >> 1] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufVPtr[x >> 1] = tmp;
-          tmp = (int32_t(frameBuf0UPtr[x >> 1]) * scaleFac0)
-                + (int32_t(frameBuf1UPtr[x >> 1]) * scaleFac1);
-          outBufUPtr[x >> 1] =
-              uint8_t(((((interpBufUPtr[x >> 1] - tmp) >> 8) * outScale)
-                       + 0x00200000) >> 22);
-          interpBufUPtr[x >> 1] = tmp;
-        }
-      }
-      writeFrame();
+      int       n = (videoWidth * videoHeight * 3) / 2;
+      int       i = 0;
+      uint8_t   frameChanged = 0x00;
+      do {
+        int32_t   tmp;
+        uint8_t   tmp2;
+        tmp = (int32_t(frameBuf0Y[i]) * scaleFac0)
+              + (int32_t(frameBuf1Y[i]) * scaleFac1);
+        tmp2 = uint8_t(((((interpBufY[i] - tmp) >> 8) * outScale)
+                        + 0x00200000) >> 22);
+        interpBufY[i] = tmp;
+        frameChanged |= (tmp2 ^ outBufY[i]);
+        outBufY[i] = tmp2;
+        i++;
+        tmp = (int32_t(frameBuf0Y[i]) * scaleFac0)
+              + (int32_t(frameBuf1Y[i]) * scaleFac1);
+        tmp2 = uint8_t(((((interpBufY[i] - tmp) >> 8) * outScale)
+                        + 0x00200000) >> 22);
+        interpBufY[i] = tmp;
+        frameChanged |= (tmp2 ^ outBufY[i]);
+        outBufY[i] = tmp2;
+      } while (++i < n);
+      writeFrame(bool(frameChanged));
       audioBufReadPos += audioBufSize;
       while (audioBufReadPos >= (audioBufSize * 8))
         audioBufReadPos -= (audioBufSize * 8);
@@ -531,6 +542,20 @@ namespace Plus4Emu {
     curTime += (frameTime - frame1Time);
     frame0Time += (frameTime - frame1Time);
     frame1Time = frameTime;
+    uint8_t   *tmp = frameBuf0Y;
+    frameBuf0Y = frameBuf1Y;
+    frameBuf1Y = tmp;
+    tmp = frameBuf0V;
+    frameBuf0V = frameBuf1V;
+    frameBuf1V = tmp;
+    tmp = frameBuf0U;
+    frameBuf0U = frameBuf1U;
+    frameBuf1U = tmp;
+    std::memset(frameBuf1Y, 0x10, size_t(videoWidth * videoHeight));
+    std::memset(frameBuf1V, 0x80,
+                size_t((videoWidth >> 1) * (videoHeight >> 1)));
+    std::memset(frameBuf1U, 0x80,
+                size_t((videoWidth >> 1) * (videoHeight >> 1)));
   }
 
   void VideoCapture::resampleFrame()
@@ -540,79 +565,37 @@ namespace Plus4Emu {
     int32_t   scaleFac =
         int32_t(((frame1Time - frame0Time) + int64_t(0x80000000UL)) >> 32);
     interpTime += scaleFac;
-    {
-      uint8_t   *tmp = frameBuf0Y;
-      frameBuf0Y = frameBuf1Y;
-      frameBuf1Y = tmp;
-      tmp = frameBuf0V;
-      frameBuf0V = frameBuf1V;
-      frameBuf1V = tmp;
-      tmp = frameBuf0U;
-      frameBuf0U = frameBuf1U;
-      frameBuf1U = tmp;
-    }
-    for (int y = 0; y < videoHeight; y += 2) {
-      uint32_t  *videoBufLine0 = &(videoBuf[(y + 0) * videoWidth]);
-      uint32_t  *videoBufLine1 = &(videoBuf[(y + 1) * videoWidth]);
-      uint8_t   *frameBuf0Line0Y = &(frameBuf0Y[(y + 0) * videoWidth]);
-      uint8_t   *frameBuf0Line1Y = &(frameBuf0Y[(y + 1) * videoWidth]);
-      uint8_t   *frameBuf0VPtr = &(frameBuf0V[(y >> 1) * (videoWidth >> 1)]);
-      uint8_t   *frameBuf0UPtr = &(frameBuf0U[(y >> 1) * (videoWidth >> 1)]);
-      uint8_t   *frameBuf1Line0Y = &(frameBuf1Y[(y + 0) * videoWidth]);
-      uint8_t   *frameBuf1Line1Y = &(frameBuf1Y[(y + 1) * videoWidth]);
-      uint8_t   *frameBuf1VPtr = &(frameBuf1V[(y >> 1) * (videoWidth >> 1)]);
-      uint8_t   *frameBuf1UPtr = &(frameBuf1U[(y >> 1) * (videoWidth >> 1)]);
-      int32_t   *interpBufLine0Y = &(interpBufY[(y + 0) * videoWidth]);
-      int32_t   *interpBufLine1Y = &(interpBufY[(y + 1) * videoWidth]);
-      int32_t   *interpBufVPtr = &(interpBufV[(y >> 1) * (videoWidth >> 1)]);
-      int32_t   *interpBufUPtr = &(interpBufU[(y >> 1) * (videoWidth >> 1)]);
-      for (int x = 0; x < videoWidth; x += 2) {
-        uint32_t  pixel0 = videoBufLine0[x + 0];
-        videoBufLine0[x + 0] = 0x08020010U;
-        uint32_t  pixel1 = videoBufLine0[x + 1];
-        videoBufLine0[x + 1] = 0x08020010U;
-        uint32_t  pixel2 = videoBufLine1[x + 0];
-        videoBufLine1[x + 0] = 0x08020010U;
-        uint32_t  pixel3 = videoBufLine1[x + 1];
-        videoBufLine1[x + 1] = 0x08020010U;
-        uint8_t   tmp = uint8_t(pixel0 & 0xFFU);
-        frameBuf1Line0Y[x + 0] = tmp;
-        interpBufLine0Y[x + 0] +=
-            ((int32_t(frameBuf0Line0Y[x + 0]) + int32_t(tmp)) * scaleFac);
-        tmp = uint8_t(pixel1 & 0xFFU);
-        frameBuf1Line0Y[x + 1] = tmp;
-        interpBufLine0Y[x + 1] +=
-            ((int32_t(frameBuf0Line0Y[x + 1]) + int32_t(tmp)) * scaleFac);
-        tmp = uint8_t(pixel2 & 0xFFU);
-        frameBuf1Line1Y[x + 0] = tmp;
-        interpBufLine1Y[x + 0] +=
-            ((int32_t(frameBuf0Line1Y[x + 0]) + int32_t(tmp)) * scaleFac);
-        tmp = uint8_t(pixel3 & 0xFFU);
-        frameBuf1Line1Y[x + 1] = tmp;
-        interpBufLine1Y[x + 1] +=
-            ((int32_t(frameBuf0Line1Y[x + 1]) + int32_t(tmp)) * scaleFac);
-        pixel0 = pixel0 + pixel1 + pixel2 + pixel3 + 0x00200800U;
-        tmp = uint8_t((pixel0 >> 22) & 0xFFU);
-        frameBuf1VPtr[x >> 1] = tmp;
-        interpBufVPtr[x >> 1] +=
-            ((int32_t(frameBuf0VPtr[x >> 1]) + int32_t(tmp)) * scaleFac);
-        tmp = uint8_t((pixel0 >> 12) & 0xFFU);
-        frameBuf1UPtr[x >> 1] = tmp;
-        interpBufUPtr[x >> 1] +=
-            ((int32_t(frameBuf0UPtr[x >> 1]) + int32_t(tmp)) * scaleFac);
-      }
-    }
+    int       n = (videoWidth * videoHeight * 3) / 2;
+    int       i = 0;
+    do {
+      interpBufY[i] +=
+          ((int32_t(frameBuf0Y[i]) + int32_t(frameBuf1Y[i])) * scaleFac);
+      i++;
+      interpBufY[i] +=
+          ((int32_t(frameBuf0Y[i]) + int32_t(frameBuf1Y[i])) * scaleFac);
+    } while (++i < n);
   }
 
-  void VideoCapture::writeFrame()
+  void VideoCapture::writeFrame(bool frameChanged)
   {
     if (!aviFile)
       return;
+    if (!frameChanged) {
+      if (framesWritten == 0 || duplicateFrames >= size_t(frameRate))
+        frameChanged = true;
+      else
+        duplicateFrames++;
+    }
+    if (frameChanged) {
+      duplicateFrames = 0;
+      duplicateFrameBitmap[framesWritten >> 3] &=
+          uint8_t((1 << (framesWritten & 7)) ^ 0xFF);
+    }
+    else {
+      duplicateFrameBitmap[framesWritten >> 3] |=
+          uint8_t(1 << (framesWritten & 7));
+    }
     try {
-      const size_t  headerSize = 0x0146;
-      size_t  frameSize = size_t(((videoWidth * videoHeight * 3) / 2)
-                                 + ((sampleRate / frameRate) * 2) + 16);
-      size_t  fileSize = headerSize + (frameSize * framesWritten);
       if (fileSize >= 0x7F800000) {
         closeFile();
         try {
@@ -632,24 +615,33 @@ namespace Plus4Emu {
       uint8_t headerBuf[8];
       uint8_t *bufp = &(headerBuf[0]);
       aviHeader_writeFourCC(bufp, "00dc");
+      if (!frameChanged)
+        nBytes = 0;
       aviHeader_writeUInt32(bufp, uint32_t(nBytes));
+      fileSize = fileSize + 8;
       if (std::fwrite(&(headerBuf[0]), 1, 8, aviFile) != 8)
         throw Exception("error writing AVI file");
-      if (std::fwrite(&(outBufY[0]), 1, nBytes, aviFile) != nBytes)
-        throw Exception("error writing AVI file");
-      nBytes = size_t((sampleRate / frameRate) * 2);
+      if (nBytes > 0) {
+        fileSize = fileSize + nBytes;
+        if (std::fwrite(&(outBufY[0]), 1, nBytes, aviFile) != nBytes)
+          throw Exception("error writing AVI file");
+      }
+      nBytes = size_t(audioBufSize * 2);
       bufp = &(headerBuf[0]);
       aviHeader_writeFourCC(bufp, "01wb");
       aviHeader_writeUInt32(bufp, uint32_t(nBytes));
+      fileSize = fileSize + 8;
       if (std::fwrite(&(headerBuf[0]), 1, 8, aviFile) != 8)
         throw Exception("error writing AVI file");
       int     bufPos = audioBufReadPos;
-      for (int i = 0; i < (sampleRate / frameRate); i++) {
+      for (int i = 0; i < audioBufSize; i++) {
         if (bufPos >= (audioBufSize * 8))
           bufPos = 0;
         int16_t tmp = audioBuf[bufPos++];
+        fileSize++;
         if (std::fputc(int(uint16_t(tmp) & 0xFF), aviFile) == EOF)
           throw Exception("error writing AVI file");
+        fileSize++;
         if (std::fputc(int((uint16_t(tmp) >> 8) & 0xFF), aviFile) == EOF)
           throw Exception("error writing AVI file");
       }
@@ -704,10 +696,8 @@ namespace Plus4Emu {
         throw Exception("error seeking AVI file");
       uint8_t   headerBuf[512];
       uint8_t   *bufp = &(headerBuf[0]);
-      const size_t  headerSize = 0x0146;
       size_t    frameSize = size_t(((videoWidth * videoHeight * 3) / 2)
-                                   + ((sampleRate / frameRate) * 2) + 16);
-      size_t    fileSize = headerSize + (frameSize * framesWritten);
+                                   + (audioBufSize * 2) + 16);
       aviHeader_writeFourCC(bufp, "RIFF");
       aviHeader_writeUInt32(bufp, uint32_t(fileSize - 8));
       aviHeader_writeFourCC(bufp, "AVI ");
@@ -722,8 +712,8 @@ namespace Plus4Emu {
       aviHeader_writeUInt32(bufp, uint32_t(frameSize * size_t(frameRate)));
       // padding
       aviHeader_writeUInt32(bufp, 0x00000001U);
-      // flags (AVIF_ISINTERLEAVED | AVIF_TRUSTCKTYPE)
-      aviHeader_writeUInt32(bufp, 0x00000900U);
+      // flags (AVIF_HASINDEX | AVIF_ISINTERLEAVED | AVIF_TRUSTCKTYPE)
+      aviHeader_writeUInt32(bufp, 0x00000910U);
       // total frames
       aviHeader_writeUInt32(bufp, uint32_t(framesWritten));
       // initial frames
@@ -826,9 +816,9 @@ namespace Plus4Emu {
       aviHeader_writeUInt32(bufp, 0x00000000U);
       // length
       aviHeader_writeUInt32(bufp, uint32_t(framesWritten
-                                           * size_t(sampleRate / frameRate)));
+                                           * size_t(audioBufSize)));
       // suggested buffer size
-      aviHeader_writeUInt32(bufp, uint32_t((sampleRate / frameRate) * 2));
+      aviHeader_writeUInt32(bufp, uint32_t(audioBufSize * 2));
       // quality
       aviHeader_writeUInt32(bufp, 0x00000000U);
       // sample size
@@ -858,7 +848,7 @@ namespace Plus4Emu {
       // additional format information size
       aviHeader_writeUInt16(bufp, 0x0000);
       aviHeader_writeFourCC(bufp, "LIST");
-      aviHeader_writeUInt32(bufp, uint32_t((fileSize - headerSize) + 4));
+      aviHeader_writeUInt32(bufp, uint32_t((fileSize - aviHeaderSize) + 4));
       aviHeader_writeFourCC(bufp, "movi");
       size_t  nBytes = size_t(bufp - (&(headerBuf[0])));
       if (std::fwrite(&(headerBuf[0]), 1, nBytes, aviFile) != nBytes)
@@ -870,6 +860,69 @@ namespace Plus4Emu {
       std::fclose(aviFile);
       aviFile = (std::FILE *) 0;
       framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
+      throw;
+    }
+  }
+
+  void VideoCapture::writeAVIIndex()
+  {
+    if (!aviFile)
+      return;
+    try {
+      if (std::fseek(aviFile, 0L, SEEK_END) < 0)
+        throw Exception("error seeking AVI file");
+      uint8_t   tmpBuf[32];
+      uint8_t   *bufp = &(tmpBuf[0]);
+      aviHeader_writeFourCC(bufp, "idx1");
+      aviHeader_writeUInt32(bufp, uint32_t(framesWritten << 5));
+      fileSize = fileSize + 8;
+      if (std::fwrite(&(tmpBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file index");
+      size_t    filePos = 4;
+      for (size_t i = 0; i < framesWritten; i++) {
+        bufp = &(tmpBuf[0]);
+        aviHeader_writeFourCC(bufp, "00dc");
+        bool      duplicateFrame =
+            bool(duplicateFrameBitmap[i >> 3] & uint8_t(1 << (i & 7)));
+        size_t    frameBytes = 0;
+        if (!duplicateFrame) {
+          aviHeader_writeUInt32(bufp, 0x00000010U);     // AVIIF_KEYFRAME
+          frameBytes = size_t((videoWidth * videoHeight * 3) / 2);
+        }
+        else {
+          aviHeader_writeUInt32(bufp, 0x00000000U);
+        }
+        aviHeader_writeUInt32(bufp, uint32_t(filePos));
+        filePos = filePos + frameBytes + 8;
+        aviHeader_writeUInt32(bufp, uint32_t(frameBytes));
+        aviHeader_writeFourCC(bufp, "01wb");
+        aviHeader_writeUInt32(bufp, 0x00000010U);       // AVIIF_KEYFRAME
+        aviHeader_writeUInt32(bufp, uint32_t(filePos));
+        frameBytes = size_t(audioBufSize) << 1;
+        filePos = filePos + frameBytes + 8;
+        aviHeader_writeUInt32(bufp, uint32_t(frameBytes));
+        fileSize = fileSize + 32;
+        if (std::fwrite(&(tmpBuf[0]), 1, 32, aviFile) != 32)
+          throw Exception("error writing AVI file index");
+      }
+      if (std::fseek(aviFile, 0L, SEEK_SET) < 0)
+        throw Exception("error seeking AVI file");
+      bufp = &(tmpBuf[0]);
+      aviHeader_writeFourCC(bufp, "RIFF");
+      aviHeader_writeUInt32(bufp, uint32_t(fileSize - 8));
+      if (std::fwrite(&(tmpBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file index");
+      if (std::fflush(aviFile) != 0)
+        throw Exception("error writing AVI file index");
+    }
+    catch (...) {
+      std::fclose(aviFile);
+      aviFile = (std::FILE *) 0;
+      framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
       throw;
     }
   }
@@ -880,6 +933,7 @@ namespace Plus4Emu {
       // FIXME: file I/O errors are ignored here
       try {
         writeAVIHeader();
+        writeAVIIndex();
       }
       catch (...) {
       }
@@ -887,6 +941,8 @@ namespace Plus4Emu {
         std::fclose(aviFile);
       aviFile = (std::FILE *) 0;
       framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
     }
   }
 
@@ -906,6 +962,8 @@ namespace Plus4Emu {
     if (!aviFile)
       throw Exception("error opening AVI file");
     framesWritten = 0;
+    duplicateFrames = 0;
+    fileSize = aviHeaderSize;
     writeAVIHeader();
   }
 

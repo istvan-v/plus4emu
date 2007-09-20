@@ -30,7 +30,7 @@ namespace Plus4Emu {
    public:
     static const int  videoWidth = 384;
     static const int  videoHeight = 288;
-    static const int  frameRate = 25;
+    static const int  frameRate = 30;
     static const int  sampleRate = 48000;
    private:
     class AudioConverter_ : public AudioConverterHighQuality {
@@ -46,7 +46,6 @@ namespace Plus4Emu {
       virtual void audioOutput(int16_t left, int16_t right);
     };
     std::FILE   *aviFile;
-    uint32_t    *videoBuf;              // 384x288 YUV
     uint8_t     *lineBuf;               // 720 bytes
     uint8_t     *frameBuf0Y;            // 384x288
     uint8_t     *frameBuf0V;            // 192x144
@@ -61,6 +60,7 @@ namespace Plus4Emu {
     uint8_t     *outBufV;               // 192x144
     uint8_t     *outBufU;               // 192x144
     int16_t     *audioBuf;              // 8 * (sampleRate / frameRate) samples
+    uint8_t     *duplicateFrameBitmap;
     int         audioBufReadPos;
     int         audioBufWritePos;
     int         audioBufSamples;        // write position - read position
@@ -96,6 +96,8 @@ namespace Plus4Emu {
     size_t      lineBufLength;
     uint8_t     lineBufFlags;
     size_t      framesWritten;
+    size_t      duplicateFrames;
+    size_t      fileSize;
     VideoDisplay::DisplayParameters displayParameters;
     AudioConverter                  *audioConverter;
     VideoDisplayColormap<uint32_t>  colormap;
@@ -108,8 +110,9 @@ namespace Plus4Emu {
     void decodeLine();
     void frameDone();
     void resampleFrame();
-    void writeFrame();
+    void writeFrame(bool frameChanged);
     void writeAVIHeader();
+    void writeAVIIndex();
     void closeFile();
     void errorMessage(const char *msg);
     static void aviHeader_writeFourCC(uint8_t*& bufp, const char *s);
