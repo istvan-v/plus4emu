@@ -48,10 +48,13 @@ namespace Plus4Emu {
   {
     int16_t tmp;
     tmp = int16_t(((int32_t(left) + int32_t(right) + 65537) >> 1) - 32768);
-    if (videoCapture.audioBufSamples < (videoCapture.audioBufSize * 8)) {
+    if (videoCapture.audioBufSamples
+        < (videoCapture.audioBufSize * videoCapture.audioBuffers)) {
       videoCapture.audioBuf[videoCapture.audioBufWritePos++] = tmp;
-      if (videoCapture.audioBufWritePos >= (videoCapture.audioBufSize * 8))
+      if (videoCapture.audioBufWritePos
+          >= (videoCapture.audioBufSize * videoCapture.audioBuffers)) {
         videoCapture.audioBufWritePos = 0;
+      }
       videoCapture.audioBufSamples++;
     }
   }
@@ -93,7 +96,6 @@ namespace Plus4Emu {
       audioBufReadPos(0),
       audioBufWritePos(0),
       audioBufSamples(0),
-      audioBufSize(sampleRate / frameRate),
       clockFrequency(0),
       timesliceLength(0L),
       curTime(0L),
@@ -186,8 +188,8 @@ namespace Plus4Emu {
       totalSize += bufSize4;
       outBufU = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
       std::memset(outBufU, 0x80, bufSize3);
-      audioBuf = new int16_t[audioBufSize * 8];
-      for (int i = 0; i < (audioBufSize * 8); i++)
+      audioBuf = new int16_t[audioBufSize * audioBuffers];
+      for (int i = 0; i < (audioBufSize * audioBuffers); i++)
         audioBuf[i] = int16_t(0);
       size_t  nBytes = 0x08000000 / size_t(audioBufSize);
       duplicateFrameBitmap = new uint8_t[nBytes];
@@ -215,7 +217,7 @@ namespace Plus4Emu {
     }
     catch (...) {
       if (lineBuf)
-        delete[] lineBuf;
+        delete[] reinterpret_cast<uint32_t *>(lineBuf);
       if (audioBuf)
         delete[] audioBuf;
       if (duplicateFrameBitmap)
@@ -230,7 +232,7 @@ namespace Plus4Emu {
   VideoCapture::~VideoCapture()
   {
     closeFile();
-    delete[] lineBuf;
+    delete[] reinterpret_cast<uint32_t *>(lineBuf);
     delete[] audioBuf;
     delete[] duplicateFrameBitmap;
     delete audioConverter;
@@ -390,7 +392,7 @@ namespace Plus4Emu {
 
   void VideoCapture::decodeLine()
   {
-    int       lineNum = (curLine - 2);
+    int       lineNum = curLine - 2;
     if (lineNum < 0 || lineNum >= 576)
       return;
     lineNum = lineNum >> 1;
@@ -530,8 +532,8 @@ namespace Plus4Emu {
       } while (++i < n);
       writeFrame(bool(frameChanged));
       audioBufReadPos += audioBufSize;
-      while (audioBufReadPos >= (audioBufSize * 8))
-        audioBufReadPos -= (audioBufSize * 8);
+      while (audioBufReadPos >= (audioBufSize * audioBuffers))
+        audioBufReadPos -= (audioBufSize * audioBuffers);
       frame0Time -= frameTime;
       frame1Time -= frameTime;
       curTime -= frameTime;
@@ -611,12 +613,12 @@ namespace Plus4Emu {
       }
       if (std::fseek(aviFile, 0L, SEEK_END) < 0)
         throw Exception("error seeking AVI file");
-      size_t  nBytes = size_t((videoWidth * videoHeight * 3) / 2);
       uint8_t headerBuf[8];
       uint8_t *bufp = &(headerBuf[0]);
+      size_t  nBytes = 0;
+      if (frameChanged)
+        nBytes = size_t((videoWidth * videoHeight * 3) / 2);
       aviHeader_writeFourCC(bufp, "00dc");
-      if (!frameChanged)
-        nBytes = 0;
       aviHeader_writeUInt32(bufp, uint32_t(nBytes));
       fileSize = fileSize + 8;
       if (std::fwrite(&(headerBuf[0]), 1, 8, aviFile) != 8)
@@ -626,8 +628,8 @@ namespace Plus4Emu {
         if (std::fwrite(&(outBufY[0]), 1, nBytes, aviFile) != nBytes)
           throw Exception("error writing AVI file");
       }
-      nBytes = size_t(audioBufSize * 2);
       bufp = &(headerBuf[0]);
+      nBytes = size_t(audioBufSize * 2);
       aviHeader_writeFourCC(bufp, "01wb");
       aviHeader_writeUInt32(bufp, uint32_t(nBytes));
       fileSize = fileSize + 8;
@@ -635,7 +637,7 @@ namespace Plus4Emu {
         throw Exception("error writing AVI file");
       int     bufPos = audioBufReadPos;
       for (int i = 0; i < audioBufSize; i++) {
-        if (bufPos >= (audioBufSize * 8))
+        if (bufPos >= (audioBufSize * audioBuffers))
           bufPos = 0;
         int16_t tmp = audioBuf[bufPos++];
         fileSize++;
@@ -884,10 +886,8 @@ namespace Plus4Emu {
       for (size_t i = 0; i < framesWritten; i++) {
         bufp = &(tmpBuf[0]);
         aviHeader_writeFourCC(bufp, "00dc");
-        bool      duplicateFrame =
-            bool(duplicateFrameBitmap[i >> 3] & uint8_t(1 << (i & 7)));
         size_t    frameBytes = 0;
-        if (!duplicateFrame) {
+        if (!(duplicateFrameBitmap[i >> 3] & uint8_t(1 << (i & 7)))) {
           aviHeader_writeUInt32(bufp, 0x00000010U);     // AVIIF_KEYFRAME
           frameBytes = size_t((videoWidth * videoHeight * 3) / 2);
         }

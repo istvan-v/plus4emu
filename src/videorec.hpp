@@ -32,6 +32,8 @@ namespace Plus4Emu {
     static const int  videoHeight = 288;
     static const int  frameRate = 30;
     static const int  sampleRate = 48000;
+    static const int  audioBufSize = 1600;      // = (sampleRate / frameRate)
+    static const int  audioBuffers = 8;
    private:
     class AudioConverter_ : public AudioConverterHighQuality {
      private:
@@ -64,7 +66,6 @@ namespace Plus4Emu {
     int         audioBufReadPos;
     int         audioBufWritePos;
     int         audioBufSamples;        // write position - read position
-    int         audioBufSize;           // sampleRate / frameRate
     size_t      clockFrequency;
     int64_t     timesliceLength;
     int64_t     curTime;
