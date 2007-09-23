@@ -28,6 +28,9 @@ General
     order highpass filters with configurable cutoff frequency, and an
     optional parametric equalizer can be applied to the audio signal
   * recording sound output to a WAV format sound file
+  * recording video and sound output to an AVI format video file, with
+    uncompressed YV12 video at 24 to 60 frames per second, and 48000 Hz
+    16-bit PCM audio
   * saving screenshots as 768x576 24-bit RLE compressed TGA files
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
@@ -269,13 +272,28 @@ Load demo (F7)
   snapshot or demo, a binary format configuration file, or a program
   file with plus4emu header.
 
-Record sound file
+Record audio / Start...
 
   Write 16 bit signed PCM sound output to a WAV format sound file.
 
-Stop sound recording
+Record audio / Stop
 
   Close sound output file if it is currently being written.
+
+Record video / Start...
+
+  Open new AVI file for video recording. This increases the CPU usage
+  significantly, and since the data is written without compression, it
+  will take up a lot of disk space. If the size of the output file
+  reaches 2 GB, it is automatically closed, and the emulator asks for
+  a new file to continue the recording.
+  NOTE: the video and audio streams in the AVI file are not affected by
+  any of the display or sound configuration settings.
+
+Record video / Stop
+
+  Stop video capture, and close any AVI file that is currently being
+  written.
 
 Save screenshot
 

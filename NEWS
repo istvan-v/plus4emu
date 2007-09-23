@@ -1,7 +1,9 @@
 Changes in version 1.2.3
 ------------------------
 
+  * video and sound output can be recorded to AVI files
   * more accurate colors in NTSC mode
+  * minor TED sound improvement
 
 Changes in version 1.2.2
 ------------------------
