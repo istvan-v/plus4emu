@@ -491,20 +491,25 @@ namespace Plus4 {
       }
     }
     // mix sound outputs
-    static const int soundVolumeTable[16] = {
-         0,  632, 1712, 2792, 3872, 4952, 6032, 7112,
-      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192
+    static const int16_t  soundVolumeTable[64] = {
+          0,     0,     0,     0,     0,     0,     0,     0,
+          0,     0,     0,     0,     0,     0,     0,     0,
+          0,   574,  1553,  2532,  3531,  4559,  5585,  6623,
+       7585,  7585,  7585,  7585,  7585,  7585,  7585,  7585,
+          0,   574,  1553,  2532,  3531,  4559,  5585,  6623,
+       7585,  7585,  7585,  7585,  7585,  7585,  7585,  7585,
+          0,  1152,  3135,  5149,  7265,  9443, 11696, 14070,
+      16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
     };
-    int     sound_volume = soundVolumeTable[sound_register & 0x0F];
-    int     sound_output = 0;
+    int     sound_volume = sound_register & 0x0F;
     if (sound_register & uint8_t(0x10))
-      sound_output = (sound_channel_1_state ? sound_volume : 0);
+      sound_volume |= (sound_channel_1_state ? 0x10 : 0x00);
     if (sound_register & uint8_t(0x20))
-      sound_output += (sound_channel_2_state ? sound_volume : 0);
+      sound_volume |= (sound_channel_2_state ? 0x20 : 0x00);
     else if (sound_register & uint8_t(0x40))
-      sound_output += (sound_channel_2_noise_output ? 0 : sound_volume);
+      sound_volume |= (sound_channel_2_noise_output ? 0x00 : 0x20);
     // send sound output signal (sample rate = 221 kHz)
-    playSample(int16_t(sound_output));
+    playSample(soundVolumeTable[sound_volume]);
   }
 
   void TED7360::processDelayedEvents(uint32_t n)
