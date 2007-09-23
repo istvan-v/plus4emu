@@ -30,9 +30,7 @@ namespace Plus4Emu {
    public:
     static const int  videoWidth = 384;
     static const int  videoHeight = 288;
-    static const int  frameRate = 30;
     static const int  sampleRate = 48000;
-    static const int  audioBufSize = 1600;      // = (sampleRate / frameRate)
     static const int  audioBuffers = 8;
    private:
     class AudioConverter_ : public AudioConverterHighQuality {
@@ -63,6 +61,8 @@ namespace Plus4Emu {
     uint8_t     *outBufU;               // 192x144
     int16_t     *audioBuf;              // 8 * (sampleRate / frameRate) samples
     uint8_t     *duplicateFrameBitmap;
+    int         frameRate;              // video frames per second
+    int         audioBufSize;           // = (sampleRate / frameRate)
     int         audioBufReadPos;
     int         audioBufWritePos;
     int         audioBufSamples;        // write position - read position
@@ -124,7 +124,8 @@ namespace Plus4Emu {
    public:
     VideoCapture(void indexToYUVFunc(uint8_t color, bool isNTSC,
                                      float& y, float& u, float& v) =
-                     (void (*)(uint8_t, bool, float&, float&, float&)) 0);
+                     (void (*)(uint8_t, bool, float&, float&, float&)) 0,
+                 int frameRate_ = 30);
     virtual ~VideoCapture();
     void runOneCycle(const uint8_t *videoInput, int16_t audioInput);
     void setClockFrequency(size_t freq_);

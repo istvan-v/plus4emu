@@ -76,7 +76,8 @@ namespace Plus4Emu {
 
   VideoCapture::VideoCapture(
       void (*indexToYUVFunc)(uint8_t color, bool isNTSC,
-                             float& y, float& u, float& v))
+                             float& y, float& u, float& v),
+      int frameRate_)
     : aviFile((std::FILE *) 0),
       lineBuf((uint8_t *) 0),
       frameBuf0Y((uint8_t *) 0),
@@ -93,6 +94,8 @@ namespace Plus4Emu {
       outBufU((uint8_t *) 0),
       audioBuf((int16_t *) 0),
       duplicateFrameBitmap((uint8_t *) 0),
+      frameRate(frameRate_),
+      audioBufSize(0),
       audioBufReadPos(0),
       audioBufWritePos(0),
       audioBufSamples(0),
@@ -138,6 +141,10 @@ namespace Plus4Emu {
       fileNameCallbackUserData((void *) this)
   {
     try {
+      frameRate = (frameRate > 24 ? (frameRate < 60 ? frameRate : 60) : 24);
+      while (((sampleRate / frameRate) * frameRate) != sampleRate)
+        frameRate++;
+      audioBufSize = sampleRate / frameRate;
       size_t    bufSize1 = size_t(videoWidth * videoHeight);
       size_t    bufSize2 = 720 / 4;
       size_t    bufSize3 = (bufSize1 + 3) >> 2;
@@ -213,6 +220,7 @@ namespace Plus4Emu {
         p = colormap.getNextEntry(p);
       }
       audioConverter = new AudioConverter_(*this, 221681.0f, float(sampleRate));
+      audioConverter->setOutputVolume(0.79f);
       audioConverter->setEqualizerParameters(2, 14000.0f, 0.355f, 0.7071f);
     }
     catch (...) {
@@ -495,7 +503,8 @@ namespace Plus4Emu {
     resampleFrame();
     while (audioBufSamples >= audioBufSize) {
       audioBufSamples -= audioBufSize;
-      int64_t   frameTime = ((int64_t(1000000) << 32) / int64_t(frameRate));
+      int64_t   frameTime =
+          int64_t((4294967296000000.0 / double(frameRate)) + 0.5);
       if (frameTime > frame1Time)
         frameTime = frame1Time;
       int32_t   t0 =
@@ -709,7 +718,8 @@ namespace Plus4Emu {
       aviHeader_writeFourCC(bufp, "avih");
       aviHeader_writeUInt32(bufp, 0x00000038U);
       // microseconds per frame
-      aviHeader_writeUInt32(bufp, uint32_t(1000000 / frameRate));
+      aviHeader_writeUInt32(bufp,
+                            uint32_t((1000000 + (frameRate >> 1)) / frameRate));
       // max. bytes per second
       aviHeader_writeUInt32(bufp, uint32_t(frameSize * size_t(frameRate)));
       // padding
