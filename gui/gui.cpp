@@ -1641,7 +1641,8 @@ void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
     }
     if (gui_.lockVMThread()) {
       try {
-        gui_.vm.openVideoCapture(&Plus4EmuGUI::errorMessageCallback,
+        gui_.vm.openVideoCapture(gui_.config.videoCapture.frameRate,
+                                 &Plus4EmuGUI::errorMessageCallback,
                                  &Plus4EmuGUI::fileNameCallback, v);
         const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(
                                        "File/Record video/Stop"))->activate();

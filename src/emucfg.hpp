@@ -190,6 +190,11 @@ namespace Plus4Emu {
       bool        breakOnInvalidOpcode;
     } debug;
     bool          debugSettingsChanged;
+    // --------
+    struct {
+      int         frameRate;
+    } videoCapture;
+    bool          videoCaptureSettingsChanged;
     // ----------------
     EmulatorConfiguration(VirtualMachine& vm__,
                           VideoDisplay& videoDisplay_,

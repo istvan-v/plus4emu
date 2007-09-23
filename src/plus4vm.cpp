@@ -1197,12 +1197,14 @@ namespace Plus4 {
   }
 
   void Plus4VM::openVideoCapture(
-        void (*errorCallback_)(void *userData, const char *msg),
-        void (*fileNameCallback_)(void *userData, std::string& fileName),
-        void *userData_)
+      int frameRate_,
+      void (*errorCallback_)(void *userData, const char *msg),
+      void (*fileNameCallback_)(void *userData, std::string& fileName),
+      void *userData_)
   {
     if (!videoCapture) {
-      videoCapture = new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV);
+      videoCapture =
+          new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV, frameRate_);
       videoCapture->setClockFrequency(soundClockFrequency << 3);
       ted->setCallback(&videoCaptureCallback, this, 3);
     }

@@ -396,10 +396,12 @@ namespace Plus4Emu {
   }
 
   void VirtualMachine::openVideoCapture(
-        void (*errorCallback_)(void *userData, const char *msg),
-        void (*fileNameCallback_)(void *userData, std::string& fileName),
-        void *userData_)
+      int frameRate_,
+      void (*errorCallback_)(void *userData, const char *msg),
+      void (*fileNameCallback_)(void *userData, std::string& fileName),
+      void *userData_)
   {
+    (void) frameRate_;
     (void) errorCallback_;
     (void) fileNameCallback_;
     (void) userData_;

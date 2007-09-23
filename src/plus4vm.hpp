@@ -265,11 +265,13 @@ namespace Plus4 {
      */
     virtual void getVMStatus(VirtualMachine::VMStatus& vmStatus_);
     /*!
-     * Create video capture object if it does not exist yet, and optionally
-     * set callbacks for printing error messages and asking for a new output
-     * file on reaching 2 GB file size.
+     * Create video capture object with the specified frame rate (24 to 60)
+     * if it does not exist yet, and optionally set callbacks for printing
+     * error messages and asking for a new output file on reaching 2 GB file
+     * size.
      */
     virtual void openVideoCapture(
+        int frameRate_ = 30,
         void (*errorCallback_)(void *userData, const char *msg) =
             (void (*)(void *, const char *)) 0,
         void (*fileNameCallback_)(void *userData, std::string& fileName) =

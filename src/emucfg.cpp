@@ -349,6 +349,10 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "debug.breakOnInvalidOpcode",
                                 debug.breakOnInvalidOpcode, false,
                                 debugSettingsChanged);
+    // ----------------
+    defineConfigurationVariable(*this, "videoCapture.frameRate",
+                                videoCapture.frameRate, int(30),
+                                videoCaptureSettingsChanged, 24.0, 60.0);
   }
 
   EmulatorConfiguration::~EmulatorConfiguration()
@@ -581,6 +585,9 @@ namespace Plus4Emu {
       vm_.setNoBreakOnDataRead(debug.noBreakOnDataRead);
       vm_.setBreakOnInvalidOpcode(debug.breakOnInvalidOpcode);
       debugSettingsChanged = false;
+    }
+    if (videoCaptureSettingsChanged) {
+      videoCaptureSettingsChanged = false;
     }
   }
 

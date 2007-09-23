@@ -105,6 +105,20 @@ class Plus4EmuGUI_MachineConfigWindow {open
               tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 180 240 25} color 39 labelcolor 52
             }
           }
+          Fl_Group {} {
+            label {Video capture settings} open
+            xywh {20 230 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          } {
+            Fl_Value_Input videoCaptureFrameRateValuator {
+              label {Frame rate}
+              callback {{
+  gui.config.videoCapture.frameRate = int(o->clamp(o->value()) + 0.5);
+  gui.config.videoCaptureSettingsChanged = true;
+}}
+              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 255 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 24 maximum 60 step 1 value 30 textcolor 52
+              code0 {o->cursor_color(FL_YELLOW);}
+            }
+          }
         }
         Fl_Group {} {
           label Memory open
@@ -647,6 +661,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   vmCPUFrequencyValuator->value(double(gui.config.vm.cpuClockFrequency));
   vmVideoFrequencyValuator->value(double(gui.config.vm.videoClockFrequency));
   vmEnableFileIOValuator->value(gui.config.vm.enableFileIO ? 1 : 0);
+  videoCaptureFrameRateValuator->value(double(gui.config.videoCapture.frameRate));
   memoryRAMSizeValuator->value(double(gui.config.memory.ram.size));
   memoryRAMStartupPatternValuator->value(gui.config.memory.ram.startupPattern.c_str());
   memoryROM00FileNameValuator->value(gui.config.memory.rom[0x00].file.c_str());
