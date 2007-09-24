@@ -376,7 +376,7 @@ namespace Plus4 {
       // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
       // on drive type)
       floppyDrive.timeRemaining -= (int64_t(1) << 32);
-      floppyDrive.floppyDrive->runOneCycle(ted.serialPort);
+      floppyDrive.floppyDrive->runOneCycle();
     }
   }
 
@@ -388,7 +388,6 @@ namespace Plus4 {
     Plus4VM&  vm = ted.vm;
     floppyDrive.timeRemaining =
         reinterpret_cast<VC1541 *>(floppyDrive.floppyDrive)->run(
-            ted.serialPort,
             floppyDrive.timeRemaining + (vm.tedTimesliceLength >> 1));
   }
 
@@ -649,7 +648,7 @@ namespace Plus4 {
     vm.printerTimeRemaining += vm.tedTimesliceLength;
     while (vm.printerTimeRemaining > 0) {
       vm.printerTimeRemaining -= (int64_t(1) << 32);
-      vm.printer_->runOneCycle(vm.ted->serialPort);
+      vm.printer_->runOneCycle();
     }
   }
 
@@ -1068,7 +1067,8 @@ namespace Plus4 {
   {
     if (isEnabled) {
       if (!printer_) {
-        printer_ = new VC1526(4);       // TODO: allow setting device number ?
+        // TODO: allow setting device number ?
+        printer_ = new VC1526(ted->serialPort, 4);
         printer_->setROMImage(printerROM_1526);
         printer_->setEnable1525Mode(printer1525Mode);
         printer_->setFormFeedOn(printerFormFeedOn);
@@ -1293,15 +1293,15 @@ namespace Plus4 {
       if (!floppyDrives[n].floppyDrive) {
         switch (newDriveType) {
         case 0:
-          floppyDrives[n].floppyDrive = new VC1541(n + 8);
+          floppyDrives[n].floppyDrive = new VC1541(ted->serialPort, n + 8);
           floppyDrives[n].floppyDrive->setROMImage(2, floppyROM_1541);
           break;
         case 1:
-          floppyDrives[n].floppyDrive = new VC1551(n + 8);
+          floppyDrives[n].floppyDrive = new VC1551(ted->serialPort, n + 8);
           floppyDrives[n].floppyDrive->setROMImage(3, floppyROM_1551);
           break;
         case 4:
-          floppyDrives[n].floppyDrive = new VC1581(n + 8);
+          floppyDrives[n].floppyDrive = new VC1581(ted->serialPort, n + 8);
           floppyDrives[n].floppyDrive->setROMImage(0, floppyROM_1581_0);
           floppyDrives[n].floppyDrive->setROMImage(1, floppyROM_1581_1);
           break;

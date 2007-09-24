@@ -30,8 +30,9 @@ namespace Plus4 {
 
   class FloppyDrive {
    public:
-    FloppyDrive(int driveNum_ = 8)
+    FloppyDrive(SerialBus& serialBus_, int driveNum_ = 8)
     {
+      (void) serialBus_;
       (void) driveNum_;
     }
     virtual ~FloppyDrive()
@@ -61,7 +62,7 @@ namespace Plus4 {
     /*!
      * Run floppy emulation for one microsecond.
      */
-    virtual void runOneCycle(SerialBus& serialBus_) = 0;
+    virtual void runOneCycle() = 0;
     /*!
      * Reset floppy drive.
      */

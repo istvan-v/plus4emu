@@ -601,6 +601,10 @@ namespace Plus4 {
   uint8_t VC1541::readMemory_VIA1(void *userData, uint16_t addr)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
+    uint8_t serialBusInput = uint8_t((vc1541.serialBus.getDATA() & 0x01)
+                                     | (vc1541.serialBus.getCLK() & 0x04)
+                                     | (vc1541.serialBus.getATN() & 0x80));
+    vc1541.via1.setPortB(serialBusInput ^ vc1541.via1PortBInput);
     vc1541.dataBusState = vc1541.via1.readRegister(addr & 0x000F);
     return vc1541.dataBusState;
   }
@@ -774,17 +778,17 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  VC1541::VC1541(int driveNum_)
-    : FloppyDrive(driveNum_),
+  VC1541::VC1541(SerialBus& serialBus_, int driveNum_)
+    : FloppyDrive(serialBus_, driveNum_),
       D64Image(),
       cpu(*this),
       via1(*this),
       via2(*this),
+      serialBus(serialBus_),
       memory_rom((uint8_t *) 0),
       deviceNumber(uint8_t(driveNum_)),
       dataBusState(0x00),
       via1PortBInput(0xFF),
-      via1PortBOutput(0x00),
       halfCycleFlag(false),
       interruptRequestFlag(false),
       headLoadedFlag(false),
@@ -847,25 +851,22 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1541::runOneCycle(SerialBus& serialBus_)
+  void VC1541::runOneCycle()
   {
     {
-      uint8_t atnAck_ = via1PortBOutput ^ (serialBus_.getATN() ^ 0xFF);
+      uint8_t via1PortBOutput = via1.getPortB();
+      uint8_t atnInput = serialBus.getATN() ^ 0xFF;
+      uint8_t atnAck_ = via1PortBOutput ^ atnInput;
       atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-      serialBus_.setDATA(deviceNumber, !(atnAck_));
-      serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
-      uint8_t serialBusInput = uint8_t((serialBus_.getDATA() & 0x01)
-                                       | (serialBus_.getCLK() & 0x04)
-                                       | (serialBus_.getATN() & 0x80));
-      via1.setCA1(!(serialBusInput & 0x80));
-      via1.setPortB(serialBusInput ^ via1PortBInput);
+      serialBus.setDATA(deviceNumber, !(atnAck_));
+      serialBus.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+      via1.setCA1(bool(atnInput));
     }
     via1.runOneCycle();
     via2.runOneCycle();
     if (interruptRequestFlag)
       cpu.interruptRequest();
-    cpu.run(1);
-    via1PortBOutput = via1.getPortB();
+    cpu.runOneCycle();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
       headLoadedFlag = updateMotors();
@@ -877,21 +878,14 @@ namespace Plus4 {
       updateHead();
   }
 
-  void VC1541::runOneCycle_(SerialBus& serialBus_)
+  void VC1541::runOneCycle_()
   {
-    {
-      uint8_t serialBusInput = uint8_t((serialBus_.getDATA() & 0x01)
-                                       | (serialBus_.getCLK() & 0x04)
-                                       | (serialBus_.getATN() & 0x80));
-      via1.setCA1(!(serialBusInput & 0x80));
-      via1.setPortB(serialBusInput ^ via1PortBInput);
-    }
+    via1.setCA1(!(serialBus.getATN()));
     via1.runOneCycle();
     via2.runOneCycle();
     if (interruptRequestFlag)
       cpu.interruptRequest();
-    cpu.run(1);
-    via1PortBOutput = via1.getPortB();
+    cpu.runOneCycle();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
       headLoadedFlag = updateMotors();
@@ -911,7 +905,6 @@ namespace Plus4 {
     cpu.reset();
     via1.setPortA(0xFE);
     via1PortBInput = uint8_t(0x9F | ((deviceNumber & 0x03) << 5));
-    via1PortBOutput = 0x00;
     via1.setPortB(via1PortBInput);
   }
 

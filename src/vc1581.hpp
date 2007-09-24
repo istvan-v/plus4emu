@@ -53,23 +53,24 @@ namespace Plus4 {
      protected:
       virtual void interruptCallback(bool irqState);
     };
-    M7501_    cpu;
-    CIA8520_  cia;                      // 4000 to 43FF
+    M7501_      cpu;
+    CIA8520_    cia;                    // 4000 to 43FF
     Plus4Emu::WD177x  wd177x;           // 6000 to 63FF
+    SerialBus&  serialBus;
     const uint8_t *memory_rom_0;        // 8000 to BFFF
     const uint8_t *memory_rom_1;        // C000 to FFFF
-    uint8_t   memory_ram[8192];         // 0000 to 1FFF
-    int       deviceNumber;
-    uint8_t   dataBusState;
-    bool      interruptRequestFlag;
-    uint8_t   ciaPortAInput;
-    uint8_t   ciaPortBInput;
-    size_t    diskChangeCnt;
-    void      (*breakPointCallback)(void *userData,
-                                    int debugContext_, int type,
-                                    uint16_t addr, uint8_t value);
-    void      *breakPointCallbackUserData;
-    bool      noBreakOnDataRead;
+    uint8_t     memory_ram[8192];       // 0000 to 1FFF
+    int         deviceNumber;
+    uint8_t     dataBusState;
+    bool        interruptRequestFlag;
+    uint8_t     ciaPortAInput;
+    uint8_t     ciaPortBInput;
+    size_t      diskChangeCnt;
+    void        (*breakPointCallback)(void *userData,
+                                      int debugContext_, int type,
+                                      uint16_t addr, uint8_t value);
+    void        *breakPointCallbackUserData;
+    bool        noBreakOnDataRead;
     // memory read/write callbacks
     static uint8_t readRAM(void *userData, uint16_t addr);
     static uint8_t readDummy(void *userData, uint16_t addr);
@@ -82,7 +83,7 @@ namespace Plus4 {
     static void writeCIA8520(void *userData, uint16_t addr, uint8_t value);
     static void writeWD177x(void *userData, uint16_t addr, uint8_t value);
    public:
-    VC1581(int driveNum_ = 8);
+    VC1581(SerialBus& serialBus_, int driveNum_ = 8);
     virtual ~VC1581();
     /*!
      * Use 'romData_' (should point to 16384 bytes of data which is expected
@@ -108,7 +109,7 @@ namespace Plus4 {
     /*!
      * Run floppy emulation for one microsecond.
      */
-    virtual void runOneCycle(SerialBus& serialBus_);
+    virtual void runOneCycle();
     /*!
      * Reset floppy drive.
      */

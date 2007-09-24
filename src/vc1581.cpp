@@ -107,6 +107,11 @@ namespace Plus4 {
   uint8_t VC1581::readCIA8520(void *userData, uint16_t addr)
   {
     VC1581& vc1581 = *(reinterpret_cast<VC1581 *>(userData));
+    uint8_t n = vc1581.ciaPortBInput & uint8_t(0x7A);
+    n |= (vc1581.serialBus.getDATA() & uint8_t(0x01));
+    n |= (vc1581.serialBus.getCLK() & uint8_t(0x04));
+    n |= (vc1581.serialBus.getATN() & uint8_t(0x80));
+    vc1581.cia.setPortB(n ^ uint8_t(0x85));
     vc1581.dataBusState = vc1581.cia.readRegister(addr & 0x000F);
     return vc1581.dataBusState;
   }
@@ -188,11 +193,12 @@ namespace Plus4 {
     }
   }
 
-  VC1581::VC1581(int driveNum_)
-    : FloppyDrive(driveNum_),
+  VC1581::VC1581(SerialBus& serialBus_, int driveNum_)
+    : FloppyDrive(serialBus_, driveNum_),
       cpu(*this),
       cia(*this),
       wd177x(),
+      serialBus(serialBus_),
       memory_rom_0((uint8_t *) 0),
       memory_rom_1((uint8_t *) 0),
       deviceNumber(driveNum_),
@@ -261,19 +267,13 @@ namespace Plus4 {
     return wd177x.haveDisk();
   }
 
-  void VC1581::runOneCycle(SerialBus& serialBus_)
+  void VC1581::runOneCycle()
   {
-    {
-      uint8_t n = ciaPortBInput & uint8_t(0x7A);
-      n |= (serialBus_.getDATA() & uint8_t(0x01));
-      n |= (serialBus_.getCLK() & uint8_t(0x04));
-      n |= (serialBus_.getATN() & uint8_t(0x80));
-      cia.setPortB(n ^ uint8_t(0x85));
-    }
-    cia.setFlagState(!!(serialBus_.getATN()));
+    cia.setFlagState(!!(serialBus.getATN()));
     if (interruptRequestFlag)
       cpu.interruptRequest();
-    cpu.run(2);
+    cpu.runOneCycle();
+    cpu.runOneCycle();
     if (diskChangeCnt) {
       diskChangeCnt--;
       if (!diskChangeCnt)
@@ -283,11 +283,11 @@ namespace Plus4 {
     cia.run(2);
     wd177x.setSide(cia.getPortA() & 0x01);
     uint8_t n = cia.getPortB();
-    serialBus_.setCLK(deviceNumber, !(n & uint8_t(0x08)));
-    if (!(((serialBus_.getATN() ^ uint8_t(0xFF)) & n) & uint8_t(0x10)))
-      serialBus_.setDATA(deviceNumber, !(n & uint8_t(0x02)));
+    serialBus.setCLK(deviceNumber, !(n & uint8_t(0x08)));
+    if (!(((serialBus.getATN() ^ uint8_t(0xFF)) & n) & uint8_t(0x10)))
+      serialBus.setDATA(deviceNumber, !(n & uint8_t(0x02)));
     else
-      serialBus_.setDATA(deviceNumber, false);
+      serialBus.setDATA(deviceNumber, false);
   }
 
   void VC1581::reset()

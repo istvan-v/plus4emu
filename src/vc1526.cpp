@@ -150,11 +150,12 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  VC1526::VC1526(int devNum_)
+  VC1526::VC1526(SerialBus& serialBus_, int devNum_)
     : cpu(*this),
       via(*this),
       riot1(),
       riot2(),
+      serialBus(serialBus_),
       memory_rom((uint8_t *) 0),
       deviceNumber(devNum_ & 7),
       updatePinCnt(0),
@@ -347,25 +348,25 @@ namespace Plus4 {
       riot2.setPortA(riot2.getPortAInput() & 0xFB);
   }
 
-  void VC1526::runOneCycle(SerialBus& serialBus_)
+  void VC1526::runOneCycle()
   {
     {
       bool    dataOut = !(riot1.getPortA() & 0x40);
       bool    atnAck = !(riot1.getPortA() & 0x20);
-      atnAck = atnAck && !(serialBus_.getATN());
-      serialBus_.setDATA(deviceNumber, dataOut && !atnAck);
+      atnAck = atnAck && !(serialBus.getATN());
+      serialBus.setDATA(deviceNumber, dataOut && !atnAck);
       uint8_t riot1PortAInput = riot1.getPortAInput() & 0x7C;
       riot1PortAInput = riot1PortAInput
-                        | uint8_t(((serialBus_.getATN() & 0x01)
-                                   | (serialBus_.getCLK() & 0x02)
-                                   | (serialBus_.getDATA() & 0x80)) ^ 0x83);
+                        | uint8_t(((serialBus.getATN() & 0x01)
+                                   | (serialBus.getCLK() & 0x02)
+                                   | (serialBus.getDATA() & 0x80)) ^ 0x83);
       riot1.setPortA(riot1PortAInput);
     }
     if (viaInterruptFlag
         | riot1.isInterruptRequest() | riot2.isInterruptRequest()) {
       cpu.interruptRequest();
     }
-    cpu.run(1);
+    cpu.runOneCycle();
     via.runOneCycle();
     riot1.runOneCycle();
     riot2.runOneCycle();

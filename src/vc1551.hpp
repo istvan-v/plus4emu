@@ -205,7 +205,7 @@ namespace Plus4 {
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:
-    VC1551(int driveNum_ = 8);
+    VC1551(SerialBus& serialBus_, int driveNum_ = 8);
     virtual ~VC1551();
     /*!
      * Use 'romData_' (should point to 16384 bytes of data which is expected
@@ -231,7 +231,7 @@ namespace Plus4 {
     /*!
      * Run floppy emulation for one microsecond.
      */
-    virtual void runOneCycle(SerialBus& serialBus_);
+    virtual void runOneCycle();
     /*!
      * Reset floppy drive.
      */

@@ -204,7 +204,13 @@ namespace Plus4 {
     {
       return memoryWriteCallbacks[addr_];
     }
-    void run(int nCycles = 1);
+    void runOneCycle();
+    inline void run(int nCycles = 1)
+    {
+      do {
+        this->runOneCycle();
+      } while (--nCycles);
+    }
     inline void interruptRequest()
     {
       // delay interrupt requests by 2 cycles

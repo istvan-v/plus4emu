@@ -216,8 +216,8 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  VC1551::VC1551(int driveNum_)
-    : FloppyDrive(driveNum_),
+  VC1551::VC1551(SerialBus& serialBus_, int driveNum_)
+    : FloppyDrive(serialBus_, driveNum_),
       D64Image(),
       cpu(*this),
       memory_rom((uint8_t *) 0),
@@ -285,15 +285,15 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1551::runOneCycle(SerialBus& serialBus_)
+  void VC1551::runOneCycle()
   {
-    (void) serialBus_;
     if (--interruptTimer < 0) {
       if (interruptTimer <= -7)
         interruptTimer = 8325;
       cpu.interruptRequest();
     }
-    cpu.run(2);
+    cpu.runOneCycle();
+    cpu.runOneCycle();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
       headLoadedFlag = updateMotors();

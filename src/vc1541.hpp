@@ -84,12 +84,12 @@ namespace Plus4 {
     M7501_      cpu;
     VIA6522_    via1;                   // serial port interface (1800..1BFF)
     VIA6522_    via2;                   // floppy control (1C00..1FFF)
+    SerialBus&  serialBus;
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
     uint8_t     memory_ram[2048];       // 2K RAM, 0000..0FFF
     uint8_t     deviceNumber;
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
-    uint8_t     via1PortBOutput;        // for serial bus delay
     bool        halfCycleFlag;
     bool        interruptRequestFlag;
     bool        headLoadedFlag;
@@ -123,11 +123,11 @@ namespace Plus4 {
     static void writeMemory_VIA2(void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
-    void runOneCycle_(SerialBus& serialBus_);
+    void runOneCycle_();
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:
-    VC1541(int driveNum_ = 8);
+    VC1541(SerialBus& serialBus_, int driveNum_ = 8);
     virtual ~VC1541();
     /*!
      * Use 'romData_' (should point to 16384 bytes of data which is expected
@@ -153,24 +153,25 @@ namespace Plus4 {
     /*!
      * Run floppy emulation for one microsecond.
      */
-    virtual void runOneCycle(SerialBus& serialBus_);
+    virtual void runOneCycle();
     /*!
      * Run floppy emulation for 'timeRemaining' / 2^32 microseconds.
      * Returns the remaining time in 2^-32 microseconds.
      */
-    inline int64_t run(SerialBus& serialBus_, int64_t timeRemaining)
+    inline int64_t run(int64_t timeRemaining)
     {
       while (timeRemaining > int64_t(-715827882)) {
         if (!halfCycleFlag) {
           // delay serial port output by ~833.3 ns
           halfCycleFlag = true;
-          uint8_t atnAck_ = via1PortBOutput ^ (serialBus_.getATN() ^ 0xFF);
+          uint8_t via1PortBOutput = via1.getPortB();
+          uint8_t atnAck_ = via1PortBOutput ^ (serialBus.getATN() ^ 0xFF);
           atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-          serialBus_.setDATA(deviceNumber, !(atnAck_));
-          serialBus_.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+          serialBus.setDATA(deviceNumber, !(atnAck_));
+          serialBus.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
         }
         if (timeRemaining > int64_t(0)) {
-          this->runOneCycle_(serialBus_);
+          this->runOneCycle_();
           halfCycleFlag = false;
           timeRemaining -= (int64_t(1) << 32);
         }

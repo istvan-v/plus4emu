@@ -31,12 +31,14 @@ namespace Plus4 {
     uint8_t   portARegister;
     uint8_t   portAInput;
     uint8_t   portALatch;
+    uint8_t   portAOutput;
     uint8_t   portBDataDirection;
     uint8_t   portBRegister;
     uint8_t   portBInput;
     uint8_t   portBLatch;
     uint8_t   portBTimerOutputMask;
     uint8_t   portBTimerOutput;
+    uint8_t   portBOutput;
     uint16_t  timer1Counter;
     uint16_t  timer1Latch;
     bool      timer1SingleShotMode;
@@ -61,7 +63,7 @@ namespace Plus4 {
     bool      cb2IsOutput;
     uint8_t   shiftRegister;
     uint8_t   shiftCounter;
-    bool      prvIRQState;
+    uint8_t   prvIRQState;
     inline void updateInterruptFlags()
     {
       viaRegisters[0x0D] = viaRegisters[0x0D] & 0x7F;
@@ -95,41 +97,43 @@ namespace Plus4 {
       updateTimer1();
       if (!timer2PulseCountingMode)
         updateTimer2();
-      bool    newIRQState = !!(viaRegisters[0x0D] & 0x80);
-      if (newIRQState != prvIRQState) {
+      uint8_t newIRQState = viaRegisters[0x0D];
+      if ((newIRQState ^ prvIRQState) & 0x80) {
         prvIRQState = newIRQState;
-        irqStateChangeCallback(newIRQState);
+        irqStateChangeCallback(bool(newIRQState & 0x80));
       }
     }
     uint8_t readRegister(uint16_t addr);
     void writeRegister(uint16_t addr, uint8_t value);
     uint8_t readRegisterDebug(uint16_t addr) const;
+   private:
+    void updatePortA();
+    void updatePortB();
+    void setCA1_(bool value);
+    void setCA2_(bool value);
+    void setCB1_(bool value);
+    void setCB2_(bool value);
+   public:
     inline uint8_t getPortA() const
     {
-      return uint8_t(portAInput
-                     & (portARegister | (portADataDirection ^ 0xFF)));
+      return portAOutput;
     }
     inline void setPortA(uint8_t value)
     {
-      portAInput = value & 0xFF;
+      if (value != portAInput) {
+        portAInput = value;
+        updatePortA();
+      }
     }
     inline uint8_t getPortB() const
     {
-      return uint8_t(portBInput
-                     & ((portBRegister | (portBDataDirection ^ 0xFF))
-                        & (portBTimerOutput | (portBTimerOutputMask ^ 0xFF))));
+      return portBOutput;
     }
     inline void setPortB(uint8_t value)
     {
-      if (!timer2PulseCountingMode) {
-        portBInput = value & 0xFF;
-      }
-      else {
-        uint8_t prvState = getPortB();
-        portBInput = value & 0xFF;
-        uint8_t newState = getPortB();
-        if ((newState & 0x40) < (prvState & 0x40))
-          updateTimer2();
+      if (value != portBInput) {
+        portBInput = value;
+        updatePortB();
       }
     }
     inline bool getCA1() const
@@ -138,16 +142,8 @@ namespace Plus4 {
     }
     inline void setCA1(bool value)
     {
-      bool    prvState = getCA1();
-      ca1Input = value;
-      bool    newState = getCA1();
-      if (newState != prvState) {
-        if (newState == ca1PositiveEdge) {
-          viaRegisters[0x0D] = viaRegisters[0x0D] | 0x02;
-          updateInterruptFlags();
-          portALatch = getPortA();
-        }
-      }
+      if (value != ca1Input)
+        setCA1_(value);
     }
     inline bool getCA2() const
     {
@@ -155,17 +151,8 @@ namespace Plus4 {
     }
     inline void setCA2(bool value)
     {
-      bool    prvState = getCA2();
-      ca2Input = value;
-      bool    newState = getCA2();
-      if (newState != prvState) {
-        if (!ca2IsOutput) {
-          if (newState == !!(viaRegisters[0x0C] & 0x40)) {
-            viaRegisters[0x0D] = viaRegisters[0x0D] | 0x01;
-            updateInterruptFlags();
-          }
-        }
-      }
+      if (value != ca2Input)
+        setCA2_(value);
     }
     inline bool getCB1() const
     {
@@ -173,16 +160,8 @@ namespace Plus4 {
     }
     inline void setCB1(bool value)
     {
-      bool    prvState = getCB1();
-      cb1Input = value;
-      bool    newState = getCB1();
-      if (newState != prvState) {
-        if (newState == cb1PositiveEdge) {
-          viaRegisters[0x0D] = viaRegisters[0x0D] | 0x10;
-          updateInterruptFlags();
-          portBLatch = getPortB();
-        }
-      }
+      if (value != cb1Input)
+        setCB1_(value);
     }
     inline bool getCB2() const
     {
@@ -190,17 +169,8 @@ namespace Plus4 {
     }
     inline void setCB2(bool value)
     {
-      bool    prvState = getCB2();
-      cb2Input = value;
-      bool    newState = getCB2();
-      if (newState != prvState) {
-        if (!cb2IsOutput) {
-          if (newState == !!(viaRegisters[0x0C] & 0x04)) {
-            viaRegisters[0x0D] = viaRegisters[0x0D] | 0x08;
-            updateInterruptFlags();
-          }
-        }
-      }
+      if (value != cb2Input)
+        setCB2_(value);
     }
    protected:
     // called when the state of the IRQ line changes
