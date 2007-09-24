@@ -326,6 +326,8 @@ namespace Plus4 {
                                         uint16_t addr, uint8_t value);
     static void     write_register_FF10(void *userData,
                                         uint16_t addr, uint8_t value);
+    static void     write_register_FF11(void *userData,
+                                        uint16_t addr, uint8_t value);
     static void     write_register_FF12(void *userData,
                                         uint16_t addr, uint8_t value);
     static void     write_register_FF13(void *userData,

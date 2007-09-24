@@ -155,6 +155,7 @@ namespace Plus4 {
     setMemoryWriteCallback(0xFF0E, &write_register_FF0E);
     setMemoryWriteCallback(0xFF0F, &write_register_FF0F);
     setMemoryWriteCallback(0xFF10, &write_register_FF10);
+    setMemoryWriteCallback(0xFF11, &write_register_FF11);
     setMemoryWriteCallback(0xFF12, &write_register_FF12);
     setMemoryWriteCallback(0xFF13, &write_register_FF13);
     setMemoryWriteCallback(0xFF14, &write_register_FF14);

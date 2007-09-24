@@ -346,6 +346,19 @@ namespace Plus4 {
     ted.sound_channel_2_reload |= (int(value & uint8_t(0x03)) << 8);
   }
 
+  void TED7360::write_register_FF11(void *userData,
+                                    uint16_t addr, uint8_t value)
+  {
+    (void) addr;
+    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
+    ted.dataBusState = value;
+    ted.tedRegisters[0x11] = value;
+    if (value & 0x80) {
+      ted.sound_channel_1_state = uint8_t(1);
+      ted.sound_channel_2_state = uint8_t(1);
+    }
+  }
+
   void TED7360::write_register_FF12(void *userData,
                                     uint16_t addr, uint8_t value)
   {

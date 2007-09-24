@@ -456,8 +456,6 @@ namespace Plus4 {
       // DAC mode
       sound_channel_1_cnt = sound_channel_1_reload;
       sound_channel_2_cnt = sound_channel_2_reload;
-      sound_channel_1_state = uint8_t(1);
-      sound_channel_2_state = uint8_t(1);
       sound_channel_2_noise_state = uint8_t(0xFF);
       sound_channel_2_noise_output = uint8_t(1);
     }
