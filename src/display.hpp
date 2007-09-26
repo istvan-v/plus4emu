@@ -47,40 +47,42 @@ namespace Plus4Emu {
       void    (*indexToYUVFunc)(uint8_t color, bool isNTSC,
                                 float& y, float& u, float& v);
       // brightness (default: 0.0)
-      double  brightness;
+      float   brightness;
       // contrast (default: 1.0)
-      double  contrast;
+      float   contrast;
       // gamma (default: 1.0, higher values result in a brighter display)
-      double  gamma;
+      float   gamma;
+      // color hue shift (-180.0 to 180.0, default: 0.0)
+      float   hueShift;
       // color saturation (default: 1.0)
-      double  saturation;
+      float   saturation;
       // brightness for red channel
-      double  redBrightness;
+      float   redBrightness;
       // contrast for red channel
-      double  redContrast;
+      float   redContrast;
       // gamma for red channel
-      double  redGamma;
+      float   redGamma;
       // brightness for green channel
-      double  greenBrightness;
+      float   greenBrightness;
       // contrast for green channel
-      double  greenContrast;
+      float   greenContrast;
       // gamma for green channel
-      double  greenGamma;
+      float   greenGamma;
       // brightness for blue channel
-      double  blueBrightness;
+      float   blueBrightness;
       // contrast for blue channel
-      double  blueContrast;
+      float   blueContrast;
       // gamma for blue channel
-      double  blueGamma;
-      // controls vertical filtering of textures (0 to 0.5)
-      double  blendScale1;
-      // scale applied to new pixels written to frame buffer
-      double  blendScale2;
+      float   blueGamma;
+      // controls vertical filtering of textures (0.0 to 1.0)
+      float   lineShade;
+      // scale applied to pixels written to the frame buffer
+      float   blendScale;
       // scale applied to old pixels in frame buffer
-      double  blendScale3;
+      float   motionBlur;
       // pixel aspect ratio to assume
       // (calculated as (screen_width / screen_height) / (X_res / Y_res))
-      double  pixelAspectRatio;
+      float   pixelAspectRatio;
      private:
       static void defaultIndexToYUVFunc(uint8_t color, bool isNTSC,
                                         float& y, float& u, float& v);

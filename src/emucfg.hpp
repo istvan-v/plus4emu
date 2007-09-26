@@ -85,6 +85,7 @@ namespace Plus4Emu {
       double      brightness;
       double      contrast;
       double      gamma;
+      double      hueShift;
       double      saturation;
       struct {
         double    brightness;
@@ -101,11 +102,9 @@ namespace Plus4Emu {
         double    contrast;
         double    gamma;
       } blue;
-      struct {
-        double    param1;
-        double    param2;
-        double    param3;
-      } effects;
+      double      lineShade;
+      double      blendScale;
+      double      motionBlur;
       int         width;
       int         height;
       double      pixelAspectRatio;

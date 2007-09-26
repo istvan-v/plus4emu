@@ -146,6 +146,9 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "display.gamma",
                                 display.gamma, 1.0,
                                 displaySettingsChanged, 0.25, 4.0);
+    defineConfigurationVariable(*this, "display.hueShift",
+                                display.hueShift, 0.0,
+                                displaySettingsChanged, -180.0, 180.0);
     defineConfigurationVariable(*this, "display.saturation",
                                 display.saturation, 1.0,
                                 displaySettingsChanged, 0.0, 2.0);
@@ -176,15 +179,15 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "display.blue.gamma",
                                 display.blue.gamma, 1.0,
                                 displaySettingsChanged, 0.25, 4.0);
-    defineConfigurationVariable(*this, "display.effects.param1",
-                                display.effects.param1, 0.4,
-                                displaySettingsChanged, 0.0, 0.5);
-    defineConfigurationVariable(*this, "display.effects.param2",
-                                display.effects.param2, 0.75,
+    defineConfigurationVariable(*this, "display.lineShade",
+                                display.lineShade, 0.8,
                                 displaySettingsChanged, 0.0, 1.0);
-    defineConfigurationVariable(*this, "display.effects.param3",
-                                display.effects.param3, 0.25,
-                                displaySettingsChanged, 0.0, 1.0);
+    defineConfigurationVariable(*this, "display.blendScale",
+                                display.blendScale, 1.0,
+                                displaySettingsChanged, 0.5, 2.0);
+    defineConfigurationVariable(*this, "display.motionBlur",
+                                display.motionBlur, 0.25,
+                                displaySettingsChanged, 0.0, 0.95);
     defineConfigurationVariable(*this, "display.width",
                                 display.width, 768,
                                 displaySettingsChanged, 384.0, 1536.0);
@@ -220,7 +223,7 @@ namespace Plus4Emu {
                                 sound.file, std::string(""),
                                 soundSettingsChanged);
     defineConfigurationVariable(*this, "sound.volume",
-                                sound.volume, 0.7071,
+                                sound.volume, 0.7943,
                                 soundSettingsChanged, 0.01, 1.0);
     defineConfigurationVariable(*this, "sound.dcBlockFilter1Freq",
                                 sound.dcBlockFilter1Freq, 10.0,
@@ -232,13 +235,13 @@ namespace Plus4Emu {
                                 sound.equalizer.mode, int(2),
                                 soundSettingsChanged, -1.0, 2.0);
     defineConfigurationVariable(*this, "sound.equalizer.frequency",
-                                sound.equalizer.frequency, 14000.0,
+                                sound.equalizer.frequency, 15000.0,
                                 soundSettingsChanged, 1.0, 100000.0);
     defineConfigurationVariable(*this, "sound.equalizer.level",
-                                sound.equalizer.level, 0.355,
+                                sound.equalizer.level, 0.5,
                                 soundSettingsChanged, 0.0001, 100.0);
     defineConfigurationVariable(*this, "sound.equalizer.q",
-                                sound.equalizer.q, 0.7071,
+                                sound.equalizer.q, 0.5,
                                 soundSettingsChanged, 0.001, 100.0);
     // ----------------
     for (int i = 0; i < 128; i++) {
@@ -421,23 +424,24 @@ namespace Plus4Emu {
       dp.displayQuality = display.quality;
       dp.bufferingMode = display.bufferingMode;
       dp.ntscMode = display.ntscMode;
-      dp.brightness = display.brightness;
-      dp.contrast = display.contrast;
-      dp.gamma = display.gamma;
-      dp.saturation = display.saturation;
-      dp.redBrightness = display.red.brightness;
-      dp.redContrast = display.red.contrast;
-      dp.redGamma = display.red.gamma;
-      dp.greenBrightness = display.green.brightness;
-      dp.greenContrast = display.green.contrast;
-      dp.greenGamma = display.green.gamma;
-      dp.blueBrightness = display.blue.brightness;
-      dp.blueContrast = display.blue.contrast;
-      dp.blueGamma = display.blue.gamma;
-      dp.blendScale1 = display.effects.param1;
-      dp.blendScale2 = display.effects.param2;
-      dp.blendScale3 = display.effects.param3;
-      dp.pixelAspectRatio = display.pixelAspectRatio;
+      dp.brightness = float(display.brightness);
+      dp.contrast = float(display.contrast);
+      dp.gamma = float(display.gamma);
+      dp.hueShift = float(display.hueShift);
+      dp.saturation = float(display.saturation);
+      dp.redBrightness = float(display.red.brightness);
+      dp.redContrast = float(display.red.contrast);
+      dp.redGamma = float(display.red.gamma);
+      dp.greenBrightness = float(display.green.brightness);
+      dp.greenContrast = float(display.green.contrast);
+      dp.greenGamma = float(display.green.gamma);
+      dp.blueBrightness = float(display.blue.brightness);
+      dp.blueContrast = float(display.blue.contrast);
+      dp.blueGamma = float(display.blue.gamma);
+      dp.lineShade = float(display.lineShade);
+      dp.blendScale = float(display.blendScale);
+      dp.motionBlur = float(display.motionBlur);
+      dp.pixelAspectRatio = float(display.pixelAspectRatio);
       videoDisplay.setDisplayParameters(dp);
       // NOTE: resolution changes are not handled here
       displaySettingsChanged = false;
