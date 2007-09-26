@@ -539,7 +539,7 @@ namespace Plus4Emu {
     int     y1 = displayHeight_;
     double  aspectScale_ = (768.0 / 576.0)
                            / ((double(windowWidth_) / double(windowHeight_))
-                              * displayParameters.pixelAspectRatio);
+                              * double(displayParameters.pixelAspectRatio));
     if (aspectScale_ > 1.0001) {
       displayHeight_ = int((double(windowHeight_) / aspectScale_) + 0.5);
       y0 = (windowHeight_ - displayHeight_) >> 1;
@@ -806,7 +806,6 @@ namespace Plus4Emu {
         msg = static_cast<Message_SetParameters *>(m);
         displayParameters = msg->dp;
         DisplayParameters tmp_dp(displayParameters);
-        tmp_dp.blendScale1 = 0.5;
         colormap.setDisplayParameters(tmp_dp);
         for (size_t n = 0; n < 578; n++)
           linesChanged[n] |= uint8_t(0x80);

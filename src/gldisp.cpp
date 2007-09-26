@@ -163,7 +163,7 @@ static bool queryGLShaderFunctions()
 
 static const char *shaderSourcePAL[1] = {
   "uniform sampler2D textureHandle;\n"
-  "uniform float blendScale1;\n"
+  "uniform float lineShade;\n"
   "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.2062, -0.7010,\n"
   "                                 0.5000, -0.0506, -0.1050,  0.5291,\n"
   "                                 0.5000,  0.2606,  0.0000, -0.8860,\n"
@@ -181,14 +181,14 @@ static const char *shaderSourcePAL[1] = {
   "  vec4 p13 = texture2D(textureHandle, c0 + vec2(-0.0032, -0.046875));\n"
   "  p01 = p01 + p02;\n"
   "  vec4 tmp = ((p00 + p03 + p10 + p13) * 0.7) + (p01 + p11 + p12);\n"
-  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, blendScale1);\n"
+  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
   "  gl_FragColor = (vec4(p01[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
   "}\n"
 };
 
 static const char *shaderSourceNTSC[1] = {
   "uniform sampler2D textureHandle;\n"
-  "uniform float blendScale1;\n"
+  "uniform float lineShade;\n"
   "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.4124, -0.7010,\n"
   "                                 0.5000, -0.1012, -0.2100,  0.5291,\n"
   "                                 0.5000,  0.5212,  0.0000, -0.8860,\n"
@@ -202,7 +202,7 @@ static const char *shaderSourceNTSC[1] = {
   "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.0032, 0.015625));\n"
   "  p01 = p01 + p02;\n"
   "  vec4 tmp = ((p00 + p03) * 0.7) + p01;\n"
-  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, blendScale1);\n"
+  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
   "  gl_FragColor = (vec4(p01[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
   "}\n"
 };
@@ -341,8 +341,8 @@ namespace Plus4Emu {
     // FIXME: is it safe to use a constant texture ID of 0 here ?
     glUniform1i_(glGetUniformLocation_(GLuint(programHandle), "textureHandle"),
                  0);
-    glUniform1f_(glGetUniformLocation_(GLuint(programHandle), "blendScale1"),
-                 float(displayParameters.blendScale1) * 1.996f + 0.001f);
+    glUniform1f_(glGetUniformLocation_(GLuint(programHandle), "lineShade"),
+                 displayParameters.lineShade * 0.998f + 0.001f);
     return true;
 #else
     return false;
@@ -812,7 +812,7 @@ namespace Plus4Emu {
     double  x0, y0, x1, y1;
     double  aspectScale = (768.0 / 576.0)
                           / ((double(this->w()) / double(this->h()))
-                             * displayParameters.pixelAspectRatio);
+                             * double(displayParameters.pixelAspectRatio));
     x0 = 0.0;
     y0 = 0.0;
     x1 = 1.0;
@@ -929,14 +929,16 @@ namespace Plus4Emu {
       }
     }
     else if (displayParameters.bufferingMode != 2) {
+      float   blendScale3 = displayParameters.motionBlur;
+      float   blendScale2 = (1.0f - blendScale3) * displayParameters.blendScale;
       if (!(displayParameters.bufferingMode != 0 ||
-            (displayParameters.blendScale2 > 0.99 &&
-             displayParameters.blendScale3 < 0.01))) {
+            (blendScale2 > 0.99f && blendScale2 < 1.01f &&
+             blendScale3 < 0.01f))) {
         glEnable(GL_BLEND);
-        glBlendColor_(GLclampf(displayParameters.blendScale2),
-                      GLclampf(displayParameters.blendScale2),
-                      GLclampf(displayParameters.blendScale2),
-                      GLclampf(1.0 - displayParameters.blendScale3));
+        glBlendColor_(GLclampf(blendScale2),
+                      GLclampf(blendScale2),
+                      GLclampf(blendScale2),
+                      GLclampf(1.0f - blendScale3));
         glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_ALPHA);
       }
       else

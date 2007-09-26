@@ -204,9 +204,9 @@ namespace Plus4Emu {
       if (indexToYUVFunc)
         displayParameters.indexToYUVFunc = indexToYUVFunc;
       // scale video signal to YCrCb range
-      displayParameters.brightness = -1.5 / 255.0;
-      displayParameters.contrast = 220.0 / 255.0;
-      displayParameters.saturation = 224.0 / 220.0;
+      displayParameters.brightness = -1.5f / 255.0f;
+      displayParameters.contrast = 220.0f / 255.0f;
+      displayParameters.saturation = 224.0f / 220.0f;
       colormap.setDisplayParameters(displayParameters, true);
       // change pixel format for more efficient processing
       uint32_t  *p = colormap.getFirstEntry();
@@ -220,8 +220,6 @@ namespace Plus4Emu {
         p = colormap.getNextEntry(p);
       }
       audioConverter = new AudioConverter_(*this, 221681.0f, float(sampleRate));
-      audioConverter->setOutputVolume(0.79f);
-      audioConverter->setEqualizerParameters(2, 14000.0f, 0.355f, 0.7071f);
     }
     catch (...) {
       if (lineBuf)

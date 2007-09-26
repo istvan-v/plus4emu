@@ -60,8 +60,8 @@ namespace Plus4 {
       else
         phs = colorPhaseTableNTSC[c];
       phs *= (3.14159265f / 180.0f);
-      u = float(std::cos(phs)) * 0.178f;
-      v = float(std::sin(phs)) * 0.178f;
+      u = float(std::cos(phs)) * 0.18f;
+      v = float(std::sin(phs)) * 0.18f;
     }
   }
 
@@ -270,7 +270,7 @@ namespace Plus4 {
   void TED7360::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000003);        // version number
+    buf.writeUInt32(0x01000004);        // version number
     uint8_t   romBitmap = 0;
     for (uint8_t i = 0; i < 8; i++) {
       // find non-empty ROM segments
@@ -330,12 +330,18 @@ namespace Plus4 {
     buf.writeUInt32(uint32_t(timer1_reload_value));
     buf.writeUInt32(uint32_t(timer2_state));
     buf.writeUInt32(uint32_t(timer3_state));
-    buf.writeUInt32(uint32_t(sound_channel_1_cnt));
-    buf.writeUInt32(uint32_t(sound_channel_2_cnt));
-    buf.writeByte(sound_channel_1_state);
-    buf.writeByte(sound_channel_2_state);
-    buf.writeByte(sound_channel_2_noise_state);
-    buf.writeByte(sound_channel_2_noise_output);
+    buf.writeUInt32((((uint32_t(soundChannel1Cnt) - 1U) ^ 0x03FFU) - 1U)
+                    & 0x03FFU);
+    buf.writeUInt32((((uint32_t(soundChannel2Cnt) - 1U) ^ 0x03FFU) - 1U)
+                    & 0x03FFU);
+    buf.writeBoolean(prvSoundChannel1Overflow);
+    buf.writeBoolean(prvSoundChannel2Overflow);
+    buf.writeUInt32(soundChannel1Decay);
+    buf.writeUInt32(soundChannel2Decay);
+    buf.writeByte(soundChannel1State);
+    buf.writeByte(soundChannel2State);
+    buf.writeByte(soundChannel2NoiseState);
+    buf.writeByte(soundChannel2NoiseOutput);
     buf.writeBoolean(videoShiftRegisterEnabled);
     buf.writeByte(shiftRegisterCharacter.bitmap_());
     buf.writeByte(shiftRegisterCharacter.attr_());
@@ -386,7 +392,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (!(version >= 0x01000000 && version <= 0x01000003)) {
+    if (!(version >= 0x01000000 && version <= 0x01000004)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible Plus/4 snapshot format");
     }
@@ -488,13 +494,28 @@ namespace Plus4 {
       timer1_reload_value = int(buf.readUInt32() & 0xFFFF);
       timer2_state = int(buf.readUInt32() & 0xFFFF);
       timer3_state = int(buf.readUInt32() & 0xFFFF);
-      sound_channel_1_cnt = int(buf.readUInt32() & 0x03FF);
-      sound_channel_2_cnt = int(buf.readUInt32() & 0x03FF);
-      sound_channel_1_state = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
-      sound_channel_2_state = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
-      sound_channel_2_noise_state = buf.readByte();
-      sound_channel_2_noise_output =
-          uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
+      soundChannel1Cnt = uint16_t((((buf.readUInt32() + 1U) ^ 0x03FFU)
+                                   & 0x03FFU) + 1U);
+      soundChannel2Cnt = uint16_t((((buf.readUInt32() + 1U) ^ 0x03FFU)
+                                   & 0x03FFU) + 1U);
+      if (version >= 0x01000004) {
+        prvSoundChannel1Overflow = buf.readBoolean();
+        prvSoundChannel2Overflow = buf.readBoolean();
+        soundChannel1Decay = buf.readUInt32();
+        soundChannel2Decay = buf.readUInt32();
+      }
+      else {
+        prvSoundChannel1Overflow = (soundChannel1Reload == 0x0001);
+        prvSoundChannel2Overflow = (soundChannel2Reload == 0x0001);
+        soundChannel1Decay = 120000U;
+        soundChannel2Decay = 120000U;
+      }
+      soundChannel1State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
+      soundChannel2State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
+      soundChannel2NoiseState = buf.readByte();
+      soundChannel2NoiseOutput = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
+      updateSoundChannel1Output();
+      updateSoundChannel2Output();
       videoShiftRegisterEnabled = buf.readBoolean();
       shiftRegisterCharacter.bitmap_() = buf.readByte();
       if (version == 0x01000000)
