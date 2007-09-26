@@ -181,6 +181,7 @@ namespace Plus4Emu {
       dcBlock2R(outputSampleRate_, dcBlockFreq2)
   {
     setOutputVolume(ampScale_);
+    setEqualizerParameters(2, 15000.0f, 0.5f, 0.5f);
   }
 
   AudioConverter::~AudioConverter()

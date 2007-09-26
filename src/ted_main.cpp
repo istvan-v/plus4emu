@@ -449,67 +449,6 @@ namespace Plus4 {
     cycle_count = (cycle_count + 1) & 3;
   }
 
-  void TED7360::calculateSoundOutput()
-  {
-    uint8_t sound_register = tedRegisters[0x11];
-    if (sound_register & uint8_t(0x80)) {
-      // DAC mode
-      sound_channel_1_cnt = sound_channel_1_reload;
-      sound_channel_2_cnt = sound_channel_2_reload;
-      sound_channel_2_noise_state = uint8_t(0xFF);
-      sound_channel_2_noise_output = uint8_t(1);
-    }
-    else {
-      sound_channel_1_cnt = (sound_channel_1_cnt + 1) & 1023;
-      if (sound_channel_1_cnt == 1023) {
-        // channel 1 square wave
-        sound_channel_1_cnt = sound_channel_1_reload;
-        if (sound_channel_1_reload != 1022) {
-          sound_channel_1_state ^= uint8_t(1);
-          sound_channel_1_state &= uint8_t(1);
-        }
-      }
-      sound_channel_2_cnt = (sound_channel_2_cnt + 1) & 1023;
-      if (sound_channel_2_cnt == 1023) {
-        // channel 2 square wave
-        sound_channel_2_cnt = sound_channel_2_reload;
-        if (sound_channel_2_reload != 1022) {
-          sound_channel_2_state ^= uint8_t(1);
-          sound_channel_2_state &= uint8_t(1);
-          // channel 2 noise, 8 bit polycnt (10110011)
-          uint8_t tmp = sound_channel_2_noise_state & uint8_t(0xB3);
-          tmp = tmp ^ (tmp >> 1);
-          tmp = tmp ^ (tmp >> 2);
-          tmp = tmp ^ (tmp >> 4);
-          sound_channel_2_noise_output ^= tmp;
-          sound_channel_2_noise_output &= uint8_t(1);
-          sound_channel_2_noise_state <<= 1;
-          sound_channel_2_noise_state |= sound_channel_2_noise_output;
-        }
-      }
-    }
-    // mix sound outputs
-    static const int16_t  soundVolumeTable[64] = {
-          0,     0,     0,     0,     0,     0,     0,     0,
-          0,     0,     0,     0,     0,     0,     0,     0,
-          0,   574,  1553,  2532,  3531,  4559,  5585,  6623,
-       7585,  7585,  7585,  7585,  7585,  7585,  7585,  7585,
-          0,   574,  1553,  2532,  3531,  4559,  5585,  6623,
-       7585,  7585,  7585,  7585,  7585,  7585,  7585,  7585,
-          0,  1152,  3135,  5149,  7265,  9443, 11696, 14070,
-      16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
-    };
-    int     sound_volume = sound_register & 0x0F;
-    if (sound_register & uint8_t(0x10))
-      sound_volume |= (sound_channel_1_state ? 0x10 : 0x00);
-    if (sound_register & uint8_t(0x20))
-      sound_volume |= (sound_channel_2_state ? 0x20 : 0x00);
-    else if (sound_register & uint8_t(0x40))
-      sound_volume |= (sound_channel_2_noise_output ? 0x00 : 0x20);
-    // send sound output signal (sample rate = 221 kHz)
-    playSample(soundVolumeTable[sound_volume]);
-  }
-
   void TED7360::processDelayedEvents(uint32_t n)
   {
     if (n & 0x0000FFFFU) {

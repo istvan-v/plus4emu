@@ -296,14 +296,6 @@ class Plus4EmuDisplaySndConfiguration {
     struct {
       double      latency;
       int         hwPeriods;
-      double      dcBlockFilter1Freq;
-      double      dcBlockFilter2Freq;
-      struct {
-        int       mode;
-        double    frequency;
-        double    level;
-        double    q;
-      } equalizer;
     } sound;
  public:
   Plus4EmuDisplaySndConfiguration(Plus4Emu::ConfigurationDB& config)
@@ -316,21 +308,9 @@ class Plus4EmuDisplaySndConfiguration {
     sound.latency = 0.1;
     sound.hwPeriods = 16;
 #endif
-    sound.dcBlockFilter1Freq = 10.0;
-    sound.dcBlockFilter2Freq = 10.0;
-    sound.equalizer.mode = 2;
-    sound.equalizer.frequency = 14000.0;
-    sound.equalizer.level = 0.355;
-    sound.equalizer.q = 0.7071;
     config.createKey("display.quality", display.quality);
     config.createKey("sound.latency", sound.latency);
     config.createKey("sound.hwPeriods", sound.hwPeriods);
-    config.createKey("sound.dcBlockFilter1Freq", sound.dcBlockFilter1Freq);
-    config.createKey("sound.dcBlockFilter2Freq", sound.dcBlockFilter2Freq);
-    config.createKey("sound.equalizer.mode", sound.equalizer.mode);
-    config.createKey("sound.equalizer.frequency", sound.equalizer.frequency);
-    config.createKey("sound.equalizer.level", sound.equalizer.level);
-    config.createKey("sound.equalizer.q", sound.equalizer.q);
   }
 };
 

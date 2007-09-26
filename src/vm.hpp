@@ -180,7 +180,7 @@ namespace Plus4Emu {
     virtual void setAudioOutputEqualizer(int mode_,
                                          float freq_, float level_, float q_);
     /*!
-     * Set amplitude scale for audio output (defaults to 0.7071).
+     * Set amplitude scale for audio output (defaults to 0.7943).
      */
     virtual void setAudioOutputVolume(float ampScale_);
     /*!

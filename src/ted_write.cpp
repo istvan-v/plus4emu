@@ -313,52 +313,6 @@ namespace Plus4 {
     ted.cursor_position |= int(value);
   }
 
-  void TED7360::write_register_FF0E(void *userData,
-                                    uint16_t addr, uint8_t value)
-  {
-    (void) addr;
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = value;
-    ted.tedRegisters[0x0E] = value;
-    ted.sound_channel_1_reload &= 0x0300;
-    ted.sound_channel_1_reload |= int(value);
-  }
-
-  void TED7360::write_register_FF0F(void *userData,
-                                    uint16_t addr, uint8_t value)
-  {
-    (void) addr;
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = value;
-    ted.tedRegisters[0x0F] = value;
-    ted.sound_channel_2_reload &= 0x0300;
-    ted.sound_channel_2_reload |= int(value);
-  }
-
-  void TED7360::write_register_FF10(void *userData,
-                                    uint16_t addr, uint8_t value)
-  {
-    (void) addr;
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = value;
-    ted.tedRegisters[0x10] = value;
-    ted.sound_channel_2_reload &= 0x00FF;
-    ted.sound_channel_2_reload |= (int(value & uint8_t(0x03)) << 8);
-  }
-
-  void TED7360::write_register_FF11(void *userData,
-                                    uint16_t addr, uint8_t value)
-  {
-    (void) addr;
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    ted.dataBusState = value;
-    ted.tedRegisters[0x11] = value;
-    if (value & 0x80) {
-      ted.sound_channel_1_state = uint8_t(1);
-      ted.sound_channel_2_state = uint8_t(1);
-    }
-  }
-
   void TED7360::write_register_FF12(void *userData,
                                     uint16_t addr, uint8_t value)
   {
@@ -366,11 +320,11 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x12] = value;
-    ted.sound_channel_1_reload &= 0x00FF;
-    ted.sound_channel_1_reload |= (int(value & uint8_t(0x03)) << 8);
     ted.tedBitmapReadMap = (ted.tedBitmapReadMap & 0x7F78U)
                            | ((unsigned int) (value & uint8_t(0x04)) << 5);
     ted.bitmap_base_addr = int(value & uint8_t(0x38)) << 10;
+    int     tmp = int(ted.tedRegisters[0x0E]) | (int(value & 0x03) << 8);
+    ted.soundChannel1Reload = uint16_t((((tmp + 1) ^ 0x03FF) & 0x03FF) + 1);
   }
 
   void TED7360::write_register_FF13(void *userData,

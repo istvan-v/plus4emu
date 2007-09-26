@@ -141,7 +141,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundVolumeValueDisplay->value(o->value());
 }}
-          xywh {25 215 35 35} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 0.01 step 0.001 value 0.707
+          xywh {25 215 35 35} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 0.01 step 0.001 value 0.794
         }
         Fl_Value_Output soundVolumeValueDisplay {
           callback {{
@@ -149,7 +149,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundVolumeValuator->value(o->value());
 }}
-          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 255 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 0.01 step 0.001 value 0.707 textsize 13 textcolor 52
+          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 255 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 0.01 step 0.001 value 0.794 textsize 13 textcolor 52
         }
         Fl_Dial soundDCFilter1Valuator {
           label { Highpass 1}

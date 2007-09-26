@@ -453,14 +453,22 @@ namespace Plus4 {
     int         timer2_state;
     int         timer3_state;
     // sound generators
-    int         sound_channel_1_cnt;
-    int         sound_channel_1_reload;
-    int         sound_channel_2_cnt;
-    int         sound_channel_2_reload;
-    uint8_t     sound_channel_1_state;
-    uint8_t     sound_channel_2_state;
-    uint8_t     sound_channel_2_noise_state;
-    uint8_t     sound_channel_2_noise_output;
+    uint16_t    soundChannel1Cnt;       // counts from soundChannel1Reload to 0
+    uint16_t    soundChannel1Reload;    // 1 to 1024
+    uint16_t    soundChannel2Cnt;       // counts from soundChannel2Reload to 0
+    uint16_t    soundChannel2Reload;    // 1 to 1024
+    bool        prvSoundChannel1Overflow;
+    bool        prvSoundChannel2Overflow;
+    uint32_t    soundChannel1Decay;     // set channel state to 1 after 120000
+    uint32_t    soundChannel2Decay;     // 221 kHz cycles at freq = 0x03FE
+    uint8_t     soundChannel1State;
+    uint8_t     soundChannel2State;
+    uint8_t     soundChannel2NoiseState;
+    uint8_t     soundChannel2NoiseOutput;
+    uint8_t     soundVolume;            // 0 to 60 (0, 5, 13, ..., 45, 53, 60)
+    uint8_t     soundChannel1Output;    // 0 to 60
+    uint8_t     soundChannel2Output;    // 0 to 60
+    uint8_t     prvSoundOutput;         // 0 to 120
     // video buffers
     uint8_t     attr_buf[64];
     uint8_t     attr_buf_tmp[64];
@@ -606,6 +614,20 @@ namespace Plus4 {
         dramRefreshAddrL = (dramRefreshAddrL + 1) & 0xFF;
       }
       memoryReadMap = cpuMemoryReadMap;
+    }
+    inline void updateSoundChannel1Output()
+    {
+      soundChannel1Output = 0x00;
+      if (tedRegisters[0x11] & 0x10)
+        soundChannel1Output = (soundChannel1State ? soundVolume : 0x00);
+    }
+    inline void updateSoundChannel2Output()
+    {
+      soundChannel2Output = 0x00;
+      if (tedRegisters[0x11] & 0x20)
+        soundChannel2Output = (soundChannel2State ? soundVolume : 0x00);
+      else if (tedRegisters[0x11] & 0x40)
+        soundChannel2Output = (soundChannel2NoiseOutput ? 0x00 : soundVolume);
     }
    protected:
     virtual void playSample(int16_t sampleValue)
