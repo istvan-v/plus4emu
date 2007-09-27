@@ -297,6 +297,12 @@ namespace Plus4Emu {
         else {
           uTmp = uTmp - 0.16f;          // add NTSC burst (180 degrees)
         }
+        // limit chroma level
+        float   c = float(std::sqrt(double((uTmp * uTmp) + (vTmp * vTmp))));
+        if (c > 0.21f) {
+          uTmp *= (0.21f / c);
+          vTmp *= (0.21f / c);
+        }
       }
       float   phaseShift = phaseShiftTable[k] * 0.01745329f;
       float   re = float(std::cos(phaseShift));
