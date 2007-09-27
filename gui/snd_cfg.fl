@@ -116,18 +116,20 @@ class Plus4EmuGUI_SoundConfigWindow {open
           label {Hardware buffers}
           callback {{
   gui.config.sound.hwPeriods = int(o->clamp(o->value()) + 0.5);
+  o->value(double(gui.config.sound.hwPeriods));
   gui.config.soundSettingsChanged = true;
 }}
-          tooltip {Number of sound card buffers; click and drag to change the value} xywh {200 90 35 25} color 0 selection_color 238 labelcolor 52 align 8 minimum 2 maximum 16 step 1 value 4 textcolor 52
+          tooltip {Number of sound card buffers; click and drag to change the value} xywh {200 90 35 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 2 maximum 16 step 1 value 4 textcolor 52
           code0 {o->cursor_color(FL_YELLOW);}
         }
         Fl_Value_Input soundSWPeriodsValuator {
           label {Software buffers}
           callback {{
   gui.config.sound.swPeriods = int(o->clamp(o->value()) + 0.5);
+  o->value(double(gui.config.sound.swPeriods));
   gui.config.soundSettingsChanged = true;
 }}
-          tooltip {Number of buffers in emulator ring buffer; click and drag to change the value} xywh {200 125 35 25} color 0 selection_color 238 labelcolor 52 align 8 minimum 2 maximum 16 step 1 value 4 textcolor 52
+          tooltip {Number of buffers in emulator ring buffer; click and drag to change the value} xywh {200 125 35 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 2 maximum 16 step 1 value 4 textcolor 52
           code0 {o->cursor_color(FL_YELLOW);}
         }
       }
