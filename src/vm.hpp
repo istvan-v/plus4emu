@@ -607,7 +607,7 @@ namespace Plus4Emu {
     inline void sendMonoAudioOutput(int32_t audioData)
     {
       if (this->writingAudioOutput)
-        this->audioConverter->sendMonoInputSignal(audioData);
+        this->audioConverter->sendInputSignal(audioData);
     }
     /*!
      * This function is similar to the public setTapeFileName(), but allows

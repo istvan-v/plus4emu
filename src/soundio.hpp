@@ -56,8 +56,8 @@ namespace Plus4Emu {
     // previously opened file with a different name
     // if the name is an empty string, no file is written
     void setOutputFile(const std::string& fileName);
-    // write 'nFrames' interleaved stereo sample frames from 'buf'
-    // (in 16 bit signed PCM format) to the audio output device and file
+    // write 'nFrames' mono samples from 'buf' (in 16 bit signed PCM format)
+    // to the audio output device and file
     virtual void sendAudioData(const int16_t *buf, size_t nFrames);
     // close the audio device
     virtual void closeDevice();

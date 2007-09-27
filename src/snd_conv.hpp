@@ -47,36 +47,32 @@ namespace Plus4Emu {
     };
     float   inputSampleRate;
     float   outputSampleRate;
-    DCBlockFilter dcBlock1L;
-    DCBlockFilter dcBlock1R;
-    DCBlockFilter dcBlock2L;
-    DCBlockFilter dcBlock2R;
-    ParametricEqualizer eqL;
-    ParametricEqualizer eqR;
+    DCBlockFilter dcBlock1;
+    DCBlockFilter dcBlock2;
+    ParametricEqualizer eq;
     float   ampScale;
    public:
     AudioConverter(float inputSampleRate_, float outputSampleRate_,
                    float dcBlockFreq1 = 10.0f, float dcBlockFreq2 = 10.0f,
                    float ampScale_ = 0.7943f);
     virtual ~AudioConverter();
-    virtual void sendInputSignal(uint32_t audioInput) = 0;
-    virtual void sendMonoInputSignal(int32_t audioInput) = 0;
+    virtual void sendInputSignal(int32_t audioInput) = 0;
     virtual void setInputSampleRate(float sampleRate_);
     virtual void setOutputSampleRate(float sampleRate_);
     void setDCBlockFilters(float frq1, float frq2);
     void setEqualizerParameters(int mode_, float freq_, float level_, float q_);
     void setOutputVolume(float ampScale_);
    protected:
-    virtual void audioOutput(int16_t left, int16_t right) = 0;
-    inline void sendOutputSignal(float left, float right);
+    virtual void audioOutput(int16_t outputSignal_) = 0;
+    inline void sendOutputSignal(float audioSignal);
   };
 
   class AudioConverterLowQuality : public AudioConverter {
    private:
-    float   prvInputL, prvInputR;
+    float   prvInput;
     float   phs, nxtPhs;
     float   downsampleRatio;
-    float   outLeft, outRight;
+    float   outputSignal;
    public:
     AudioConverterLowQuality(float inputSampleRate_,
                              float outputSampleRate_,
@@ -84,8 +80,7 @@ namespace Plus4Emu {
                              float dcBlockFreq2 = 10.0f,
                              float ampScale_ = 0.7943f);
     virtual ~AudioConverterLowQuality();
-    virtual void sendInputSignal(uint32_t audioInput);
-    virtual void sendMonoInputSignal(int32_t audioInput);
+    virtual void sendInputSignal(int32_t audioInput);
     virtual void setInputSampleRate(float sampleRate_);
     virtual void setOutputSampleRate(float sampleRate_);
   };
@@ -98,16 +93,12 @@ namespace Plus4Emu {
       float   windowTable[12 * 128 + 1];
      public:
       ResampleWindow();
-      inline void processSample(float inL, float inR,
-                                float *outBufL, float *outBufR,
-                                int outBufSize, float bufPos);
-      inline void processSample(float inL, float *outBufL,
+      inline void processSample(float inputSignal, float *outBuf,
                                 int outBufSize, float bufPos);
     };
     static ResampleWindow window;
     static const int bufSize = 16;
-    float   bufL[16];
-    float   bufR[16];
+    float   buf[16];
     float   bufPos, nxtPos;
     float   resampleRatio;
     // ----------------
@@ -118,8 +109,7 @@ namespace Plus4Emu {
                               float dcBlockFreq2 = 10.0f,
                               float ampScale_ = 0.7943f);
     virtual ~AudioConverterHighQuality();
-    virtual void sendInputSignal(uint32_t audioInput);
-    virtual void sendMonoInputSignal(int32_t audioInput);
+    virtual void sendInputSignal(int32_t audioInput);
     virtual void setInputSampleRate(float sampleRate_);
     virtual void setOutputSampleRate(float sampleRate_);
   };

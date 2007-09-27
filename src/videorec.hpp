@@ -43,7 +43,7 @@ namespace Plus4Emu {
                       float ampScale_ = 0.7943f);
       virtual ~AudioConverter_();
      protected:
-      virtual void audioOutput(int16_t left, int16_t right);
+      virtual void audioOutput(int16_t outputSignal_);
     };
     std::FILE   *aviFile;
     uint8_t     *lineBuf;               // 720 bytes

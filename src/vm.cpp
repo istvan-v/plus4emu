@@ -80,13 +80,12 @@ namespace Plus4Emu {
     virtual ~AudioConverter_()
     {
     }
-    virtual void audioOutput(int16_t left, int16_t right)
+    virtual void audioOutput(int16_t outputSignal_)
     {
-      buf[bufPos++] = left;
-      buf[bufPos++] = right;
+      buf[bufPos++] = outputSignal_;
       if (bufPos >= 16) {
         bufPos = 0;
-        audioOutput_.sendAudioData(&(buf[0]), 8);
+        audioOutput_.sendAudioData(&(buf[0]), 16);
       }
     }
   };

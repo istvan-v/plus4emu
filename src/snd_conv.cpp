@@ -144,28 +144,25 @@ namespace Plus4Emu {
       return inputSignal;
   }
 
-  inline void AudioConverter::sendOutputSignal(float left, float right)
+  inline void AudioConverter::sendOutputSignal(float audioSignal)
   {
     // scale, clip, and convert to 16 bit integer format
-    float   outL = left * ampScale;
-    float   outR = right * ampScale;
-    if (outL < 0.0f)
-      outL = (outL > -32767.0f ? outL - 0.5f : -32767.5f);
-    else
-      outL = (outL < 32767.0f ? outL + 0.5f : 32767.5f);
-    if (outR < 0.0f)
-      outR = (outR > -32767.0f ? outR - 0.5f : -32767.5f);
-    else
-      outR = (outR < 32767.0f ? outR + 0.5f : 32767.5f);
+    float   outputSignal = audioSignal * ampScale;
+    if (outputSignal < 0.0f) {
+      outputSignal =
+          (outputSignal > -32767.0f ? outputSignal - 0.5f : -32767.5f);
+    }
+    else {
+      outputSignal =
+          (outputSignal < 32767.0f ? outputSignal + 0.5f : 32767.5f);
+    }
 #if defined(__linux) || defined(__linux__)
-    int16_t outL_i = int16_t(outL);
-    int16_t outR_i = int16_t(outR);
+    int16_t outputSignal_i = int16_t(outputSignal);
     // hack to work around clicks in ALSA sound output
-    outL_i = (outL_i != 0 ? outL_i : 1);
-    outR_i = (outR_i != 0 ? outR_i : 1);
-    this->audioOutput(int16_t(outL_i), int16_t(outR_i));
+    outputSignal_i = (outputSignal_i != 0 ? outputSignal_i : 1);
+    this->audioOutput(outputSignal_i);
 #else
-    this->audioOutput(int16_t(outL), int16_t(outR));
+    this->audioOutput(int16_t(outputSignal));
 #endif
   }
 
@@ -175,10 +172,8 @@ namespace Plus4Emu {
                                  float ampScale_)
     : inputSampleRate(inputSampleRate_),
       outputSampleRate(outputSampleRate_),
-      dcBlock1L(outputSampleRate_, dcBlockFreq1),
-      dcBlock1R(outputSampleRate_, dcBlockFreq1),
-      dcBlock2L(outputSampleRate_, dcBlockFreq2),
-      dcBlock2R(outputSampleRate_, dcBlockFreq2)
+      dcBlock1(outputSampleRate_, dcBlockFreq1),
+      dcBlock2(outputSampleRate_, dcBlockFreq2)
   {
     setOutputVolume(ampScale_);
     setEqualizerParameters(2, 15000.0f, 0.5f, 0.5f);
@@ -200,18 +195,15 @@ namespace Plus4Emu {
 
   void AudioConverter::setDCBlockFilters(float frq1, float frq2)
   {
-    dcBlock1L.setCutoffFrequency(frq1);
-    dcBlock1R.setCutoffFrequency(frq1);
-    dcBlock2L.setCutoffFrequency(frq2);
-    dcBlock2R.setCutoffFrequency(frq2);
+    dcBlock1.setCutoffFrequency(frq1);
+    dcBlock2.setCutoffFrequency(frq2);
   }
 
   void AudioConverter::setEqualizerParameters(int mode_, float freq_,
                                               float level_, float q_)
   {
     float   omega = 2.0f * 3.1415927f * freq_ / outputSampleRate;
-    eqL.setParameters(mode_, omega, level_, q_);
-    eqR.setParameters(mode_, omega, level_, q_);
+    eq.setParameters(mode_, omega, level_, q_);
   }
 
   void AudioConverter::setOutputVolume(float ampScale_)
@@ -224,54 +216,26 @@ namespace Plus4Emu {
       ampScale = 0.017f;
   }
 
-  void AudioConverterLowQuality::sendInputSignal(uint32_t audioInput)
+  void AudioConverterLowQuality::sendInputSignal(int32_t audioInput)
   {
-    float   left = float(int(audioInput & 0xFFFF));
-    float   right = float(int(audioInput >> 16));
+    float   audioInput_f = float(audioInput);
     phs += 1.0f;
     if (phs < nxtPhs) {
-      outLeft += (prvInputL + left);
-      outRight += (prvInputR + right);
+      outputSignal += (prvInput + audioInput_f);
     }
     else {
       float   phsFrac = nxtPhs - (phs - 1.0f);
-      float   left2 = prvInputL + ((left - prvInputL) * phsFrac);
-      float   right2 = prvInputR + ((right - prvInputR) * phsFrac);
-      outLeft += ((prvInputL + left2) * phsFrac);
-      outRight += ((prvInputR + right2) * phsFrac);
-      outLeft /= (downsampleRatio * 2.0f);
-      outRight /= (downsampleRatio * 2.0f);
-      sendOutputSignal(
-          eqL.process(dcBlock2L.process(dcBlock1L.process(outLeft))),
-          eqR.process(dcBlock2R.process(dcBlock1R.process(outRight))));
-      outLeft = (left2 + left) * (1.0f - phsFrac);
-      outRight = (right2 + right) * (1.0f - phsFrac);
+      float   tmp = prvInput + ((audioInput_f - prvInput) * phsFrac);
+      outputSignal += ((prvInput + tmp) * phsFrac);
+      outputSignal /= (downsampleRatio * 2.0f);
+      float   tmp2 =
+          eq.process(dcBlock2.process(dcBlock1.process(outputSignal)));
+      sendOutputSignal(tmp2);
+      outputSignal = (tmp + audioInput_f) * (1.0f - phsFrac);
       nxtPhs = (nxtPhs + downsampleRatio) - phs;
       phs = 0.0f;
     }
-    prvInputL = left;
-    prvInputR = right;
-  }
-
-  void AudioConverterLowQuality::sendMonoInputSignal(int32_t audioInput)
-  {
-    float   left = float(audioInput);
-    phs += 1.0f;
-    if (phs < nxtPhs) {
-      outLeft += (prvInputL + left);
-    }
-    else {
-      float   phsFrac = nxtPhs - (phs - 1.0f);
-      float   left2 = prvInputL + ((left - prvInputL) * phsFrac);
-      outLeft += ((prvInputL + left2) * phsFrac);
-      outLeft /= (downsampleRatio * 2.0f);
-      float   tmp = eqL.process(dcBlock2L.process(dcBlock1L.process(outLeft)));
-      sendOutputSignal(tmp, tmp);
-      outLeft = (left2 + left) * (1.0f - phsFrac);
-      nxtPhs = (nxtPhs + downsampleRatio) - phs;
-      phs = 0.0f;
-    }
-    prvInputL = left;
+    prvInput = audioInput_f;
   }
 
   AudioConverterLowQuality::AudioConverterLowQuality(float inputSampleRate_,
@@ -282,13 +246,11 @@ namespace Plus4Emu {
     : AudioConverter(inputSampleRate_, outputSampleRate_,
                      dcBlockFreq1, dcBlockFreq2, ampScale_)
   {
-    prvInputL = 0.0f;
-    prvInputR = 0.0f;
+    prvInput = 0.0f;
     phs = 0.0f;
     downsampleRatio = inputSampleRate_ / outputSampleRate_;
     nxtPhs = downsampleRatio;
-    outLeft = 0.0f;
-    outRight = 0.0f;
+    outputSignal = 0.0f;
   }
 
   AudioConverterLowQuality::~AudioConverterLowQuality()
@@ -308,8 +270,7 @@ namespace Plus4Emu {
   }
 
   inline void AudioConverterHighQuality::ResampleWindow::processSample(
-      float inL, float inR, float *outBufL, float *outBufR,
-      int outBufSize, float bufPos)
+      float inputSignal, float *outBuf, int outBufSize, float bufPos)
   {
     int      writePos = int(bufPos);
     float    posFrac = bufPos - writePos;
@@ -323,30 +284,7 @@ namespace Plus4Emu {
       float   w = windowTable[winPosInt]
                   + ((windowTable[winPosInt + 1] - windowTable[winPosInt])
                      * winPosFrac);
-      outBufL[writePos] += inL * w;
-      outBufR[writePos] += inR * w;
-      if (++writePos >= outBufSize)
-        writePos = 0;
-      winPosInt += (windowSize / 12);
-    } while (winPosInt < windowSize);
-  }
-
-  inline void AudioConverterHighQuality::ResampleWindow::processSample(
-      float inL, float *outBufL, int outBufSize, float bufPos)
-  {
-    int      writePos = int(bufPos);
-    float    posFrac = bufPos - writePos;
-    float    winPos = (1.0f - posFrac) * float(windowSize / 12);
-    int      winPosInt = int(winPos);
-    float    winPosFrac = winPos - winPosInt;
-    writePos -= 5;
-    while (writePos < 0)
-      writePos += outBufSize;
-    do {
-      float   w = windowTable[winPosInt]
-                  + ((windowTable[winPosInt + 1] - windowTable[winPosInt])
-                     * winPosFrac);
-      outBufL[writePos] += inL * w;
+      outBuf[writePos] += inputSignal * w;
       if (++writePos >= outBufSize)
         writePos = 0;
       winPosInt += (windowSize / 12);
@@ -370,11 +308,9 @@ namespace Plus4Emu {
 
   AudioConverterHighQuality::ResampleWindow AudioConverterHighQuality::window;
 
-  void AudioConverterHighQuality::sendInputSignal(uint32_t audioInput)
+  void AudioConverterHighQuality::sendInputSignal(int32_t audioInput)
   {
-    float   left = float(int(audioInput & 0xFFFF));
-    float   right = float(int(audioInput >> 16));
-    window.processSample(left, right, bufL, bufR, bufSize, bufPos);
+    window.processSample(float(audioInput), buf, bufSize, bufPos);
     bufPos += resampleRatio;
     if (bufPos >= nxtPos) {
       if (bufPos >= float(bufSize))
@@ -383,32 +319,10 @@ namespace Plus4Emu {
       int     readPos = int(bufPos) - 6;
       while (readPos < 0)
         readPos += bufSize;
-      left = bufL[readPos] * resampleRatio;
-      bufL[readPos] = 0.0f;
-      right = bufR[readPos] * resampleRatio;
-      bufR[readPos] = 0.0f;
-      sendOutputSignal(
-          eqL.process(dcBlock2L.process(dcBlock1L.process(left))),
-          eqR.process(dcBlock2R.process(dcBlock1R.process(right))));
-    }
-  }
-
-  void AudioConverterHighQuality::sendMonoInputSignal(int32_t audioInput)
-  {
-    float   left = float(audioInput);
-    window.processSample(left, bufL, bufSize, bufPos);
-    bufPos += resampleRatio;
-    if (bufPos >= nxtPos) {
-      if (bufPos >= float(bufSize))
-        bufPos -= float(bufSize);
-      nxtPos = float(int(bufPos) + 1);
-      int     readPos = int(bufPos) - 6;
-      while (readPos < 0)
-        readPos += bufSize;
-      left = bufL[readPos] * resampleRatio;
-      bufL[readPos] = 0.0f;
-      float   tmp = eqL.process(dcBlock2L.process(dcBlock1L.process(left)));
-      sendOutputSignal(tmp, tmp);
+      float   tmp = buf[readPos] * resampleRatio;
+      buf[readPos] = 0.0f;
+      float   tmp2 = eq.process(dcBlock2.process(dcBlock1.process(tmp)));
+      sendOutputSignal(tmp2);
     }
   }
 
@@ -421,8 +335,7 @@ namespace Plus4Emu {
                      dcBlockFreq1, dcBlockFreq2, ampScale_)
   {
     for (int i = 0; i < bufSize; i++) {
-      bufL[i] = 0.0f;
-      bufR[i] = 0.0f;
+      buf[i] = 0.0f;
     }
     bufPos = 0.0f;
     nxtPos = 1.0f;
