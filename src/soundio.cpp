@@ -121,7 +121,7 @@ namespace Plus4Emu {
         std::memset(&sfinfo, 0, sizeof(SF_INFO));
         sfinfo.frames = -1;
         sfinfo.samplerate = int(sampleRate + 0.5);
-        sfinfo.channels = 2;
+        sfinfo.channels = 1;
         sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
         soundFile = sf_open(outputFileName.c_str(), SFM_WRITE, &sfinfo);
         if (!soundFile) {
@@ -157,7 +157,7 @@ namespace Plus4Emu {
       std::memset(&sfinfo, 0, sizeof(SF_INFO));
       sfinfo.frames = -1;
       sfinfo.samplerate = int(sampleRate + 0.5);
-      sfinfo.channels = 2;
+      sfinfo.channels = 1;
       sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
       soundFile = sf_open(fileName.c_str(), SFM_WRITE, &sfinfo);
       if (!soundFile)
@@ -284,13 +284,18 @@ namespace Plus4Emu {
           break;
         }
         nextTime = nextTime + periodTime;
-        if (t > 0.001)
+        if (t > 0.00075) {
           Timer::wait(t);
+        }
+        else if (t < -0.5) {
+          timer_.reset();
+          nextTime = 0.0;
+        }
 #  endif
         for (size_t i = 0; i < nFrames; i++) {
           Buffer& buf_ = buffers[0];
-          buf_.audioData[buf_.writePos++] = buf[(i << 1) + 0];
-          buf_.audioData[buf_.writePos++] = buf[(i << 1) + 1];
+          buf_.audioData[buf_.writePos++] = buf[i];
+          buf_.audioData[buf_.writePos++] = buf[i];
           if (buf_.writePos >= buf_.audioData.size()) {
             buf_.writePos = 0;
             Pa_WriteStream(paStream,
@@ -303,8 +308,8 @@ namespace Plus4Emu {
       {
         for (size_t i = 0; i < nFrames; i++) {
           Buffer& buf_ = buffers[writeBufIndex];
-          buf_.audioData[buf_.writePos++] = buf[(i << 1) + 0];
-          buf_.audioData[buf_.writePos++] = buf[(i << 1) + 1];
+          buf_.audioData[buf_.writePos++] = buf[i];
+          buf_.audioData[buf_.writePos++] = buf[i];
           if (buf_.writePos >= buf_.audioData.size()) {
             buf_.writePos = 0;
             buf_.paLock.notify();
