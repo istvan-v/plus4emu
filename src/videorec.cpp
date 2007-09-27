@@ -44,13 +44,11 @@ namespace Plus4Emu {
   {
   }
 
-  void VideoCapture::AudioConverter_::audioOutput(int16_t left, int16_t right)
+  void VideoCapture::AudioConverter_::audioOutput(int16_t outputSignal_)
   {
-    int16_t tmp;
-    tmp = int16_t(((int32_t(left) + int32_t(right) + 65537) >> 1) - 32768);
     if (videoCapture.audioBufSamples
         < (videoCapture.audioBufSize * videoCapture.audioBuffers)) {
-      videoCapture.audioBuf[videoCapture.audioBufWritePos++] = tmp;
+      videoCapture.audioBuf[videoCapture.audioBufWritePos++] = outputSignal_;
       if (videoCapture.audioBufWritePos
           >= (videoCapture.audioBufSize * videoCapture.audioBuffers)) {
         videoCapture.audioBufWritePos = 0;
@@ -251,7 +249,7 @@ namespace Plus4Emu {
       cycleCnt = 0;
       int32_t tmp = ((soundOutputAccumulator + 262148) >> 3) - 32768;
       soundOutputAccumulator = 0;
-      audioConverter->sendMonoInputSignal(tmp);
+      audioConverter->sendInputSignal(tmp);
     }
     uint8_t   c = videoInput[0];
     if (c & 0x80) {                                     // sync
