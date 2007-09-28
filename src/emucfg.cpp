@@ -226,10 +226,10 @@ namespace Plus4Emu {
                                 sound.volume, 0.7943,
                                 soundSettingsChanged, 0.01, 1.0);
     defineConfigurationVariable(*this, "sound.dcBlockFilter1Freq",
-                                sound.dcBlockFilter1Freq, 10.0,
+                                sound.dcBlockFilter1Freq, 5.0,
                                 soundSettingsChanged, 1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.dcBlockFilter2Freq",
-                                sound.dcBlockFilter2Freq, 10.0,
+                                sound.dcBlockFilter2Freq, 15.0,
                                 soundSettingsChanged, 1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.equalizer.mode",
                                 sound.equalizer.mode, int(2),

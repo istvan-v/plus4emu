@@ -53,7 +53,7 @@ namespace Plus4Emu {
     float   ampScale;
    public:
     AudioConverter(float inputSampleRate_, float outputSampleRate_,
-                   float dcBlockFreq1 = 10.0f, float dcBlockFreq2 = 10.0f,
+                   float dcBlockFreq1 = 5.0f, float dcBlockFreq2 = 15.0f,
                    float ampScale_ = 0.7943f);
     virtual ~AudioConverter();
     virtual void sendInputSignal(int32_t audioInput) = 0;
@@ -76,8 +76,8 @@ namespace Plus4Emu {
    public:
     AudioConverterLowQuality(float inputSampleRate_,
                              float outputSampleRate_,
-                             float dcBlockFreq1 = 10.0f,
-                             float dcBlockFreq2 = 10.0f,
+                             float dcBlockFreq1 = 5.0f,
+                             float dcBlockFreq2 = 15.0f,
                              float ampScale_ = 0.7943f);
     virtual ~AudioConverterLowQuality();
     virtual void sendInputSignal(int32_t audioInput);
@@ -105,8 +105,8 @@ namespace Plus4Emu {
    public:
     AudioConverterHighQuality(float inputSampleRate_,
                               float outputSampleRate_,
-                              float dcBlockFreq1 = 10.0f,
-                              float dcBlockFreq2 = 10.0f,
+                              float dcBlockFreq1 = 5.0f,
+                              float dcBlockFreq2 = 15.0f,
                               float ampScale_ = 0.7943f);
     virtual ~AudioConverterHighQuality();
     virtual void sendInputSignal(int32_t audioInput);

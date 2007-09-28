@@ -160,7 +160,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundDCFilter1ValueDisplay->value(o->value());
 }}
-          xywh {30 285 25 25} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 10
+          xywh {30 285 25 25} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 5
         }
         Fl_Value_Output soundDCFilter1ValueDisplay {
           callback {{
@@ -168,7 +168,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundDCFilter1Valuator->value(o->value());
 }}
-          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 315 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 10 textsize 13 textcolor 52
+          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 315 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 5 textsize 13 textcolor 52
         }
         Fl_Dial soundDCFilter2Valuator {
           label { Highpass 2}
@@ -177,7 +177,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundDCFilter2ValueDisplay->value(o->value());
 }}
-          xywh {30 345 25 25} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 10
+          xywh {30 345 25 25} box ROUND_UP_BOX color 46 selection_color 54 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 15
         }
         Fl_Value_Output soundDCFilter2ValueDisplay {
           callback {{
@@ -185,7 +185,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
   gui.config.soundSettingsChanged = true;
   soundDCFilter2Valuator->value(o->value());
 }}
-          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 375 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 10 textsize 13 textcolor 52
+          tooltip {Note: you can click on and drag the value display for fine adjustment} xywh {20 375 45 20} color 0 selection_color 238 labelsize 13 labelcolor 52 align 8 minimum 1 maximum 1000 step 1 value 15 textsize 13 textcolor 52
         }
         Fl_Group {} {
           label {Parametric equalizer} open

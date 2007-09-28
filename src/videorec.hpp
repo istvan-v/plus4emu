@@ -39,7 +39,7 @@ namespace Plus4Emu {
      public:
       AudioConverter_(VideoCapture& videoCapture_,
                       float inputSampleRate_, float outputSampleRate_,
-                      float dcBlockFreq1 = 10.0f, float dcBlockFreq2 = 10.0f,
+                      float dcBlockFreq1 = 5.0f, float dcBlockFreq2 = 15.0f,
                       float ampScale_ = 0.7943f);
       virtual ~AudioConverter_();
      protected:
