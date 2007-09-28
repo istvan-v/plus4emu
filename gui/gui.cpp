@@ -197,64 +197,71 @@ void Plus4EmuGUI::updateDisplay_windowSize()
   statusDisplayGroup->redraw();
 }
 
+static void updateFloppyStatsWidgets(uint16_t headPos,
+                                     Fl_Valuator *trackDisplay,
+                                     Fl_Valuator *sideDisplay,
+                                     Fl_Valuator *sectorDisplay,
+                                     Fl_Widget *ledDisplay,
+                                     Fl_Widget *headDisplay)
+{
+  if (headPos == 0xFFFF) {
+    trackDisplay->value(-1.0);
+    sideDisplay->value(-1.0);
+    sectorDisplay->value(-1.0);
+    if (headDisplay->visible()) {
+      headDisplay->hide();
+      ledDisplay->redraw();
+    }
+  }
+  else {
+    int     trackNum = int(headPos >> 8) & 0x7F;
+    trackDisplay->value(double(trackNum));
+    sideDisplay->value(double((headPos >> 7) & 0x01));
+    sectorDisplay->value(double(headPos & 0x7F));
+    int     xPos = (trackNum * 14) / ((headPos & 0x8000) ? 80 : 40);
+    headDisplay->position(short(xPos + 352), headDisplay->y());
+    headDisplay->color(Fl_Color((trackNum & 1) ? FL_WHITE : FL_BLACK));
+    if (!(headDisplay->visible()))
+      headDisplay->show();
+    ledDisplay->redraw();
+    headDisplay->redraw();
+  }
+}
+
 void Plus4EmuGUI::updateDisplay_floppyStats(
     uint64_t newFloppyDriveHeadPositions)
 {
   uint16_t  oldHeadPos = uint16_t(oldFloppyDriveHeadPositions) & 0xFFFF;
   uint16_t  headPos = uint16_t(newFloppyDriveHeadPositions) & 0xFFFF;
   if (headPos != oldHeadPos) {
-    if (headPos == 0xFFFF) {
-      driveATrackDisplay->value(-1.0);
-      driveASideDisplay->value(-1.0);
-      driveASectorDisplay->value(-1.0);
-    }
-    else {
-      driveATrackDisplay->value(double((headPos >> 8) & 0x7F));
-      driveASideDisplay->value(double((headPos >> 7) & 0x01));
-      driveASectorDisplay->value(double(headPos & 0x7F));
-    }
+    updateFloppyStatsWidgets(
+        headPos,
+        driveATrackDisplay, driveASideDisplay, driveASectorDisplay,
+        driveALEDDisplay, driveAHeadDisplay);
   }
   oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 16) & 0xFFFF;
   headPos = uint16_t(newFloppyDriveHeadPositions >> 16) & 0xFFFF;
   if (headPos != oldHeadPos) {
-    if (headPos == 0xFFFF) {
-      driveBTrackDisplay->value(-1.0);
-      driveBSideDisplay->value(-1.0);
-      driveBSectorDisplay->value(-1.0);
-    }
-    else {
-      driveBTrackDisplay->value(double((headPos >> 8) & 0x7F));
-      driveBSideDisplay->value(double((headPos >> 7) & 0x01));
-      driveBSectorDisplay->value(double(headPos & 0x7F));
-    }
+    updateFloppyStatsWidgets(
+        headPos,
+        driveBTrackDisplay, driveBSideDisplay, driveBSectorDisplay,
+        driveBLEDDisplay, driveBHeadDisplay);
   }
   oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 32) & 0xFFFF;
   headPos = uint16_t(newFloppyDriveHeadPositions >> 32) & 0xFFFF;
   if (headPos != oldHeadPos) {
-    if (headPos == 0xFFFF) {
-      driveCTrackDisplay->value(-1.0);
-      driveCSideDisplay->value(-1.0);
-      driveCSectorDisplay->value(-1.0);
-    }
-    else {
-      driveCTrackDisplay->value(double((headPos >> 8) & 0x7F));
-      driveCSideDisplay->value(double((headPos >> 7) & 0x01));
-      driveCSectorDisplay->value(double(headPos & 0x7F));
-    }
+    updateFloppyStatsWidgets(
+        headPos,
+        driveCTrackDisplay, driveCSideDisplay, driveCSectorDisplay,
+        driveCLEDDisplay, driveCHeadDisplay);
   }
   oldHeadPos = uint16_t(oldFloppyDriveHeadPositions >> 48) & 0xFFFF;
   headPos = uint16_t(newFloppyDriveHeadPositions >> 48) & 0xFFFF;
   if (headPos != oldHeadPos) {
-    if (headPos == 0xFFFF) {
-      driveDTrackDisplay->value(-1.0);
-      driveDSideDisplay->value(-1.0);
-      driveDSectorDisplay->value(-1.0);
-    }
-    else {
-      driveDTrackDisplay->value(double((headPos >> 8) & 0x7F));
-      driveDSideDisplay->value(double((headPos >> 7) & 0x01));
-      driveDSectorDisplay->value(double(headPos & 0x7F));
-    }
+    updateFloppyStatsWidgets(
+        headPos,
+        driveDTrackDisplay, driveDSideDisplay, driveDSectorDisplay,
+        driveDLEDDisplay, driveDHeadDisplay);
   }
   oldFloppyDriveHeadPositions = newFloppyDriveHeadPositions;
 }
@@ -411,8 +418,21 @@ void Plus4EmuGUI::updateDisplay(double t)
       oldSpeedPercentage = newSpeedPercentage;
       updateDisplay_windowTitle();
     }
-    if (vmThreadStatus.floppyDriveHeadPositions != oldFloppyDriveHeadPositions)
+    if (vmThreadStatus.floppyDriveHeadPositions
+        != oldFloppyDriveHeadPositions) {
       updateDisplay_floppyStats(vmThreadStatus.floppyDriveHeadPositions);
+    }
+    else if (driveAHeadDisplay->visible() | driveBHeadDisplay->visible()
+             | driveCHeadDisplay->visible() | driveDHeadDisplay->visible()) {
+      driveAHeadDisplay->hide();
+      driveALEDDisplay->redraw();
+      driveBHeadDisplay->hide();
+      driveBLEDDisplay->redraw();
+      driveCHeadDisplay->hide();
+      driveCLEDDisplay->redraw();
+      driveDHeadDisplay->hide();
+      driveDLEDDisplay->redraw();
+    }
   }
   Fl::wait(t);
   updateDisplayEntered = false;

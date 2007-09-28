@@ -217,14 +217,26 @@ class Plus4EmuGUI {open
         Fl_Box driveALEDDisplay {
           xywh {351 2 18 5} box THIN_DOWN_BOX color 0
         }
+        Fl_Box driveAHeadDisplay {
+          xywh {352 3 2 3} box FLAT_BOX color 7 hide
+        }
         Fl_Box driveBLEDDisplay {
           xywh {351 9 18 5} box THIN_DOWN_BOX color 0
+        }
+        Fl_Box driveBHeadDisplay {
+          xywh {352 10 2 3} box FLAT_BOX color 7 hide
         }
         Fl_Box driveCLEDDisplay {
           xywh {351 16 18 5} box THIN_DOWN_BOX color 0
         }
+        Fl_Box driveCHeadDisplay {
+          xywh {352 17 2 3} box FLAT_BOX color 7 hide
+        }
         Fl_Box driveDLEDDisplay {
           xywh {351 23 18 5} box THIN_DOWN_BOX color 0
+        }
+        Fl_Box driveDHeadDisplay {
+          xywh {352 24 2 3} box FLAT_BOX color 7 hide
         }
       }
       Fl_Group statusDisplayGroup {open
