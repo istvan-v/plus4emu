@@ -278,8 +278,6 @@ namespace Plus4 {
       }
       // run CPU
       if (!cpuHaltedFlag) {
-        if (tedRegisters[0x09] & tedRegisters[0x0A])
-          M7501::interruptRequest();
         M7501::run(cpu_clock_multiplier);
       }
       // perform DMA fetches on even cycle counts
@@ -309,6 +307,7 @@ namespace Plus4 {
       if (timer1_run) {
         if (!timer1_state) {
           tedRegisters[0x09] |= uint8_t(0x08);
+          updateInterruptFlag();
           // reload timer
           timer1_state = timer1_reload_value;
         }
@@ -316,12 +315,16 @@ namespace Plus4 {
         timer1_state = (timer1_state - 1) & 0xFFFF;
       }
       if (!timer2_state) {
-        if (timer2_run)
+        if (timer2_run) {
           tedRegisters[0x09] |= uint8_t(0x10);
+          updateInterruptFlag();
+        }
       }
       if (!timer3_state) {
-        if (timer3_run)
+        if (timer3_run) {
           tedRegisters[0x09] |= uint8_t(0x40);
+          updateInterruptFlag();
+        }
       }
       // update horizontal position (reads are delayed by one cycle)
       tedRegisters[0x1E] = videoColumn;
@@ -369,8 +372,6 @@ namespace Plus4 {
     }
     // run CPU
     if (!singleClockModeFlags) {
-      if (tedRegisters[0x09] & tedRegisters[0x0A])
-        M7501::interruptRequest();
       M7501::run(cpu_clock_multiplier);
     }
     else {

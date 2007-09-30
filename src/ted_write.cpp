@@ -265,6 +265,7 @@ namespace Plus4 {
     // bit 2 (light pen interrupt) is always set
     ted.tedRegisters[0x09] = (ted.tedRegisters[0x09] & (value ^ uint8_t(0xFF)))
                              | uint8_t(0x04);
+    ted.updateInterruptFlag();
   }
 
   void TED7360::write_register_FF0A(void *userData,
@@ -274,6 +275,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
     ted.tedRegisters[0x0A] = value;
+    ted.updateInterruptFlag();
     ted.videoInterruptLine = (ted.videoInterruptLine & 0x00FF)
                              | (int(value & uint8_t(0x01)) << 8);
     ted.checkVideoInterrupt();

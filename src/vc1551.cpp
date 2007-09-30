@@ -214,6 +214,42 @@ namespace Plus4 {
     return retval;
   }
 
+  void VC1551::updateHead()
+  {
+    syncFlag = false;
+    if (tpi1.getPortCOutput() & 0x10) {
+      // read mode
+      uint8_t readByte = 0x00;
+      if (headLoadedFlag) {
+        readByte = trackBuffer_GCR[headPosition];
+        if (readByte == 0xFF)
+          syncFlag = prvByteWasFF;
+      }
+      prvByteWasFF = (readByte == 0xFF);
+      tpi1.setPortB(readByte);
+    }
+    else {
+      // write mode
+      tpi1.setPortB(0xFF);
+      if (headLoadedFlag && !writeProtectFlag) {
+        trackDirtyFlag = true;
+        trackBuffer_GCR[headPosition] = tpi1.getPortBOutput();
+      }
+      prvByteWasFF = false;
+    }
+    tpi1.setPortCBits(0x40, uint8_t(syncFlag ? 0x00 : 0x40));
+    // set byte ready flag
+    if (!syncFlag) {
+      memory_ram[0x0001] |= uint8_t(0x80);
+    }
+    // update head position
+    if (spindleMotorSpeed >= 32768) {
+      headPosition = headPosition + 1;
+      if (headPosition >= trackSizeTable[currentTrack])
+        headPosition = 0;
+    }
+  }
+
   // --------------------------------------------------------------------------
 
   VC1551::VC1551(SerialBus& serialBus_, int driveNum_)
@@ -231,7 +267,7 @@ namespace Plus4 {
       motorUpdateCnt(0),
       shiftRegisterBitCnt(0),
       shiftRegisterBitCntFrac(0x0000),
-      interruptTimer(8325),
+      interruptTimer(8324),
       headPosition(0),
       currentTrackFrac(0),
       steppingDirection(0),
@@ -288,9 +324,11 @@ namespace Plus4 {
   void VC1551::runOneCycle()
   {
     if (--interruptTimer < 0) {
-      if (interruptTimer <= -7)
-        interruptTimer = 8325;
       cpu.interruptRequest();
+      if (interruptTimer < -7) {
+        interruptTimer = 8324;
+        cpu.clearInterruptRequest();
+      }
     }
     cpu.runOneCycle();
     cpu.runOneCycle();
@@ -303,42 +341,12 @@ namespace Plus4 {
                               + trackSpeedTable[currentTrack];
     if (shiftRegisterBitCntFrac >= 65536) {
       shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-      shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
-      if (shiftRegisterBitCnt == 0) {
-        syncFlag = false;
-        if (tpi1.getPortCOutput() & 0x10) {
-          // read mode
-          uint8_t readByte = 0x00;
-          if (headLoadedFlag) {
-            readByte = trackBuffer_GCR[headPosition];
-            if (readByte == 0xFF)
-              syncFlag = prvByteWasFF;
-          }
-          prvByteWasFF = (readByte == 0xFF);
-          tpi1.setPortB(readByte);
-        }
-        else {
-          // write mode
-          tpi1.setPortB(0xFF);
-          if (headLoadedFlag && !writeProtectFlag) {
-            trackDirtyFlag = true;
-            trackBuffer_GCR[headPosition] = tpi1.getPortBOutput();
-          }
-          prvByteWasFF = false;
-        }
-        tpi1.setPortCBits(0x40, uint8_t(syncFlag ? 0x00 : 0x40));
-        // set byte ready flag
-        if (!syncFlag) {
-          memory_ram[0x0001] |= uint8_t(0x80);
-        }
-        // update head position
-        if (spindleMotorSpeed >= 32768) {
-          headPosition = headPosition + 1;
-          if (headPosition >= trackSizeTable[currentTrack])
-            headPosition = 0;
-        }
+      if (shiftRegisterBitCnt >= 7) {
+        shiftRegisterBitCnt = 0;
+        // read/write next byte
+        updateHead();
       }
-      else if (shiftRegisterBitCnt == 2) {
+      else if (++shiftRegisterBitCnt == 2) {
         // clear byte ready flag
         // FIXME: setting this for two bits is a hack
         // to work around bytes getting lost sometimes

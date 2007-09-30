@@ -28,27 +28,23 @@ namespace Plus4 {
    private:
     uint16_t  clkStateMask;
     uint16_t  dataStateMask;
-    uint8_t   clkState;
-    uint8_t   dataState;
     uint8_t   atnState;
    public:
     SerialBus()
       : clkStateMask(0x0000),
         dataStateMask(0x0000),
-        clkState(0xFF),
-        dataState(0xFF),
         atnState(0xFF)
     {
     }
     // returns the current state of the CLK line (0: low, 0xFF: high)
     inline uint8_t getCLK() const
     {
-      return clkState;
+      return (uint8_t(bool(clkStateMask)) - uint8_t(1));
     }
     // returns the current state of the DATA line (0: low, 0xFF: high)
     inline uint8_t getDATA() const
     {
-      return dataState;
+      return (uint8_t(bool(dataStateMask)) - uint8_t(1));
     }
     // returns the current state of the ATN line (0: low, 0xFF: high)
     inline uint8_t getATN() const
@@ -58,33 +54,27 @@ namespace Plus4 {
     // set the CLK output (false: low, true: high) for device 'n' (0 to 15)
     inline void setCLK(int n, bool newState)
     {
-      uint16_t  mask_ = uint16_t(1) << n;
-      if (newState) {
-        clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
-        clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
-      }
-      else {
-        clkStateMask |= mask_;
-        clkState = uint8_t(0x00);
-      }
+      clkStateMask =
+          (clkStateMask | (uint16_t(1) << n)) ^ (uint16_t(newState) << n);
     }
     // set the DATA output (false: low, true: high) for device 'n' (0 to 15)
     inline void setDATA(int n, bool newState)
     {
+      dataStateMask =
+          (dataStateMask | (uint16_t(1) << n)) ^ (uint16_t(newState) << n);
+    }
+    // set the CLK and DATA output (false: low, true: high)
+    // for device 'n' (0 to 15)
+    inline void setCLKAndDATA(int n, bool newCLKState, bool newDATAState)
+    {
       uint16_t  mask_ = uint16_t(1) << n;
-      if (newState) {
-        dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
-        dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
-      }
-      else {
-        dataStateMask |= mask_;
-        dataState = uint8_t(0x00);
-      }
+      clkStateMask = (clkStateMask | mask_) ^ (uint16_t(newCLKState) << n);
+      dataStateMask = (dataStateMask | mask_) ^ (uint16_t(newDATAState) << n);
     }
     // set the state of the ATN line (false: low, true: high)
     inline void setATN(bool newState)
     {
-      atnState = uint8_t(newState ? 0xFF : 0x00);
+      atnState = uint8_t(-(int8_t(newState)));
     }
     // remove device 'n' (0 to 15) from the bus, setting its outputs to high
     inline void removeDevice(int n)
@@ -92,8 +82,6 @@ namespace Plus4 {
       uint16_t  mask_ = (uint16_t(1) << n) ^ uint16_t(0xFFFF);
       clkStateMask &= mask_;
       dataStateMask &= mask_;
-      clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
-      dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
     }
     // remove devices defined by 'mask_' (bit N of 'mask_' corresponds to
     // device N) from the bus
@@ -101,8 +89,6 @@ namespace Plus4 {
     {
       clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
       dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
-      clkState = uint8_t(clkStateMask == 0x0000 ? 0xFF : 0x00);
-      dataState = uint8_t(dataStateMask == 0x0000 ? 0xFF : 0x00);
     }
   };
 

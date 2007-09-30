@@ -76,6 +76,7 @@ namespace Plus4 {
     class VIA6522_ : public VIA6522 {
      private:
       VC1541& vc1541;
+      bool    interruptFlag;
      public:
       VIA6522_(VC1541& vc1541_);
       virtual ~VIA6522_();
@@ -91,7 +92,6 @@ namespace Plus4 {
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
     bool        halfCycleFlag;
-    bool        interruptRequestFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
     uint8_t     via2PortBInput;         // bit 7: /SYNC, bit 4: /WPS
@@ -167,8 +167,8 @@ namespace Plus4 {
           uint8_t via1PortBOutput = via1.getPortB();
           uint8_t atnAck_ = via1PortBOutput ^ (serialBus.getATN() ^ 0xFF);
           atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-          serialBus.setDATA(deviceNumber, !(atnAck_));
-          serialBus.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+          serialBus.setCLKAndDATA(deviceNumber,
+                                  !(via1PortBOutput & 0x08), !(atnAck_));
         }
         if (timeRemaining > int64_t(0)) {
           this->runOneCycle_();

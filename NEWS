@@ -5,7 +5,7 @@ Changes in version 1.2.3
   * more accurate colors in NTSC mode
   * TED sound emulation improvements
   * added hue shift to the display configuration options
-  * minor optimizations in serial floppy drive emulation
+  * minor optimizations in serial floppy drive and printer emulation
   * the drive head position is now also shown on the LED display when
     it is changing
   * a few bug fixes

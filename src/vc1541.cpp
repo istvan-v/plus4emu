@@ -569,7 +569,8 @@ namespace Plus4 {
 
   VC1541::VIA6522_::VIA6522_(VC1541& vc1541_)
     : VIA6522(),
-      vc1541(vc1541_)
+      vc1541(vc1541_),
+      interruptFlag(false)
   {
   }
 
@@ -579,7 +580,9 @@ namespace Plus4 {
 
   void VC1541::VIA6522_::irqStateChangeCallback(bool newState)
   {
-    vc1541.interruptRequestFlag = newState;
+    interruptFlag = newState;
+    vc1541.cpu.interruptRequest(vc1541.via1.interruptFlag
+                                | vc1541.via2.interruptFlag);
   }
 
   // --------------------------------------------------------------------------
@@ -731,48 +734,40 @@ namespace Plus4 {
 
   void VC1541::updateHead()
   {
-    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-    shiftRegisterBitCnt = (shiftRegisterBitCnt + 1) & 7;
-    if (shiftRegisterBitCnt == 0) {
-      bool    syncFlag = false;
-      if (via2.getCB2()) {
-        // read mode
-        uint8_t readByte = 0x00;
-        if (headLoadedFlag) {
-          readByte = trackBuffer_GCR[headPosition];
-          if (readByte == 0xFF)
-            syncFlag = prvByteWasFF;
-        }
-        prvByteWasFF = (readByte == 0xFF);
-        via2.setPortA(readByte);
+    bool    syncFlag = false;
+    if (via2.getCB2()) {
+      // read mode
+      uint8_t readByte = 0x00;
+      if (headLoadedFlag) {
+        readByte = trackBuffer_GCR[headPosition];
+        if (readByte == 0xFF)
+          syncFlag = prvByteWasFF;
       }
-      else {
-        // write mode
-        via2.setPortA(0xFF);
-        if (headLoadedFlag && !writeProtectFlag) {
-          trackDirtyFlag = true;
-          trackBuffer_GCR[headPosition] = via2.getPortA();
-        }
-        prvByteWasFF = false;
-      }
-      via2PortBInput = uint8_t(syncFlag ? (via2PortBInput & 0x7F)
-                                          : (via2PortBInput | 0x80));
-      via2.setPortB(via2PortBInput);
-      // set byte ready flag
-      if (via2.getCA2() && !syncFlag) {
-        cpu.setOverflowFlag();
-        via2.setCA1(false);
-      }
-      // update head position
-      if (spindleMotorSpeed >= 32768) {
-        headPosition = headPosition + 1;
-        if (headPosition >= trackSizeTable[currentTrack])
-          headPosition = 0;
-      }
+      prvByteWasFF = (readByte == 0xFF);
+      via2.setPortA(readByte);
     }
-    else if (shiftRegisterBitCnt == 1) {
-      // clear byte ready flag
-      via2.setCA1(true);
+    else {
+      // write mode
+      via2.setPortA(0xFF);
+      if (headLoadedFlag && !writeProtectFlag) {
+        trackDirtyFlag = true;
+        trackBuffer_GCR[headPosition] = via2.getPortA();
+      }
+      prvByteWasFF = false;
+    }
+    via2PortBInput = uint8_t(syncFlag ? (via2PortBInput & 0x7F)
+                                        : (via2PortBInput | 0x80));
+    via2.setPortB(via2PortBInput);
+    // set byte ready flag
+    if (via2.getCA2() && !syncFlag) {
+      cpu.setOverflowFlag();
+      via2.setCA1(false);
+    }
+    // update head position
+    if (spindleMotorSpeed >= 32768) {
+      headPosition = headPosition + 1;
+      if (headPosition >= trackSizeTable[currentTrack])
+        headPosition = 0;
     }
   }
 
@@ -790,7 +785,6 @@ namespace Plus4 {
       dataBusState(0x00),
       via1PortBInput(0xFF),
       halfCycleFlag(false),
-      interruptRequestFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
       via2PortBInput(0xEF),
@@ -858,14 +852,12 @@ namespace Plus4 {
       uint8_t atnInput = serialBus.getATN() ^ 0xFF;
       uint8_t atnAck_ = via1PortBOutput ^ atnInput;
       atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-      serialBus.setDATA(deviceNumber, !(atnAck_));
-      serialBus.setCLK(deviceNumber, !(via1PortBOutput & 0x08));
+      serialBus.setCLKAndDATA(deviceNumber,
+                              !(via1PortBOutput & 0x08), !(atnAck_));
       via1.setCA1(bool(atnInput));
     }
     via1.runOneCycle();
     via2.runOneCycle();
-    if (interruptRequestFlag)
-      cpu.interruptRequest();
     cpu.runOneCycle();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
@@ -874,8 +866,18 @@ namespace Plus4 {
     motorUpdateCnt--;
     shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
                               + trackSpeedTable[currentTrack];
-    if (shiftRegisterBitCntFrac >= 65536)
-      updateHead();
+    if (shiftRegisterBitCntFrac >= 65536) {
+      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
+      if (shiftRegisterBitCnt >= 7) {
+        shiftRegisterBitCnt = 0;
+        // read/write next byte
+        updateHead();
+      }
+      else if (++shiftRegisterBitCnt == 1) {
+        // clear byte ready flag
+        via2.setCA1(true);
+      }
+    }
   }
 
   void VC1541::runOneCycle_()
@@ -883,8 +885,6 @@ namespace Plus4 {
     via1.setCA1(!(serialBus.getATN()));
     via1.runOneCycle();
     via2.runOneCycle();
-    if (interruptRequestFlag)
-      cpu.interruptRequest();
     cpu.runOneCycle();
     if (!motorUpdateCnt) {
       motorUpdateCnt = 16;
@@ -893,8 +893,18 @@ namespace Plus4 {
     motorUpdateCnt--;
     shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
                               + trackSpeedTable[currentTrack];
-    if (shiftRegisterBitCntFrac >= 65536)
-      updateHead();
+    if (shiftRegisterBitCntFrac >= 65536) {
+      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
+      if (shiftRegisterBitCnt >= 7) {
+        shiftRegisterBitCnt = 0;
+        // read/write next byte
+        updateHead();
+      }
+      else if (++shiftRegisterBitCnt == 1) {
+        // clear byte ready flag
+        via2.setCA1(true);
+      }
+    }
   }
 
   void VC1541::reset()

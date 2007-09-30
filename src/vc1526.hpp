@@ -51,15 +51,28 @@ namespace Plus4 {
     class VIA6522_ : public VIA6522 {
      private:
       VC1526& vc1526;
+      bool    interruptFlag;
      public:
       VIA6522_(VC1526& vc1526_);
       virtual ~VIA6522_();
       virtual void irqStateChangeCallback(bool newState);
+      inline bool getInterruptFlag() const
+      {
+        return interruptFlag;
+      }
+    };
+    class RIOT6532_ : public RIOT6532 {
+     private:
+      VC1526& vc1526;
+     public:
+      RIOT6532_(VC1526& vc1526_);
+      virtual ~RIOT6532_();
+      virtual void irqStateChangeCallback(bool newState);
     };
     M6504_      cpu;            // NOTE: A8, A13, A14, and A15 are ignored
     VIA6522_    via;            // 0240..027F, 02C0..02FF
-    RIOT6532    riot1;          // I/O 0200..023F, RAM 0000..007F
-    RIOT6532    riot2;          // I/O 0280..02BF, RAM 0080..00FF
+    RIOT6532_   riot1;          // I/O 0200..023F, RAM 0000..007F
+    RIOT6532_   riot2;          // I/O 0280..02BF, RAM 0080..00FF
     SerialBus&  serialBus;
     const uint8_t *memory_rom;  // 8K ROM (0400..1FFF)
     int         deviceNumber;
@@ -75,7 +88,6 @@ namespace Plus4 {
     int         motorYCnt;
     uint8_t     pinState;
     uint8_t     prvPinState;
-    bool        viaInterruptFlag;
     bool        changeFlag;
     uint8_t     *pageBuf;       // pageWidth * pageHeight bytes
     void        (*breakPointCallback)(void *userData,

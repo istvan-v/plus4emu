@@ -216,6 +216,16 @@ namespace Plus4 {
       // delay interrupt requests by 2 cycles
       interruptDelayRegister |= uint8_t(0x04);
     }
+    inline void clearInterruptRequest()
+    {
+      interruptDelayRegister &= uint8_t(0x03);
+    }
+    inline void interruptRequest(bool isIRQ)
+    {
+      // delay interrupt requests by 2 cycles
+      interruptDelayRegister &= uint8_t(0x03);
+      interruptDelayRegister |= (uint8_t(isIRQ) << 2);
+    }
     virtual void reset(bool isColdReset = false);
     inline void setIsCPURunning(bool n)
     {

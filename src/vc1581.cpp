@@ -87,7 +87,7 @@ namespace Plus4 {
 
   void VC1581::CIA8520_::interruptCallback(bool irqState)
   {
-    vc1581.interruptRequestFlag = irqState;
+    vc1581.cpu.interruptRequest(irqState);
   }
 
   uint8_t VC1581::readRAM(void *userData, uint16_t addr)
@@ -171,6 +171,7 @@ namespace Plus4 {
     VC1581& vc1581 = *(reinterpret_cast<VC1581 *>(userData));
     vc1581.dataBusState = value & uint8_t(0xFF);
     vc1581.cia.writeRegister(addr & 0x000F, vc1581.dataBusState);
+    vc1581.wd177x.setSide(vc1581.cia.getPortA() & 0x01);
   }
 
   void VC1581::writeWD177x(void *userData, uint16_t addr, uint8_t value)
@@ -203,7 +204,6 @@ namespace Plus4 {
       memory_rom_1((uint8_t *) 0),
       deviceNumber(driveNum_),
       dataBusState(0),
-      interruptRequestFlag(false),
       ciaPortAInput(0),
       ciaPortBInput(0),
       diskChangeCnt(0),
@@ -270,8 +270,6 @@ namespace Plus4 {
   void VC1581::runOneCycle()
   {
     cia.setFlagState(!!(serialBus.getATN()));
-    if (interruptRequestFlag)
-      cpu.interruptRequest();
     cpu.runOneCycle();
     cpu.runOneCycle();
     if (diskChangeCnt) {
@@ -281,21 +279,19 @@ namespace Plus4 {
     }
     cia.setPortA(ciaPortAInput);
     cia.run(2);
-    wd177x.setSide(cia.getPortA() & 0x01);
     uint8_t n = cia.getPortB();
-    serialBus.setCLK(deviceNumber, !(n & uint8_t(0x08)));
-    if (!(((serialBus.getATN() ^ uint8_t(0xFF)) & n) & uint8_t(0x10)))
-      serialBus.setDATA(deviceNumber, !(n & uint8_t(0x02)));
-    else
-      serialBus.setDATA(deviceNumber, false);
+    uint8_t dataOut =
+        ((serialBus.getATN() ^ uint8_t(0xFF)) & (n & uint8_t(0x10)))
+        | (n & uint8_t(0x02));
+    serialBus.setCLKAndDATA(deviceNumber, !(n & uint8_t(0x08)), !dataOut);
   }
 
   void VC1581::reset()
   {
-    interruptRequestFlag = false;
     cpu.reset(true);
     cia.reset();
     wd177x.reset();
+    wd177x.setSide(cia.getPortA() & 0x01);
     diskChangeCnt = 350000;
     ciaPortAInput = (ciaPortAInput & uint8_t(0x7F)) | uint8_t(0x02);
   }

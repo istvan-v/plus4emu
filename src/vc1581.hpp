@@ -62,7 +62,6 @@ namespace Plus4 {
     uint8_t     memory_ram[8192];       // 0000 to 1FFF
     int         deviceNumber;
     uint8_t     dataBusState;
-    bool        interruptRequestFlag;
     uint8_t     ciaPortAInput;
     uint8_t     ciaPortBInput;
     size_t      diskChangeCnt;

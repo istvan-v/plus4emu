@@ -43,14 +43,30 @@ namespace Plus4 {
     uint16_t    timerDivideReload;
     uint8_t     interruptFlags;
     uint8_t     interruptMask;
+    bool        prvInterruptState;
     uint8_t     pa7EdgeDetectMode;      // 0x00: negative, 0x80: positive
     // --------
+   protected:
+    // called when the state of the IRQ line changes
+    // 'newState' is true if the IRQ line is low, and false if it is high
+    virtual void irqStateChangeCallback(bool newState);
+   private:
+    inline void updateInterruptRequestFlag()
+    {
+      bool    newInterruptState = bool(interruptFlags & interruptMask);
+      if (newInterruptState != prvInterruptState) {
+        prvInterruptState = newInterruptState;
+        irqStateChangeCallback(newInterruptState);
+      }
+    }
     inline void updatePortA()
     {
       portAPinState = (portARegister | portADataDirectionInv) & portAInput;
       if ((portAPinState ^ portAPrvPinState) & 0x80) {
-        if ((portAPinState & 0x80) == pa7EdgeDetectMode)
+        if ((portAPinState & 0x80) == pa7EdgeDetectMode) {
           interruptFlags = interruptFlags | 0x40;
+          updateInterruptRequestFlag();
+        }
       }
       portAPrvPinState = portAPinState;
     }
@@ -88,8 +104,10 @@ namespace Plus4 {
     }
     inline void setPortA(uint8_t value)
     {
-      portAInput = value;
-      updatePortA();
+      if (value != portAInput) {
+        portAInput = value;
+        updatePortA();
+      }
     }
     inline uint8_t getPortB() const
     {
@@ -105,18 +123,21 @@ namespace Plus4 {
     }
     inline void setPortB(uint8_t value)
     {
-      portBInput = value;
-      updatePortB();
+      if (value != portBInput) {
+        portBInput = value;
+        updatePortB();
+      }
     }
     inline bool isInterruptRequest() const
     {
-      return bool(interruptFlags & interruptMask);
+      return prvInterruptState;
     }
     inline void runOneCycle()
     {
       if (!timerDivideCnt) {
         if (!timerState) {
           interruptFlags = interruptFlags | 0x80;
+          updateInterruptRequestFlag();
           timerDivideReload = 1;
         }
         timerDivideCnt = timerDivideReload;

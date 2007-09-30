@@ -39,6 +39,7 @@ namespace Plus4 {
       timerDivideReload(0x0001),
       interruptFlags(0x00),
       interruptMask(0x00),
+      prvInterruptState(false),
       pa7EdgeDetectMode(0x00)
   {
     for (size_t i = 0; i < 128; i++)
@@ -63,6 +64,7 @@ namespace Plus4 {
     interruptFlags = 0x00;
     interruptMask = 0x00;
     pa7EdgeDetectMode = 0x00;
+    updateInterruptRequestFlag();
   }
 
   uint8_t RIOT6532::readRegister(uint16_t addr)
@@ -99,6 +101,7 @@ namespace Plus4 {
     case 0x1E:
       interruptFlags = interruptFlags & 0x40;
       interruptMask = (interruptMask & 0x40) | uint8_t((addr & 0x0008) << 4);
+      updateInterruptRequestFlag();
       return timerState;
     case 0x05:                          // read interrupt flags
     case 0x07:
@@ -111,6 +114,7 @@ namespace Plus4 {
       {
         uint8_t retval = interruptFlags;
         interruptFlags = interruptFlags & 0x80;
+        updateInterruptRequestFlag();
         return retval;
       }
     }
@@ -176,6 +180,7 @@ namespace Plus4 {
       timerDivideCnt = timerDivideReload - 1;
       interruptFlags = interruptFlags & 0x40;
       interruptMask = (interruptMask & 0x40) | uint8_t((addr & 0x0008) << 4);
+      updateInterruptRequestFlag();
       break;
     case 0x04:                          // write edge detect control
     case 0x05:
@@ -187,6 +192,7 @@ namespace Plus4 {
     case 0x0F:
       pa7EdgeDetectMode = uint8_t((addr & 0x0001) << 7);
       interruptMask = (interruptMask & 0x80) | uint8_t((addr & 0x0002) << 5);
+      updateInterruptRequestFlag();
       break;
     }
   }
@@ -235,6 +241,11 @@ namespace Plus4 {
       return interruptFlags;
     }
     return 0x00;        // not reached
+  }
+
+  void RIOT6532::irqStateChangeCallback(bool newState)
+  {
+    (void) newState;
   }
 
 }       // namespace Plus4

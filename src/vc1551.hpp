@@ -176,7 +176,7 @@ namespace Plus4 {
     uint8_t     motorUpdateCnt;         // decrements from 15 to 0
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
     int         shiftRegisterBitCntFrac;    // 0 to 65535
-    int         interruptTimer;         // decrements from 8325 to -7 at 1 MHz,
+    int         interruptTimer;         // decrements from 8324 to -7 at 1 MHz,
                                         // IRQ is active when negative
     int         headPosition;           // index to track buffer
     int         currentTrackFrac;       // -65536 to 65536 (-32768 and 32768
@@ -201,6 +201,7 @@ namespace Plus4 {
     static void writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value);
     static void writeMemory_TIA(void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
+    void updateHead();
     void updateParallelInterface();
    protected:
     virtual bool setCurrentTrack(int trackNum);

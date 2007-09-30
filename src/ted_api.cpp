@@ -436,6 +436,7 @@ namespace Plus4 {
           tedRegisters[i] = c;
       }
       tedRegisters[0x09] &= uint8_t(0x5E);
+      updateInterruptFlag();
       delayedEvents0 = 0U;
       delayedEvents1 = 0U;
       // load memory paging

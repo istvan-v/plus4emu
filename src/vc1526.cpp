@@ -58,7 +58,8 @@ namespace Plus4 {
 
   VC1526::VIA6522_::VIA6522_(VC1526& vc1526_)
     : VIA6522(),
-      vc1526(vc1526_)
+      vc1526(vc1526_),
+      interruptFlag(false)
   {
   }
 
@@ -68,7 +69,27 @@ namespace Plus4 {
 
   void VC1526::VIA6522_::irqStateChangeCallback(bool newState)
   {
-    vc1526.viaInterruptFlag = newState;
+    interruptFlag = newState;
+    vc1526.cpu.interruptRequest(vc1526.via.getInterruptFlag()
+                                | vc1526.riot1.isInterruptRequest()
+                                | vc1526.riot2.isInterruptRequest());
+  }
+
+  VC1526::RIOT6532_::RIOT6532_(VC1526& vc1526_)
+    : RIOT6532(),
+      vc1526(vc1526_)
+  {
+  }
+
+  VC1526::RIOT6532_::~RIOT6532_()
+  {
+  }
+
+  void VC1526::RIOT6532_::irqStateChangeCallback(bool newState)
+  {
+    vc1526.cpu.interruptRequest(vc1526.via.getInterruptFlag()
+                                | vc1526.riot1.isInterruptRequest()
+                                | vc1526.riot2.isInterruptRequest());
   }
 
   // --------------------------------------------------------------------------
@@ -127,6 +148,12 @@ namespace Plus4 {
   uint8_t VC1526::readRIOT1Register(void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
+    uint8_t riot1PortAInput = vc1526.riot1.getPortAInput() & 0x7C;
+    riot1PortAInput = riot1PortAInput
+                      | uint8_t(((vc1526.serialBus.getATN() & 0x01)
+                                 | (vc1526.serialBus.getCLK() & 0x02)
+                                 | (vc1526.serialBus.getDATA() & 0x80)) ^ 0x83);
+    vc1526.riot1.setPortA(riot1PortAInput);
     return vc1526.riot1.readRegister(addr);
   }
 
@@ -153,8 +180,8 @@ namespace Plus4 {
   VC1526::VC1526(SerialBus& serialBus_, int devNum_)
     : cpu(*this),
       via(*this),
-      riot1(),
-      riot2(),
+      riot1(*this),
+      riot2(*this),
       serialBus(serialBus_),
       memory_rom((uint8_t *) 0),
       deviceNumber(devNum_ & 7),
@@ -170,7 +197,6 @@ namespace Plus4 {
       motorYCnt(0),
       pinState(0x00),
       prvPinState(0x00),
-      viaInterruptFlag(false),
       changeFlag(true),
       pageBuf((uint8_t *) 0),
       breakPointCallback(&defaultBreakPointCallback),
@@ -355,16 +381,9 @@ namespace Plus4 {
       bool    atnAck = !(riot1.getPortA() & 0x20);
       atnAck = atnAck && !(serialBus.getATN());
       serialBus.setDATA(deviceNumber, dataOut && !atnAck);
-      uint8_t riot1PortAInput = riot1.getPortAInput() & 0x7C;
-      riot1PortAInput = riot1PortAInput
-                        | uint8_t(((serialBus.getATN() & 0x01)
-                                   | (serialBus.getCLK() & 0x02)
-                                   | (serialBus.getDATA() & 0x80)) ^ 0x83);
+      uint8_t riot1PortAInput = riot1.getPortAInput() | 0x80;
+      riot1PortAInput = riot1PortAInput ^ (serialBus.getDATA() & 0x80);
       riot1.setPortA(riot1PortAInput);
-    }
-    if (viaInterruptFlag
-        | riot1.isInterruptRequest() | riot2.isInterruptRequest()) {
-      cpu.interruptRequest();
     }
     cpu.runOneCycle();
     via.runOneCycle();
@@ -447,7 +466,6 @@ namespace Plus4 {
     via.reset();
     riot1.reset();
     riot2.reset();
-    viaInterruptFlag = false;
     cpu.reset();
     riot1.setPortB((riot1.getPortBInput() & 0xF8) | uint8_t(deviceNumber & 3));
   }

@@ -576,12 +576,17 @@ namespace Plus4 {
     uint64_t    ramPatternCode;
     uint32_t    randomSeed;
     // -----------------------------------------------------------------
+    inline void updateInterruptFlag()
+    {
+      M7501::interruptRequest(bool(tedRegisters[0x09] & tedRegisters[0x0A]));
+    }
     inline void checkVideoInterrupt()
     {
       if (videoLine == videoInterruptLine) {
         if (!prvVideoInterruptState) {
           prvVideoInterruptState = true;
           tedRegisters[0x09] |= uint8_t(0x02);
+          updateInterruptFlag();
         }
       }
       else

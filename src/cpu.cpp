@@ -89,9 +89,10 @@ namespace Plus4 {
   void M7501::runOneCycle()
   {
     if (interruptDelayRegister != 0x00) {
-      interruptDelayRegister &= uint8_t(((reg_SR >> 1) & 0x02) ^ 0xFF);
       interruptFlag = interruptFlag | bool(interruptDelayRegister & 0x01);
-      interruptDelayRegister >>= 1;
+      interruptDelayRegister &= (~(uint8_t((reg_SR >> 1) & 0x02)));
+      interruptDelayRegister = (interruptDelayRegister & uint8_t(0x04))
+                               | (interruptDelayRegister >> 1);
     }
     while (true) {
       unsigned char n = *(currentOpcode++);
@@ -1356,7 +1357,7 @@ namespace Plus4 {
   void M7501::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000001);        // version number
+    buf.writeUInt32(0x01000002);        // version number
     buf.writeByte(uint8_t(reg_PC) & 0xFF);
     buf.writeByte(uint8_t(reg_PC >> 8));
     buf.writeByte(reg_SR);
@@ -1387,7 +1388,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000 && version != 0x01000001) {
+    if (!(version >= 0x01000000 && version <= 0x01000002)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible M7501 snapshot format");
     }
@@ -1404,7 +1405,13 @@ namespace Plus4 {
       reg_L = buf.readByte();
       reg_H = buf.readByte();
       uint32_t  currentOpcodeIndex = buf.readUInt32();
-      interruptDelayRegister = uint8_t(buf.readUInt32() & 0xFFU);
+      if (version >= 0x01000002) {
+        interruptDelayRegister = uint8_t(buf.readUInt32() & 0x07U);
+      }
+      else {
+        interruptDelayRegister &= uint8_t(0x04);
+        interruptDelayRegister |= uint8_t(buf.readUInt32() & 0x03U);
+      }
       interruptFlag = buf.readBoolean();
       resetFlag = buf.readBoolean();
       haltFlag = buf.readBoolean();
