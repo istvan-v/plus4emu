@@ -46,7 +46,7 @@ static const double tabl2[8] = {
 
 static int calcDistortion(int x, double gamma0, double gamma1)
 {
-  double  xf = (double) x / 240.0;
+  double  xf = (double) x / 300.0;
   double  gamma;
   double  yf;
   xf = (xf > 0.0 ? (xf < 1.0 ? xf : 1.0) : 0.0);
@@ -63,12 +63,12 @@ static int calcTEDSound(int x)
     break;
   case 16:
   case 32:
-    x = (x & 15) * 8 - 3;
-    x = (x > 0 ? (x < 60 ? x : 60) : 0);
+    x = (x & 15) * 10 - 4;
+    x = (x > 0 ? (x < 75 ? x : 75) : 0);
     break;
   case 48:
-    x = (x & 15) * 8 - 3;
-    x = (x > 0 ? (x < 60 ? x : 60) : 0);
+    x = (x & 15) * 10 - 4;
+    x = (x > 0 ? (x < 75 ? x : 75) : 0);
     x = x * 2;
     break;
   }
@@ -129,15 +129,15 @@ int main(int argc, char **argv)
       printf("\n");
   }
   printf("};\n");
-  printf("static const int16_t tedSoundDistortionTable[241] = {\n");
-  for (i = 0; i <= 240; i++) {
+  printf("static const int16_t tedSoundDistortionTable[301] = {\n");
+  for (i = 0; i <= 300; i++) {
     int     tmp2 = calcDistortion(i, bestGamma0, bestGamma1);
     if (!(i & 7))
       printf(" ");
     printf("%6d", tmp2);
-    if (i != 240)
+    if (i != 300)
       printf(",");
-    if ((i & 7) == 7 || i == 240)
+    if ((i & 7) == 7 || i == 300)
       printf("\n");
   }
   printf("};\n");

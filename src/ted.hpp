@@ -459,16 +459,16 @@ namespace Plus4 {
     uint16_t    soundChannel2Reload;    // 1 to 1024
     bool        prvSoundChannel1Overflow;
     bool        prvSoundChannel2Overflow;
-    uint32_t    soundChannel1Decay;     // set channel state to 1 after 120000
+    uint32_t    soundChannel1Decay;     // set channel state to 1 after 131072
     uint32_t    soundChannel2Decay;     // 221 kHz cycles at freq = 0x03FE
     uint8_t     soundChannel1State;
     uint8_t     soundChannel2State;
     uint8_t     soundChannel2NoiseState;
     uint8_t     soundChannel2NoiseOutput;
-    uint8_t     soundVolume;            // 0 to 60 (0, 5, 13, ..., 45, 53, 60)
-    uint8_t     soundChannel1Output;    // 0 to 60
-    uint8_t     soundChannel2Output;    // 0 to 60
-    uint8_t     prvSoundOutput;         // 0 to 120
+    uint8_t     soundVolume;            // 0 to 75 (0, 6, 16, ..., 56, 66, 75)
+    uint8_t     soundChannel1Output;    // 0 to 75
+    uint8_t     soundChannel2Output;    // 0 to 75
+    uint8_t     prvSoundOutput;         // 0 to 150
     // video buffers
     uint8_t     attr_buf[64];
     uint8_t     attr_buf_tmp[64];

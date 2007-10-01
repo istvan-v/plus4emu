@@ -508,8 +508,8 @@ namespace Plus4 {
       else {
         prvSoundChannel1Overflow = (soundChannel1Reload == 0x0001);
         prvSoundChannel2Overflow = (soundChannel2Reload == 0x0001);
-        soundChannel1Decay = 120000U;
-        soundChannel2Decay = 120000U;
+        soundChannel1Decay = 131072U;
+        soundChannel2Decay = 131072U;
       }
       soundChannel1State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       soundChannel2State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);

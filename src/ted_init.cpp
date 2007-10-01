@@ -239,8 +239,8 @@ namespace Plus4 {
     soundChannel2Reload = 0x03FF;
     prvSoundChannel1Overflow = false;
     prvSoundChannel2Overflow = false;
-    soundChannel1Decay = 120000U;
-    soundChannel2Decay = 120000U;
+    soundChannel1Decay = 131072U;
+    soundChannel2Decay = 131072U;
     soundChannel1State = uint8_t(1);
     soundChannel2State = uint8_t(1);
     soundChannel2NoiseState = uint8_t(0xFF);
