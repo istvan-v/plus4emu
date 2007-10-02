@@ -87,6 +87,7 @@ namespace Plus4 {
 
   void VC1526::RIOT6532_::irqStateChangeCallback(bool newState)
   {
+    (void) newState;
     vc1526.cpu.interruptRequest(vc1526.via.getInterruptFlag()
                                 | vc1526.riot1.isInterruptRequest()
                                 | vc1526.riot2.isInterruptRequest());
