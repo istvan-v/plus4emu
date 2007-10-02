@@ -1,5 +1,5 @@
-plus4emu 1.2.3
-==============
+plus4emu 1.2.4 beta
+===================
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -27,7 +27,7 @@ General
     sample rate conversion with low aliasing; volume control, two first
     order highpass filters with configurable cutoff frequency, and an
     optional parametric equalizer can be applied to the audio signal
-  * recording sound output to a WAV format sound file
+  * recording audio output to a WAV format sound file
   * recording video and sound output to an AVI format video file, with
     uncompressed YV12 video at 24 to 60 frames per second, and 48000 Hz
     16-bit PCM audio
