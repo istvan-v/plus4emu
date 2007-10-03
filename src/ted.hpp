@@ -364,10 +364,11 @@ namespace Plus4 {
     void updateVideoMode();
     void initRegisters();
     void initializeRAMSegment(uint8_t *p);
-    void runOneCycle_freezeMode();
     // called at single clock frequency / 4
     void calculateSoundOutput();
+    void runOneCycle_freezeMode();
     void processDelayedEvents(uint32_t n);
+    void checkVerticalEvents();
     // -----------------------------------------------------------------
    protected:
     // CPU I/O registers

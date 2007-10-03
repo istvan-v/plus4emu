@@ -477,71 +477,14 @@ namespace Plus4 {
             else if (dmaActive)
               delayedEvents0.stopDMADelay1();
           }
-          bool    updateRenderFunctionFlag = false;
-          if (!(videoOutputFlags & uint8_t(0x01))) {            // PAL
-            videoOutputFlags = uint8_t((videoOutputFlags & 0xF9)
-                                       | ((savedVideoLine & 1) << 2));
-            savedVideoLine = (videoLine + 1) & 0x01FF;
-            switch (savedVideoLine) {
-            case 251:                   // vertical blanking, equalization start
-              videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
-              vsyncFlags |= uint8_t(0x40);
-              updateRenderFunctionFlag = true;
-              break;
-            case 254:                   // vertical sync start
-              videoOutputFlags |= uint8_t(0x40);
-              vsyncFlags |= uint8_t(0x80);
-              break;
-            case 257:                   // vertical sync end
-              videoOutputFlags &= uint8_t(0xBD);
-              vsyncFlags &= uint8_t(0x40);
-              break;
-            case 260:                   // equalization end
-              videoOutputFlags &= uint8_t(0x7D);
-              vsyncFlags &= uint8_t(0x80);
-              updateRenderFunctionFlag = true;
-              break;
-            case 269:                   // vertical blanking end
-              videoOutputFlags &= uint8_t(0xED);
-              if (videoColumn == 98)
-                videoOutputFlags |= uint8_t(0x08);
-              updateRenderFunctionFlag = true;
-              break;
-            }
+          videoOutputFlags &= uint8_t(0xF9);
+          videoOutputFlags |=
+              uint8_t(((savedVideoLine & int(~videoOutputFlags)) & 1) << 2);
+          savedVideoLine = (videoLine + 1) & 0x01FF;
+          if (savedVideoLine >= 226 && savedVideoLine <= 269) {
+            checkVerticalEvents();
           }
-          else {                                                // NTSC
-            videoOutputFlags &= uint8_t(0xF9);
-            savedVideoLine = (videoLine + 1) & 0x01FF;
-            switch (savedVideoLine) {
-            case 226:                   // vertical blanking, equalization start
-              videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
-              vsyncFlags |= uint8_t(0x40);
-              updateRenderFunctionFlag = true;
-              break;
-            case 229:                   // vertical sync start
-              videoOutputFlags |= uint8_t(0x40);
-              vsyncFlags |= uint8_t(0x80);
-              break;
-            case 232:                   // vertical sync end
-              videoOutputFlags &= uint8_t(0xBD);
-              vsyncFlags &= uint8_t(0x40);
-              break;
-            case 235:                   // equalization end
-              videoOutputFlags &= uint8_t(0x7D);
-              vsyncFlags &= uint8_t(0x80);
-              updateRenderFunctionFlag = true;
-              break;
-            case 244:                   // vertical blanking end
-              videoOutputFlags &= uint8_t(0xED);
-              if (videoColumn == 98)
-                videoOutputFlags |= uint8_t(0x08);
-              updateRenderFunctionFlag = true;
-              break;
-            }
-          }
-          if (updateRenderFunctionFlag)
-            selectRenderFunction();
-          if (savedVideoLine <= 8) {
+          else if (savedVideoLine <= 8) {
             if ((tedRegisters[0x06] & uint8_t(0x10)) != uint8_t(0)) {
               if (savedVideoLine == 0)
                 delayedEvents0.initializeDisplay();
@@ -865,6 +808,69 @@ namespace Plus4 {
       if (tedRegisters[0x1F] & uint8_t(0x80))
         flashState = uint8_t(flashState == 0x00 ? 0xFF : 0x00);
     }
+  }
+
+  void TED7360::checkVerticalEvents()
+  {
+    bool    updateRenderFunctionFlag = false;
+    if (!(videoOutputFlags & uint8_t(0x01))) {            // PAL
+      switch (savedVideoLine) {
+      case 251:                   // vertical blanking, equalization start
+        videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
+        vsyncFlags |= uint8_t(0x40);
+        updateRenderFunctionFlag = true;
+        break;
+      case 254:                   // vertical sync start
+        videoOutputFlags |= uint8_t(0x40);
+        vsyncFlags |= uint8_t(0x80);
+        break;
+      case 257:                   // vertical sync end
+        videoOutputFlags &= uint8_t(0xBD);
+        vsyncFlags &= uint8_t(0x40);
+        break;
+      case 260:                   // equalization end
+        videoOutputFlags &= uint8_t(0x7D);
+        vsyncFlags &= uint8_t(0x80);
+        updateRenderFunctionFlag = true;
+        break;
+      case 269:                   // vertical blanking end
+        videoOutputFlags &= uint8_t(0xED);
+        if (videoColumn == 98)
+          videoOutputFlags |= uint8_t(0x08);
+        updateRenderFunctionFlag = true;
+        break;
+      }
+    }
+    else {                                                // NTSC
+      switch (savedVideoLine) {
+      case 226:                   // vertical blanking, equalization start
+        videoOutputFlags = uint8_t((videoOutputFlags & 0xF7) | 0x10);
+        vsyncFlags |= uint8_t(0x40);
+        updateRenderFunctionFlag = true;
+        break;
+      case 229:                   // vertical sync start
+        videoOutputFlags |= uint8_t(0x40);
+        vsyncFlags |= uint8_t(0x80);
+        break;
+      case 232:                   // vertical sync end
+        videoOutputFlags &= uint8_t(0xBD);
+        vsyncFlags &= uint8_t(0x40);
+        break;
+      case 235:                   // equalization end
+        videoOutputFlags &= uint8_t(0x7D);
+        vsyncFlags &= uint8_t(0x80);
+        updateRenderFunctionFlag = true;
+        break;
+      case 244:                   // vertical blanking end
+        videoOutputFlags &= uint8_t(0xED);
+        if (videoColumn == 98)
+          videoOutputFlags |= uint8_t(0x08);
+        updateRenderFunctionFlag = true;
+        break;
+      }
+    }
+    if (updateRenderFunctionFlag)
+      selectRenderFunction();
   }
 
 }       // namespace Plus4

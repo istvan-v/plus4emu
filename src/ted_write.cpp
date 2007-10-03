@@ -229,6 +229,9 @@ namespace Plus4 {
           ted.videoOutputFlags &= uint8_t(0xFC);
           ted.ntscModeChangeCallback(false);
         }
+        if (ted.savedVideoLine >= 226 && ted.savedVideoLine <= 269) {
+          ted.checkVerticalEvents();
+        }
       }
     }
     if (bitsChanged & uint8_t(0x90)) {
