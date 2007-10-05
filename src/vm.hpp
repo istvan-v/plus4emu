@@ -665,9 +665,9 @@ namespace Plus4Emu {
      * lower case, invalid characters are replaced with underscores, and the
      * file is searched case-insensitively. If 'baseName_' is empty, the file
      * name callback (if any) is called, which should return either a full path
-     * file name, or an empty string in which case this function fails and
-     * returns -2 (invalid file name). 'mode' is the mode parameter to be
-     * passed to std::fopen().
+     * file name that will be stored in 'baseName_', or an empty string in
+     * which case this function fails and returns -2 (invalid file name).
+     * 'mode' is the mode parameter to be passed to std::fopen().
      * On success, the file handle is stored in 'f', and zero is returned.
      * Otherwise, 'f' is set to NULL, and the return value is one of the
      * following error codes:
@@ -680,7 +680,7 @@ namespace Plus4Emu {
      *       according to the reason for the failure
      *   -6: the file already exists (if 'createOnly_' is true)
      */
-    int openFileInWorkingDirectory(std::FILE*& f, const std::string& baseName_,
+    int openFileInWorkingDirectory(std::FILE*& f, std::string& baseName_,
                                    const char *mode, bool createOnly_ = false);
   };
 

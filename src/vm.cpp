@@ -860,14 +860,16 @@ namespace Plus4Emu {
   }
 
   int VirtualMachine::openFileInWorkingDirectory(std::FILE*& f,
-                                                 const std::string& baseName_,
+                                                 std::string& baseName_,
                                                  const char *mode,
                                                  bool createOnly_)
   {
     f = (std::FILE *) 0;
     try {
-      std::string fullName(fileIOWorkingDirectory);
+      std::string fullName;
+      bool        haveFileName = false;
       if (baseName_.length() > 0) {
+        haveFileName = true;
         // convert file name to lower case, replace invalid characters with '_'
         std::string baseName(baseName_);
         stringToLowerCase(baseName);
@@ -877,21 +879,21 @@ namespace Plus4Emu {
                 s[i] == '.' || s[i] == '+' || s[i] == '-' || s[i] == '_'))
             baseName[i] = '_';
         }
-        fullName += baseName;
+        fullName = fileIOWorkingDirectory + baseName;
       }
       else {
-        fullName = "";
         if (fileNameCallback)
           fileNameCallback(fileNameCallbackUserData, fullName);
         if (fullName.length() == 0)
           return -2;                    // error: invalid file name
+        baseName_ = fullName;
       }
       // attempt to stat() file
 #ifndef WIN32
       struct stat   st;
       std::memset(&st, 0, sizeof(struct stat));
       int   err = stat(fullName.c_str(), &st);
-      if (err != 0 && baseName_.length() > 0) {
+      if (err != 0 && haveFileName) {
         // not found, try case insensitive file search
         std::string tmpName(fullName);
         tmpName[0] = tmpName.c_str()[0];    // unshare string
