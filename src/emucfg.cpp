@@ -320,9 +320,6 @@ namespace Plus4Emu {
                                 tape.feedbackLevel, int(0),
                                 tapeSettingsChanged,
                                 -10.0, 10.0);
-    defineConfigurationVariable(*this, "tape.fastMode",
-                                tape.fastMode, false,
-                                tapeSettingsChanged);
     defineConfigurationVariable(*this, "tape.soundFileChannel",
                                 tape.soundFileChannel, int(0),
                                 tapeSoundFileSettingsChanged,
@@ -356,6 +353,9 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "videoCapture.frameRate",
                                 videoCapture.frameRate, int(30),
                                 videoCaptureSettingsChanged, 24.0, 60.0);
+    defineConfigurationVariable(*this, "videoCapture.yuvFormat",
+                                videoCapture.yuvFormat, true,
+                                videoCaptureSettingsChanged);
   }
 
   EmulatorConfiguration::~EmulatorConfiguration()
@@ -548,7 +548,6 @@ namespace Plus4Emu {
     if (tapeSettingsChanged) {
       vm_.setDefaultTapeSampleRate(tape.defaultSampleRate);
       vm_.setTapeFeedbackLevel(tape.feedbackLevel);
-      vm_.setEnableFastTapeMode(tape.fastMode);
       tapeSettingsChanged = false;
     }
     if (tapeFileChanged) {

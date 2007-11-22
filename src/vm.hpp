@@ -52,7 +52,6 @@ namespace Plus4Emu {
     bool            tapePlaybackOn;
     bool            tapeRecordOn;
     bool            tapeMotorOn;
-    bool            fastTapeModeEnabled;
     Tape            *tape;
     std::string     tapeFileName;
     long            defaultTapeSampleRate;
@@ -265,12 +264,13 @@ namespace Plus4Emu {
     virtual void getVMStatus(VMStatus& vmStatus_);
     /*!
      * Create video capture object with the specified frame rate (24 to 60)
-     * if it does not exist yet, and optionally set callbacks for printing
-     * error messages and asking for a new output file on reaching 2 GB file
-     * size.
+     * and format (384x288 RLE8 or 384x288 YV12) if it does not exist yet,
+     * and optionally set callbacks for printing error messages and asking
+     * for a new output file on reaching 2 GB file size.
      */
     virtual void openVideoCapture(
         int frameRate_ = 30,
+        bool yuvFormat_ = true,
         void (*errorCallback_)(void *userData, const char *msg) =
             (void (*)(void *, const char *)) 0,
         void (*fileNameCallback_)(void *userData, std::string& fileName) =
@@ -425,11 +425,6 @@ namespace Plus4Emu {
      * Delete all cue points. Has no effect if the file is read-only.
      */
     virtual void tapeDeleteAllCuePoints();
-    /*!
-     * Set if audio output is turned off on tape I/O, allowing the emulation
-     * to run faster than real time.
-     */
-    virtual void setEnableFastTapeMode(bool isEnabled);
     /*!
      * Set parameters for tape sound file I/O.
      */

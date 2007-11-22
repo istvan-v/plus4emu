@@ -166,7 +166,6 @@ namespace Plus4Emu {
       std::string imageFile;
       int         defaultSampleRate;
       int         feedbackLevel;
-      bool        fastMode;
       int         soundFileChannel;
       bool        enableSoundFileFilter;
       double      soundFileFilterMinFreq;
@@ -192,6 +191,7 @@ namespace Plus4Emu {
     // --------
     struct {
       int         frameRate;
+      bool        yuvFormat;
     } videoCapture;
     bool          videoCaptureSettingsChanged;
     // ----------------

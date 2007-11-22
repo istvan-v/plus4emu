@@ -113,7 +113,6 @@ namespace Plus4Emu {
       tapePlaybackOn(false),
       tapeRecordOn(false),
       tapeMotorOn(false),
-      fastTapeModeEnabled(false),
       tape((Tape *) 0),
       tapeFileName(""),
       defaultTapeSampleRate(24000L),
@@ -180,9 +179,7 @@ namespace Plus4Emu {
       audioConverter->setOutputSampleRate(audioOutputSampleRate);
     }
     writingAudioOutput =
-        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled &&
-         !(tape != (Tape *) 0 && fastTapeModeEnabled &&
-           tapeMotorOn && tapePlaybackOn));
+        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled);
     if (haveTape() && getIsTapeMotorOn() && getTapeButtonState() != 0)
       stopDemo();
   }
@@ -236,9 +233,7 @@ namespace Plus4Emu {
                                                audioOutputEQ_Q);
       }
       writingAudioOutput =
-          (audioConverter != (AudioConverter *) 0 && audioOutputEnabled &&
-           !(tape != (Tape *) 0 && fastTapeModeEnabled &&
-             tapeMotorOn && tapePlaybackOn));
+          (audioConverter != (AudioConverter *) 0 && audioOutputEnabled);
     }
   }
 
@@ -292,9 +287,7 @@ namespace Plus4Emu {
   {
     audioOutputEnabled = isEnabled;
     writingAudioOutput =
-        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled &&
-         !(tape != (Tape *) 0 && fastTapeModeEnabled &&
-           tapeMotorOn && tapePlaybackOn));
+        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled);
   }
 
   void VirtualMachine::setEnableDisplay(bool isEnabled)
@@ -396,11 +389,13 @@ namespace Plus4Emu {
 
   void VirtualMachine::openVideoCapture(
       int frameRate_,
+      bool yuvFormat_,
       void (*errorCallback_)(void *userData, const char *msg),
       void (*fileNameCallback_)(void *userData, std::string& fileName),
       void *userData_)
   {
     (void) frameRate_;
+    (void) yuvFormat_;
     (void) errorCallback_;
     (void) fileNameCallback_;
     (void) userData_;
@@ -592,11 +587,6 @@ namespace Plus4Emu {
   {
     if (tape)
       tape->deleteAllCuePoints();
-  }
-
-  void VirtualMachine::setEnableFastTapeMode(bool isEnabled)
-  {
-    fastTapeModeEnabled = isEnabled;
   }
 
   void VirtualMachine::setTapeSoundFileParameters(int requestedChannel_,
@@ -817,9 +807,7 @@ namespace Plus4Emu {
   {
     tapeMotorOn = newState;
     writingAudioOutput =
-        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled &&
-         !(tape != (Tape *) 0 && fastTapeModeEnabled &&
-           tapeMotorOn && tapePlaybackOn));
+        (audioConverter != (AudioConverter *) 0 && audioOutputEnabled);
     if (tape)
       tape->setIsMotorOn(newState);
   }
@@ -853,9 +841,7 @@ namespace Plus4Emu {
                                                audioOutputEQ_Q);
       }
       writingAudioOutput =
-          (audioConverter != (AudioConverter *) 0 && audioOutputEnabled &&
-           !(tape != (Tape *) 0 && fastTapeModeEnabled &&
-             tapeMotorOn && tapePlaybackOn));
+          (audioConverter != (AudioConverter *) 0 && audioOutputEnabled);
     }
   }
 
