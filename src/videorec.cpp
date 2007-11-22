@@ -23,8 +23,10 @@
 #include "videorec.hpp"
 
 #include <cmath>
+#include <cstring>
 
-static const size_t aviHeaderSize = 0x0146;
+static const size_t aviHeaderSize_RLE8 = 0x0546;
+static const size_t aviHeaderSize_YV12 = 0x0146;
 
 namespace Plus4Emu {
 
@@ -57,6 +59,33 @@ namespace Plus4Emu {
     }
   }
 
+  // --------------------------------------------------------------------------
+
+  void VideoCapture::aviHeader_writeFourCC(uint8_t*& bufp, const char *s)
+  {
+    bufp[0] = uint8_t(s[0]);
+    bufp[1] = uint8_t(s[1]);
+    bufp[2] = uint8_t(s[2]);
+    bufp[3] = uint8_t(s[3]);
+    bufp = bufp + 4;
+  }
+
+  void VideoCapture::aviHeader_writeUInt16(uint8_t*& bufp, uint16_t n)
+  {
+    bufp[0] = uint8_t(n & 0x00FF);
+    bufp[1] = uint8_t((n & 0xFF00) >> 8);
+    bufp = bufp + 2;
+  }
+
+  void VideoCapture::aviHeader_writeUInt32(uint8_t*& bufp, uint32_t n)
+  {
+    bufp[0] = uint8_t(n & 0x000000FFU);
+    bufp[1] = uint8_t((n & 0x0000FF00U) >> 8);
+    bufp[2] = uint8_t((n & 0x00FF0000U) >> 16);
+    bufp[3] = uint8_t((n & 0xFF000000U) >> 24);
+    bufp = bufp + 4;
+  }
+
   void VideoCapture::defaultErrorCallback(void *userData, const char *msg)
   {
     (void) userData;
@@ -70,28 +99,10 @@ namespace Plus4Emu {
     fileName.clear();
   }
 
-  // --------------------------------------------------------------------------
-
-  VideoCapture::VideoCapture(
-      void (*indexToYUVFunc)(uint8_t color, bool isNTSC,
-                             float& y, float& u, float& v),
-      int frameRate_)
+  VideoCapture::VideoCapture(int frameRate_)
     : aviFile((std::FILE *) 0),
       lineBuf((uint8_t *) 0),
-      frameBuf0Y((uint8_t *) 0),
-      frameBuf0V((uint8_t *) 0),
-      frameBuf0U((uint8_t *) 0),
-      frameBuf1Y((uint8_t *) 0),
-      frameBuf1V((uint8_t *) 0),
-      frameBuf1U((uint8_t *) 0),
-      interpBufY((int32_t *) 0),
-      interpBufV((int32_t *) 0),
-      interpBufU((int32_t *) 0),
-      outBufY((uint8_t *) 0),
-      outBufV((uint8_t *) 0),
-      outBufU((uint8_t *) 0),
       audioBuf((int16_t *) 0),
-      duplicateFrameBitmap((uint8_t *) 0),
       frameRate(frameRate_),
       audioBufSize(0),
       audioBufReadPos(0),
@@ -120,10 +131,10 @@ namespace Plus4Emu {
       lineLengthMin(513U),
       lineLengthMax(627U),
       lineLengthFilter(570.0f),
-      vsyncThreshold1(338),
-      vsyncThreshold2(264),
-      vsyncReload(-16),
-      lineReload(-6),
+      vsyncThreshold1(335),
+      vsyncThreshold2(261),
+      vsyncReload(-19),
+      lineReload(0),
       lineBufBytes(0),
       lineBufLength(0),
       lineBufFlags(0x00),
@@ -132,7 +143,7 @@ namespace Plus4Emu {
       fileSize(0),
       displayParameters(),
       audioConverter((AudioConverter *) 0),
-      colormap(),
+      aviHeaderSize(0),
       errorCallback(&defaultErrorCallback),
       errorCallbackUserData((void *) this),
       fileNameCallback(&defaultFileNameCallback),
@@ -142,81 +153,12 @@ namespace Plus4Emu {
       frameRate = (frameRate > 24 ? (frameRate < 60 ? frameRate : 60) : 24);
       while (((sampleRate / frameRate) * frameRate) != sampleRate)
         frameRate++;
-      audioBufSize = sampleRate / frameRate;
-      size_t    bufSize1 = size_t(videoWidth * videoHeight);
-      size_t    bufSize2 = 720 / 4;
-      size_t    bufSize3 = (bufSize1 + 3) >> 2;
-      size_t    bufSize4 = (bufSize3 + 3) >> 2;
-      size_t    totalSize = bufSize2;
-      totalSize += (3 * (bufSize3 + bufSize4 + bufSize4));
-      totalSize += (bufSize1 + bufSize3 + bufSize3);
-      uint32_t  *videoBuf = new uint32_t[totalSize];
-      totalSize = 0;
-      lineBuf = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      lineBuf = reinterpret_cast<uint8_t *>(new uint32_t[720 / 4]);
       std::memset(lineBuf, 0x00, 720);
-      totalSize += bufSize2;
-      frameBuf0Y = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf0Y, 0x10, bufSize1);
-      totalSize += bufSize3;
-      frameBuf0V = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf0V, 0x80, bufSize3);
-      totalSize += bufSize4;
-      frameBuf0U = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf0U, 0x80, bufSize3);
-      totalSize += bufSize4;
-      frameBuf1Y = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf1Y, 0x10, bufSize1);
-      totalSize += bufSize3;
-      frameBuf1V = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf1V, 0x80, bufSize3);
-      totalSize += bufSize4;
-      frameBuf1U = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(frameBuf1U, 0x80, bufSize3);
-      totalSize += bufSize4;
-      interpBufY = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
-      for (size_t i = 0; i < bufSize1; i++)
-        interpBufY[i] = 0;
-      totalSize += bufSize1;
-      interpBufV = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
-      for (size_t i = 0; i < bufSize3; i++)
-        interpBufV[i] = 0;
-      totalSize += bufSize3;
-      interpBufU = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
-      for (size_t i = 0; i < bufSize3; i++)
-        interpBufU[i] = 0;
-      totalSize += bufSize3;
-      outBufY = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(outBufY, 0x10, bufSize1);
-      totalSize += bufSize3;
-      outBufV = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(outBufV, 0x80, bufSize3);
-      totalSize += bufSize4;
-      outBufU = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
-      std::memset(outBufU, 0x80, bufSize3);
+      audioBufSize = sampleRate / frameRate;
       audioBuf = new int16_t[audioBufSize * audioBuffers];
       for (int i = 0; i < (audioBufSize * audioBuffers); i++)
         audioBuf[i] = int16_t(0);
-      size_t  nBytes = 0x08000000 / size_t(audioBufSize);
-      duplicateFrameBitmap = new uint8_t[nBytes];
-      std::memset(duplicateFrameBitmap, 0x00, nBytes);
-      if (indexToYUVFunc)
-        displayParameters.indexToYUVFunc = indexToYUVFunc;
-      // scale video signal to YCrCb range
-      displayParameters.brightness = -1.5f / 255.0f;
-      displayParameters.contrast = 220.0f / 255.0f;
-      displayParameters.saturation = 224.0f / 220.0f;
-      colormap.setDisplayParameters(displayParameters, true);
-      // change pixel format for more efficient processing
-      uint32_t  *p = colormap.getFirstEntry();
-      while (p) {
-        uint32_t  tmp = *p;
-        tmp = ((tmp & 0x00FF0000U) << 4) | ((tmp & 0x0000FF00U) << 2)
-              | (tmp & 0x000000FFU);
-        if (!(tmp & 0x000000F0U))
-          tmp = (tmp & 0x0FF3FC00U) | 0x00000010U;
-        (*p) = tmp;
-        p = colormap.getNextEntry(p);
-      }
       audioConverter = new AudioConverter_(*this, 221681.0f, float(sampleRate));
     }
     catch (...) {
@@ -224,21 +166,16 @@ namespace Plus4Emu {
         delete[] reinterpret_cast<uint32_t *>(lineBuf);
       if (audioBuf)
         delete[] audioBuf;
-      if (duplicateFrameBitmap)
-        delete[] duplicateFrameBitmap;
       if (audioConverter)
         delete audioConverter;
       throw;
     }
-    setClockFrequency(1773448);
   }
 
   VideoCapture::~VideoCapture()
   {
-    closeFile();
     delete[] reinterpret_cast<uint32_t *>(lineBuf);
     delete[] audioBuf;
-    delete[] duplicateFrameBitmap;
     delete audioConverter;
   }
 
@@ -292,62 +229,6 @@ namespace Plus4Emu {
     curTime += timesliceLength;
   }
 
-  void VideoCapture::setClockFrequency(size_t freq_)
-  {
-    freq_ = (freq_ + 4) & (~(size_t(7)));
-    if (freq_ == clockFrequency)
-      return;
-    clockFrequency = freq_;
-    timesliceLength = (int64_t(1000000) << 32) / int64_t(freq_);
-    audioConverter->setInputSampleRate(float(long(freq_ >> 3)));
-  }
-
-  void VideoCapture::setNTSCMode(bool ntscMode)
-  {
-    if (ntscMode != displayParameters.ntscMode) {
-      lineBufBytes = 0;
-      lineBufLength = 0;
-      lineBufFlags = 0x00;
-      if (!ntscMode) {
-        burstValue = 0x08;
-        syncLengthCnt = 0U;
-        hsyncCnt = 0U;
-        hsyncPeriodLength = 570U;
-        lineLengthCnt = 0U;
-        lineLength = 570U;
-        lineStart = 80U;
-        hsyncPeriodMin = 494U;
-        hsyncPeriodMax = 646U;
-        lineLengthMin = 513U;
-        lineLengthMax = 627U;
-        lineLengthFilter = 570.0f;
-        vsyncThreshold1 = 338;
-        vsyncThreshold2 = 264;
-        vsyncReload = -16;
-        lineReload = -6;
-      }
-      else {
-        burstValue = 0x09;
-        syncLengthCnt = 0U;
-        hsyncCnt = 0U;
-        hsyncPeriodLength = 456U;
-        lineLengthCnt = 0U;
-        lineLength = 456U;
-        lineStart = 64U;
-        hsyncPeriodMin = 380U;
-        hsyncPeriodMax = 532U;
-        lineLengthMin = 399U;
-        lineLengthMax = 513U;
-        lineLengthFilter = 456.0f;
-        vsyncThreshold1 = 292;
-        vsyncThreshold2 = 242;
-        vsyncReload = 0;
-        lineReload = 12;
-      }
-      displayParameters.ntscMode = ntscMode;
-    }
-  }
-
   void VideoCapture::lineDone()
   {
     lineLengthCnt = lineLengthCnt - lineLength;
@@ -377,8 +258,8 @@ namespace Plus4Emu {
       else if (lineLength < lineLengthMin)
         lineLength = lineLengthMin;
     }
-    if (curLine >= 2 && curLine < 578)
-      decodeLine();
+    if (curLine >= 2 && curLine < ((videoHeight * 2) + 2))
+      decodeLine((curLine - 2) >> 1);
     lineBufBytes = 0;
     lineBufLength = 0;
     lineBufFlags = 0x00;
@@ -388,18 +269,881 @@ namespace Plus4Emu {
       oddFrame = false;
     }
     if (vsyncCnt == 0) {
-      curLine = lineReload - (!oddFrame ? 0 : 1);
+      for (int i = ((curLine - 2) >> 1); i < videoHeight; i++)
+        clearLine(i);
       frameDone();
+      curLine = lineReload - (!oddFrame ? 0 : 1);
+      for (int i = 0; i < (curLine - 2); i += 2)
+        clearLine(i >> 1);
     }
     vsyncCnt++;
   }
 
-  void VideoCapture::decodeLine()
+  void VideoCapture::setClockFrequency(size_t freq_)
   {
-    int       lineNum = curLine - 2;
-    if (lineNum < 0 || lineNum >= 576)
+    freq_ = (freq_ + 4) & (~(size_t(7)));
+    if (freq_ == clockFrequency)
       return;
-    lineNum = lineNum >> 1;
+    clockFrequency = freq_;
+    timesliceLength = (int64_t(1000000) << 32) / int64_t(freq_);
+    audioConverter->setInputSampleRate(float(long(freq_ >> 3)));
+  }
+
+  void VideoCapture::setNTSCMode(bool ntscMode)
+  {
+    if (ntscMode != displayParameters.ntscMode) {
+      lineBufBytes = 0;
+      lineBufLength = 0;
+      lineBufFlags = 0x00;
+      if (!ntscMode) {
+        burstValue = 0x08;
+        syncLengthCnt = 0U;
+        hsyncCnt = 0U;
+        hsyncPeriodLength = 570U;
+        lineLengthCnt = 0U;
+        lineLength = 570U;
+        lineStart = 80U;
+        hsyncPeriodMin = 494U;
+        hsyncPeriodMax = 646U;
+        lineLengthMin = 513U;
+        lineLengthMax = 627U;
+        lineLengthFilter = 570.0f;
+        vsyncThreshold1 = 335;
+        vsyncThreshold2 = 261;
+        vsyncReload = -19;
+        lineReload = 0;
+      }
+      else {
+        burstValue = 0x09;
+        syncLengthCnt = 0U;
+        hsyncCnt = 0U;
+        hsyncPeriodLength = 456U;
+        lineLengthCnt = 0U;
+        lineLength = 456U;
+        lineStart = 64U;
+        hsyncPeriodMin = 380U;
+        hsyncPeriodMax = 532U;
+        lineLengthMin = 399U;
+        lineLengthMax = 513U;
+        lineLengthFilter = 456.0f;
+        vsyncThreshold1 = 292;
+        vsyncThreshold2 = 242;
+        vsyncReload = 0;
+        lineReload = 12;
+      }
+      displayParameters.ntscMode = ntscMode;
+    }
+  }
+
+  void VideoCapture::openFile(const char *fileName)
+  {
+    closeFile();
+    if (fileName == (char *) 0 || fileName[0] == '\0')
+      return;
+    aviFile = std::fopen(fileName, "wb");
+    if (!aviFile)
+      throw Exception("error opening AVI file");
+    framesWritten = 0;
+    duplicateFrames = 0;
+    fileSize = aviHeaderSize;
+    writeAVIHeader();
+  }
+
+  void VideoCapture::closeFile()
+  {
+    if (aviFile) {
+      // FIXME: file I/O errors are ignored here
+      try {
+        writeAVIHeader();
+        writeAVIIndex();
+      }
+      catch (...) {
+      }
+      if (aviFile)
+        std::fclose(aviFile);
+      aviFile = (std::FILE *) 0;
+      framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
+    }
+  }
+
+  void VideoCapture::errorMessage(const char *msg)
+  {
+    if (msg == (char *) 0 || msg[0] == '\0')
+      msg = "unknown video capture error";
+    errorCallback(errorCallbackUserData, msg);
+  }
+
+  void VideoCapture::setErrorCallback(void (*func)(void *userData,
+                                                   const char *msg),
+                                      void *userData_)
+  {
+    if (func) {
+      errorCallback = func;
+      errorCallbackUserData = userData_;
+    }
+    else {
+      errorCallback = &defaultErrorCallback;
+      errorCallbackUserData = (void *) this;
+    }
+  }
+
+  void VideoCapture::setFileNameCallback(void (*func)(void *userData,
+                                                      std::string& fileName),
+                                         void *userData_)
+  {
+    if (func) {
+      fileNameCallback = func;
+      fileNameCallbackUserData = userData_;
+    }
+    else {
+      fileNameCallback = &defaultFileNameCallback;
+      fileNameCallbackUserData = (void *) this;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+
+  VideoCapture_RLE8::VideoCaptureFrameBuffer::VideoCaptureFrameBuffer(int w,
+                                                                      int h)
+    : buf((uint32_t *) 0),
+      linePtrs((uint8_t **) 0),
+      lineBytes_((uint32_t *) 0)
+  {
+    try {
+      size_t  nBytes = ((size_t(w) + 3) >> 2) << 2;
+      buf = new uint32_t[(nBytes >> 2) * size_t(h)];
+      std::memset(buf, 0x00, nBytes * size_t(h));
+      linePtrs = new uint8_t*[h];
+      uint8_t *p = reinterpret_cast<uint8_t *>(buf);
+      for (int i = 0; i < h; i++) {
+        linePtrs[i] = p;
+        p = p + nBytes;
+      }
+      lineBytes_ = new uint32_t[h];
+      for (int i = 0; i < h; i++)
+        lineBytes_[i] = uint32_t(w);
+    }
+    catch (...) {
+      if (buf)
+        delete[] buf;
+      if (linePtrs)
+        delete[] linePtrs;
+      if (lineBytes_)
+        delete[] lineBytes_;
+      throw;
+    }
+  }
+
+  VideoCapture_RLE8::VideoCaptureFrameBuffer::~VideoCaptureFrameBuffer()
+  {
+    delete[] buf;
+    delete[] linePtrs;
+    delete[] lineBytes_;
+  }
+
+  inline bool VideoCapture_RLE8::VideoCaptureFrameBuffer::compareLine(
+      long dstLine, const VideoCaptureFrameBuffer& src, long srcLine)
+  {
+    if (lineBytes_[dstLine] != src.lineBytes_[srcLine])
+      return false;
+    if (src.lineBytes_[srcLine] == 0U)
+      return true;
+    return (std::memcmp(linePtrs[dstLine], src.linePtrs[srcLine],
+                        src.lineBytes_[srcLine]) == 0);
+  }
+
+  inline void VideoCapture_RLE8::VideoCaptureFrameBuffer::copyLine(long dstLine,
+                                                                   long srcLine)
+  {
+    std::memcpy(linePtrs[dstLine], linePtrs[srcLine], lineBytes_[srcLine]);
+    lineBytes_[dstLine] = lineBytes_[srcLine];
+  }
+
+  inline void VideoCapture_RLE8::VideoCaptureFrameBuffer::copyLine(
+      long dstLine, const VideoCaptureFrameBuffer& src, long srcLine)
+  {
+    std::memcpy(linePtrs[dstLine], src.linePtrs[srcLine],
+                src.lineBytes_[srcLine]);
+    lineBytes_[dstLine] = src.lineBytes_[srcLine];
+  }
+
+  inline void VideoCapture_RLE8::VideoCaptureFrameBuffer::clearLine(long n)
+  {
+    if (lineBytes_[n])
+      std::memset(linePtrs[n], 0x00, size_t(lineBytes_[n]));
+  }
+
+  // --------------------------------------------------------------------------
+
+  VideoCapture_RLE8::VideoCapture_RLE8(
+      void (*indexToYUVFunc)(uint8_t color, bool isNTSC,
+                             float& y, float& u, float& v),
+      int frameRate_)
+    : VideoCapture(frameRate_),
+      tmpFrameBuf(videoWidth, videoHeight),
+      outputFrameBuf(videoWidth, videoHeight),
+      frameSizes((uint32_t *) 0),
+      cycleCnt(0),
+      colormap((uint8_t *) 0)
+  {
+    try {
+      aviHeaderSize = aviHeaderSize_RLE8;
+      size_t  maxFrames = 0x40000000 / size_t(audioBufSize);
+      frameSizes = new uint32_t[maxFrames];
+      std::memset(frameSizes, 0x00, maxFrames * sizeof(uint32_t));
+      // initialize colormap
+      colormap = new uint8_t[512 * 4];
+      for (int i = 0; i < 512; i++) {
+        float   y = float(i & 255) / 255.0f;
+        float   u = 0.0f;
+        float   v = 0.0f;
+        if (indexToYUVFunc)
+          indexToYUVFunc(uint8_t(i & 255), bool(i & 256), y, u, v);
+        float   r = (v / 0.877f) + y;
+        float   b = (u / 0.492f) + y;
+        float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+        int ri = int((r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        int gi = int((g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        int bi = int((b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        colormap[(i * 4) + 0] = uint8_t(bi);
+        colormap[(i * 4) + 1] = uint8_t(gi);
+        colormap[(i * 4) + 2] = uint8_t(ri);
+        colormap[(i * 4) + 3] = 0x00;
+      }
+    }
+    catch (...) {
+      if (frameSizes)
+        delete[] frameSizes;
+      if (colormap)
+        delete[] colormap;
+      throw;
+    }
+    setClockFrequency(1773448);
+  }
+
+  VideoCapture_RLE8::~VideoCapture_RLE8()
+  {
+    closeFile();
+    delete[] frameSizes;
+    delete[] colormap;
+  }
+
+  void VideoCapture_RLE8::decodeLine(int lineNum)
+  {
+    int       xc = 0;
+    size_t    bufPos = 0;
+    size_t    pixelSample2 = lineBufLength;
+    uint8_t   *bufp = tmpFrameBuf[lineNum];
+    if (pixelSample2 == (displayParameters.ntscMode ? 392 : 490) &&
+        !(lineBufFlags & 0x01)) {
+      // faster code for the case when resampling is not needed
+      do {
+        if (lineBuf[bufPos] & 0x02) {
+          bufp[xc + 0] = lineBuf[bufPos + 1];
+          bufp[xc + 1] = lineBuf[bufPos + 2];
+          bufp[xc + 2] = lineBuf[bufPos + 3];
+          bufp[xc + 3] = lineBuf[bufPos + 4];
+          bufPos = bufPos + 5;
+        }
+        else {
+          uint8_t c = lineBuf[bufPos + 1];
+          bufp[xc + 0] = c;
+          bufp[xc + 1] = c;
+          bufp[xc + 2] = c;
+          bufp[xc + 3] = c;
+          bufPos = bufPos + 2;
+        }
+        xc = xc + 4;
+      } while (xc < videoWidth);
+    }
+    else {
+      // need to resample video signal
+      uint8_t   tmpBuf[4];
+      size_t    pixelSample1 = 490;
+      size_t    pixelSampleCnt = 0;
+      uint8_t   readPos = 4;
+      do {
+        if (readPos >= 4) {
+          readPos = readPos & 3;
+          if (bufPos >= lineBufBytes)
+            break;
+          pixelSample1 = ((lineBuf[bufPos] & 0x01) ? 392 : 490);
+          if (lineBuf[bufPos] & 0x02) {
+            tmpBuf[0] = lineBuf[bufPos + 1];
+            tmpBuf[1] = lineBuf[bufPos + 2];
+            tmpBuf[2] = lineBuf[bufPos + 3];
+            tmpBuf[3] = lineBuf[bufPos + 4];
+            bufPos = bufPos + 5;
+          }
+          else {
+            uint8_t c = lineBuf[bufPos + 1];
+            tmpBuf[0] = c;
+            tmpBuf[1] = c;
+            tmpBuf[2] = c;
+            tmpBuf[3] = c;
+            bufPos = bufPos + 2;
+          }
+        }
+        bufp[xc] = tmpBuf[readPos];
+        pixelSampleCnt += pixelSample2;
+        while (pixelSampleCnt >= pixelSample1) {
+          pixelSampleCnt -= pixelSample1;
+          readPos++;
+        }
+      } while (++xc < videoWidth);
+      for ( ; xc < videoWidth; xc++)
+        bufp[xc] = 0x00;
+    }
+  }
+
+  void VideoCapture_RLE8::clearLine(int lineNum)
+  {
+    tmpFrameBuf.clearLine(lineNum);
+  }
+
+  void VideoCapture_RLE8::frameDone()
+  {
+    if (audioBufSamples >= audioBufSize) {
+      bool    frameChanged = false;
+      for (int i = 0; i < videoHeight; i++) {
+        if (!tmpFrameBuf.compareLine(i, outputFrameBuf, i)) {
+          frameChanged = true;
+          outputFrameBuf.copyLine(i, tmpFrameBuf, i);
+        }
+      }
+      do {
+        audioBufSamples -= audioBufSize;
+        writeFrame(frameChanged);
+        frameChanged = false;
+        audioBufReadPos += audioBufSize;
+        while (audioBufReadPos >= (audioBufSize * audioBuffers))
+          audioBufReadPos -= (audioBufSize * audioBuffers);
+      } while (audioBufSamples >= audioBufSize);
+    }
+  }
+
+  size_t VideoCapture_RLE8::rleCompressLine(uint8_t *outBuf,
+                                            const uint8_t *inBuf)
+  {
+    uint8_t runLengths[512];
+    uint8_t byteValues[512];
+    size_t  nBytes = 0;
+    int     n = 0;
+    int     runLength = 1;
+    for (int i = 1; i < videoWidth; i++) {
+      if (inBuf[i] != inBuf[i - 1]) {
+        runLengths[n] = uint8_t(runLength);
+        byteValues[n++] = inBuf[i - 1];
+        runLength = 1;
+      }
+      else {
+        if (++runLength >= 256) {
+          runLengths[n] = 255;
+          byteValues[n++] = inBuf[i - 1];
+          runLength = 1;
+        }
+      }
+    }
+    runLengths[n] = uint8_t(runLength);
+    byteValues[n++] = inBuf[videoWidth - 1];
+    for (int i = 0; i < n; ) {
+      if (runLengths[i] >= 2 || (i + 1) >= n) {
+        outBuf[nBytes++] = runLengths[i];
+        outBuf[nBytes++] = byteValues[i];
+        i++;
+      }
+      else {
+        int     j = i + 1;
+        int     bytesToCopy = int(runLengths[i]);
+        int     minLength = 3;
+        do {
+          int     tmp = int(runLengths[j]);
+          if (tmp >= minLength || (bytesToCopy + tmp) > 255)
+            break;
+          bytesToCopy += tmp;
+          minLength = 4 | (bytesToCopy & 1);
+        } while (++j < n);
+        if (bytesToCopy >= 3) {
+          outBuf[nBytes++] = 0x00;
+          outBuf[nBytes++] = uint8_t(bytesToCopy);
+          do {
+            int     k = int(runLengths[i]);
+            uint8_t tmp = byteValues[i];
+            do {
+              outBuf[nBytes++] = tmp;
+            } while (--k != 0);
+          } while (++i < j);
+          if (bytesToCopy & 1)
+            outBuf[nBytes++] = 0x00;
+        }
+        else {
+          do {
+            outBuf[nBytes++] = runLengths[i];
+            outBuf[nBytes++] = byteValues[i];
+          } while (++i < j);
+        }
+      }
+    }
+    outBuf[nBytes++] = 0x00;    // end of line
+    outBuf[nBytes++] = 0x00;
+    return nBytes;
+  }
+
+  void VideoCapture_RLE8::writeFrame(bool frameChanged)
+  {
+    if (!aviFile)
+      return;
+    if (!frameChanged) {
+      if (framesWritten == 0 || duplicateFrames >= size_t(frameRate))
+        frameChanged = true;
+      else
+        duplicateFrames++;
+    }
+    if (frameChanged)
+      duplicateFrames = 0;
+    try {
+      if (fileSize >= 0x7F800000) {
+        closeFile();
+        try {
+          errorMessage("AVI file is too large, starting new output file");
+        }
+        catch (...) {
+        }
+        std::string fileName = "";
+        fileNameCallback(fileNameCallbackUserData, fileName);
+        if (fileName.length() < 1)
+          return;
+        openFile(fileName.c_str());
+      }
+      if (std::fseek(aviFile, 0L, SEEK_END) < 0)
+        throw Exception("error seeking AVI file");
+      uint8_t headerBuf[8];
+      uint8_t *bufp = &(headerBuf[0]);
+      size_t  nBytes = 0;
+      frameSizes[framesWritten] = 0U;
+      aviHeader_writeFourCC(bufp, "00dc");
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      fileSize = fileSize + 8;
+      if (std::fwrite(&(headerBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file");
+      if (frameChanged) {
+        long    savedFilePos = std::ftell(aviFile);
+        if (savedFilePos < 4L)
+          throw Exception("error seeking AVI file");
+        savedFilePos = savedFilePos - 4L;
+        uint8_t rleBuf[512];
+        size_t  n = 0;
+        for (int i = (videoHeight - 1); i >= 0; i--) {
+          if (i == (videoHeight - 1) ||
+              !outputFrameBuf.compareLine(i, outputFrameBuf, i + 1)) {
+            n = rleCompressLine(&(rleBuf[0]), outputFrameBuf[i]);
+          }
+          nBytes += n;
+          fileSize += n;
+          if (std::fwrite(&(rleBuf[0]), 1, n, aviFile) != n)
+            throw Exception("error writing AVI file");
+        }
+        if (std::fseek(aviFile, savedFilePos, SEEK_SET) < 0)
+          throw Exception("error seeking AVI file");
+        bufp = &(headerBuf[4]);
+        frameSizes[framesWritten] = uint32_t(nBytes);
+        aviHeader_writeUInt32(bufp, uint32_t(nBytes));
+        if (std::fwrite(&(headerBuf[4]), 1, 4, aviFile) != 4)
+          throw Exception("error writing AVI file");
+        if (std::fseek(aviFile, 0L, SEEK_END) < 0)
+          throw Exception("error seeking AVI file");
+      }
+      bufp = &(headerBuf[0]);
+      nBytes = size_t(audioBufSize * 2);
+      aviHeader_writeFourCC(bufp, "01wb");
+      aviHeader_writeUInt32(bufp, uint32_t(nBytes));
+      fileSize = fileSize + 8;
+      if (std::fwrite(&(headerBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file");
+      int     bufPos = audioBufReadPos;
+      for (int i = 0; i < audioBufSize; i++) {
+        if (bufPos >= (audioBufSize * audioBuffers))
+          bufPos = 0;
+        int16_t tmp = audioBuf[bufPos++];
+        fileSize++;
+        if (std::fputc(int(uint16_t(tmp) & 0xFF), aviFile) == EOF)
+          throw Exception("error writing AVI file");
+        fileSize++;
+        if (std::fputc(int((uint16_t(tmp) >> 8) & 0xFF), aviFile) == EOF)
+          throw Exception("error writing AVI file");
+      }
+    }
+    catch (std::exception& e) {
+      closeFile();
+      errorMessage(e.what());
+      return;
+    }
+    framesWritten++;
+    if (!(framesWritten & 31)) {
+      try {
+        writeAVIHeader();
+      }
+      catch (std::exception& e) {
+        errorMessage(e.what());
+      }
+    }
+  }
+
+  void VideoCapture_RLE8::writeAVIHeader()
+  {
+    if (!aviFile)
+      return;
+    try {
+      if (std::fseek(aviFile, 0L, SEEK_SET) < 0)
+        throw Exception("error seeking AVI file");
+      uint8_t   headerBuf[1536];
+      uint8_t   *bufp = &(headerBuf[0]);
+      size_t    maxVideoFrameSize = size_t((videoWidth + 16) * videoHeight);
+      size_t    maxFrameSize = size_t(maxVideoFrameSize + (audioBufSize * 2)
+                                      + 16);
+      aviHeader_writeFourCC(bufp, "RIFF");
+      aviHeader_writeUInt32(bufp, uint32_t(fileSize - 8));
+      aviHeader_writeFourCC(bufp, "AVI ");
+      aviHeader_writeFourCC(bufp, "LIST");
+      aviHeader_writeUInt32(bufp, 0x00000526U);
+      aviHeader_writeFourCC(bufp, "hdrl");
+      aviHeader_writeFourCC(bufp, "avih");
+      aviHeader_writeUInt32(bufp, 0x00000038U);
+      // microseconds per frame
+      aviHeader_writeUInt32(bufp,
+                            uint32_t((1000000 + (frameRate >> 1)) / frameRate));
+      // max. bytes per second
+      aviHeader_writeUInt32(bufp, uint32_t(maxFrameSize * size_t(frameRate)));
+      // padding
+      aviHeader_writeUInt32(bufp, 0x00000001U);
+      // flags (AVIF_HASINDEX | AVIF_ISINTERLEAVED | AVIF_TRUSTCKTYPE)
+      aviHeader_writeUInt32(bufp, 0x00000910U);
+      // total frames
+      aviHeader_writeUInt32(bufp, uint32_t(framesWritten));
+      // initial frames
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // number of streams
+      aviHeader_writeUInt32(bufp, 0x00000002U);
+      // suggested buffer size
+      aviHeader_writeUInt32(bufp, uint32_t(maxFrameSize));
+      // width
+      aviHeader_writeUInt32(bufp, uint32_t(videoWidth));
+      // height
+      aviHeader_writeUInt32(bufp, uint32_t(videoHeight));
+      // reserved
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      aviHeader_writeFourCC(bufp, "LIST");
+      aviHeader_writeUInt32(bufp, 0x00000474U);
+      aviHeader_writeFourCC(bufp, "strl");
+      aviHeader_writeFourCC(bufp, "strh");
+      aviHeader_writeUInt32(bufp, 0x00000038U);
+      aviHeader_writeFourCC(bufp, "vids");
+      // video codec
+      aviHeader_writeUInt32(bufp, 0x00000001U); // BI_RLE8
+      // flags
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // priority
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // language
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // initial frames
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // scale
+      aviHeader_writeUInt32(bufp, 0x00000001U);
+      // rate
+      aviHeader_writeUInt32(bufp, uint32_t(frameRate));
+      // start time
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // length
+      aviHeader_writeUInt32(bufp, uint32_t(framesWritten));
+      // suggested buffer size
+      aviHeader_writeUInt32(bufp, uint32_t(maxVideoFrameSize));
+      // quality
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // sample size
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // left
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // top
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // right
+      aviHeader_writeUInt16(bufp, uint16_t(videoWidth));
+      // bottom
+      aviHeader_writeUInt16(bufp, uint16_t(videoHeight));
+      aviHeader_writeFourCC(bufp, "strf");
+      aviHeader_writeUInt32(bufp, 0x00000428U);
+      aviHeader_writeUInt32(bufp, 0x00000028U);
+      // width
+      aviHeader_writeUInt32(bufp, uint32_t(videoWidth));
+      // height
+      aviHeader_writeUInt32(bufp, uint32_t(videoHeight));
+      // planes
+      aviHeader_writeUInt16(bufp, 0x0001);
+      // bits per pixel
+      aviHeader_writeUInt16(bufp, 0x0008);
+      // compression
+      aviHeader_writeUInt32(bufp, 0x00000001U); // BI_RLE8
+      // image size in bytes
+      aviHeader_writeUInt32(bufp, uint32_t(videoWidth * videoHeight));
+      // X resolution
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // Y resolution
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // color indexes used
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // color indexes required
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // colormap (256 entries)
+      std::memcpy(bufp,
+                  &(colormap[displayParameters.ntscMode ? 1024 : 0]), 1024);
+      bufp = bufp + 1024;
+      aviHeader_writeFourCC(bufp, "LIST");
+      aviHeader_writeUInt32(bufp, 0x0000005EU);
+      aviHeader_writeFourCC(bufp, "strl");
+      aviHeader_writeFourCC(bufp, "strh");
+      aviHeader_writeUInt32(bufp, 0x00000038U);
+      aviHeader_writeFourCC(bufp, "auds");
+      // audio codec (WAVE_FORMAT_PCM)
+      aviHeader_writeUInt32(bufp, 0x00000001U);
+      // flags
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // priority
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // language
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // initial frames
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // scale
+      aviHeader_writeUInt32(bufp, 0x00000001U);
+      // rate
+      aviHeader_writeUInt32(bufp, uint32_t(sampleRate));
+      // start time
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // length
+      aviHeader_writeUInt32(bufp, uint32_t(framesWritten
+                                           * size_t(audioBufSize)));
+      // suggested buffer size
+      aviHeader_writeUInt32(bufp, uint32_t(audioBufSize * 2));
+      // quality
+      aviHeader_writeUInt32(bufp, 0x00000000U);
+      // sample size
+      aviHeader_writeUInt32(bufp, 0x00000002U);
+      // left
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // top
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // right
+      aviHeader_writeUInt16(bufp, 0x0000);
+      // bottom
+      aviHeader_writeUInt16(bufp, 0x0000);
+      aviHeader_writeFourCC(bufp, "strf");
+      aviHeader_writeUInt32(bufp, 0x00000012U);
+      // audio format (WAVE_FORMAT_PCM)
+      aviHeader_writeUInt16(bufp, 0x0001);
+      // audio channels
+      aviHeader_writeUInt16(bufp, 0x0001);
+      // samples per second
+      aviHeader_writeUInt32(bufp, uint32_t(sampleRate));
+      // bytes per second
+      aviHeader_writeUInt32(bufp, uint32_t(sampleRate * 2));
+      // block alignment
+      aviHeader_writeUInt16(bufp, 0x0002);
+      // bits per sample
+      aviHeader_writeUInt16(bufp, 0x0010);
+      // additional format information size
+      aviHeader_writeUInt16(bufp, 0x0000);
+      aviHeader_writeFourCC(bufp, "LIST");
+      aviHeader_writeUInt32(bufp, uint32_t((fileSize - aviHeaderSize) + 4));
+      aviHeader_writeFourCC(bufp, "movi");
+      size_t  nBytes = size_t(bufp - (&(headerBuf[0])));
+      if (std::fwrite(&(headerBuf[0]), 1, nBytes, aviFile) != nBytes)
+        throw Exception("error writing AVI file header");
+      if (std::fflush(aviFile) != 0)
+        throw Exception("error writing AVI file header");
+    }
+    catch (...) {
+      std::fclose(aviFile);
+      aviFile = (std::FILE *) 0;
+      framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
+      throw;
+    }
+  }
+
+  void VideoCapture_RLE8::writeAVIIndex()
+  {
+    if (!aviFile)
+      return;
+    try {
+      if (std::fseek(aviFile, 0L, SEEK_END) < 0)
+        throw Exception("error seeking AVI file");
+      uint8_t   tmpBuf[32];
+      uint8_t   *bufp = &(tmpBuf[0]);
+      aviHeader_writeFourCC(bufp, "idx1");
+      aviHeader_writeUInt32(bufp, uint32_t(framesWritten << 5));
+      fileSize = fileSize + 8;
+      if (std::fwrite(&(tmpBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file index");
+      size_t    filePos = 4;
+      for (size_t i = 0; i < framesWritten; i++) {
+        bufp = &(tmpBuf[0]);
+        aviHeader_writeFourCC(bufp, "00dc");
+        size_t    frameBytes = size_t(frameSizes[i]);
+        if (frameBytes > 0)
+          aviHeader_writeUInt32(bufp, 0x00000010U);     // AVIIF_KEYFRAME
+        else
+          aviHeader_writeUInt32(bufp, 0x00000000U);
+        aviHeader_writeUInt32(bufp, uint32_t(filePos));
+        filePos = filePos + frameBytes + 8;
+        aviHeader_writeUInt32(bufp, uint32_t(frameBytes));
+        aviHeader_writeFourCC(bufp, "01wb");
+        aviHeader_writeUInt32(bufp, 0x00000010U);       // AVIIF_KEYFRAME
+        aviHeader_writeUInt32(bufp, uint32_t(filePos));
+        frameBytes = size_t(audioBufSize) << 1;
+        filePos = filePos + frameBytes + 8;
+        aviHeader_writeUInt32(bufp, uint32_t(frameBytes));
+        fileSize = fileSize + 32;
+        if (std::fwrite(&(tmpBuf[0]), 1, 32, aviFile) != 32)
+          throw Exception("error writing AVI file index");
+      }
+      if (std::fseek(aviFile, 0L, SEEK_SET) < 0)
+        throw Exception("error seeking AVI file");
+      bufp = &(tmpBuf[0]);
+      aviHeader_writeFourCC(bufp, "RIFF");
+      aviHeader_writeUInt32(bufp, uint32_t(fileSize - 8));
+      if (std::fwrite(&(tmpBuf[0]), 1, 8, aviFile) != 8)
+        throw Exception("error writing AVI file index");
+      if (std::fflush(aviFile) != 0)
+        throw Exception("error writing AVI file index");
+    }
+    catch (...) {
+      std::fclose(aviFile);
+      aviFile = (std::FILE *) 0;
+      framesWritten = 0;
+      duplicateFrames = 0;
+      fileSize = 0;
+      throw;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+
+  VideoCapture_YV12::VideoCapture_YV12(
+      void (*indexToYUVFunc)(uint8_t color, bool isNTSC,
+                             float& y, float& u, float& v),
+      int frameRate_)
+    : VideoCapture(frameRate_),
+      videoBuf((uint32_t *) 0),
+      frameBuf0Y((uint8_t *) 0),
+      frameBuf0V((uint8_t *) 0),
+      frameBuf0U((uint8_t *) 0),
+      frameBuf1Y((uint8_t *) 0),
+      frameBuf1V((uint8_t *) 0),
+      frameBuf1U((uint8_t *) 0),
+      interpBufY((int32_t *) 0),
+      interpBufV((int32_t *) 0),
+      interpBufU((int32_t *) 0),
+      outBufY((uint8_t *) 0),
+      outBufV((uint8_t *) 0),
+      outBufU((uint8_t *) 0),
+      duplicateFrameBitmap((uint8_t *) 0),
+      colormap()
+  {
+    try {
+      aviHeaderSize = aviHeaderSize_YV12;
+      size_t    bufSize1 = size_t(videoWidth * videoHeight);
+      size_t    bufSize3 = (bufSize1 + 3) >> 2;
+      size_t    bufSize4 = (bufSize3 + 3) >> 2;
+      size_t    totalSize = (3 * (bufSize3 + bufSize4 + bufSize4));
+      totalSize += (bufSize1 + bufSize3 + bufSize3);
+      videoBuf = new uint32_t[totalSize];
+      totalSize = 0;
+      frameBuf0Y = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf0Y, 0x10, bufSize1);
+      totalSize += bufSize3;
+      frameBuf0V = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf0V, 0x80, bufSize3);
+      totalSize += bufSize4;
+      frameBuf0U = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf0U, 0x80, bufSize3);
+      totalSize += bufSize4;
+      frameBuf1Y = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf1Y, 0x10, bufSize1);
+      totalSize += bufSize3;
+      frameBuf1V = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf1V, 0x80, bufSize3);
+      totalSize += bufSize4;
+      frameBuf1U = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(frameBuf1U, 0x80, bufSize3);
+      totalSize += bufSize4;
+      interpBufY = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
+      for (size_t i = 0; i < bufSize1; i++)
+        interpBufY[i] = 0;
+      totalSize += bufSize1;
+      interpBufV = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
+      for (size_t i = 0; i < bufSize3; i++)
+        interpBufV[i] = 0;
+      totalSize += bufSize3;
+      interpBufU = reinterpret_cast<int32_t *>(&(videoBuf[totalSize]));
+      for (size_t i = 0; i < bufSize3; i++)
+        interpBufU[i] = 0;
+      totalSize += bufSize3;
+      outBufY = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(outBufY, 0x10, bufSize1);
+      totalSize += bufSize3;
+      outBufV = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(outBufV, 0x80, bufSize3);
+      totalSize += bufSize4;
+      outBufU = reinterpret_cast<uint8_t *>(&(videoBuf[totalSize]));
+      std::memset(outBufU, 0x80, bufSize3);
+      size_t  nBytes = 0x08000000 / size_t(audioBufSize);
+      duplicateFrameBitmap = new uint8_t[nBytes];
+      std::memset(duplicateFrameBitmap, 0x00, nBytes);
+      // initialize colormap
+      if (indexToYUVFunc)
+        displayParameters.indexToYUVFunc = indexToYUVFunc;
+      // scale video signal to YCrCb range
+      displayParameters.brightness = -1.5f / 255.0f;
+      displayParameters.contrast = 220.0f / 255.0f;
+      displayParameters.saturation = 224.0f / 220.0f;
+      colormap.setDisplayParameters(displayParameters, true);
+      // change pixel format for more efficient processing
+      uint32_t  *p = colormap.getFirstEntry();
+      while (p) {
+        uint32_t  tmp = *p;
+        tmp = ((tmp & 0x00FF0000U) << 4) | ((tmp & 0x0000FF00U) << 2)
+              | (tmp & 0x000000FFU);
+        if (!(tmp & 0x000000F0U))
+          tmp = (tmp & 0x0FF3FC00U) | 0x00000010U;
+        (*p) = tmp;
+        p = colormap.getNextEntry(p);
+      }
+    }
+    catch (...) {
+      if (videoBuf)
+        delete[] videoBuf;
+      if (duplicateFrameBitmap)
+        delete[] duplicateFrameBitmap;
+      throw;
+    }
+    setClockFrequency(1773448);
+  }
+
+  VideoCapture_YV12::~VideoCapture_YV12()
+  {
+    closeFile();
+    delete[] videoBuf;
+    delete[] duplicateFrameBitmap;
+  }
+
+  void VideoCapture_YV12::decodeLine(int lineNum)
+  {
     int       xc = 0;
     size_t    bufPos = 0;
     uint8_t   videoFlags = uint8_t(((lineNum & 1) << 1)
@@ -494,7 +1238,16 @@ namespace Plus4Emu {
     }
   }
 
-  void VideoCapture::frameDone()
+  void VideoCapture_YV12::clearLine(int lineNum)
+  {
+    std::memset(&(frameBuf1Y[lineNum * videoWidth]), 0x10, size_t(videoWidth));
+    std::memset(&(frameBuf1V[(lineNum >> 1) * (videoWidth >> 1)]),
+                0x80, size_t(videoWidth >> 1));
+    std::memset(&(frameBuf1U[(lineNum >> 1) * (videoWidth >> 1)]),
+                0x80, size_t(videoWidth >> 1));
+  }
+
+  void VideoCapture_YV12::frameDone()
   {
     resampleFrame();
     while (audioBufSamples >= audioBufSize) {
@@ -558,14 +1311,9 @@ namespace Plus4Emu {
     tmp = frameBuf0U;
     frameBuf0U = frameBuf1U;
     frameBuf1U = tmp;
-    std::memset(frameBuf1Y, 0x10, size_t(videoWidth * videoHeight));
-    std::memset(frameBuf1V, 0x80,
-                size_t((videoWidth >> 1) * (videoHeight >> 1)));
-    std::memset(frameBuf1U, 0x80,
-                size_t((videoWidth >> 1) * (videoHeight >> 1)));
   }
 
-  void VideoCapture::resampleFrame()
+  void VideoCapture_YV12::resampleFrame()
   {
     frame0Time = frame1Time;
     frame1Time = curTime;
@@ -583,7 +1331,7 @@ namespace Plus4Emu {
     } while (++i < n);
   }
 
-  void VideoCapture::writeFrame(bool frameChanged)
+  void VideoCapture_YV12::writeFrame(bool frameChanged)
   {
     if (!aviFile)
       return;
@@ -659,7 +1407,7 @@ namespace Plus4Emu {
       return;
     }
     framesWritten++;
-    if (!(framesWritten & 15)) {
+    if (!(framesWritten & 31)) {
       try {
         writeAVIHeader();
       }
@@ -669,32 +1417,7 @@ namespace Plus4Emu {
     }
   }
 
-  void VideoCapture::aviHeader_writeFourCC(uint8_t*& bufp, const char *s)
-  {
-    bufp[0] = uint8_t(s[0]);
-    bufp[1] = uint8_t(s[1]);
-    bufp[2] = uint8_t(s[2]);
-    bufp[3] = uint8_t(s[3]);
-    bufp = bufp + 4;
-  }
-
-  void VideoCapture::aviHeader_writeUInt16(uint8_t*& bufp, uint16_t n)
-  {
-    bufp[0] = uint8_t(n & 0x00FF);
-    bufp[1] = uint8_t((n & 0xFF00) >> 8);
-    bufp = bufp + 2;
-  }
-
-  void VideoCapture::aviHeader_writeUInt32(uint8_t*& bufp, uint32_t n)
-  {
-    bufp[0] = uint8_t(n & 0x000000FFU);
-    bufp[1] = uint8_t((n & 0x0000FF00U) >> 8);
-    bufp[2] = uint8_t((n & 0x00FF0000U) >> 16);
-    bufp[3] = uint8_t((n & 0xFF000000U) >> 24);
-    bufp = bufp + 4;
-  }
-
-  void VideoCapture::writeAVIHeader()
+  void VideoCapture_YV12::writeAVIHeader()
   {
     if (!aviFile)
       return;
@@ -874,7 +1597,7 @@ namespace Plus4Emu {
     }
   }
 
-  void VideoCapture::writeAVIIndex()
+  void VideoCapture_YV12::writeAVIIndex()
   {
     if (!aviFile)
       return;
@@ -930,74 +1653,6 @@ namespace Plus4Emu {
       duplicateFrames = 0;
       fileSize = 0;
       throw;
-    }
-  }
-
-  void VideoCapture::closeFile()
-  {
-    if (aviFile) {
-      // FIXME: file I/O errors are ignored here
-      try {
-        writeAVIHeader();
-        writeAVIIndex();
-      }
-      catch (...) {
-      }
-      if (aviFile)
-        std::fclose(aviFile);
-      aviFile = (std::FILE *) 0;
-      framesWritten = 0;
-      duplicateFrames = 0;
-      fileSize = 0;
-    }
-  }
-
-  void VideoCapture::errorMessage(const char *msg)
-  {
-    if (msg == (char *) 0 || msg[0] == '\0')
-      msg = "unknown video capture error";
-    errorCallback(errorCallbackUserData, msg);
-  }
-
-  void VideoCapture::openFile(const char *fileName)
-  {
-    closeFile();
-    if (fileName == (char *) 0 || fileName[0] == '\0')
-      return;
-    aviFile = std::fopen(fileName, "wb");
-    if (!aviFile)
-      throw Exception("error opening AVI file");
-    framesWritten = 0;
-    duplicateFrames = 0;
-    fileSize = aviHeaderSize;
-    writeAVIHeader();
-  }
-
-  void VideoCapture::setErrorCallback(void (*func)(void *userData,
-                                                   const char *msg),
-                                      void *userData_)
-  {
-    if (func) {
-      errorCallback = func;
-      errorCallbackUserData = userData_;
-    }
-    else {
-      errorCallback = &defaultErrorCallback;
-      errorCallbackUserData = (void *) this;
-    }
-  }
-
-  void VideoCapture::setFileNameCallback(void (*func)(void *userData,
-                                                      std::string& fileName),
-                                         void *userData_)
-  {
-    if (func) {
-      fileNameCallback = func;
-      fileNameCallbackUserData = userData_;
-    }
-    else {
-      fileNameCallback = &defaultFileNameCallback;
-      fileNameCallbackUserData = (void *) this;
     }
   }
 
