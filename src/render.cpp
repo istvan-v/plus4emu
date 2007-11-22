@@ -577,82 +577,66 @@ namespace Plus4 {
   {
     switch (videoMode) {
     case 0x00:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xFC)) << 8;
       characterMask = uint8_t(0x7F);
       break;
     case 0x01:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xFC)) << 8;
       characterMask = uint8_t(0x7F);
       break;
     case 0x02:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x03:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x04:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0x3F);
       break;
     case 0x05:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0x3F);
       break;
     case 0x06:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x07:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x08:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0xFF);
       break;
     case 0x09:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0xFF);
       break;
     case 0x0A:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x0B:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x0C:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0x3F);
       break;
     case 0x0D:
-      bitmapMode = false;
       charset_base_addr = int(tedRegisters[0x13] & uint8_t(0xF8)) << 8;
       characterMask = uint8_t(0x3F);
       break;
     case 0x0E:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;
     case 0x0F:
-      bitmapMode = true;
       charset_base_addr = 0;
       characterMask = uint8_t(0);
       break;

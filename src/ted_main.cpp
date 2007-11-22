@@ -21,6 +21,10 @@
 #include "cpu.hpp"
 #include "ted.hpp"
 
+static const unsigned char  memoryMapIndexTable[16] = {
+  4, 0, 0, 0,  1, 1, 1, 1,  2, 2, 2, 2,  3, 3, 3, 3
+};
+
 namespace Plus4 {
 
   void TED7360::runOneCycle_freezeMode()
@@ -382,28 +386,54 @@ namespace Plus4 {
       if (!bitmapAddressDisableFlags) {
         // read bitmap data from memory
         uint16_t  addr_ = uint16_t(characterLine);
-        if (!(tedRegisters[0x06] & uint8_t(0x80))) {
-          if (bitmapMode)
-            addr_ |= uint16_t(bitmap_base_addr
-                              | (characterPosition << 3));
-          else
+        if (!(tedRegisters[0x06] & 0x80)) {
+          if (!(tedRegisters[0x06] & 0x20)) {   // normal character mode
             addr_ |= uint16_t(charset_base_addr
                               | (int(char_buf[characterColumn] & characterMask)
                                  << 3));
+          }
+          else {                                // normal bitmap mode
+            addr_ |= uint16_t(bitmap_base_addr | (characterPosition << 3));
+          }
         }
         else {
-          // IC test mode (FF06 bit 7 set)
-          int     tmp = (int(attr_buf_tmp[characterColumn]) << 3) | 0xF800;
-          if (bitmapMode)
+          if (!(tedRegisters[0x06] & 0x20)) {   // IC test / character mode
+            addr_ |= uint16_t((int(attr_buf_tmp[characterColumn]) << 3)
+                              | 0xF800);
+          }
+          else {                                // IC test / bitmap mode
             addr_ |= uint16_t(bitmap_base_addr
-                              | ((characterPosition << 3) & tmp));
-          else
-            addr_ |= uint16_t(tmp);
+                              | ((characterPosition
+                                  & (int(attr_buf_tmp[characterColumn])
+                                     | 0xFF00)) << 3));
+          }
         }
-        if (addr_ >= uint16_t(0x8000) || !(tedBitmapReadMap & 0x80U)) {
-          memoryReadMap = tedBitmapReadMap;
-          (void) readMemory(addr_);
-          memoryReadMap = cpuMemoryReadMap;
+        if (!(tedBitmapReadMap & 0x80U)) {
+          if ((addr_ & 0xFFE0) != 0xFF00) {
+            // read bitmap data from RAM
+            unsigned int  tmp = (unsigned int) memoryMapIndexTable[addr_ >> 12];
+            uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
+            dataBusState = p[addr_ & 0x3FFF];
+          }
+          else {
+            // read bitmap data from TED registers
+            (void) readMemory(addr_);
+          }
+        }
+        else if (addr_ >= 0x8000) {
+          if (addr_ < 0xFC00) {
+            // read bitmap data from ROM
+            unsigned int  tmp = (unsigned int) memoryMapIndexTable[addr_ >> 12];
+            uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
+            if (p)
+              dataBusState = p[addr_ & 0x3FFF];
+          }
+          else if (addr_ < 0xFD00 || addr_ >= 0xFF00) {
+            // read bitmap data from ROM or TED registers
+            memoryReadMap = tedBitmapReadMap;
+            (void) readMemory(addr_);
+            memoryReadMap = cpuMemoryReadMap;
+          }
         }
       }
       else

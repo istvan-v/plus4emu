@@ -23,18 +23,6 @@
 
 namespace Plus4 {
 
-  uint8_t TED7360::getMemoryPage(int n) const
-  {
-    return memoryMapTable[cpuMemoryReadMap + ((unsigned int) n & 3U)];
-  }
-
-  int TED7360::getSegmentType(uint8_t n) const
-  {
-    if (segmentTable[n] == (uint8_t *) 0)
-      return 0;
-    return (n < uint8_t(0x80) ? 1 : 2);
-  }
-
   uint8_t TED7360::read_memory_0000_to_0FFF(void *userData, uint16_t addr)
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -130,29 +118,7 @@ namespace Plus4 {
     return ted.dataBusState;
   }
 
-  uint8_t TED7360::readMemoryRaw(uint32_t addr) const
-  {
-    uint8_t   segment = uint8_t((addr >> 14) & 0xFF);
-    uint8_t   *p = segmentTable[segment];
-    if (p)
-      return p[addr & 0x3FFF];
-    return uint8_t(0xFF);
-  }
-
-  uint8_t TED7360::readMemoryCPU(uint16_t addr, bool forceRAM_) const
-  {
-    // ugly hack to work around const declaration and avoid side-effects
-    TED7360&      ted_ = *(const_cast<TED7360 *>(this));
-    unsigned int  savedMemoryReadMap = memoryReadMap;
-    uint8_t       savedDataBusState = dataBusState;
-    ted_.memoryReadMap =
-        (forceRAM_ ? (cpuMemoryReadMap & 0x7F78U) : cpuMemoryReadMap);
-    ted_.dataBusState = uint8_t(0xFF);
-    uint8_t retval = ted_.readMemory(addr);
-    ted_.memoryReadMap = savedMemoryReadMap;
-    ted_.dataBusState = savedDataBusState;
-    return retval;
-  }
+  // --------------------------------------------------------------------------
 
   void TED7360::write_memory_0000_to_0FFF(void *userData,
                                           uint16_t addr, uint8_t value)
@@ -292,6 +258,44 @@ namespace Plus4 {
     ted.tedDMAReadMap &= 0x7F78U;
   }
 
+  // --------------------------------------------------------------------------
+
+  uint8_t TED7360::getMemoryPage(int n) const
+  {
+    return memoryMapTable[cpuMemoryReadMap + ((unsigned int) n & 3U)];
+  }
+
+  int TED7360::getSegmentType(uint8_t n) const
+  {
+    if (segmentTable[n] == (uint8_t *) 0)
+      return 0;
+    return (n < uint8_t(0x80) ? 1 : 2);
+  }
+
+  uint8_t TED7360::readMemoryRaw(uint32_t addr) const
+  {
+    uint8_t   segment = uint8_t((addr >> 14) & 0xFF);
+    uint8_t   *p = segmentTable[segment];
+    if (p)
+      return p[addr & 0x3FFF];
+    return uint8_t(0xFF);
+  }
+
+  uint8_t TED7360::readMemoryCPU(uint16_t addr, bool forceRAM_) const
+  {
+    // ugly hack to work around const declaration and avoid side-effects
+    TED7360&      ted_ = *(const_cast<TED7360 *>(this));
+    unsigned int  savedMemoryReadMap = memoryReadMap;
+    uint8_t       savedDataBusState = dataBusState;
+    ted_.memoryReadMap =
+        (forceRAM_ ? (cpuMemoryReadMap & 0x7F78U) : cpuMemoryReadMap);
+    ted_.dataBusState = uint8_t(0xFF);
+    uint8_t retval = ted_.readMemory(addr);
+    ted_.memoryReadMap = savedMemoryReadMap;
+    ted_.dataBusState = savedDataBusState;
+    return retval;
+  }
+
   void TED7360::writeMemoryRaw(uint32_t addr, uint8_t value)
   {
     uint8_t   segment = uint8_t((addr >> 14) & 0xFF);
@@ -422,7 +426,7 @@ namespace Plus4 {
       if (!allowHannesBelow4000_)
         memoryMap_[0] = memoryMap_[4];
       memoryMap_[5] = (isROM_ ? uint8_t(0x01) : memoryMap_[3]);
-      memoryMap_[6] = (isTED_ && !isROM_ ? memoryMap_[3] : uint8_t(0x7F));
+      memoryMap_[6] = uint8_t(0x7F);
       memoryMap_[7] = memoryMap_[3];
     }
     initRegisters();

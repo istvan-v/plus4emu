@@ -147,7 +147,7 @@ namespace Plus4 {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
-    uint8_t   bitsChanged = ted.tedRegisters[0x06] ^ value;
+    uint8_t   bitsChanged = value ^ ted.tedRegisters[0x06];
     ted.tedRegisters[0x06] = value;
     ted.videoMode = uint8_t((ted.videoMode & 0x09) | ((value >> 4) & 0x06));
     if (bitsChanged & uint8_t(0x07)) {

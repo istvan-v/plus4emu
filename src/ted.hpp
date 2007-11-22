@@ -479,7 +479,6 @@ namespace Plus4 {
     int         video_buf_pos;
     bool        videoShiftRegisterEnabled;
     uint8_t     videoMode;      // (FF06 bit 5, 6 OR FF07 bit 4, 7) >> 4
-    bool        bitmapMode;
     uint8_t     characterMask;
     VideoShiftRegisterCharacter shiftRegisterCharacter;
     VideoShiftRegisterCharacter currentCharacter;
@@ -702,6 +701,11 @@ namespace Plus4 {
     //   bits 32 to 39: XOR value for bytes at the beginning of 256 byte pages
     //   bits 40 to 47: probability of random bytes (0: none, 255: maximum)
     void setRAMSize(size_t n, uint64_t ramPattern = 0UL);
+    // Returns the current RAM size in kilobytes.
+    inline size_t getRAMSize() const
+    {
+      return (size_t(ramSegments) << 4);
+    }
     void runOneCycle();
     virtual void reset(bool cold_reset = false);
     void setCPUClockMultiplier(int clk);
