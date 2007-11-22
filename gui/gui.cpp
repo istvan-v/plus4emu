@@ -110,10 +110,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.4 beta (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.4 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.4 beta (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.4 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -140,7 +140,7 @@ void Plus4EmuGUI::updateDisplay_windowMode()
       statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
                                  360, 30);
     statusDisplayGroup->show();
-    mainMenuBar->resize(0, 0, 300, 30);
+    mainMenuBar->resize(0, 2, 300, 26);
     mainMenuBar->show();
     diskStatusDisplayGroup->resize(345, 0, 30, 30);
     diskStatusDisplayGroup->show();
@@ -179,7 +179,7 @@ void Plus4EmuGUI::updateDisplay_windowSize()
     else
       statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
                                  360, 30);
-    mainMenuBar->resize(0, 0, 300, 30);
+    mainMenuBar->resize(0, 2, 300, 26);
     diskStatusDisplayGroup->resize(345, 0, 30, 30);
   }
   else {
@@ -329,11 +329,11 @@ void Plus4EmuGUI::updateDisplay(double t)
       demoStatusDisplay1->show();
       demoStatusDisplay2->show();
       if (newDemoStatus == 1) {
-        demoStatusDisplay2->labelcolor(247);
+        demoStatusDisplay2->labelcolor(Fl_Color(6));
         demoStatusDisplay2->label("P");
       }
       else {
-        demoStatusDisplay2->labelcolor(FL_RED);
+        demoStatusDisplay2->labelcolor(Fl_Color(1));
         demoStatusDisplay2->label("R");
       }
       const_cast<Fl_Menu_Item *>(m)->activate();
@@ -362,15 +362,15 @@ void Plus4EmuGUI::updateDisplay(double t)
     oldTapeButtonState = tapeButtonState;
     switch (tapeButtonState) {
     case 1:
-      tapeStatusDisplay->labelcolor(247);
+      tapeStatusDisplay->labelcolor(Fl_Color(6));
       tapeStatusDisplay->label("P");
       break;
     case 2:
-      tapeStatusDisplay->labelcolor(FL_RED);
+      tapeStatusDisplay->labelcolor(Fl_Color(1));
       tapeStatusDisplay->label("R");
       break;
     default:
-      tapeStatusDisplay->labelcolor(247);
+      tapeStatusDisplay->labelcolor(Fl_Color(6));
       tapeStatusDisplay->label("");
       break;
     }
@@ -474,7 +474,7 @@ void Plus4EmuGUI::run()
   // set initial window size from saved configuration
   flDisplay->setFLTKEventCallback(&handleFLTKEvent, (void *) this);
   mainWindow->resizable((Fl_Widget *) 0);
-  emulatorWindow->color(36, 36);
+  emulatorWindow->color(47, 47);
   resizeWindow(config.display.width, config.display.height);
   updateDisplay_windowTitle();
   // create menu bar
@@ -1662,6 +1662,7 @@ void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
     if (gui_.lockVMThread()) {
       try {
         gui_.vm.openVideoCapture(gui_.config.videoCapture.frameRate,
+                                 gui_.config.videoCapture.yuvFormat,
                                  &Plus4EmuGUI::errorMessageCallback,
                                  &Plus4EmuGUI::fileNameCallback, v);
         const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(

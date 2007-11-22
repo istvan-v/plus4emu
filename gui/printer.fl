@@ -55,18 +55,18 @@ class Plus4EmuGUI_PrinterWindow {open
       callback {{
   window->hide();
 }} open
-      xywh {231 97 745 555} type Double color 37 visible
+      xywh {231 97 745 555} type Double color 48 visible
     } {
       Fl_Scroll printerDisplayScroll {open
-        xywh {10 10 725 500} box DOWN_BOX color 36
+        xywh {10 10 725 500} box DOWN_BOX color 47
       } {
         Fl_Box printerDisplay {
-          xywh {13 12 700 990} box FLAT_BOX color 36
+          xywh {13 12 700 990} box FLAT_BOX color 47
           class Plus4EmuGUI_PrinterDisplay
         }
       }
       Fl_Box printerLEDDisplay {
-        xywh {20 525 15 15} box ROUND_DOWN_BOX color 0
+        xywh {20 525 15 15} box ROUND_DOWN_BOX color 56
       }
       Fl_Light_Button {} {
         label {Form feed}
@@ -87,14 +87,14 @@ class Plus4EmuGUI_PrinterWindow {open
     gui.errorMessage(e.what());
   }
 }}
-        xywh {55 520 100 25} color 38 labelcolor 52
+        xywh {55 520 100 25} selection_color 3
       }
       Fl_Button {} {
         label {Save to file}
         callback {{
   savePrinterOutput();
 }}
-        xywh {165 520 100 25} color 38 selection_color 39 labelcolor 52
+        xywh {165 520 100 25} selection_color 50
       }
       Fl_Button {} {
         label Clear
@@ -117,14 +117,14 @@ class Plus4EmuGUI_PrinterWindow {open
     gui.errorMessage(e.what());
   }
 }}
-        xywh {418 520 80 25} color 38 selection_color 39 labelcolor 52
+        xywh {418 520 80 25} selection_color 50
       }
       Fl_Button {} {
         label Close
         callback {{
   window->hide();
 }}
-        xywh {650 520 80 25} color 38 selection_color 39 labelcolor 52
+        xywh {650 520 80 25} selection_color 50
       }
     }
     code {{
@@ -216,7 +216,7 @@ class Plus4EmuGUI_PrinterWindow {open
                            x0, y0, (x1 - x0), (y1 - y0));
       }
       if (y1 < 508) {
-        fl_color(Fl_Color(36));
+        fl_color(Fl_Color(47));
         fl_rectf(x0, y1, (x1 - x0), (508 - y1));
       }
       if (headPosX >= 0 && headPosX < pageWidth &&

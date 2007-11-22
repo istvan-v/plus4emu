@@ -23,14 +23,14 @@ class Plus4EmuGUI_DiskConfigWindow {open
   updateWindow();
   window->hide();
 }} open
-      xywh {204 187 400 435} type Double color 37 visible
+      xywh {204 187 400 435} type Double color 48 visible
     } {
       Fl_Group {} {open
-        xywh {10 10 380 380} box THIN_UP_BOX color 38
+        xywh {10 10 380 380} box THIN_UP_BOX
       } {
         Fl_Group {} {
           label {Unit 8} open
-          xywh {20 20 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 20 360 100} box THIN_UP_BOX align 21
         } {
           Fl_Input floppyAImageFileValuator {
             callback {{
@@ -41,8 +41,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 45 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 45 230 25}
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
             label {...}
@@ -61,11 +61,11 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 45 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 45 25 25} color 50 selection_color 51
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 45 70 25} color 38 labelcolor 52 align 20
+            xywh {300 45 70 25} align 20
           }
           Fl_Choice floppyADriveTypeValuator {
             callback {{
@@ -77,18 +77,18 @@ class Plus4EmuGUI_DiskConfigWindow {open
   }
   o->value(gui.config.floppy.a.driveType);
 }} open
-            xywh {30 80 80 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
+            xywh {30 80 80 25} down_box BORDER_BOX align 8
             code0 {o->add("1541|1551");}
             code1 {o->value(gui.config.floppy.a.driveType);}
           } {}
           Fl_Box {} {
             label {Drive type for D64 files}
-            xywh {120 80 170 25} labelcolor 52 align 20
+            xywh {120 80 170 25} align 20
           }
         }
         Fl_Group {} {
           label {Unit 9} open
-          xywh {20 130 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 130 360 100} box THIN_UP_BOX align 21
         } {
           Fl_Input floppyBImageFileValuator {
             callback {{
@@ -99,8 +99,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 155 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 155 230 25}
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
             label {...}
@@ -119,11 +119,11 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 155 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 155 25 25} color 50 selection_color 51
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 155 70 25} color 38 labelcolor 52 align 20
+            xywh {300 155 70 25} align 20
           }
           Fl_Choice floppyBDriveTypeValuator {
             callback {{
@@ -135,18 +135,18 @@ class Plus4EmuGUI_DiskConfigWindow {open
   }
   o->value(gui.config.floppy.b.driveType);
 }} open
-            xywh {30 190 80 25} down_box BORDER_BOX color 0 selection_color 238 labelcolor 3 align 8 textcolor 52
+            xywh {30 190 80 25} down_box BORDER_BOX align 8
             code0 {o->add("1541|1551");}
             code1 {o->value(gui.config.floppy.b.driveType);}
           } {}
           Fl_Box {} {
             label {Drive type for D64 files}
-            xywh {120 190 170 25} labelcolor 52 align 20
+            xywh {120 190 170 25} align 20
           }
         }
         Fl_Group {} {
           label {Unit 10} open
-          xywh {20 240 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 240 360 65} box THIN_UP_BOX align 21
         } {
           Fl_Input floppyCImageFileValuator {
             callback {{
@@ -157,8 +157,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 265 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 265 230 25}
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
             label {...}
@@ -177,16 +177,16 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 265 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 265 25 25} color 50 selection_color 51
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 265 70 25} color 38 labelcolor 52 align 20
+            xywh {300 265 70 25} align 20
           }
         }
         Fl_Group {} {
           label {Unit 11} open
-          xywh {20 315 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+          xywh {20 315 360 65} box THIN_UP_BOX align 21
         } {
           Fl_Input floppyDImageFileValuator {
             callback {{
@@ -197,8 +197,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 340 230 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            tooltip {File names like /dev/fd0u800 (Linux) or \\\\.\\A: (Windows) can be used for direct access to actual floppy disks; leave the file name blank to have no disk emulated in this drive} xywh {30 340 230 25}
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
             label {...}
@@ -217,11 +217,11 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 340 25 25} color 39 selection_color 40 labelcolor 52
+            xywh {265 340 25 25} color 50 selection_color 51
           }
           Fl_Box {} {
             label {Image file}
-            xywh {300 340 70 25} color 38 labelcolor 52 align 20
+            xywh {300 340 70 25} align 20
           }
         }
       }
@@ -231,7 +231,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   gui.config.floppy.highTimingAccuracy = (o->value() != 0);
   gui.config.floppyTimingAccuracyChanged = true;
 }}
-        tooltip {Use higher 1541 timing resolution to fix some fast loaders (enabling this increases CPU usage)} xywh {15 400 200 25} color 38 labelcolor 52
+        tooltip {Use higher 1541 timing resolution to fix some fast loaders (enabling this increases CPU usage)} xywh {15 400 200 25} selection_color 3
       }
       Fl_Button {} {
         label Apply
@@ -244,7 +244,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   }
   updateWindow();
 }}
-        xywh {255 400 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {255 400 60 25} selection_color 50
       }
       Fl_Button {} {
         label OK
@@ -258,7 +258,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
   updateWindow();
   window->hide();
 }}
-        xywh {325 400 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {325 400 60 25} selection_color 50
       }
     }
   }

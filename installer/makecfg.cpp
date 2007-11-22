@@ -22,6 +22,7 @@
 #include "system.hpp"
 #include "cfg_db.hpp"
 #include "mkcfg_fl.hpp"
+#include "guicolor.hpp"
 
 #include <FL/Fl_File_Chooser.H>
 
@@ -361,6 +362,11 @@ class Plus4EmuGUIConfiguration {
 int main(int argc, char **argv)
 {
   Fl::lock();
+#ifndef WIN32
+  Plus4Emu::setGUIColorScheme(0);
+#else
+  Plus4Emu::setGUIColorScheme(1);
+#endif
   bool    forceInstallFlag = false;
   std::string installDirectory = "";
   {

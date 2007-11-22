@@ -19,9 +19,11 @@
 
 #include "gui.hpp"
 #include "system.hpp"
+#include "guicolor.hpp"
 
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cmath>
 
@@ -40,12 +42,13 @@ int main(int argc, char **argv)
       (Plus4Emu::EmulatorConfiguration *) 0;
   Plus4Emu::VMThread        *vmThread = (Plus4Emu::VMThread *) 0;
   Plus4EmuGUI               *gui_ = (Plus4EmuGUI *) 0;
-  bool      glEnabled = true;
   const char  *cfgFileName = "plus4cfg.dat";
   int       prgNameIndex = 0;
   int       diskNameIndex = 0;
   int       snapshotNameIndex = 0;
+  int       colorScheme = 0;
   int       retval = 0;
+  bool      glEnabled = true;
   bool      configLoaded = false;
 
   try {
@@ -54,14 +57,26 @@ int main(int argc, char **argv)
       if (std::strcmp(argv[i], "-cfg") == 0 && i < (argc - 1)) {
         i++;
       }
-      else if (std::strcmp(argv[i], "-prg") == 0 && i < (argc - 1)) {
-        i++;
+      else if (std::strcmp(argv[i], "-prg") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing program file name");
+        prgNameIndex = i;
       }
-      else if (std::strcmp(argv[i], "-disk") == 0 && i < (argc - 1)) {
-        i++;
+      else if (std::strcmp(argv[i], "-disk") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing disk image file name");
+        diskNameIndex = i;
       }
-      else if (std::strcmp(argv[i], "-snapshot") == 0 && i < (argc - 1)) {
-        i++;
+      else if (std::strcmp(argv[i], "-snapshot") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing snapshot file name");
+        snapshotNameIndex = i;
+      }
+      else if (std::strcmp(argv[i], "-colorscheme") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing color scheme number");
+        colorScheme = int(std::atoi(argv[i]));
+        colorScheme = (colorScheme >= 0 && colorScheme <= 2 ? colorScheme : 0);
       }
       else if (std::strcmp(argv[i], "-plus4") == 0) {
         cfgFileName = "plus4cfg.dat";
@@ -93,6 +108,8 @@ int main(int argc, char **argv)
                   << std::endl;
         std::cerr << "    -no-opengl          "
                      "use software video driver" << std::endl;
+        std::cerr << "    -colorscheme <N>    "
+                     "use GUI color scheme N (0, 1, or 2)" << std::endl;
         std::cerr << "    OPTION=VALUE        "
                      "set configuration variable 'OPTION' to 'VALUE'"
                   << std::endl;
@@ -104,6 +121,7 @@ int main(int argc, char **argv)
     }
 
     Fl::lock();
+    Plus4Emu::setGUIColorScheme(colorScheme);
     audioOutput = new Plus4Emu::AudioOutput_PortAudio();
     if (glEnabled)
       w = new Plus4Emu::OpenGLDisplay(32, 32, 384, 288, "");
@@ -162,20 +180,11 @@ int main(int argc, char **argv)
           throw Plus4Emu::Exception("missing configuration file name");
         config->loadState(argv[i], false);
       }
-      else if (std::strcmp(argv[i], "-prg") == 0) {
-        if (++i >= argc)
-          throw Plus4Emu::Exception("missing program file name");
-        prgNameIndex = i;
-      }
-      else if (std::strcmp(argv[i], "-disk") == 0) {
-        if (++i >= argc)
-          throw Plus4Emu::Exception("missing disk image file name");
-        diskNameIndex = i;
-      }
-      else if (std::strcmp(argv[i], "-snapshot") == 0) {
-        if (++i >= argc)
-          throw Plus4Emu::Exception("missing snapshot file name");
-        snapshotNameIndex = i;
+      else if (std::strcmp(argv[i], "-prg") == 0 ||
+               std::strcmp(argv[i], "-disk") == 0 ||
+               std::strcmp(argv[i], "-snapshot") == 0 ||
+               std::strcmp(argv[i], "-colorscheme") == 0) {
+        i++;
       }
       else {
         const char  *s = argv[i];
