@@ -118,10 +118,10 @@ namespace Plus4Emu {
       lineLengthMin(513U),
       lineLengthMax(627U),
       lineLengthFilter(570.0f),
-      vsyncThreshold1(338),
-      vsyncThreshold2(264),
-      vsyncReload(-16),
-      lineReload(-6),
+      vsyncThreshold1(335),
+      vsyncThreshold2(261),
+      vsyncReload(-19),
+      lineReload(0),
       videoResampleEnabled(false),
       exitFlag(false),
       limitFrameRateFlag(false),
@@ -213,10 +213,10 @@ namespace Plus4Emu {
         lineLengthMin = 513U;
         lineLengthMax = 627U;
         lineLengthFilter = 570.0f;
-        vsyncThreshold1 = 338;
-        vsyncThreshold2 = 264;
-        vsyncReload = -16;
-        lineReload = -6;
+        vsyncThreshold1 = 335;
+        vsyncThreshold2 = 261;
+        vsyncReload = -19;
+        lineReload = 0;
       }
       else {
         burstValue = 0x09;
