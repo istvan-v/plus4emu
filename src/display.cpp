@@ -210,14 +210,18 @@ namespace Plus4Emu {
   template <>
   uint16_t VideoDisplayColormap<uint16_t>::pixelConv(float r, float g, float b)
   {
-    int ri = int(r >= 0.0f ? (r < 1.0f ? (r * 248.0f + 4.0f) : 252.0f) : 4.0f);
-    int gi = int(g >= 0.0f ? (g < 1.0f ? (g * 504.0f + 4.0f) : 508.0f) : 4.0f);
-    int bi = int(b >= 0.0f ? (b < 1.0f ? (b * 248.0f + 4.0f) : 252.0f) : 4.0f);
-    if (((ri | bi) & 7) < 2 && (gi & 7) >= 6)
-      gi = gi + 4;
-    if (((ri & bi) & 7) >= 6 && (gi & 7) < 2)
-      gi = gi - 4;
-    return uint16_t(((ri & 0x00F8) << 8) | ((gi & 0x01F8) << 2) | (bi >> 3));
+    int     ri = int(r *  992.0f + 16.0f);
+    ri = (ri > 16 ? (ri < 1007 ? ri : 1007) : 16);
+    int     gi = int(g * 2016.0f + 16.0f);
+    gi = (gi > 16 ? (gi < 2031 ? gi : 2031) : 16);
+    int     bi = int(b *  992.0f + 16.0f);
+    bi = (bi > 16 ? (bi < 1007 ? bi : 1007) : 16);
+    int     tmp = (16 - (gi & 31)) - ((16 - (ri & 31)) + (16 - (bi & 31)));
+    if (tmp <= -16)
+      gi = gi + 16;
+    else if (tmp >= 16)
+      gi = gi - 16;
+    return uint16_t(((ri & 0x03E0) << 6) | (gi & 0x07E0) | (bi >> 5));
   }
 
   template <>
@@ -292,15 +296,15 @@ namespace Plus4Emu {
       if (i & 0x0800) {
         float   c = (uTmp * uTmp) + (vTmp * vTmp);
         if (i < 0x0C00) {
-          uTmp = uTmp - 0.12021f;       // add PAL burst (135 degrees)
-          vTmp = vTmp + 0.12021f;
+          uTmp = uTmp - 0.127f;         // add PAL burst (135 degrees)
+          vTmp = vTmp + 0.127f;
         }
         else {
-          uTmp = uTmp - 0.17f;          // add NTSC burst (180 degrees)
+          uTmp = uTmp - 0.179f;         // add NTSC burst (180 degrees)
         }
         if (c > 0.005f) {
-          uTmp *= 0.6f;
-          vTmp *= 0.6f;
+          uTmp *= 0.55f;
+          vTmp *= 0.55f;
         }
       }
       float   phaseShift = phaseShiftTable[k] * 0.01745329f;

@@ -44,8 +44,8 @@ namespace Plus4 {
   void TED7360::convertPixelToYUV(uint8_t color, bool isNTSC,
                                   float& y, float& u, float& v)
   {
-    const float yMin = 0.032f;
-    const float yMax = 0.975f;
+    const float yMin = 0.033f;
+    const float yMax = 0.956f;
     uint8_t c = color & 0x0F;
     uint8_t b = (color & 0x70) >> 4;
     y = brightnessToYTable[(c != 0 ? (b + 1) : 0)] - brightnessToYTable[0];
@@ -60,8 +60,8 @@ namespace Plus4 {
       else
         phs = colorPhaseTableNTSC[c];
       phs *= (3.14159265f / 180.0f);
-      u = float(std::cos(phs)) * 0.18f;
-      v = float(std::sin(phs)) * 0.18f;
+      u = float(std::cos(phs)) * 0.19f;
+      v = float(std::sin(phs)) * 0.19f;
     }
   }
 
