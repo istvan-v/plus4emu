@@ -1,5 +1,5 @@
-plus4emu 1.2.4 beta
-===================
+plus4emu 1.2.4
+==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -29,8 +29,8 @@ General
     optional parametric equalizer can be applied to the audio signal
   * recording audio output to a WAV format sound file
   * recording video and sound output to an AVI format video file, with
-    uncompressed YV12 video at 24 to 60 frames per second, and 48000 Hz
-    16-bit PCM audio
+    RLE8 or uncompressed YV12 video at 24 to 60 frames per second, and
+    48000 Hz 16-bit PCM audio
   * saving screenshots as 768x576 24-bit RLE compressed TGA files
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
@@ -186,6 +186,8 @@ Command line options
     work on all machines; however, it will use a color depth of 24 bits,
     while in OpenGL mode the textures are 16 bit (R5G6B5) only, to
     improve performance
+  -colorscheme <N>
+    select GUI color scheme N (0, 1, or 2)
   OPTION=VALUE
     set configuration variable 'OPTION' to 'VALUE'; the available
     variable names are the same as those used in ASCII format

@@ -1,7 +1,14 @@
 Changes in version 1.2.4
 ------------------------
 
-  * minor bug fixes
+  * implemented the 6551 ACIA registers at $FD00-$FD0F, which are
+    automatically enabled for configurations with 64K or more RAM; this
+    is not complete yet, but the basic functionality works
+  * video recording can also be done in RLE8 format now, which allows
+    smaller file sizes than uncompressed YV12, at the expense of some TV
+    emulation effects not being captured
+  * added new command line option for selecting the GUI style and colors
+  * various minor improvements and bug fixes
 
 Changes in version 1.2.3
 ------------------------
