@@ -68,11 +68,14 @@ namespace Plus4 {
   Plus4VM::TED7360_::TED7360_(Plus4VM& vm_)
     : TED7360(),
       vm(vm_),
-      lineCnt_(0),
       serialPort()
   {
     setMemoryReadCallback(0x0001, memoryRead0001Callback);
     setMemoryWriteCallback(0x0001, memoryWrite0001Callback);
+    for (uint16_t i = 0xFD00; i <= 0xFD0F; i++) {
+      setMemoryReadCallback(i, &aciaRegisterRead);
+      setMemoryWriteCallback(i, &aciaRegisterWrite);
+    }
     for (uint16_t i = 0x00; i <= 0x1F; i++) {
       setMemoryReadCallback(uint16_t(0xFD40) + i, &sidRegisterRead);
       setMemoryWriteCallback(uint16_t(0xFD40) + i, &sidRegisterWrite);
@@ -362,6 +365,32 @@ namespace Plus4 {
       ted.serialPort.setDATA(0, !(tmp & uint8_t(0x01)));
       ted.serialPort.setCLK(0, !(tmp & uint8_t(0x02)));
       ted.serialPort.setATN(!(tmp & uint8_t(0x04)));
+    }
+  }
+
+  uint8_t Plus4VM::TED7360_::aciaRegisterRead(void *userData, uint16_t addr)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    if (ted.vm.aciaEnabled()) {
+      ted.dataBusState = ted.vm.acia_.readRegister(addr);
+      if ((addr & 0x0003) == 0x0001) {
+        // interrupt request is cleared on reading the status register
+        ted.interruptRequest(bool(ted.tedRegisters[0x09]
+                                  & ted.tedRegisters[0x0A]));
+      }
+    }
+    return ted.dataBusState;
+  }
+
+  void Plus4VM::TED7360_::aciaRegisterWrite(void *userData,
+                                            uint16_t addr, uint8_t value)
+  {
+    TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
+    ted.dataBusState = value;
+    if (ted.vm.aciaEnabled()) {
+      ted.vm.acia_.writeRegister(addr, value);
+      if (ted.vm.acia_.isEnabled())
+        ted.vm.setEnableACIACallback(true);
     }
   }
 
@@ -659,6 +688,21 @@ namespace Plus4 {
                                  vm.soundOutputSignal);
   }
 
+  void Plus4VM::aciaCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.aciaTimeRemaining += (vm.tedTimesliceLength >> 1);
+    while (vm.aciaTimeRemaining > 0) {
+      // clock frequency is 1.8432 MHz
+      vm.aciaTimeRemaining -= int64_t(2330168889UL);
+      vm.acia_.runOneCycle();
+    }
+    if (vm.acia_.getInterruptFlag())
+      vm.ted->interruptRequest(true);
+    else if (!vm.acia_.isEnabled())
+      vm.setEnableACIACallback(false);
+  }
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -703,7 +747,10 @@ namespace Plus4 {
       printer1525Mode(false),
       printerFormFeedOn(false),
       videoCaptureNTSCMode(false),
-      videoCapture((Plus4Emu::VideoCapture *) 0)
+      videoCapture((Plus4Emu::VideoCapture *) 0),
+      acia_(),
+      aciaTimeRemaining(0),
+      aciaCallbackFlag(false)
   {
     sid_ = new SID();
     try {
@@ -816,6 +863,8 @@ namespace Plus4 {
     resetFloppyDrives(0x0F, isColdReset);
     if (printer_)
       printer_->reset();
+    acia_.reset();
+    aciaTimeRemaining = int64_t(0);
   }
 
   void Plus4VM::resetMemoryConfiguration(size_t memSize, uint64_t ramPattern)
@@ -1198,13 +1247,22 @@ namespace Plus4 {
 
   void Plus4VM::openVideoCapture(
       int frameRate_,
+      bool yuvFormat_,
       void (*errorCallback_)(void *userData, const char *msg),
       void (*fileNameCallback_)(void *userData, std::string& fileName),
       void *userData_)
   {
     if (!videoCapture) {
-      videoCapture =
-          new Plus4Emu::VideoCapture(&TED7360::convertPixelToYUV, frameRate_);
+      if (yuvFormat_) {
+        videoCapture =
+            new Plus4Emu::VideoCapture_YV12(&TED7360::convertPixelToYUV,
+                                            frameRate_);
+      }
+      else {
+        videoCapture =
+            new Plus4Emu::VideoCapture_RLE8(&TED7360::convertPixelToYUV,
+                                            frameRate_);
+      }
       videoCapture->setClockFrequency(soundClockFrequency << 3);
       ted->setCallback(&videoCaptureCallback, this, 3);
     }
@@ -1572,7 +1630,10 @@ namespace Plus4 {
   {
     if (isCPUAddress) {
       if (currentDebugContext == 0) {
-        return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
+        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled())
+          return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
+        else
+          return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
       }
       else if (currentDebugContext <= 4) {
         const FloppyDrive *p =
@@ -1610,7 +1671,10 @@ namespace Plus4 {
       case 0x41:
       case 0x42:
       case 0x43:
-        return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
+        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled())
+          return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
+        else
+          return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
       case 0x50:
       case 0x51:
       case 0x52:
@@ -1777,7 +1841,7 @@ namespace Plus4 {
     {
       Plus4Emu::File::Buffer  buf;
       buf.setPosition(0);
-      buf.writeUInt32(0x01000001);      // version number
+      buf.writeUInt32(0x01000002);      // version number
       buf.writeUInt32(uint32_t(cpuClockFrequency));
       buf.writeUInt32(uint32_t(tedInputClockFrequency));
       buf.writeUInt32(uint32_t(soundClockFrequency));
@@ -1785,6 +1849,13 @@ namespace Plus4 {
       buf.writeBoolean(sidModel6581);
       buf.writeBoolean(digiBlasterEnabled);
       buf.writeByte(digiBlasterOutput);
+      buf.writeInt64(aciaTimeRemaining);
+      uint8_t tmpBuf[32];
+      if (acia_.getSnapshotSize() > 32)
+        throw Plus4Emu::Exception("internal error: snapshot buffer overflow");
+      acia_.saveSnapshot(&(tmpBuf[0]));
+      for (size_t i = 0; i < acia_.getSnapshotSize(); i++)
+        buf.writeByte(tmpBuf[i]);
       f.addChunk(Plus4Emu::File::PLUS4EMU_CHUNKTYPE_P4VM_STATE, buf);
     }
   }
@@ -1864,7 +1935,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (version != 0x01000000 && version != 0x01000001) {
+    if (!(version >= 0x01000000 && version <= 0x01000002)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 snapshot format");
     }
@@ -1900,6 +1971,20 @@ namespace Plus4 {
       else
         sid_->input(0);
       ted->setCallback(&sidCallback, this, (sidEnabled ? 1 : 0));
+      if (version >= 0x01000002) {
+        aciaTimeRemaining = buf.readInt64();
+        uint8_t tmpBuf[32];
+        if (acia_.getSnapshotSize() > 32)
+          throw Plus4Emu::Exception("internal error: snapshot buffer overflow");
+        for (size_t i = 0; i < acia_.getSnapshotSize(); i++)
+          tmpBuf[i] = buf.readByte();
+        acia_.loadSnapshot(&(tmpBuf[0]));
+        setEnableACIACallback(true);
+      }
+      else {
+        acia_.reset();
+        aciaTimeRemaining = int64_t(0);
+      }
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "
                                   "plus4 snapshot data");

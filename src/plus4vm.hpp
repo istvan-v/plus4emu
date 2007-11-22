@@ -26,6 +26,7 @@
 #include "soundio.hpp"
 #include "vm.hpp"
 #include "serial.hpp"
+#include "acia6551.hpp"
 
 namespace Plus4Emu {
   class VideoCapture;
@@ -42,7 +43,6 @@ namespace Plus4 {
     class TED7360_ : public TED7360 {
      private:
       Plus4VM&  vm;
-      int       lineCnt_;
       static uint8_t sidRegisterRead(void *userData, uint16_t addr);
       static void sidRegisterWrite(void *userData,
                                    uint16_t addr, uint8_t value);
@@ -52,6 +52,9 @@ namespace Plus4 {
       static uint8_t memoryRead0001Callback(void *userData, uint16_t addr);
       static void memoryWrite0001Callback(void *userData,
                                           uint16_t addr, uint8_t value);
+      static uint8_t aciaRegisterRead(void *userData, uint16_t addr);
+      static void aciaRegisterWrite(void *userData,
+                                    uint16_t addr, uint8_t value);
      public:
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
@@ -128,12 +131,15 @@ namespace Plus4 {
     int       lightPenPositionY;
     int       lightPenCycleCounter;
     VC1526    *printer_;
-    int64_t   printerTimeRemaining;
+    int64_t   printerTimeRemaining;     // in 2^-32 microsecond units
     bool      printerOutputChangedFlag;
     bool      printer1525Mode;
     bool      printerFormFeedOn;
     bool      videoCaptureNTSCMode;
     Plus4Emu::VideoCapture  *videoCapture;
+    ACIA6551  acia_;
+    int64_t   aciaTimeRemaining;        // in 2^-32 microsecond units
+    bool      aciaCallbackFlag;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -151,6 +157,18 @@ namespace Plus4 {
     static void lightPenCallback(void *userData);
     static void printerCallback(void *userData);
     static void videoCaptureCallback(void *userData);
+    static void aciaCallback(void *userData);
+    inline bool aciaEnabled() const
+    {
+      return (ted->getRAMSize() >= 64);
+    }
+    inline void setEnableACIACallback(bool isEnabled)
+    {
+      if (isEnabled != aciaCallbackFlag) {
+        ted->setCallback(&aciaCallback, this, (isEnabled ? 3 : 0));
+        aciaCallbackFlag = isEnabled;
+      }
+    }
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -266,12 +284,13 @@ namespace Plus4 {
     virtual void getVMStatus(VirtualMachine::VMStatus& vmStatus_);
     /*!
      * Create video capture object with the specified frame rate (24 to 60)
-     * if it does not exist yet, and optionally set callbacks for printing
-     * error messages and asking for a new output file on reaching 2 GB file
-     * size.
+     * and format (384x288 RLE8 or 384x288 YV12) if it does not exist yet,
+     * and optionally set callbacks for printing error messages and asking
+     * for a new output file on reaching 2 GB file size.
      */
     virtual void openVideoCapture(
         int frameRate_ = 30,
+        bool yuvFormat_ = true,
         void (*errorCallback_)(void *userData, const char *msg) =
             (void (*)(void *, const char *)) 0,
         void (*fileNameCallback_)(void *userData, std::string& fileName) =
