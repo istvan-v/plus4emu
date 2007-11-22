@@ -23,7 +23,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   updateWindow();
   window->hide();
 }} open
-      xywh {182 139 400 450} type Double color 37 visible
+      xywh {182 139 400 450} type Double color 48 visible
     } {
       Fl_Button {} {
         label Apply
@@ -36,7 +36,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   updateWindow();
 }}
-        xywh {255 415 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {255 415 60 25} selection_color 50
       }
       Fl_Button {} {
         label OK
@@ -50,18 +50,18 @@ class Plus4EmuGUI_MachineConfigWindow {open
   updateWindow();
   window->hide();
 }}
-        xywh {325 415 60 25} color 38 selection_color 39 labelcolor 52
+        xywh {325 415 60 25} selection_color 50
       }
       Fl_Tabs {} {open
-        xywh {10 10 380 395} color 38 selection_color 38 labelcolor 52
+        xywh {10 10 380 395}
       } {
         Fl_Group {} {
           label General open
-          xywh {10 35 380 370} color 38 selection_color 38 labelcolor 52
+          xywh {10 35 380 370}
         } {
           Fl_Group {} {
             label {Clock frequency and timing settings} open
-            xywh {20 45 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 45 360 100} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input vmCPUFrequencyValuator {
               label {CPU frequency}
@@ -74,8 +74,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   o->value(double(gui.config.vm.cpuClockFrequency));
 }}
-              xywh {30 70 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 1 maximum 1.5e+08 step 1 value 1 textcolor 52
-              code0 {o->cursor_color(FL_YELLOW);}
+              xywh {30 70 120 25} align 8 when 4 minimum 1 maximum 1.5e+08 step 1 value 1
+              code0 {o->cursor_color(Fl_Color(3));}
             }
             Fl_Value_Input vmVideoFrequencyValuator {
               label {Video clock frequency (Hz)}
@@ -88,13 +88,13 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   updateWindow();
 }}
-              xywh {30 105 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 7e+06 maximum 3.6e+07 step 1 value 1.77345e+07 textcolor 52
-              code0 {o->cursor_color(FL_YELLOW);}
+              xywh {30 105 120 25} align 8 when 4 minimum 7e+06 maximum 3.6e+07 step 1 value 1.77345e+07
+              code0 {o->cursor_color(Fl_Color(3));}
             }
           }
           Fl_Group {} {
             label {File I/O} open
-            xywh {20 155 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 155 360 65} box ENGRAVED_FRAME align 21
           } {
             Fl_Light_Button vmEnableFileIOValuator {
               label {Enable virtual file I/O}
@@ -102,12 +102,12 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.vm.enableFileIO = (o->value() != 0);
   gui.config.vmConfigurationChanged = true;
 }}
-              tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 180 240 25} color 39 labelcolor 52
+              tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 180 240 25} color 50 selection_color 3
             }
           }
           Fl_Group {} {
             label {Video capture settings} open
-            xywh {20 230 360 65} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 230 360 100} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input videoCaptureFrameRateValuator {
               label {Frame rate}
@@ -115,14 +115,22 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.frameRate = int(o->clamp(o->value()) + 0.5);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 255 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 24 maximum 60 step 1 value 30 textcolor 52
-              code0 {o->cursor_color(FL_YELLOW);}
+              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 255 120 25} align 8 when 4 minimum 24 maximum 60 step 1 value 30
+              code0 {o->cursor_color(Fl_Color(3));}
+            }
+            Fl_Light_Button videoCaptureYUVFormatValuator {
+              label {YV12 format}
+              callback {{
+  gui.config.videoCapture.yuvFormat = (o->value() != 0);
+  gui.config.videoCaptureSettingsChanged = true;
+}}
+              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are not recorded, and the frame rate is converted without interpolation)} xywh {30 290 240 25} value 1 color 50 selection_color 3
             }
           }
         }
         Fl_Group {} {
           label Memory open
-          xywh {10 35 380 370} color 38 selection_color 38 labelcolor 52 hide
+          xywh {10 35 380 370} hide
         } {
           Fl_Value_Input memoryRAMSizeValuator {
             label {RAM size in kilobytes}
@@ -135,8 +143,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   o->value(double(gui.config.memory.ram.size));
 }}
-            xywh {20 45 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 16 maximum 4096 step 16 value 64 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            xywh {20 45 120 25} align 8 when 4 minimum 16 maximum 4096 step 16 value 64
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Input memoryRAMStartupPatternValuator {
             label {RAM startup pattern code}
@@ -150,45 +158,45 @@ class Plus4EmuGUI_MachineConfigWindow {open
     }
   }
 }}
-            tooltip {The RAM startup pattern can be defined with a 12 digit hexadecimal number (see src/vm.hpp for details). Examples: 000088888888 (FF 00 FF 00 ...), 000099999999 (FF FF 00 00 ...), 01F70000E000 (plus4emu default), 00F70000E000 (plus4emu default, no random bytes), FF0076543210 (random bytes).} xywh {20 80 120 25} color 0 selection_color 238 labelcolor 52 align 8 textcolor 52
-            code0 {o->cursor_color(FL_YELLOW);}
+            tooltip {The RAM startup pattern can be defined with a 12 digit hexadecimal number (see src/vm.hpp for details). Examples: 000088888888 (FF 00 FF 00 ...), 000099999999 (FF FF 00 00 ...), 01F70000E000 (plus4emu default), 00F70000E000 (plus4emu default, no random bytes), FF0076543210 (random bytes).} xywh {20 80 120 25} align 8
+            code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Scroll {} {
             label {ROM images} open
-            xywh {20 130 360 265} box DOWN_BOX color 36 selection_color 40 labelcolor 52 align 5
+            xywh {20 130 360 265} box DOWN_BOX color 48 selection_color 51 align 5
           } {
             Fl_Group {} {open
-              xywh {25 135 325 425} box FLAT_BOX color 36 labelcolor 52
+              xywh {25 135 325 425} box FLAT_BOX color 48
             } {
               Fl_Box {} {
                 label Segment
-                xywh {30 139 75 20} color 36 labelcolor 52 align 20
+                xywh {30 139 75 20} color 47 align 20
               }
               Fl_Box {} {
                 label {File name}
-                xywh {110 139 80 20} color 36 labelcolor 52 align 20
+                xywh {110 139 80 20} color 47 align 20
               }
               Fl_Box {} {
                 label {File offset}
-                xywh {270 139 75 20} color 36 labelcolor 52 align 20
+                xywh {270 139 75 20} color 47 align 20
               }
               Fl_Box {} {
                 label Basic
-                xywh {25 165 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 165 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM00FileNameValuator {
                 callback {{
   setROMImageFile(0x00, o->value());
 }}
-                xywh {75 165 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 165 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x00);
 }}
-                xywh {245 165 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 165 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM00OffsetValuator {
                 callback {{
@@ -196,26 +204,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x00].offset));
 }}
-                xywh {280 165 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 165 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label Kernal
-                xywh {25 195 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 195 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM01FileNameValuator {
                 callback {{
   setROMImageFile(0x01, o->value());
 }}
-                xywh {75 195 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 195 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x01);
 }}
-                xywh {245 195 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 195 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM01OffsetValuator {
                 callback {{
@@ -223,26 +231,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x01].offset));
 }}
-                xywh {280 195 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 195 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label FuncL
-                xywh {25 225 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 225 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM02FileNameValuator {
                 callback {{
   setROMImageFile(0x02, o->value());
 }}
-                xywh {75 225 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 225 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x02);
 }}
-                xywh {245 225 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 225 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM02OffsetValuator {
                 callback {{
@@ -250,26 +258,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x02].offset));
 }}
-                xywh {280 225 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 225 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label FuncH
-                xywh {25 255 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 255 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM03FileNameValuator {
                 callback {{
   setROMImageFile(0x03, o->value());
 }}
-                xywh {75 255 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 255 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x03);
 }}
-                xywh {245 255 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 255 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM03OffsetValuator {
                 callback {{
@@ -277,26 +285,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x03].offset));
 }}
-                xywh {280 255 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 255 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label C1L
-                xywh {25 285 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 285 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM04FileNameValuator {
                 callback {{
   setROMImageFile(0x04, o->value());
 }}
-                xywh {75 285 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 285 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x04);
 }}
-                xywh {245 285 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 285 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM04OffsetValuator {
                 callback {{
@@ -304,26 +312,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x04].offset));
 }}
-                xywh {280 285 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 285 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label C1H
-                xywh {25 315 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 315 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM05FileNameValuator {
                 callback {{
   setROMImageFile(0x05, o->value());
 }}
-                xywh {75 315 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 315 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x05);
 }}
-                xywh {245 315 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 315 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM05OffsetValuator {
                 callback {{
@@ -331,26 +339,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x05].offset));
 }}
-                xywh {280 315 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 315 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label C2L
-                xywh {25 345 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 345 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM06FileNameValuator {
                 callback {{
   setROMImageFile(0x06, o->value());
 }}
-                xywh {75 345 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 345 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x06);
 }}
-                xywh {245 345 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 345 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM06OffsetValuator {
                 callback {{
@@ -358,26 +366,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x06].offset));
 }}
-                xywh {280 345 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 345 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label C2H
-                xywh {25 375 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 375 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM07FileNameValuator {
                 callback {{
   setROMImageFile(0x07, o->value());
 }}
-                xywh {75 375 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 375 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x07);
 }}
-                xywh {245 375 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 375 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM07OffsetValuator {
                 callback {{
@@ -385,26 +393,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x07].offset));
 }}
-                xywh {280 375 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 375 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label 1526
-                xywh {25 405 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 405 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM0CFileNameValuator {
                 callback {{
   setROMImageFile(0x0C, o->value());
 }}
-                xywh {75 405 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 405 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x0C);
 }}
-                xywh {245 405 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 405 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM0COffsetValuator {
                 callback {{
@@ -412,26 +420,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x0C].offset));
 }}
-                xywh {280 405 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 405 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label 1541
-                xywh {25 435 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 435 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM10FileNameValuator {
                 callback {{
   setROMImageFile(0x10, o->value());
 }}
-                xywh {75 435 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 435 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x10);
 }}
-                xywh {245 435 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 435 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM10OffsetValuator {
                 callback {{
@@ -439,26 +447,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x10].offset));
 }}
-                xywh {280 435 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 435 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label 1551
-                xywh {25 465 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 465 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM20FileNameValuator {
                 callback {{
   setROMImageFile(0x20, o->value());
 }}
-                xywh {75 465 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 465 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x20);
 }}
-                xywh {245 465 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 465 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM20OffsetValuator {
                 callback {{
@@ -466,26 +474,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x20].offset));
 }}
-                xywh {280 465 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 465 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label 1581L
-                xywh {25 495 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 495 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM30FileNameValuator {
                 callback {{
   setROMImageFile(0x30, o->value());
 }}
-                xywh {75 495 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 495 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x30);
 }}
-                xywh {245 495 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 495 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM30OffsetValuator {
                 callback {{
@@ -493,26 +501,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x30].offset));
 }}
-                xywh {280 495 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 495 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
                 label 1581H
-                xywh {25 525 45 25} box BORDER_FRAME color 39 labelsize 12 labelcolor 52
+                xywh {25 525 45 25} box BORDER_FRAME color 8 labelsize 12
               }
               Fl_Input memoryROM31FileNameValuator {
                 callback {{
   setROMImageFile(0x31, o->value());
 }}
-                xywh {75 525 165 25} color 0 selection_color 238 labelcolor 52 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {75 525 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
                 label {...}
                 callback {{
   browseROMImageFile(0x31);
 }}
-                xywh {245 525 25 25} color 38 selection_color 39 labelcolor 52
+                xywh {245 525 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM31OffsetValuator {
                 callback {{
@@ -520,28 +528,20 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x31].offset));
 }}
-                xywh {280 525 65 25} color 0 selection_color 238 labelcolor 52 when 4 maximum 999999 step 1 textcolor 52
-                code0 {o->cursor_color(FL_YELLOW);}
+                xywh {280 525 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
               }
             }
           }
         }
         Fl_Group {} {
           label Tape open
-          xywh {10 35 380 370} color 38 selection_color 38 labelcolor 52 hide
+          xywh {10 35 380 370} hide
         } {
           Fl_Group {} {
             label {General tape emulation settings} open
-            xywh {20 45 360 135} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 45 360 100} box ENGRAVED_FRAME align 21
           } {
-            Fl_Light_Button tapeEnableFastModeValuator {
-              label {Enable fast tape mode}
-              callback {{
-  gui.config.tape.fastMode = (o->value() != 0);
-  gui.config.tapeSettingsChanged = true;
-}}
-              tooltip {Allow the emulation to run faster than real time while recording or playing tape} xywh {30 70 240 25} color 39 labelcolor 52
-            }
             Fl_Value_Input tapeDefaultSampleRateValuator {
               label {Default tape sample rate (Hz)}
               callback {{
@@ -549,8 +549,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tapeSettingsChanged = true;
   o->value(double(gui.config.tape.defaultSampleRate));
 }}
-              xywh {30 105 120 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 minimum 10000 maximum 120000 step 1 value 24000 textcolor 52
-              code0 {o->cursor_color(FL_YELLOW);}
+              xywh {30 70 120 25} align 8 when 4 minimum 10000 maximum 120000 step 1 value 24000
+              code0 {o->cursor_color(Fl_Color(3));}
             }
             Fl_Value_Slider tapeFeedbackLevelValuator {
               label {Tape signal to sound output}
@@ -559,12 +559,12 @@ class Plus4EmuGUI_MachineConfigWindow {open
       int(o->value() >= 0.0 ? (o->value() + 0.5) : (o->value() - 0.5));
   gui.config.tapeSettingsChanged = true;
 }}
-              tooltip {If non-zero, tape playback or recording is also sent to the sound output} xywh {30 140 120 25} type {Horz Knob} color 36 selection_color 45 labelcolor 52 align 8 minimum -10 maximum 10 step 1 textcolor 52
+              tooltip {If non-zero, tape playback or recording is also sent to the sound output} xywh {30 106 120 23} type Horizontal color 47 selection_color 52 align 8 minimum -10 maximum 10 step 1
             }
           }
           Fl_Group {} {
             label {Sound file input} open
-            xywh {20 190 360 100} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 155 360 100} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input tapeChannelValuator {
               label {Channel number}
@@ -573,8 +573,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tapeSoundFileSettingsChanged = true;
   o->value(double(gui.config.tape.soundFileChannel));
 }}
-              tooltip {Channel to use in multichannel sound files (for stereo files, channel 0 is left, and channel 1 is right)} xywh {30 215 40 25} color 0 selection_color 238 labelcolor 52 align 8 when 4 maximum 15 step 1 textcolor 52
-              code0 {o->cursor_color(FL_YELLOW);}
+              tooltip {Channel to use in multichannel sound files (for stereo files, channel 0 is left, and channel 1 is right)} xywh {30 180 40 25} align 8 when 4 maximum 15 step 1
+              code0 {o->cursor_color(Fl_Color(3));}
             }
             Fl_Light_Button tapeEnableFilterValuator {
               label {Enable filter}
@@ -582,7 +582,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tape.enableSoundFileFilter = (o->value() != 0);
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {Apply a linear phase FIR bandpass filter to sound file input (enabling this increases CPU usage)} xywh {30 250 160 25} color 39 labelcolor 52
+              tooltip {Apply a linear phase FIR bandpass filter to sound file input (enabling this increases CPU usage)} xywh {30 215 160 25} color 50 selection_color 3
             }
             Fl_Value_Slider tapeMinFreqValuator {
               label {Min freq}
@@ -590,7 +590,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tape.soundFileFilterMinFreq = o->value();
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {The lowest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 215 110 25} type {Horz Knob} color 36 selection_color 45 labelcolor 52 align 4 maximum 2000 step 1 value 500 textcolor 52
+              tooltip {The lowest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 181 110 23} type Horizontal color 47 selection_color 52 align 4 maximum 2000 step 1 value 500
             }
             Fl_Value_Slider tapeMaxFreqValuator {
               label {Max freq}
@@ -598,16 +598,16 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tape.soundFileFilterMaxFreq = o->value();
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {The highest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 250 110 25} type {Horz Knob} color 36 selection_color 45 labelcolor 52 align 4 minimum 1000 maximum 20000 step 10 value 5000 textcolor 52
+              tooltip {The highest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 216 110 23} type Horizontal color 47 selection_color 52 align 4 minimum 1000 maximum 20000 step 10 value 5000
             }
           }
         }
         Fl_Group {} {
           label SID open
-          xywh {10 35 380 370} color 38 selection_color 38 labelcolor 52 hide
+          xywh {10 35 380 370} hide
         } {
           Fl_Group {} {open
-            xywh {20 45 360 95} box ENGRAVED_FRAME color 38 labelcolor 52 align 21
+            xywh {20 45 360 95} box ENGRAVED_FRAME align 21
           } {
             Fl_Light_Button vmSIDModel6581Valuator {
               label {6581 emulation}
@@ -615,7 +615,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.vm.sidModel6581 = (o->value() != 0);
   gui.config.vmConfigurationChanged = true;
 }}
-              tooltip {The MOS 6581 is emulated if this button is checked, and the MOS 8580 otherwise, if SID emulation is enabled} xywh {30 60 240 25} color 39 labelcolor 52
+              tooltip {The MOS 6581 is emulated if this button is checked, and the MOS 8580 otherwise, if SID emulation is enabled} xywh {30 60 240 25} color 50 selection_color 3
             }
             Fl_Light_Button vmSIDDigiBlasterValuator {
               label {Enable Digi-Blaster}
@@ -623,7 +623,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.vm.sidDigiBlaster = (o->value() != 0);
   gui.config.vmConfigurationChanged = true;
 }}
-              xywh {30 100 240 25} color 39 labelcolor 52
+              xywh {30 100 240 25} color 50 selection_color 3
             }
           }
         }
@@ -662,6 +662,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   vmVideoFrequencyValuator->value(double(gui.config.vm.videoClockFrequency));
   vmEnableFileIOValuator->value(gui.config.vm.enableFileIO ? 1 : 0);
   videoCaptureFrameRateValuator->value(double(gui.config.videoCapture.frameRate));
+  videoCaptureYUVFormatValuator->value(gui.config.videoCapture.yuvFormat ? 1 : 0);
   memoryRAMSizeValuator->value(double(gui.config.memory.ram.size));
   memoryRAMStartupPatternValuator->value(gui.config.memory.ram.startupPattern.c_str());
   memoryROM00FileNameValuator->value(gui.config.memory.rom[0x00].file.c_str());
@@ -690,7 +691,6 @@ class Plus4EmuGUI_MachineConfigWindow {open
   memoryROM30OffsetValuator->value(double(gui.config.memory.rom[0x30].offset));
   memoryROM31FileNameValuator->value(gui.config.memory.rom[0x31].file.c_str());
   memoryROM31OffsetValuator->value(double(gui.config.memory.rom[0x31].offset));
-  tapeEnableFastModeValuator->value(gui.config.tape.fastMode ? 1 : 0);
   tapeDefaultSampleRateValuator->value(double(gui.config.tape.defaultSampleRate));
   tapeFeedbackLevelValuator->value(double(gui.config.tape.feedbackLevel));
   tapeChannelValuator->value(double(gui.config.tape.soundFileChannel));
