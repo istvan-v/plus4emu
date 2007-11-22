@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.4-beta.exe"
+  OutFile "plus4emu-1.2.4.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -72,11 +72,11 @@ Section "plus4emu" SecMain
   File "/oname=news.txt" "..\NEWS"
   File "/oname=readme.txt" "..\README"
   File "..\plus4emu.exe"
-  File "D:\MinGW\bin\libsndfile-1.dll"
+  File "C:\MinGW\bin\libsndfile-1.dll"
   File "..\makecfg.exe"
-  File "D:\MinGW\bin\mingwm10.dll"
-  File "D:\MinGW\bin\portaudio.dll.0.0.19"
-  File "D:\MinGW\bin\SDL.dll"
+  File "C:\MinGW\bin\mingwm10.dll"
+  File "C:\MinGW\bin\portaudio.dll.0.0.19"
+  File "C:\MinGW\bin\SDL.dll"
   File "..\tapconv.exe"
 
   SetOutPath "$INSTDIR\config"

@@ -7,7 +7,7 @@ disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 enableGLShaders = 1
 
 compilerFlags = Split('''
-    -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
+    -Wall -O3 -fno-inline-functions -fomit-frame-pointer -ffast-math
 ''')
 
 fltkConfig = 'fltk-config'
@@ -21,12 +21,12 @@ if sys.platform[:6] == 'darwin':
     plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
 plus4emuLibEnvironment.Append(LINKFLAGS = ['-L.'])
 if win32CrossCompile:
-    plus4emuLibEnvironment['AR'] = 'wine D:/MinGW/bin/ar.exe'
-    plus4emuLibEnvironment['CC'] = 'wine D:/MinGW/bin/gcc.exe'
-    plus4emuLibEnvironment['CPP'] = 'wine D:/MinGW/bin/cpp.exe'
-    plus4emuLibEnvironment['CXX'] = 'wine D:/MinGW/bin/g++.exe'
-    plus4emuLibEnvironment['LINK'] = 'wine D:/MinGW/bin/g++.exe'
-    plus4emuLibEnvironment['RANLIB'] = 'wine D:/MinGW/bin/ranlib.exe'
+    plus4emuLibEnvironment['AR'] = 'wine C:/MinGW/bin/ar.exe'
+    plus4emuLibEnvironment['CC'] = 'wine C:/MinGW/bin/gcc-sjlj.exe'
+    plus4emuLibEnvironment['CPP'] = 'wine C:/MinGW/bin/cpp-sjlj.exe'
+    plus4emuLibEnvironment['CXX'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
+    plus4emuLibEnvironment['LINK'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
+    plus4emuLibEnvironment['RANLIB'] = 'wine C:/MinGW/bin/ranlib.exe'
     plus4emuLibEnvironment.Append(LIBS = ['ole32', 'uuid', 'ws2_32',
                                           'gdi32', 'user32', 'kernel32'])
     plus4emuLibEnvironment.Prepend(CCFLAGS = ['-mthreads'])
@@ -36,7 +36,7 @@ plus4emuGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
     plus4emuGUIEnvironment.Prepend(LIBS = ['fltk'])
 elif not plus4emuGUIEnvironment.ParseConfig(
-        '%s --cxxflags --ldflags --libs' % fltkConfig):
+        '%s --cxxflags --ldflags' % fltkConfig):
     print 'WARNING: could not run fltk-config'
     plus4emuGUIEnvironment.Append(LIBS = ['fltk'])
 
@@ -45,7 +45,7 @@ if win32CrossCompile:
     plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk_gl', 'fltk',
                                              'glu32', 'opengl32'])
 elif not plus4emuGLGUIEnvironment.ParseConfig(
-        '%s --use-gl --cxxflags --ldflags --libs' % fltkConfig):
+        '%s --use-gl --cxxflags --ldflags' % fltkConfig):
     print 'WARNING: could not run fltk-config'
     plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_gl', 'GL'])
 
@@ -112,6 +112,7 @@ def fluidCompile(flNames):
     return cppNames
 
 plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
+    src/acia6551.cpp
     src/bplist.cpp
     src/cfg_db.cpp
     src/cia8520.cpp
@@ -123,6 +124,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/fileio.cpp
     src/fldisp.cpp
     src/gldisp.cpp
+    src/guicolor.cpp
     src/joystick.cpp
     src/memory.cpp
     src/plus4vm.cpp
