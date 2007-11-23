@@ -372,6 +372,8 @@ namespace Plus4 {
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     if (ted.vm.aciaEnabled()) {
+      // FIXME: this breaks the 'const'-ness of TED7360::readMemoryCPU(),
+      // and may possibly clear the interrupt request on saving PRG files
       ted.dataBusState = ted.vm.acia_.readRegister(addr);
       if ((addr & 0x0003) == 0x0001) {
         // interrupt request is cleared on reading the status register
@@ -1901,7 +1903,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010204); // version 1.2.4
+    demoBuffer.writeUInt32(0x00010205); // version 1.2.5
     demoFile = &f;
     isRecordingDemo = true;
     ted->setCallback(&demoRecordCallback, this, 1);
@@ -2028,7 +2030,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010204) {
+    if (version != 0x00010205) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }
