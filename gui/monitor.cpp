@@ -24,7 +24,7 @@
 #include <cstdio>
 #include <vector>
 
-#define MONITOR_MAX_LINES   (100)
+#define MONITOR_MAX_LINES   (120)
 
 static const char *fileOpenErrorMessages[6] = {
   "Error opening file",
