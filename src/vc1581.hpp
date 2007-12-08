@@ -56,7 +56,6 @@ namespace Plus4 {
     M7501_      cpu;
     CIA8520_    cia;                    // 4000 to 43FF
     Plus4Emu::WD177x  wd177x;           // 6000 to 63FF
-    SerialBus&  serialBus;
     const uint8_t *memory_rom_0;        // 8000 to BFFF
     const uint8_t *memory_rom_1;        // C000 to FFFF
     uint8_t     memory_ram[8192];       // 0000 to 1FFF
@@ -81,6 +80,7 @@ namespace Plus4 {
     static void writeDummy(void *userData, uint16_t addr, uint8_t value);
     static void writeCIA8520(void *userData, uint16_t addr, uint8_t value);
     static void writeWD177x(void *userData, uint16_t addr, uint8_t value);
+    static void processCallback(void *userData);
    public:
     VC1581(SerialBus& serialBus_, int driveNum_ = 8);
     virtual ~VC1581();
@@ -93,8 +93,9 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     * if this drive type does not use the selected ROM bank, the function call
-     * is ignored.
+     *   4: 1526 printer (data size is 8192 bytes)
+     * if this device type does not use the selected ROM bank, the function
+     * call is ignored.
      */
     virtual void setROMImage(int n, const uint8_t *romData_);
     /*!
@@ -106,9 +107,10 @@ namespace Plus4 {
      */
     virtual bool haveDisk() const;
     /*!
-     * Run floppy emulation for one microsecond.
+     * Returns the process function to be called at the time interval
+     * determined by serialBus.timesliceLength.
      */
-    virtual void runOneCycle();
+    virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
     /*!
      * Reset floppy drive.
      */

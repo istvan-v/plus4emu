@@ -199,7 +199,6 @@ namespace Plus4 {
       cpu(*this),
       cia(*this),
       wd177x(),
-      serialBus(serialBus_),
       memory_rom_0((uint8_t *) 0),
       memory_rom_1((uint8_t *) 0),
       deviceNumber(driveNum_),
@@ -267,23 +266,36 @@ namespace Plus4 {
     return wd177x.haveDisk();
   }
 
-  void VC1581::runOneCycle()
+  void VC1581::processCallback(void *userData)
   {
-    cia.setFlagState(!!(serialBus.getATN()));
-    cpu.runOneCycle();
-    cpu.runOneCycle();
-    if (diskChangeCnt) {
-      diskChangeCnt--;
-      if (!diskChangeCnt)
-        ciaPortAInput = (ciaPortAInput | uint8_t(0x80)) & uint8_t(0xFD);
+    VC1581& vc1581 = *(reinterpret_cast<VC1581 *>(userData));
+    vc1581.timeRemaining += vc1581.serialBus.timesliceLength;
+    while (vc1581.timeRemaining >= 0) {
+      vc1581.timeRemaining -= (int64_t(1) << 32);
+      vc1581.cia.setFlagState(!!(vc1581.serialBus.getATN()));
+      vc1581.cpu.runOneCycle();
+      vc1581.cpu.runOneCycle();
+      if (vc1581.diskChangeCnt) {
+        vc1581.diskChangeCnt--;
+        if (!vc1581.diskChangeCnt) {
+          vc1581.ciaPortAInput =
+              (vc1581.ciaPortAInput | uint8_t(0x80)) & uint8_t(0xFD);
+        }
+      }
+      vc1581.cia.setPortA(vc1581.ciaPortAInput);
+      vc1581.cia.run(2);
+      uint8_t n = vc1581.cia.getPortB();
+      uint8_t dataOut =
+          ((vc1581.serialBus.getATN() ^ uint8_t(0xFF)) & (n & uint8_t(0x10)))
+          | (n & uint8_t(0x02));
+      vc1581.serialBus.setCLKAndDATA(vc1581.deviceNumber,
+                                     !(n & uint8_t(0x08)), !dataOut);
     }
-    cia.setPortA(ciaPortAInput);
-    cia.run(2);
-    uint8_t n = cia.getPortB();
-    uint8_t dataOut =
-        ((serialBus.getATN() ^ uint8_t(0xFF)) & (n & uint8_t(0x10)))
-        | (n & uint8_t(0x02));
-    serialBus.setCLKAndDATA(deviceNumber, !(n & uint8_t(0x08)), !dataOut);
+  }
+
+  SerialDevice::ProcessCallbackPtr VC1581::getProcessCallback()
+  {
+    return &processCallback;
   }
 
   void VC1581::reset()

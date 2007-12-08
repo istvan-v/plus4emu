@@ -28,7 +28,7 @@
 
 namespace Plus4 {
 
-  class VC1526 {
+  class VC1526 : public SerialDevice {
    public:
     static const int    pageWidth = 700;
     static const int    pageHeight = 990;
@@ -73,7 +73,6 @@ namespace Plus4 {
     VIA6522_    via;            // 0240..027F, 02C0..02FF
     RIOT6532_   riot1;          // I/O 0200..023F, RAM 0000..007F
     RIOT6532_   riot2;          // I/O 0280..02BF, RAM 0080..00FF
-    SerialBus&  serialBus;
     const uint8_t *memory_rom;  // 8K ROM (0400..1FFF)
     int         deviceNumber;
     int         updatePinCnt;
@@ -112,6 +111,7 @@ namespace Plus4 {
                                    uint16_t addr, uint8_t value);
     void updatePins();
     void updateMotors();
+    static void processCallback(void *userData);
     static inline int yPosToPixel(int n)
     {
       return ((n * 7) / 18);
@@ -124,15 +124,24 @@ namespace Plus4 {
     VC1526(SerialBus& serialBus_, int devNum_ = 4);
     virtual ~VC1526();
     /*!
-     * Use 'romData_' (should point to 8192 bytes of data which is expected
+     * Use 'romData_' (should point to 16384 bytes of data which is expected
      * to remain valid until either a new address is set or the object is
-     * destroyed, or can be NULL for no ROM data) as the printer firmware.
+     * destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed
+     * values for 'n' are:
+     *   0: 1581 low
+     *   1: 1581 high
+     *   2: 1541
+     *   3: 1551
+     *   4: 1526 printer (data size is 8192 bytes)
+     * if this device type does not use the selected ROM bank, the function
+     * call is ignored.
      */
-    virtual void setROMImage(const uint8_t *romData_);
+    virtual void setROMImage(int n, const uint8_t *romData_);
     /*!
-     * Run printer emulation for one microsecond (1 MHz clock frequency).
+     * Returns the process function to be called at the time interval
+     * determined by serialBus.timesliceLength.
      */
-    virtual void runOneCycle();
+    virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
     /*!
      * Returns a pointer to the page data, which is encoded as an 8-bit
      * greyscale image. The data size is getPageWidth() * getPageHeight()

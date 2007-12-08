@@ -203,6 +203,7 @@ namespace Plus4 {
     bool updateMotors();
     void updateHead();
     void updateParallelInterface();
+    static void processCallback(void *userData);
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:
@@ -217,8 +218,9 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     * if this drive type does not use the selected ROM bank, the function call
-     * is ignored.
+     *   4: 1526 printer (data size is 8192 bytes)
+     * if this device type does not use the selected ROM bank, the function
+     * call is ignored.
      */
     virtual void setROMImage(int n, const uint8_t *romData_);
     /*!
@@ -230,9 +232,10 @@ namespace Plus4 {
      */
     virtual bool haveDisk() const;
     /*!
-     * Run floppy emulation for one microsecond.
+     * Returns the process function to be called at the time interval
+     * determined by serialBus.timesliceLength.
      */
-    virtual void runOneCycle();
+    virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
     /*!
      * Reset floppy drive.
      */

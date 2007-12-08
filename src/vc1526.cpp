@@ -179,11 +179,11 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
 
   VC1526::VC1526(SerialBus& serialBus_, int devNum_)
-    : cpu(*this),
+    : SerialDevice(serialBus_),
+      cpu(*this),
       via(*this),
       riot1(*this),
       riot2(*this),
-      serialBus(serialBus_),
       memory_rom((uint8_t *) 0),
       deviceNumber(devNum_ & 7),
       updatePinCnt(0),
@@ -248,9 +248,10 @@ namespace Plus4 {
     delete[] pageBuf;
   }
 
-  void VC1526::setROMImage(const uint8_t *romData_)
+  void VC1526::setROMImage(int n, const uint8_t *romData_)
   {
-    memory_rom = romData_;
+    if (n == 4)
+      memory_rom = romData_;
   }
 
   void VC1526::updatePins()
@@ -375,31 +376,42 @@ namespace Plus4 {
       riot2.setPortA(riot2.getPortAInput() & 0xFB);
   }
 
-  void VC1526::runOneCycle()
+  void VC1526::processCallback(void *userData)
   {
-    {
-      bool    dataOut = !(riot1.getPortA() & 0x40);
-      bool    atnAck = !(riot1.getPortA() & 0x20);
-      atnAck = atnAck && !(serialBus.getATN());
-      serialBus.setDATA(deviceNumber, dataOut && !atnAck);
-      uint8_t riot1PortAInput = riot1.getPortAInput() | 0x80;
-      riot1PortAInput = riot1PortAInput ^ (serialBus.getDATA() & 0x80);
-      riot1.setPortA(riot1PortAInput);
-    }
-    cpu.runOneCycle();
-    via.runOneCycle();
-    riot1.runOneCycle();
-    riot2.runOneCycle();
-    if (!updatePinCnt) {
-      updatePinCnt = updatePinReload;
-      if (updateMotorCnt <= 0) {
-        updateMotorCnt = updateMotorCnt + updateMotorReload;
-        updateMotors();
+    VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
+    vc1526.timeRemaining += vc1526.serialBus.timesliceLength;
+    while (vc1526.timeRemaining >= 0) {
+      vc1526.timeRemaining -= (int64_t(1) << 32);
+      {
+        bool    dataOut = !(vc1526.riot1.getPortA() & 0x40);
+        bool    atnAck = !(vc1526.riot1.getPortA() & 0x20);
+        atnAck = atnAck && !(vc1526.serialBus.getATN());
+        vc1526.serialBus.setDATA(vc1526.deviceNumber, dataOut && !atnAck);
+        uint8_t riot1PortAInput = vc1526.riot1.getPortAInput() | 0x80;
+        riot1PortAInput = riot1PortAInput ^ (vc1526.serialBus.getDATA() & 0x80);
+        vc1526.riot1.setPortA(riot1PortAInput);
       }
-      updateMotorCnt = updateMotorCnt - updatePinReload;
-      updatePins();
+      vc1526.cpu.runOneCycle();
+      vc1526.via.runOneCycle();
+      vc1526.riot1.runOneCycle();
+      vc1526.riot2.runOneCycle();
+      if (!vc1526.updatePinCnt) {
+        vc1526.updatePinCnt = vc1526.updatePinReload;
+        if (vc1526.updateMotorCnt <= 0) {
+          vc1526.updateMotorCnt =
+              vc1526.updateMotorCnt + vc1526.updateMotorReload;
+          vc1526.updateMotors();
+        }
+        vc1526.updateMotorCnt = vc1526.updateMotorCnt - vc1526.updatePinReload;
+        vc1526.updatePins();
+      }
+      vc1526.updatePinCnt--;
     }
-    updatePinCnt--;
+  }
+
+  SerialDevice::ProcessCallbackPtr VC1526::getProcessCallback()
+  {
+    return &processCallback;
   }
 
   const uint8_t * VC1526::getPageData() const

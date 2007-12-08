@@ -321,38 +321,50 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1551::runOneCycle()
+  void VC1551::processCallback(void *userData)
   {
-    if (--interruptTimer < 0) {
-      cpu.interruptRequest();
-      if (interruptTimer < -7) {
-        interruptTimer = 8324;
-        cpu.clearInterruptRequest();
+    VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
+    vc1551.timeRemaining += vc1551.serialBus.timesliceLength;
+    while (vc1551.timeRemaining >= 0) {
+      vc1551.timeRemaining -= (int64_t(1) << 32);
+      if (--(vc1551.interruptTimer) < 0) {
+        vc1551.cpu.interruptRequest();
+        if (vc1551.interruptTimer < -7) {
+          vc1551.interruptTimer = 8324;
+          vc1551.cpu.clearInterruptRequest();
+        }
+      }
+      vc1551.cpu.runOneCycle();
+      vc1551.cpu.runOneCycle();
+      if (!vc1551.motorUpdateCnt) {
+        vc1551.motorUpdateCnt = 16;
+        vc1551.headLoadedFlag = vc1551.updateMotors();
+      }
+      vc1551.motorUpdateCnt--;
+      vc1551.shiftRegisterBitCntFrac =
+          vc1551.shiftRegisterBitCntFrac
+          + vc1551.trackSpeedTable[vc1551.currentTrack];
+      if (vc1551.shiftRegisterBitCntFrac >= 65536) {
+        vc1551.shiftRegisterBitCntFrac =
+            vc1551.shiftRegisterBitCntFrac & 0xFFFF;
+        if (vc1551.shiftRegisterBitCnt >= 7) {
+          vc1551.shiftRegisterBitCnt = 0;
+          // read/write next byte
+          vc1551.updateHead();
+        }
+        else if (++(vc1551.shiftRegisterBitCnt) == 2) {
+          // clear byte ready flag
+          // FIXME: setting this for two bits is a hack
+          // to work around bytes getting lost sometimes
+          vc1551.memory_ram[0x0001] &= uint8_t(0x7F);
+        }
       }
     }
-    cpu.runOneCycle();
-    cpu.runOneCycle();
-    if (!motorUpdateCnt) {
-      motorUpdateCnt = 16;
-      headLoadedFlag = updateMotors();
-    }
-    motorUpdateCnt--;
-    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
-                              + trackSpeedTable[currentTrack];
-    if (shiftRegisterBitCntFrac >= 65536) {
-      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-      if (shiftRegisterBitCnt >= 7) {
-        shiftRegisterBitCnt = 0;
-        // read/write next byte
-        updateHead();
-      }
-      else if (++shiftRegisterBitCnt == 2) {
-        // clear byte ready flag
-        // FIXME: setting this for two bits is a hack
-        // to work around bytes getting lost sometimes
-        memory_ram[0x0001] &= uint8_t(0x7F);
-      }
-    }
+  }
+
+  SerialDevice::ProcessCallbackPtr VC1551::getProcessCallback()
+  {
+    return &processCallback;
   }
 
   void VC1551::reset()

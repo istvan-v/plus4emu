@@ -22,35 +22,20 @@
 
 #include "plus4emu.hpp"
 #include "fileio.hpp"
+#include "serial.hpp"
 
 namespace Plus4 {
 
-  class M7501;
-  class SerialBus;
-
-  class FloppyDrive {
+  class FloppyDrive : public SerialDevice {
    public:
     FloppyDrive(SerialBus& serialBus_, int driveNum_ = 8)
+      : SerialDevice(serialBus_)
     {
-      (void) serialBus_;
       (void) driveNum_;
     }
     virtual ~FloppyDrive()
     {
     }
-    /*!
-     * Use 'romData_' (should point to 16384 bytes of data which is expected
-     * to remain valid until either a new address is set or the object is
-     * destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed
-     * values for 'n' are:
-     *   0: 1581 low
-     *   1: 1581 high
-     *   2: 1541
-     *   3: 1551
-     * if this drive type does not use the selected ROM bank, the function call
-     * is ignored.
-     */
-    virtual void setROMImage(int n, const uint8_t *romData_) = 0;
     /*!
      * Open disk image file 'fileName_' (an empty file name means no disk).
      */
@@ -59,46 +44,6 @@ namespace Plus4 {
      * Returns true if there is a disk image file opened.
      */
     virtual bool haveDisk() const = 0;
-    /*!
-     * Run floppy emulation for one microsecond.
-     */
-    virtual void runOneCycle() = 0;
-    /*!
-     * Reset floppy drive.
-     */
-    virtual void reset() = 0;
-    /*!
-     * Returns pointer to the drive CPU.
-     */
-    virtual M7501 * getCPU() = 0;
-    virtual const M7501 * getCPU() const = 0;
-    /*!
-     * Set function to be called when a breakpoint is triggered.
-     * 'type' can be one of the following values:
-     *   0: breakpoint at opcode read
-     *   1: memory read
-     *   2: memory write
-     *   3: opcode read in single step mode
-     */
-    virtual void setBreakPointCallback(void (*breakPointCallback_)(
-                                           void *userData,
-                                           int debugContext_, int type,
-                                           uint16_t addr, uint8_t value),
-                                       void *userData_) = 0;
-    /*!
-     * If 'n' is true, breakpoints will not be triggered on reads from
-     * any memory address other than the current value of the program
-     * counter.
-     */
-    virtual void setNoBreakOnDataRead(bool n) = 0;
-    /*!
-     * Read a byte from drive memory (used for debugging).
-     */
-    virtual uint8_t readMemoryDebug(uint16_t addr) const = 0;
-    /*!
-     * Write a byte to drive memory (used for debugging).
-     */
-    virtual void writeMemoryDebug(uint16_t addr, uint8_t value) = 0;
     /*!
      * Returns the current state of drive LEDs. Bit 0 is set if the red LED
      * is on, and bit 1 is set if the green LED is on.
@@ -111,11 +56,6 @@ namespace Plus4 {
      * the 1581).
      */
     virtual uint16_t getHeadPosition() const = 0;
-    // snapshot save/load functions
-    virtual void saveState(Plus4Emu::File::Buffer&) = 0;
-    virtual void saveState(Plus4Emu::File&) = 0;
-    virtual void loadState(Plus4Emu::File::Buffer&) = 0;
-    virtual void registerChunkTypes(Plus4Emu::File&) = 0;
   };
 
 }       // namespace Plus4

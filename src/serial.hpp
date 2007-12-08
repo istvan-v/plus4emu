@@ -24,14 +24,22 @@
 
 namespace Plus4 {
 
+  class M7501;
+
   class SerialBus {
+   public:
+    // The time interval at which the process callback function of each
+    // serial device is called, in 2^-32 microsecond units. This variable is
+    // written by the virtual machine class, and read by the serial devices.
+    int64_t   timesliceLength;
    private:
     uint16_t  clkStateMask;
     uint16_t  dataStateMask;
     uint8_t   atnState;
    public:
     SerialBus()
-      : clkStateMask(0x0000),
+      : timesliceLength(int64_t(1) << 32),
+        clkStateMask(0x0000),
         dataStateMask(0x0000),
         atnState(0xFF)
     {
@@ -89,6 +97,141 @@ namespace Plus4 {
     {
       clkStateMask &= (mask_ ^ uint16_t(0xFFFF));
       dataStateMask &= (mask_ ^ uint16_t(0xFFFF));
+    }
+  };
+
+  class SerialDevice {
+   protected:
+    SerialBus&  serialBus;
+    int64_t     timeRemaining;
+   public:
+    typedef void (*ProcessCallbackPtr)(void *);
+    // --------
+    SerialDevice(SerialBus& serialBus_)
+      : serialBus(serialBus_),
+        timeRemaining(0)
+    {
+    }
+    virtual ~SerialDevice()
+    {
+    }
+    /*!
+     * Returns the pointer that should be passed to the process callback.
+     */
+    virtual void * getProcessCallbackUserData()
+    {
+      return (void *) this;
+    }
+    /*!
+     * Returns the process function to be called at the time interval
+     * determined by serialBus.timesliceLength.
+     */
+    virtual ProcessCallbackPtr getProcessCallback()
+    {
+      return (ProcessCallbackPtr) 0;
+    }
+    /*!
+     * Returns pointer to an optional process function that is called
+     * at twice the normal clock frequency, allowing for more accurate
+     * emulation.
+     */
+    virtual ProcessCallbackPtr getHighAccuracyProcessCallback()
+    {
+      return (ProcessCallbackPtr) 0;
+    }
+    /*!
+     * Use 'romData_' (should point to 16384 bytes of data which is expected
+     * to remain valid until either a new address is set or the object is
+     * destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed
+     * values for 'n' are:
+     *   0: 1581 low
+     *   1: 1581 high
+     *   2: 1541
+     *   3: 1551
+     *   4: 1526 printer (data size is 8192 bytes)
+     * if this device type does not use the selected ROM bank, the function
+     * call is ignored.
+     */
+    virtual void setROMImage(int n, const uint8_t *romData_)
+    {
+      (void) n;
+      (void) romData_;
+    }
+    /*!
+     * Reset serial device.
+     */
+    virtual void reset()
+    {
+    }
+    /*!
+     * Returns pointer to the CPU of the device, or NULL if there is no CPU.
+     */
+    virtual M7501 * getCPU()
+    {
+      return (M7501 *) 0;
+    }
+    virtual const M7501 * getCPU() const
+    {
+      return (M7501 *) 0;
+    }
+    /*!
+     * Set function to be called when a breakpoint is triggered.
+     * 'type' can be one of the following values:
+     *   0: breakpoint at opcode read
+     *   1: memory read
+     *   2: memory write
+     *   3: opcode read in single step mode
+     */
+    virtual void setBreakPointCallback(void (*breakPointCallback_)(
+                                           void *userData,
+                                           int debugContext_, int type,
+                                           uint16_t addr, uint8_t value),
+                                       void *userData_)
+    {
+      (void) breakPointCallback_;
+      (void) userData_;
+    }
+    /*!
+     * If 'n' is true, breakpoints will not be triggered on reads from
+     * any memory address other than the current value of the program
+     * counter.
+     */
+    virtual void setNoBreakOnDataRead(bool n)
+    {
+      (void) n;
+    }
+    /*!
+     * Read a byte from memory (used for debugging).
+     */
+    virtual uint8_t readMemoryDebug(uint16_t addr) const
+    {
+      (void) addr;
+      return uint8_t(0xFF);
+    }
+    /*!
+     * Write a byte to memory (used for debugging).
+     */
+    virtual void writeMemoryDebug(uint16_t addr, uint8_t value)
+    {
+      (void) addr;
+      (void) value;
+    }
+    // snapshot save/load functions
+    virtual void saveState(Plus4Emu::File::Buffer& buf)
+    {
+      (void) buf;
+    }
+    virtual void saveState(Plus4Emu::File& f)
+    {
+      (void) f;
+    }
+    virtual void loadState(Plus4Emu::File::Buffer& buf)
+    {
+      (void) buf;
+    }
+    virtual void registerChunkTypes(Plus4Emu::File& f)
+    {
+      (void) f;
     }
   };
 
