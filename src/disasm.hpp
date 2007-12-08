@@ -48,6 +48,10 @@ namespace Plus4 {
                                            uint32_t addr,
                                            bool isCPUAddress = false,
                                            int32_t offs = 0);
+    // Same as disassembleInstruction() without actually writing to a string.
+    static uint32_t getNextInstructionAddr(const Plus4Emu::VirtualMachine& vm,
+                                           uint32_t addr,
+                                           bool isCPUAddress = false);
   };
 
 }       // namespace Plus4

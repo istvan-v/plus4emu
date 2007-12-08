@@ -167,5 +167,19 @@ namespace Plus4 {
     return addr;
   }
 
+  uint32_t M7501Disassembler::getNextInstructionAddr(
+      const Plus4Emu::VirtualMachine& vm, uint32_t addr, bool isCPUAddress)
+  {
+    uint32_t  addrMask = (isCPUAddress ? 0x0000FFFFU : 0x003FFFFFU);
+    addr &= addrMask;
+    uint8_t   opNum = vm.readMemory(addr, isCPUAddress) & 0xFF;
+    unsigned char addrMode = opcodeToAddrMode[opNum];
+    if (addrMode < 1)
+      return ((addr + 1U) & addrMask);
+    else if (addrMode >= 8)
+      return ((addr + 3U) & addrMask);
+    return ((addr + 2U) & addrMask);
+  }
+
 }       // namespace Plus4
 
