@@ -35,8 +35,6 @@ namespace Plus4Emu {
 namespace Plus4 {
 
   class SID;
-  class FloppyDrive;
-  class VC1526;
 
   class Plus4VM : public Plus4Emu::VirtualMachine {
    private:
@@ -59,8 +57,6 @@ namespace Plus4 {
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
       virtual void reset(bool cold_reset = false);
-      static void floppyCallback(void *userData);
-      static void floppy1541Callback(void *userData);
       SerialBus serialPort;
      protected:
       virtual void playSample(int16_t sampleValue);
@@ -70,6 +66,7 @@ namespace Plus4 {
       virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);
     };
     // ----------------
+    static const int  printerDeviceNumber = 4;  // TODO: make it configurable ?
     TED7360_  *ted;
     size_t    cpuClockFrequency;        // defaults to 1
     size_t    tedInputClockFrequency;   // defaults to 17734475 Hz
@@ -111,13 +108,8 @@ namespace Plus4 {
     uint8_t   digiBlasterOutput;
     bool      tapeCallbackFlag;
     bool      is1541HighAccuracy;
-    struct FloppyDrive_ {
-      FloppyDrive *floppyDrive;
-      TED7360_    *ted;
-      int64_t     timeRemaining;
-      int         deviceNumber;
-    };
-    FloppyDrive_  floppyDrives[4];
+    int16_t   serialBusDelayOffset;
+    SerialDevice  *serialDevices[12];
     uint8_t   *floppyROM_1541;
     uint8_t   *floppyROM_1551;
     uint8_t   *floppyROM_1581_0;
@@ -130,8 +122,6 @@ namespace Plus4 {
     int       lightPenPositionX;
     int       lightPenPositionY;
     int       lightPenCycleCounter;
-    VC1526    *printer_;
-    int64_t   printerTimeRemaining;     // in 2^-32 microsecond units
     bool      printerOutputChangedFlag;
     bool      printer1525Mode;
     bool      printerFormFeedOn;
@@ -139,6 +129,7 @@ namespace Plus4 {
     Plus4Emu::VideoCapture  *videoCapture;
     ACIA6551  acia_;
     int64_t   aciaTimeRemaining;        // in 2^-32 microsecond units
+    bool      aciaEnabled;
     bool      aciaCallbackFlag;
     // ----------------
     void stopDemoPlayback();
@@ -146,7 +137,7 @@ namespace Plus4 {
     void updateTimingParameters(bool ntscMode_);
     void addFloppyCallback(int n);
     void removeFloppyCallback(int n);
-    void resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_);
+    void resetACIA();
     M7501 * getDebugCPU();
     const M7501 * getDebugCPU() const;
     static void tapeCallback(void *userData);
@@ -155,13 +146,8 @@ namespace Plus4 {
     static void demoRecordCallback(void *userData);
     static void videoBreakPointCheckCallback(void *userData);
     static void lightPenCallback(void *userData);
-    static void printerCallback(void *userData);
     static void videoCaptureCallback(void *userData);
     static void aciaCallback(void *userData);
-    inline bool aciaEnabled() const
-    {
-      return (ted->getRAMSize() >= 64);
-    }
     inline void setEnableACIACallback(bool isEnabled)
     {
       if (isEnabled != aciaCallbackFlag) {
@@ -220,9 +206,18 @@ namespace Plus4 {
      */
     virtual void setVideoFrequency(size_t freq_);
     /*!
+     * Set if the 6551 ACIA should be emulated.
+     */
+    virtual void setEnableACIAEmulation(bool isEnabled);
+    /*!
      * Set SID emulation parameters.
      */
     virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
+    /*!
+     * Disable SID emulation (which is automatically enabled by writing to
+     * any of the SID registers) to reduce CPU usage.
+     */
+    virtual void disableSIDEmulation();
     /*!
      * Set state of key 'keyCode' (0 to 127).
      */
@@ -350,6 +345,20 @@ namespace Plus4 {
      * at the expense of increased CPU usage. The default is 'true'.
      */
     virtual void setFloppyDriveHighAccuracy(bool isEnabled);
+    /*!
+     * Set the serial bus delay offset to 'n' (-100 to 100) nanoseconds for
+     * devices that support this configuration option.
+     */
+    virtual void setSerialBusDelayOffset(int n);
+    /*!
+     * Disable all floppy drives with no disk image attached to reduce CPU
+     * usage.
+     */
+    virtual void disableUnusedFloppyDrives();
+    /*!
+     * Reset floppy drive 'n' (0 to 3), or all drives if 'n' is negative.
+     */
+    virtual void resetFloppyDrive(int n);
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape

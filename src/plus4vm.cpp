@@ -296,9 +296,9 @@ namespace Plus4 {
     }
 #endif
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      for (int i = 0; i < 2; i++) {
-        FloppyDrive *p = ted.vm.floppyDrives[i].floppyDrive;
-        if (p != (FloppyDrive *) 0) {
+      for (int i = 8; i < 10; i++) {
+        SerialDevice  *p = ted.vm.serialDevices[i];
+        if (p != (SerialDevice *) 0) {
           if (typeid(*p) == typeid(VC1551)) {
             VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
             if (vc1551.parallelIECRead(addr, ted.dataBusState))
@@ -316,9 +316,9 @@ namespace Plus4 {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      for (int i = 0; i < 2; i++) {
-        FloppyDrive *p = ted.vm.floppyDrives[i].floppyDrive;
-        if (p != (FloppyDrive *) 0) {
+      for (int i = 8; i < 10; i++) {
+        SerialDevice  *p = ted.vm.serialDevices[i];
+        if (p != (SerialDevice *) 0) {
           if (typeid(*p) == typeid(VC1551)) {
             VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
             (void) vc1551.parallelIECWrite(addr, ted.dataBusState);
@@ -371,7 +371,7 @@ namespace Plus4 {
   uint8_t Plus4VM::TED7360_::aciaRegisterRead(void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
-    if (ted.vm.aciaEnabled()) {
+    if (ted.vm.aciaEnabled) {
       // FIXME: this breaks the 'const'-ness of TED7360::readMemoryCPU(),
       // and may possibly clear the interrupt request on saving PRG files
       ted.dataBusState = ted.vm.acia_.readRegister(addr);
@@ -389,37 +389,11 @@ namespace Plus4 {
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
-    if (ted.vm.aciaEnabled()) {
+    if (ted.vm.aciaEnabled) {
       ted.vm.acia_.writeRegister(addr, value);
       if (ted.vm.acia_.isEnabled())
         ted.vm.setEnableACIACallback(true);
     }
-  }
-
-  void Plus4VM::TED7360_::floppyCallback(void *userData)
-  {
-    Plus4VM::FloppyDrive_&  floppyDrive =
-        *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
-    TED7360_& ted = *(floppyDrive.ted);
-    Plus4VM&  vm = ted.vm;
-    floppyDrive.timeRemaining += vm.tedTimesliceLength;
-    while (floppyDrive.timeRemaining > 0) {
-      // use a timeslice of fixed 1 us length (1 or 2 cycles, depending
-      // on drive type)
-      floppyDrive.timeRemaining -= (int64_t(1) << 32);
-      floppyDrive.floppyDrive->runOneCycle();
-    }
-  }
-
-  void Plus4VM::TED7360_::floppy1541Callback(void *userData)
-  {
-    Plus4VM::FloppyDrive_&  floppyDrive =
-        *(reinterpret_cast<Plus4VM::FloppyDrive_ *>(userData));
-    TED7360_& ted = *(floppyDrive.ted);
-    Plus4VM&  vm = ted.vm;
-    floppyDrive.timeRemaining =
-        reinterpret_cast<VC1541 *>(floppyDrive.floppyDrive)->run(
-            floppyDrive.timeRemaining + (vm.tedTimesliceLength >> 1));
   }
 
   // --------------------------------------------------------------------------
@@ -480,6 +454,7 @@ namespace Plus4 {
     tedTimesliceLength = int64_t(((uint64_t(1000000) << 32)
                                   + (singleClockFreq >> 1))
                                  / singleClockFreq);
+    ted->serialPort.timesliceLength = tedTimesliceLength;
     size_t  freqMult = cpuClockFrequency;
     if (freqMult > 1000)
       freqMult = (freqMult + singleClockFreq) / (singleClockFreq << 1);
@@ -495,52 +470,49 @@ namespace Plus4 {
 
   void Plus4VM::addFloppyCallback(int n)
   {
-    n = n & 3;
-    if (is1541HighAccuracy &&
-        typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1541))
-      ted->setCallback(&TED7360_::floppy1541Callback, &(floppyDrives[n]), 3);
-    else
-      ted->setCallback(&TED7360_::floppyCallback, &(floppyDrives[n]), 1);
+    n = (n & 3) | 8;
+    SerialDevice::ProcessCallbackPtr  func;
+    void    *userData = serialDevices[n]->getProcessCallbackUserData();
+    if (is1541HighAccuracy) {
+      func = serialDevices[n]->getHighAccuracyProcessCallback();
+      if (func) {
+        ted->setCallback(func, userData, 3);
+        return;
+      }
+    }
+    func = serialDevices[n]->getProcessCallback();
+    if (func)
+      ted->setCallback(func, userData, 1);
   }
 
   void Plus4VM::removeFloppyCallback(int n)
   {
-    n = n & 3;
-    ted->setCallback(&TED7360_::floppyCallback, &(floppyDrives[n]), 0);
-    ted->setCallback(&TED7360_::floppy1541Callback, &(floppyDrives[n]), 0);
+    n = (n & 3) | 8;
+    SerialDevice::ProcessCallbackPtr  func;
+    void    *userData = serialDevices[n]->getProcessCallbackUserData();
+    func = serialDevices[n]->getProcessCallback();
+    if (func)
+      ted->setCallback(func, userData, 0);
+    func = serialDevices[n]->getHighAccuracyProcessCallback();
+    if (func)
+      ted->setCallback(func, userData, 0);
   }
 
-  void Plus4VM::resetFloppyDrives(uint8_t driveMask_, bool deleteUnusedDrives_)
+  void Plus4VM::resetACIA()
   {
-    for (int i = 0; i < 4; i++) {
-      if (driveMask_ & 0x01) {
-        if (floppyDrives[i].floppyDrive) {
-          if (floppyDrives[i].floppyDrive->haveDisk() || !deleteUnusedDrives_)
-            floppyDrives[i].floppyDrive->reset();
-          else {
-            // "garbage collect" unused floppy drives to improve performance
-            delete floppyDrives[i].floppyDrive;
-            floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
-            ted->serialPort.removeDevice(i + 8);
-            removeFloppyCallback(i);
-          }
-        }
-      }
-      driveMask_ = driveMask_ >> 1;
-    }
+    acia_.reset();
+    aciaTimeRemaining = int64_t(0);
+    setEnableACIACallback(true);
   }
 
   M7501 * Plus4VM::getDebugCPU()
   {
     if (currentDebugContext == 0)
       return ted;
-    else if (currentDebugContext <= 4) {
-      if (floppyDrives[currentDebugContext - 1].floppyDrive
-          != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
-    }
-    else if (printer_)
-      return printer_->getCPU();
+    int     n = (currentDebugContext <= 4 ?
+                 (currentDebugContext + 7) : printerDeviceNumber);
+    if (serialDevices[n] != (SerialDevice *) 0)
+      return serialDevices[n]->getCPU();
     return (M7501 *) 0;
   }
 
@@ -548,13 +520,10 @@ namespace Plus4 {
   {
     if (currentDebugContext == 0)
       return ted;
-    else if (currentDebugContext <= 4) {
-      if (floppyDrives[currentDebugContext - 1].floppyDrive
-          != (FloppyDrive *) 0)
-        return (floppyDrives[currentDebugContext - 1].floppyDrive->getCPU());
-    }
-    else if (printer_)
-      return printer_->getCPU();
+    int     n = (currentDebugContext <= 4 ?
+                 (currentDebugContext + 7) : printerDeviceNumber);
+    if (serialDevices[n] != (SerialDevice *) 0)
+      return serialDevices[n]->getCPU();
     return (M7501 *) 0;
   }
 
@@ -673,16 +642,6 @@ namespace Plus4 {
     }
   }
 
-  void Plus4VM::printerCallback(void *userData)
-  {
-    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
-    vm.printerTimeRemaining += vm.tedTimesliceLength;
-    while (vm.printerTimeRemaining > 0) {
-      vm.printerTimeRemaining -= (int64_t(1) << 32);
-      vm.printer_->runOneCycle();
-    }
-  }
-
   void Plus4VM::videoCaptureCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
@@ -731,6 +690,7 @@ namespace Plus4 {
       digiBlasterOutput(0x80),
       tapeCallbackFlag(false),
       is1541HighAccuracy(true),
+      serialBusDelayOffset(0),
       floppyROM_1541((uint8_t *) 0),
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
@@ -743,8 +703,6 @@ namespace Plus4 {
       lightPenPositionX(-1),
       lightPenPositionY(-1),
       lightPenCycleCounter(0),
-      printer_((VC1526 *) 0),
-      printerTimeRemaining(0),
       printerOutputChangedFlag(true),
       printer1525Mode(false),
       printerFormFeedOn(false),
@@ -752,20 +710,17 @@ namespace Plus4 {
       videoCapture((Plus4Emu::VideoCapture *) 0),
       acia_(),
       aciaTimeRemaining(0),
+      aciaEnabled(false),
       aciaCallbackFlag(false)
   {
+    for (int i = 0; i < 12; i++)
+      serialDevices[i] = (SerialDevice *) 0;
     sid_ = new SID();
     try {
       sid_->set_chip_model(MOS8580);
       sid_->enable_external_filter(false);
       sid_->reset();
       ted = new TED7360_(*this);
-      for (int i = 0; i < 4; i++) {
-        floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
-        floppyDrives[i].ted = ted;
-        floppyDrives[i].timeRemaining = int64_t(0);
-        floppyDrives[i].deviceNumber = i + 8;
-      }
       updateTimingParameters(false);
       // reset
       ted->reset(true);
@@ -795,15 +750,11 @@ namespace Plus4 {
     }
     catch (...) {
     }
-    for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i].floppyDrive) {
-        delete floppyDrives[i].floppyDrive;
-        floppyDrives[i].floppyDrive = (FloppyDrive *) 0;
+    for (int i = 0; i < 12; i++) {
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        delete serialDevices[i];
+        serialDevices[i] = (SerialDevice *) 0;
       }
-    }
-    if (printer_) {
-      delete printer_;
-      printer_ = (VC1526 *) 0;
     }
     if (floppyROM_1541)
       delete[] floppyROM_1541;
@@ -861,12 +812,12 @@ namespace Plus4 {
     if (isColdReset) {
       sidEnabled = false;
       ted->setCallback(&sidCallback, this, 0);
+      disableUnusedFloppyDrives();
     }
-    resetFloppyDrives(0x0F, isColdReset);
-    if (printer_)
-      printer_->reset();
-    acia_.reset();
-    aciaTimeRemaining = int64_t(0);
+    resetFloppyDrive(-1);
+    if (serialDevices[printerDeviceNumber] != (SerialDevice *) 0)
+      serialDevices[printerDeviceNumber]->reset();
+    resetACIA();
   }
 
   void Plus4VM::resetMemoryConfiguration(size_t memSize, uint64_t ramPattern)
@@ -876,14 +827,12 @@ namespace Plus4 {
       // delete all ROM segments
       for (uint8_t n = 0; n < 8; n++)
         loadROMSegment(n, (char *) 0, 0);
-      for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i].floppyDrive) {
-          for (int n = 0; n < 3; n++)
-            floppyDrives[i].floppyDrive->setROMImage(n, (uint8_t *) 0);
+      for (int i = 4; i < 12; i++) {
+        if (serialDevices[i] != (SerialDevice *) 0) {
+          for (int n = 0; n < 5; n++)
+            serialDevices[i]->setROMImage(n, (uint8_t *) 0);
         }
       }
-      if (printer_)
-        printer_->setROMImage((uint8_t *) 0);
       if (floppyROM_1541) {
         delete[] floppyROM_1541;
         floppyROM_1541 = (uint8_t *) 0;
@@ -924,39 +873,13 @@ namespace Plus4 {
     stopDemo();
     int     floppyROMSegment = -1;
     uint8_t **floppyROMPtr = (uint8_t **) 0;
+    size_t  nBytes = 16384;
     if (n >= 8) {
       switch (n) {
       case 0x0C:
-        {
-          // clear segment first
-          if (printer_)
-            printer_->setROMImage((uint8_t *) 0);
-          if (fileName == (char *) 0 || fileName[0] == '\0') {
-            // empty file name: delete segment
-            return;
-          }
-          // load file into memory
-          std::vector<uint8_t>  buf;
-          buf.resize(0x2000);
-          std::FILE   *f = std::fopen(fileName, "rb");
-          if (!f)
-            throw Plus4Emu::Exception("cannot open ROM file");
-          std::fseek(f, 0L, SEEK_END);
-          if (ftell(f) < long(offs + 0x2000)) {
-            std::fclose(f);
-            throw Plus4Emu::Exception("ROM file is shorter than expected");
-          }
-          std::fseek(f, long(offs), SEEK_SET);
-          std::fread(&(buf.front()), 1, 0x2000, f);
-          std::fclose(f);
-          if (printerROM_1526 == (uint8_t *) 0)
-            printerROM_1526 = new uint8_t[8192];
-          for (int i = 0; i < 8192; i++)
-            printerROM_1526[i] = buf[i];
-          if (printer_)
-            printer_->setROMImage(printerROM_1526);
-          return;
-        }
+        floppyROMSegment = 4;
+        floppyROMPtr = &printerROM_1526;
+        nBytes = 8192;
         break;
       case 0x10:
         floppyROMSegment = 2;
@@ -983,10 +906,9 @@ namespace Plus4 {
       ted->loadROM(int(n >> 1), int(n & 1) << 14, 0, (uint8_t *) 0);
     }
     else {
-      for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i].floppyDrive)
-          floppyDrives[i].floppyDrive->setROMImage(floppyROMSegment,
-                                                   (uint8_t *) 0);
+      for (int i = 4; i < 12; i++) {
+        if (serialDevices[i] != (SerialDevice *) 0)
+          serialDevices[i]->setROMImage(floppyROMSegment, (uint8_t *) 0);
       }
     }
     if (fileName == (char *) 0 || fileName[0] == '\0') {
@@ -995,30 +917,29 @@ namespace Plus4 {
     }
     // load file into memory
     std::vector<uint8_t>  buf;
-    buf.resize(0x4000);
+    buf.resize(nBytes);
     std::FILE   *f = std::fopen(fileName, "rb");
     if (!f)
       throw Plus4Emu::Exception("cannot open ROM file");
     std::fseek(f, 0L, SEEK_END);
-    if (ftell(f) < long(offs + 0x4000)) {
+    if (ftell(f) < long(offs + nBytes)) {
       std::fclose(f);
       throw Plus4Emu::Exception("ROM file is shorter than expected");
     }
     std::fseek(f, long(offs), SEEK_SET);
-    std::fread(&(buf.front()), 1, 0x4000, f);
+    std::fread(&(buf.front()), 1, nBytes, f);
     std::fclose(f);
     if (floppyROMSegment < 0) {
-      ted->loadROM(int(n) >> 1, int(n & 1) << 14, 16384, &(buf.front()));
+      ted->loadROM(int(n) >> 1, int(n & 1) << 14, int(nBytes), &(buf.front()));
     }
     else {
       if ((*floppyROMPtr) == (uint8_t *) 0)
-        (*floppyROMPtr) = new uint8_t[16384];
-      for (int i = 0; i < 16384; i++)
+        (*floppyROMPtr) = new uint8_t[nBytes];
+      for (size_t i = 0; i < nBytes; i++)
         (*floppyROMPtr)[i] = buf[i];
-      for (int i = 0; i < 4; i++) {
-        if (floppyDrives[i].floppyDrive)
-          floppyDrives[i].floppyDrive->setROMImage(floppyROMSegment,
-                                                   (*floppyROMPtr));
+      for (int i = 4; i < 12; i++) {
+        if (serialDevices[i] != (SerialDevice *) 0)
+          serialDevices[i]->setROMImage(floppyROMSegment, (*floppyROMPtr));
       }
     }
   }
@@ -1046,6 +967,16 @@ namespace Plus4 {
     updateTimingParameters(ted->getIsNTSCMode());
   }
 
+  void Plus4VM::setEnableACIAEmulation(bool isEnabled)
+  {
+    if (isEnabled != aciaEnabled) {
+      stopDemoPlayback();
+      stopDemoRecording(false);
+      aciaEnabled = isEnabled;
+      resetACIA();
+    }
+  }
+
   void Plus4VM::setSIDConfiguration(bool is6581, bool enableDigiBlaster)
   {
     if (is6581 != sidModel6581) {
@@ -1061,6 +992,19 @@ namespace Plus4 {
         sid_->input((int(digiBlasterOutput) << 8) - 32768);
       else
         sid_->input(0);
+    }
+  }
+
+  void Plus4VM::disableSIDEmulation()
+  {
+    if (sidEnabled) {
+      stopDemoPlayback();
+      stopDemoRecording(false);
+      sid_->reset();
+      digiBlasterOutput = 0x80;
+      sid_->input(0);
+      sidEnabled = false;
+      ted->setCallback(&sidCallback, this, 0);
     }
   }
 
@@ -1116,15 +1060,18 @@ namespace Plus4 {
 
   void Plus4VM::setEnablePrinter(bool isEnabled)
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (isEnabled) {
       if (!printer_) {
         // TODO: allow setting device number ?
-        printer_ = new VC1526(ted->serialPort, 4);
-        printer_->setROMImage(printerROM_1526);
+        printer_ = new VC1526(ted->serialPort, printerDeviceNumber);
+        serialDevices[printerDeviceNumber] = printer_;
+        printer_->setROMImage(4, printerROM_1526);
         printer_->setEnable1525Mode(printer1525Mode);
         printer_->setFormFeedOn(printerFormFeedOn);
-        printerTimeRemaining = 0;
-        ted->setCallback(&printerCallback, this, 1);
+        ted->setCallback(printer_->getProcessCallback(),
+                         printer_->getProcessCallbackUserData(), 1);
         printer_->setBreakPointCallback(breakPointCallback,
                                         breakPointCallbackUserData);
         M7501   *p = printer_->getCPU();
@@ -1138,15 +1085,18 @@ namespace Plus4 {
     }
     else if (printer_) {
       printerOutputChangedFlag = true;
-      ted->setCallback(&printerCallback, this, 0);
-      ted->serialPort.removeDevice(4);
-      delete printer_;
-      printer_ = (VC1526 *) 0;
+      ted->setCallback(printer_->getProcessCallback(),
+                       printer_->getProcessCallbackUserData(), 0);
+      delete serialDevices[printerDeviceNumber];
+      serialDevices[printerDeviceNumber] = (SerialDevice *) 0;
+      ted->serialPort.removeDevice(printerDeviceNumber);
     }
   }
 
   void Plus4VM::getPrinterOutput(const uint8_t*& buf_, int& w_, int& h_) const
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_) {
       buf_ = printer_->getPageData();
       w_ = printer_->getPageWidth();
@@ -1161,12 +1111,16 @@ namespace Plus4 {
 
   void Plus4VM::clearPrinterOutput()
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       printer_->clearPage();
   }
 
   uint8_t Plus4VM::getPrinterLEDState() const
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       return printer_->getLEDState();
     return 0x00;
@@ -1174,6 +1128,8 @@ namespace Plus4 {
 
   void Plus4VM::getPrinterHeadPosition(int& xPos, int& yPos)
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_) {
       printer_->getHeadPosition(xPos, yPos);
       return;
@@ -1184,6 +1140,8 @@ namespace Plus4 {
 
   bool Plus4VM::getIsPrinterOutputChanged() const
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       return printer_->getIsOutputChanged();
     return printerOutputChangedFlag;
@@ -1191,6 +1149,8 @@ namespace Plus4 {
 
   void Plus4VM::clearPrinterOutputChangedFlag()
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       printer_->clearOutputChangedFlag();
     printerOutputChangedFlag = false;
@@ -1198,6 +1158,8 @@ namespace Plus4 {
 
   void Plus4VM::setPrinter1525Mode(bool isEnabled)
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     printer1525Mode = isEnabled;
     if (printer_)
       printer_->setEnable1525Mode(isEnabled);
@@ -1205,6 +1167,8 @@ namespace Plus4 {
 
   void Plus4VM::setPrinterFormFeedOn(bool isEnabled)
   {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     printerFormFeedOn = isEnabled;
     if (printer_)
       printer_->setFormFeedOn(isEnabled);
@@ -1219,16 +1183,20 @@ namespace Plus4 {
     vmStatus_.tapeSampleSize = getTapeSampleSize();
     uint64_t  h = 0UL;
     uint32_t  n = 0U;
-    for (int i = 3; i >= 0; i--) {
+    for (int i = 11; i >= 8; i--) {
       n = n << 8;
       h = h << 16;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0) {
-        n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
-        h |= uint64_t(floppyDrives[i].floppyDrive->getHeadPosition() ^ 0xFFFF);
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        FloppyDrive&  floppyDrive =
+            *(reinterpret_cast<FloppyDrive *>(serialDevices[i]));
+        n |= uint32_t(floppyDrive.getLEDState() & 0xFF);
+        h |= uint64_t(floppyDrive.getHeadPosition() ^ 0xFFFF);
       }
     }
     vmStatus_.floppyDriveLEDState = n;
     vmStatus_.floppyDriveHeadPositions = (~h);
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     if (!printer_) {
       vmStatus_.printerHeadPositionX = -1;
       vmStatus_.printerHeadPositionY = -1;
@@ -1303,10 +1271,13 @@ namespace Plus4 {
   {
     if (n < 0 || n > 3)
       throw Plus4Emu::Exception("invalid floppy drive number");
+    n = n + 8;
     if (fileName_.length() == 0) {
       // remove disk
-      if (floppyDrives[n].floppyDrive)
-        floppyDrives[n].floppyDrive->setDiskImageFile(fileName_);
+      if (serialDevices[n] != (SerialDevice *) 0) {
+        reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
+            fileName_);
+      }
     }
     else {
       // insert or replace disk
@@ -1327,67 +1298,79 @@ namespace Plus4 {
       }
       int     newDriveType = (isD64 ? driveType : 4);
       if (newDriveType == 1) {
-        if (n >= 2) {
+        if (n >= 10) {
           throw Plus4Emu::Exception("1551 emulation is only allowed "
                                     "for unit 8 and unit 9");
         }
       }
       else if (!(newDriveType == 0 || newDriveType == 4))
         throw Plus4Emu::Exception("invalid floppy drive type");
-      if (floppyDrives[n].floppyDrive) {
+      if (serialDevices[n] != (SerialDevice *) 0) {
         int     oldDriveType = -1;
-        if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1541))
+        if (typeid(*(serialDevices[n])) == typeid(VC1541))
           oldDriveType = 0;
-        else if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1551))
+        else if (typeid(*(serialDevices[n])) == typeid(VC1551))
           oldDriveType = 1;
-        else if (typeid(*(floppyDrives[n].floppyDrive)) == typeid(VC1581))
+        else if (typeid(*(serialDevices[n])) == typeid(VC1581))
           oldDriveType = 4;
         if (newDriveType != oldDriveType) {
           // need to change drive type
-          delete floppyDrives[n].floppyDrive;
-          floppyDrives[n].floppyDrive = (FloppyDrive *) 0;
-          ted->serialPort.removeDevice(n + 8);
           removeFloppyCallback(n);
+          delete serialDevices[n];
+          serialDevices[n] = (SerialDevice *) 0;
+          ted->serialPort.removeDevice(n);
         }
       }
-      if (!floppyDrives[n].floppyDrive) {
+      if (serialDevices[n] == (SerialDevice *) 0) {
+        FloppyDrive *floppyDrive = (FloppyDrive *) 0;
         switch (newDriveType) {
         case 0:
-          floppyDrives[n].floppyDrive = new VC1541(ted->serialPort, n + 8);
-          floppyDrives[n].floppyDrive->setROMImage(2, floppyROM_1541);
+          {
+            VC1541  *floppyDrive_ = new VC1541(ted->serialPort, n);
+            serialDevices[n] = floppyDrive_;
+            floppyDrive_->setSerialBusDelayOffset(int(serialBusDelayOffset));
+            floppyDrive = floppyDrive_;
+            floppyDrive->setROMImage(2, floppyROM_1541);
+          }
           break;
         case 1:
-          floppyDrives[n].floppyDrive = new VC1551(ted->serialPort, n + 8);
-          floppyDrives[n].floppyDrive->setROMImage(3, floppyROM_1551);
+          floppyDrive = new VC1551(ted->serialPort, n);
+          serialDevices[n] = floppyDrive;
+          floppyDrive->setROMImage(3, floppyROM_1551);
           break;
         case 4:
-          floppyDrives[n].floppyDrive = new VC1581(ted->serialPort, n + 8);
-          floppyDrives[n].floppyDrive->setROMImage(0, floppyROM_1581_0);
-          floppyDrives[n].floppyDrive->setROMImage(1, floppyROM_1581_1);
+          floppyDrive = new VC1581(ted->serialPort, n);
+          serialDevices[n] = floppyDrive;
+          floppyDrive->setROMImage(0, floppyROM_1581_0);
+          floppyDrive->setROMImage(1, floppyROM_1581_1);
           break;
         }
         addFloppyCallback(n);
-        floppyDrives[n].floppyDrive->setBreakPointCallback(
-            breakPointCallback, breakPointCallbackUserData);
-        M7501   *p = floppyDrives[n].floppyDrive->getCPU();
+        floppyDrive->setBreakPointCallback(breakPointCallback,
+                                           breakPointCallbackUserData);
+        M7501   *p = floppyDrive->getCPU();
         if (p) {
           p->setBreakPointPriorityThreshold(
               ted->getBreakPointPriorityThreshold());
           p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
         }
-        floppyDrives[n].floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
+        floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
       }
-      floppyDrives[n].floppyDrive->setDiskImageFile(fileName_);
+      reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
+          fileName_);
     }
   }
 
   uint32_t Plus4VM::getFloppyDriveLEDState() const
   {
     uint32_t  n = 0U;
-    for (int i = 3; i >= 0; i--) {
+    for (int i = 11; i >= 8; i--) {
       n = n << 8;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        n |= uint32_t(floppyDrives[i].floppyDrive->getLEDState() & 0xFF);
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        FloppyDrive&  floppyDrive =
+            *(reinterpret_cast<FloppyDrive *>(serialDevices[i]));
+        n |= uint32_t(floppyDrive.getLEDState() & 0xFF);
+      }
     }
     return n;
   }
@@ -1395,10 +1378,13 @@ namespace Plus4 {
   uint64_t Plus4VM::getFloppyDriveHeadPositions() const
   {
     uint64_t  h = 0UL;
-    for (int i = 3; i >= 0; i--) {
+    for (int i = 11; i >= 8; i--) {
       h = h << 16;
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        h |= uint64_t(floppyDrives[i].floppyDrive->getHeadPosition() ^ 0xFFFF);
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        FloppyDrive&  floppyDrive =
+            *(reinterpret_cast<FloppyDrive *>(serialDevices[i]));
+        h |= uint64_t(floppyDrive.getHeadPosition() ^ 0xFFFF);
+      }
     }
     return (~h);
   }
@@ -1408,14 +1394,57 @@ namespace Plus4 {
     if (isEnabled == is1541HighAccuracy)
       return;
     is1541HighAccuracy = isEnabled;
-    for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0) {
-        if (typeid(*(floppyDrives[i].floppyDrive)) == typeid(VC1541)) {
+    for (int i = 8; i < 12; i++) {
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        removeFloppyCallback(i);
+        addFloppyCallback(i);
+      }
+    }
+  }
+
+  void Plus4VM::setSerialBusDelayOffset(int n)
+  {
+    n = (n > -100 ? (n < 100 ? n : 100) : -100);
+    if (n != int(serialBusDelayOffset)) {
+      for (int i = 8; i < 12; i++) {
+        if (serialDevices[i] != (SerialDevice *) 0) {
+          if (typeid(*(serialDevices[i])) == typeid(VC1541)) {
+            reinterpret_cast<VC1541 *>(
+                serialDevices[i])->setSerialBusDelayOffset(n);
+          }
+        }
+      }
+      serialBusDelayOffset = int16_t(n);
+    }
+  }
+
+  void Plus4VM::disableUnusedFloppyDrives()
+  {
+    for (int i = 8; i < 12; i++) {
+      if (serialDevices[i] != (SerialDevice *) 0) {
+        FloppyDrive&  floppyDrive =
+            *(reinterpret_cast<FloppyDrive *>(serialDevices[i]));
+        if (!floppyDrive.haveDisk()) {
+          // "garbage collect" unused floppy drives to improve performance
           removeFloppyCallback(i);
-          addFloppyCallback(i);
+          delete serialDevices[i];
+          serialDevices[i] = (SerialDevice *) 0;
+          ted->serialPort.removeDevice(i);
         }
       }
     }
+  }
+
+  void Plus4VM::resetFloppyDrive(int n)
+  {
+    if (n < 0) {
+      for (int i = 0; i < 4; i++)
+        resetFloppyDrive(i);
+      return;
+    }
+    n = (n & 3) | 8;
+    if (serialDevices[n] != (SerialDevice *) 0)
+      serialDevices[n]->reset();
   }
 
   void Plus4VM::setTapeFileName(const std::string& fileName)
@@ -1482,12 +1511,11 @@ namespace Plus4 {
         if (i == 0) {
           p = ted;
         }
-        else if (i <= 4) {
-          if (floppyDrives[i - 1].floppyDrive != (FloppyDrive *) 0)
-            p = floppyDrives[i - 1].floppyDrive->getCPU();
+        else {
+          int     tmp = (i <= 4 ? (i + 7) : printerDeviceNumber);
+          if (serialDevices[tmp] != (SerialDevice *) 0)
+            p = serialDevices[tmp]->getCPU();
         }
-        else if (printer_)
-          p = printer_->getCPU();
         if (p)
           p->setSingleStepMode(0);
       }
@@ -1549,12 +1577,9 @@ namespace Plus4 {
     ted->setBreakPointPriorityThreshold(n);
     for (int i = 0; i < 5; i++) {
       M7501   *p = (M7501 *) 0;
-      if (i < 4) {
-        if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-          p = floppyDrives[i].floppyDrive->getCPU();
-      }
-      else if (printer_)
-        p = printer_->getCPU();
+      int     tmp = (i < 4 ? (i + 8) : printerDeviceNumber);
+      if (serialDevices[tmp] != (SerialDevice *) 0)
+        p = serialDevices[tmp]->getCPU();
       if (p)
         p->setBreakPointPriorityThreshold(n);
     }
@@ -1563,12 +1588,11 @@ namespace Plus4 {
   void Plus4VM::setNoBreakOnDataRead(bool n)
   {
     noBreakOnDataRead = n;
-    for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        floppyDrives[i].floppyDrive->setNoBreakOnDataRead(n);
+    for (int i = 0; i < 5; i++) {
+      int     tmp = (i < 4 ? (i + 8) : printerDeviceNumber);
+      if (serialDevices[tmp] != (SerialDevice *) 0)
+        serialDevices[tmp]->setNoBreakOnDataRead(n);
     }
-    if (printer_)
-      printer_->setNoBreakOnDataRead(n);
   }
 
   void Plus4VM::setSingleStepMode(int mode_)
@@ -1583,12 +1607,9 @@ namespace Plus4 {
     ted->setBreakOnInvalidOpcode(isEnabled);
     for (int i = 0; i < 5; i++) {
       M7501   *p = (M7501 *) 0;
-      if (i < 4) {
-        if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-          p = floppyDrives[i].floppyDrive->getCPU();
-      }
-      else if (printer_)
-        p = printer_->getCPU();
+      int     tmp = (i < 4 ? (i + 8) : printerDeviceNumber);
+      if (serialDevices[tmp] != (SerialDevice *) 0)
+        p = serialDevices[tmp]->getCPU();
       if (p)
         p->setBreakOnInvalidOpcode(isEnabled);
     }
@@ -1601,29 +1622,27 @@ namespace Plus4 {
                                       void *userData_)
   {
     VirtualMachine::setBreakPointCallback(breakPointCallback_, userData_);
-    for (int i = 0; i < 4; i++) {
-      if (floppyDrives[i].floppyDrive != (FloppyDrive *) 0)
-        floppyDrives[i].floppyDrive->setBreakPointCallback(breakPointCallback_,
-                                                           userData_);
+    for (int i = 0; i < 5; i++) {
+      int     tmp = (i < 4 ? (i + 8) : printerDeviceNumber);
+      if (serialDevices[tmp] != (SerialDevice *) 0) {
+        serialDevices[tmp]->setBreakPointCallback(breakPointCallback_,
+                                                  userData_);
+      }
     }
-    if (printer_)
-      printer_->setBreakPointCallback(breakPointCallback_, userData_);
   }
 
   uint8_t Plus4VM::getMemoryPage(int n) const
   {
-    if (currentDebugContext == 0)
+    if (currentDebugContext == 0) {
       return ted->getMemoryPage(n);
-    else if (currentDebugContext <= 4) {
-      if (floppyDrives[currentDebugContext - 1].floppyDrive
-          != (FloppyDrive *) 0) {
-        // floppy drives are mapped to segments 60..6F
-        return uint8_t((n & 3) | (((currentDebugContext - 1) & 3) << 2) | 0x60);
-      }
     }
-    else if (printer_) {
-      // printer is mapped to segments 50..53
-      return uint8_t(0x50 | (n & 3));
+    else {
+      int     tmp = (currentDebugContext <= 4 ?
+                     (currentDebugContext + 7) : printerDeviceNumber);
+      if (serialDevices[tmp] != (SerialDevice *) 0) {
+        // serial devices are mapped to segments 40..6F
+        return uint8_t((n & 3) | (tmp << 2) | 0x40);
+      }
     }
     return uint8_t(0x7F);
   }
@@ -1632,19 +1651,17 @@ namespace Plus4 {
   {
     if (isCPUAddress) {
       if (currentDebugContext == 0) {
-        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled())
+        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled)
           return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
         else
           return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
       }
-      else if (currentDebugContext <= 4) {
-        const FloppyDrive *p =
-            floppyDrives[currentDebugContext - 1].floppyDrive;
-        if (p)
-          return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
+      else {
+        int     tmp = (currentDebugContext <= 4 ?
+                       (currentDebugContext + 7) : printerDeviceNumber);
+        if (serialDevices[tmp] != (SerialDevice *) 0)
+          return serialDevices[tmp]->readMemoryDebug(uint16_t(addr & 0xFFFFU));
       }
-      else if (printer_)
-        return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
     }
     else {
       uint8_t segment = uint8_t((addr >> 14) & 0xFF);
@@ -1673,7 +1690,7 @@ namespace Plus4 {
       case 0x41:
       case 0x42:
       case 0x43:
-        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled())
+        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled)
           return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
         else
           return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
@@ -1681,9 +1698,10 @@ namespace Plus4 {
       case 0x51:
       case 0x52:
       case 0x53:
-        if (printer_)
-          return printer_->readMemoryDebug(uint16_t(addr & 0xFFFFU));
-        break;
+      case 0x54:
+      case 0x55:
+      case 0x56:
+      case 0x57:
       case 0x60:
       case 0x61:
       case 0x62:
@@ -1701,7 +1719,7 @@ namespace Plus4 {
       case 0x6E:
       case 0x6F:
         {
-          const FloppyDrive *p = floppyDrives[(segment >> 2) & 3].floppyDrive;
+          const SerialDevice  *p = serialDevices[(segment >> 2) & 15];
           if (p)
             return p->readMemoryDebug(uint16_t(addr & 0xFFFFU));
         }
@@ -1723,13 +1741,12 @@ namespace Plus4 {
       if (currentDebugContext == 0) {
         ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
       }
-      else if (currentDebugContext <= 4) {
-        FloppyDrive *p = floppyDrives[currentDebugContext - 1].floppyDrive;
-        if (p)
-          p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
+      else {
+        int     tmp = (currentDebugContext <= 4 ?
+                       (currentDebugContext + 7) : printerDeviceNumber);
+        if (serialDevices[tmp] != (SerialDevice *) 0)
+          serialDevices[tmp]->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
       }
-      else if (printer_)
-        printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
     }
     else {
       if (addr >= 0x00200000U) {
@@ -1742,15 +1759,13 @@ namespace Plus4 {
           ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
           break;
         case 0x14U:
-          if (printer_)
-            printer_->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
-          break;
+        case 0x15U:
         case 0x18U:
         case 0x19U:
         case 0x1AU:
         case 0x1BU:
           {
-            FloppyDrive *p = floppyDrives[tmp & 3U].floppyDrive;
+            SerialDevice  *p = serialDevices[tmp & 15U];
             if (p)
               p->writeMemoryDebug(uint16_t(addr & 0xFFFFU), value);
           }
@@ -1843,7 +1858,7 @@ namespace Plus4 {
     {
       Plus4Emu::File::Buffer  buf;
       buf.setPosition(0);
-      buf.writeUInt32(0x01000002);      // version number
+      buf.writeUInt32(0x01000003);      // version number
       buf.writeUInt32(uint32_t(cpuClockFrequency));
       buf.writeUInt32(uint32_t(tedInputClockFrequency));
       buf.writeUInt32(uint32_t(soundClockFrequency));
@@ -1851,6 +1866,8 @@ namespace Plus4 {
       buf.writeBoolean(sidModel6581);
       buf.writeBoolean(digiBlasterEnabled);
       buf.writeByte(digiBlasterOutput);
+      buf.writeBoolean(aciaEnabled);
+      buf.writeBoolean(aciaCallbackFlag);
       buf.writeInt64(aciaTimeRemaining);
       uint8_t tmpBuf[32];
       if (acia_.getSnapshotSize() > 32)
@@ -1937,7 +1954,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (!(version >= 0x01000000 && version <= 0x01000002)) {
+    if (!(version >= 0x01000000 && version <= 0x01000003)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 snapshot format");
     }
@@ -1945,7 +1962,8 @@ namespace Plus4 {
     setTapeMotorState(false);
     stopDemo();
     snapshotLoadFlag = true;
-    resetFloppyDrives(0x0F, true);
+    disableUnusedFloppyDrives();
+    resetFloppyDrive(-1);
     try {
       uint32_t  tmpCPUClockFrequency = buf.readUInt32();
       uint32_t  tmpTEDInputClockFrequency = buf.readUInt32();
@@ -1973,19 +1991,21 @@ namespace Plus4 {
       else
         sid_->input(0);
       ted->setCallback(&sidCallback, this, (sidEnabled ? 1 : 0));
+      aciaEnabled = (ted->getRAMSize() >= 64);
+      resetACIA();
       if (version >= 0x01000002) {
+        if (version >= 0x01000003) {
+          aciaEnabled = buf.readBoolean();
+          setEnableACIACallback(buf.readBoolean());
+        }
         aciaTimeRemaining = buf.readInt64();
         uint8_t tmpBuf[32];
         if (acia_.getSnapshotSize() > 32)
           throw Plus4Emu::Exception("internal error: snapshot buffer overflow");
         for (size_t i = 0; i < acia_.getSnapshotSize(); i++)
           tmpBuf[i] = buf.readByte();
-        acia_.loadSnapshot(&(tmpBuf[0]));
-        setEnableACIACallback(true);
-      }
-      else {
-        acia_.reset();
-        aciaTimeRemaining = int64_t(0);
+        if (aciaEnabled)
+          acia_.loadSnapshot(&(tmpBuf[0]));
       }
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "
