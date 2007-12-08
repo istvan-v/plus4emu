@@ -110,10 +110,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5 beta (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5 beta (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -374,7 +374,8 @@ void Plus4EmuGUI::updateDisplay(double t)
       tapeStatusDisplay->label("");
       break;
     }
-    tapeStatusDisplayGroup->redraw();
+    tapePositionDisplay->redraw();
+    tapeStatusDisplay->redraw();
   }
   long  newTapePosition = long(vmThreadStatus.tapePosition * 10.0 + 0.25);
   newTapePosition = (newTapePosition >= 0L ? newTapePosition : -1L);
@@ -387,12 +388,13 @@ void Plus4EmuGUI::updateDisplay(double t)
       s = int((newTapePosition / 10L) % 60L);
       m = int((newTapePosition / 600L) % 60L);
       h = int((newTapePosition / 36000L) % 100L);
-      std::sprintf(&(tmpBuf[0]), "%2d:%02d:%02d.%d", h, m, s, ds);
+      std::sprintf(&(tmpBuf[0]), "%2d:%02d:%02d.%d ", h, m, s, ds);
       tapePositionDisplay->copy_label(&(tmpBuf[0]));
     }
     else
-      tapePositionDisplay->label("-:--:--.-");
-    tapeStatusDisplayGroup->redraw();
+      tapePositionDisplay->label("-:--:--.- ");
+    tapePositionDisplay->redraw();
+    tapeStatusDisplay->redraw();
   }
   if (vmThreadStatus.floppyDriveLEDState != oldFloppyDriveLEDState) {
     uint32_t  tmp = vmThreadStatus.floppyDriveLEDState;
@@ -588,8 +590,10 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
   mainMenuBar->add("Machine/Enable light pen",
                    (char *) 0, &menuCallback_Machine_EnableLP, (void *) this);
-  mainMenuBar->add("Machine/Enable SID emulation",
+  mainMenuBar->add("Machine/SID emulation/Enable",
                    (char *) 0, &menuCallback_Machine_EnableSID, (void *) this);
+  mainMenuBar->add("Machine/SID emulation/Disable",
+                   (char *) 0, &menuCallback_Machine_DisableSID, (void *) this);
   mainMenuBar->add("Machine/Toggle pause (F10)",
                    (char *) 0, &menuCallback_Machine_Pause, (void *) this);
   mainMenuBar->add("Machine/Configure...",
@@ -632,6 +636,18 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FloppyRpD, (void *) this);
   mainMenuBar->add("Options/Floppy/Replace disk/All drives",
                    (char *) 0, &menuCallback_Options_FloppyRpl, (void *) this);
+  mainMenuBar->add("Options/Floppy/Reset/Unit 8",
+                   (char *) 0, &menuCallback_Options_FloppyRsA, (void *) this);
+  mainMenuBar->add("Options/Floppy/Reset/Unit 9",
+                   (char *) 0, &menuCallback_Options_FloppyRsB, (void *) this);
+  mainMenuBar->add("Options/Floppy/Reset/Unit 10",
+                   (char *) 0, &menuCallback_Options_FloppyRsC, (void *) this);
+  mainMenuBar->add("Options/Floppy/Reset/Unit 11",
+                   (char *) 0, &menuCallback_Options_FloppyRsD, (void *) this);
+  mainMenuBar->add("Options/Floppy/Reset/All drives",
+                   (char *) 0, &menuCallback_Options_FloppyRst, (void *) this);
+  mainMenuBar->add("Options/Floppy/Disable unused drives",
+                   (char *) 0, &menuCallback_Options_FloppyGC, (void *) this);
   mainMenuBar->add("Options/Keyboard map",
                    (char *) 0, &menuCallback_Options_KbdConfig, (void *) this);
   mainMenuBar->add("Options/Set working directory",
@@ -677,7 +693,8 @@ void Plus4EmuGUI::run()
   vmThread.setErrorCallback(&errorMessageCallback);
   vmThread.setProcessCallback(&pollJoystickInput);
   vm.setFileNameCallback(&fileNameCallback, (void *) this);
-  vm.setBreakPointCallback(&breakPointCallback, (void *) this);
+  vm.setBreakPointCallback(&Plus4EmuGUI_DebugWindow::breakPointCallback,
+                           (void *) debugWindow);
   applyEmulatorConfiguration();
   vmThread.unlock();
   // run emulation
@@ -1141,39 +1158,6 @@ void Plus4EmuGUI::fltkCheckCallback(void *userData)
   }
 }
 
-void Plus4EmuGUI::breakPointCallback(void *userData,
-                                     int debugContext_, int type,
-                                     uint16_t addr, uint8_t value)
-{
-  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
-  Fl::lock();
-  if (gui_.exitFlag || !gui_.mainWindow->shown()) {
-    Fl::unlock();
-    return;
-  }
-  if (!gui_.debugWindow->breakPoint(debugContext_, type, addr, value)) {
-    Fl::unlock();
-    return;             // do not show debugger window if tracing
-  }
-  if (!gui_.debugWindow->shown()) {
-    gui_.debugWindowShowFlag = true;
-    Fl::awake();
-  }
-  while (gui_.debugWindowShowFlag) {
-    Fl::unlock();
-    gui_.updateDisplay();
-    Fl::lock();
-  }
-  while (true) {
-    bool  tmp = gui_.debugWindow->shown();
-    Fl::unlock();
-    if (!tmp)
-      break;
-    gui_.updateDisplay();
-    Fl::lock();
-  }
-}
-
 void Plus4EmuGUI::screenshotCallback(void *userData,
                                      const unsigned char *buf, int w_, int h_)
 {
@@ -1362,6 +1346,7 @@ void Plus4EmuGUI::saveQuickConfig(int n)
     Plus4Emu::ConfigurationDB tmpCfg;
     tmpCfg.createKey("vm.cpuClockFrequency", config.vm.cpuClockFrequency);
     tmpCfg.createKey("vm.videoClockFrequency", config.vm.videoClockFrequency);
+    tmpCfg.createKey("vm.serialBusDelayOffset", config.vm.serialBusDelayOffset);
     tmpCfg.saveState(fName, true);
   }
   catch (std::exception& e) {
@@ -2228,7 +2213,21 @@ void Plus4EmuGUI::menuCallback_Machine_EnableSID(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   if (gui_.lockVMThread()) {
     try {
-      gui_.vm.writeMemory(0xFD5F, 0x00, true);
+      gui_.vm.writeMemory(0x0010FD5FU, 0x00, false);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_DisableSID(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.disableSIDEmulation();
     }
     catch (...) {
     }
@@ -2601,6 +2600,90 @@ void Plus4EmuGUI::menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v)
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRsA(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.resetFloppyDrive(0);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRsB(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.resetFloppyDrive(1);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRsC(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.resetFloppyDrive(2);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRsD(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.resetFloppyDrive(3);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyRst(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.resetFloppyDrive(-1);
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyGC(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  if (gui_.lockVMThread()) {
+    try {
+      gui_.vm.disableUnusedFloppyDrives();
+    }
+    catch (...) {
+    }
+    gui_.unlockVMThread();
   }
 }
 
