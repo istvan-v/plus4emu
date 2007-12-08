@@ -33,6 +33,20 @@ static void cfgErrorFunc(void *userData, const char *msg)
   std::cerr << "WARNING: " << msg << std::endl;
 }
 
+static void writeKeyboardBuffer(Plus4Emu::VirtualMachine& vm, const char *s)
+{
+  for (int i = 0; true; i++) {
+    if (s[i] == '\0') {
+      vm.writeMemory(0x00EF, uint8_t(i), true);
+      break;
+    }
+    else if (s[i] != '\n')
+      vm.writeMemory(uint32_t(0x0527 + i), uint8_t(s[i]), true);
+    else
+      vm.writeMemory(uint32_t(0x0527 + i), 0x0D, true);
+  }
+}
+
 int main(int argc, char **argv)
 {
   Fl_Window *w = (Fl_Window *) 0;
@@ -45,6 +59,7 @@ int main(int argc, char **argv)
   const char  *cfgFileName = "plus4cfg.dat";
   int       prgNameIndex = 0;
   int       diskNameIndex = 0;
+  int       tapeNameIndex = 0;
   int       snapshotNameIndex = 0;
   int       colorScheme = 0;
   int       retval = 0;
@@ -66,6 +81,11 @@ int main(int argc, char **argv)
         if (++i >= argc)
           throw Plus4Emu::Exception("missing disk image file name");
         diskNameIndex = i;
+      }
+      else if (std::strcmp(argv[i], "-tape") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing tape image file name");
+        tapeNameIndex = i;
       }
       else if (std::strcmp(argv[i], "-snapshot") == 0) {
         if (++i >= argc)
@@ -101,6 +121,9 @@ int main(int argc, char **argv)
         std::cerr << "    -disk <FILENAME>    "
                      "load and automatically start disk image on startup"
                   << std::endl;
+        std::cerr << "    -tape <FILENAME>    "
+                     "load and automatically start tape image on startup"
+                  << std::endl;
         std::cerr << "    -snapshot <FNAME>   "
                      "load snapshot or demo file on startup" << std::endl;
         std::cerr << "    -opengl             "
@@ -116,7 +139,31 @@ int main(int argc, char **argv)
         std::cerr << "    OPTION              "
                      "set boolean configuration variable 'OPTION' to true"
                   << std::endl;
+        std::cerr << "    FILENAME            "
+                     "load and start .prg, .p00, .d64, .d81, or .tap file"
+                  << std::endl;
         return 0;
+      }
+      else {
+        size_t  n = std::strlen(argv[i]);
+        if (n >= 4 && argv[i][n - 4] == '.') {
+          const char  *s = &(argv[i][n - 3]);
+          if ((s[0] == 'P' || s[0] == 'p') &&
+              (((s[1] == 'R' || s[1] == 'r') && (s[2] == 'G' || s[2] == 'g')) ||
+               (s[1] == '0' && s[2] == '0'))) {
+            prgNameIndex = i;
+          }
+          else if ((s[0] == 'D' || s[0] == 'd') &&
+                   ((s[1] == '6' && s[2] == '4') ||
+                    (s[1] == '8' && s[2] == '1'))) {
+            diskNameIndex = i;
+          }
+          else if ((s[0] == 'T' || s[0] == 't') &&
+                   (s[1] == 'A' || s[1] == 'a') &&
+                   (s[2] == 'P' || s[2] == 'p')) {
+            tapeNameIndex = i;
+          }
+        }
       }
     }
 
@@ -182,11 +229,12 @@ int main(int argc, char **argv)
       }
       else if (std::strcmp(argv[i], "-prg") == 0 ||
                std::strcmp(argv[i], "-disk") == 0 ||
+               std::strcmp(argv[i], "-tape") == 0 ||
                std::strcmp(argv[i], "-snapshot") == 0 ||
                std::strcmp(argv[i], "-colorscheme") == 0) {
         i++;
       }
-      else {
+      else if (i != prgNameIndex && i != diskNameIndex && i != tapeNameIndex) {
         const char  *s = argv[i];
 #ifdef __APPLE__
         if (std::strncmp(s, "-psn_", 5) == 0)
@@ -219,15 +267,9 @@ int main(int argc, char **argv)
     else if (prgNameIndex >= 1) {
       vm->setEnableDisplay(false);
       vm->setEnableAudioOutput(false);
-      vm->run(600000);
+      vm->run(900000);
       dynamic_cast<Plus4::Plus4VM *>(vm)->loadProgram(argv[prgNameIndex]);
-      uint32_t  tmp = 0x01271E11U;      // RUN + RETURN
-      for (int i = 0; i < 8; i++) {
-        vm->run(50000);
-        vm->setKeyboardState(uint8_t(tmp & 0xFFU), !(i & 1));
-        if (i & 1)
-          tmp = tmp >> 8;
-      }
+      writeKeyboardBuffer(*vm, "Ru\n");
       vm->setEnableDisplay(config->display.enabled);
       vm->setEnableAudioOutput(config->sound.enabled);
     }
@@ -236,14 +278,34 @@ int main(int argc, char **argv)
       config->applySettings();
       vm->setEnableDisplay(false);
       vm->setEnableAudioOutput(false);
-      vm->run(2450000);
-      vm->setKeyboardState(0x3D, true); // C=
-      vm->setKeyboardState(0x3F, true); // Run/Stop
-      vm->run(50000);
-      vm->setKeyboardState(0x3D, false);
-      vm->setKeyboardState(0x3F, false);
+      vm->run(2500000);
+      writeKeyboardBuffer(*vm, "Lo\"*\",8,1\n");
+      for (int i = 0; i < 1000; i++) {
+        vm->run(1000);
+        if (vm->readMemory(0x00EF, true) == 0x00)
+          i = (i < 998 ? 998 : i);
+      }
+      writeKeyboardBuffer(*vm, "Ru\n");
       vm->setEnableDisplay(config->display.enabled);
       vm->setEnableAudioOutput(config->sound.enabled);
+    }
+    else if (tapeNameIndex >= 1) {
+      (*config)["tape.imageFile"] = argv[tapeNameIndex];
+      config->applySettings();
+      vm->setEnableDisplay(false);
+      vm->setEnableAudioOutput(false);
+      vm->run(900000);
+      writeKeyboardBuffer(*vm, "Lo\"\",1,1\n");
+      for (int i = 0; i < 1000; i++) {
+        vm->run(1000);
+        if (vm->readMemory(0x00EF, true) == 0x00)
+          i = (i < 998 ? 998 : i);
+      }
+      writeKeyboardBuffer(*vm, "Ru\n");
+      vm->setEnableDisplay(config->display.enabled);
+      vm->setEnableAudioOutput(config->sound.enabled);
+      // FIXME: this does not set the tape button status display on the GUI
+      vm->tapePlay();
     }
     vmThread = new Plus4Emu::VMThread(*vm);
     gui_ = new Plus4EmuGUI(*(dynamic_cast<Plus4Emu::VideoDisplay *>(w)),
