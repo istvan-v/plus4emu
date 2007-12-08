@@ -70,7 +70,6 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
   static int enterKeyCallback(int c, Fl_Text_Editor *e_);
   void moveDown();
   void parseCommand(const char *s);
-  void printMessage(const char *s);
   void disassembleInstruction(bool assembleMode = false);
   void memoryDump();
   void printCPURegisters();
@@ -91,6 +90,7 @@ class Plus4EmuGUIMonitor : public Fl_Text_Editor {
     debugWindow = &debugWindow_;
     gui = &(debugWindow->gui);
   }
+  void printMessage(const char *s);
   void breakMessage(const char *s = 0);
   static void tokenizeString(std::vector<std::string>& args, const char *s);
   int32_t searchPattern(const std::vector<std::string>& args,
