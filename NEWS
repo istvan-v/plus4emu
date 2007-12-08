@@ -1,6 +1,33 @@
 Changes in version 1.2.5
 ------------------------
 
+  * implemented Lua scripting in the debugger; this makes it possible to
+    write complex rules for breakpoints, but can have other uses as
+    well, since the script can read and write memory and CPU registers,
+    in addition to having access to the standard Lua library functions
+  * changed the debugger window layout so that there is a larger window
+    with only two tabs
+  * the disassembly view in the debugger now allows for paging backward,
+    and the disassembly and memory dump displays can also be scrolled
+    with the mouse wheel
+  * made the serial bus delay for the 1541 high timing accuracy mode
+    adjustable; while the default setting works with all the disk turbos
+    tested so far, this option may be useful for debugging purposes
+  * when using audio files as tape images, the signal read or written
+    can optionally be inverted for compatibility with other software
+  * the enabling of 6551 ACIA emulation is now configurable, rather than
+    being fixed to machine configurations with 64K or more RAM
+  * SID emulation and floppy drives with no disk image attached can be
+    disabled from the GUI menu to reduce CPU usage; previously, these
+    automatically enabled features could only be turned off by a forced
+    or hard reset
+  * added new GUI menu items for resetting floppy drives
+  * new command line option (-tape) for loading tape images on startup;
+    it has also been made possible to automatically load a file with
+    .prg, .p00, .d64, .d81, or .tap extension by using the file name as
+    a single command line argument
+  * minor bug fixes and optimizations
+
 Changes in version 1.2.4
 ------------------------
 

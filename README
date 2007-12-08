@@ -1,5 +1,5 @@
-plus4emu 1.2.5 beta
-===================
+plus4emu 1.2.5
+==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -47,6 +47,9 @@ General
     memory, and more).
     It is also possible to debug the 6502 compatible CPUs in floppy
     drives and printers.
+    The debugger supports scripting in the Lua language, to allow for
+    advanced uses like breakpoints with custom defined, complex set of
+    conditions.
   * configurable keyboard map for the emulated machine; it is also
     possible to use external game controller devices like joysticks and
     gamepads
@@ -54,19 +57,19 @@ General
 Plus/4 emulation
 ----------------
 
-  * cycle based emulation of the 7501/8501 CPU, supporting all
-    documented and undocumented opcodes, and fully compatible decimal
-    mode
-  * TED 7360/8360 emulation with high level of compatibility, implements
-    all documented video modes, PAL/NTSC mode switching, as well as all
-    known display artifacts; all registers can be read and written, and
-    the internal operation and timing is reproduced with very good
-    accuracy
+  * cycle exact emulation of the 7501/8501 CPU, with full support for
+    all documented and undocumented opcodes
+  * cycle exact TED 7360/8360 emulation with very high level of
+    compatibility, implements all documented video modes, PAL/NTSC mode
+    switching, accurate sound emulation, as well as all known display
+    artifacts; all registers can be read and written, and the internal
+    operation and timing is reproduced with very good accuracy
   * RAM size can be 16, 32, 64, 256, or 1024 kilobytes (the latter two
     using the Hannes memory expansion)
   * up to 8 16 kilobyte banks of ROM can be loaded from external image
     files; using custom ROM files for the emulated floppy drives and
     printer is also possible
+  * limited emulation of the ACIA 6551 registers
   * tape emulation with playback, recording, and setting tape position;
     markers can be created for quick positioning to specific tape
     locations (useful for tapes with multiple files); uses custom file
@@ -80,7 +83,7 @@ Plus/4 emulation
     fast loaders is fairly good in recent versions of the emulator
   * light pen emulation (compatible with the Trojan Light Pen software)
   * hardware level 1526/MPS-802 printer emulation
-  * load and automatically start .PRG, .P00, .D64, or .D81 file on
+  * load and automatically start .PRG, .P00, .D64, .D81, or .TAP file on
     start-up
   * .PRG, .P00, .D64, and .D81 files can be associated with plus4emu on
     Windows
@@ -124,6 +127,7 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
   * SDL (http://www.libsdl.org/) 1.2 for joystick input (optional);
     NOTE: on Linux, version 1.2.10 and newer do not work, so using 1.2.9
     is recommended
+  * Lua (http://www.lua.org/) for scripting in the debugger (optional)
 
 Once these are installed, you can edit the file 'SConstruct' in the top
 level source directory for setting compiler flags etc., and run the
@@ -175,6 +179,8 @@ Command line options
     load and run program file on startup
   -disk <FILENAME>
     load and automatically start disk image on startup
+  -tape <FILENAME>
+    load and automatically start tape image on startup
   -snapshot <FILENAME>
     load snapshot or demo file on startup
   -opengl
@@ -194,6 +200,9 @@ Command line options
     configuration files
   OPTION
     set boolean configuration variable 'OPTION' to true
+  FILENAME
+    load and automatically start a file with .prg, .p00, .d64, .d81, or
+    .tap extension
 
 'File' menu
 -----------
@@ -330,8 +339,9 @@ Reset / Reset clock frequencies
 
   Reset clock frequency and timing settings to those specified in the
   machine configuration; this is normally only useful after demo
-  playback, which may override the settings. The SID configuration,
-  which may be changed by snapshot or demo loading, is also reset.
+  playback, which may override the settings. The SID and ACIA
+  configuration, which may be changed by snapshot or demo loading, are
+  also reset.
 
 Reset / Reset machine configuration (Shift + F11)
 
@@ -388,7 +398,7 @@ Enable light pen
   pen input is only generated when a mouse button is held down while the
   mouse cursor is in the emulation display area.
 
-Enable SID emulation
+SID emulation / Enable
 
   Turn on SID emulation, making the SID registers appear at FD40-FD5F
   and FE80-FE9F; this increases the CPU usage of the emulator.
@@ -399,6 +409,10 @@ Enable SID emulation
   next use of 'Force reset' or 'Reset machine configuration', and
   snapshot data includes SID state and whether it was enabled or not at
   the time of saving the snapshot.
+
+SID emulation / Disable
+
+  Turn off SID emulation if it is currently enabled.
 
 'Options' menu
 --------------
@@ -467,11 +481,43 @@ Floppy / Replace disk / All drives
   mostly useful when accessing real floppy disks, after the disk is
   changed.
 
+Floppy / Reset / Unit 8
+Floppy / Reset / Unit 9
+Floppy / Reset / Unit 10
+Floppy / Reset / Unit 11
+Floppy / Reset / All drives
+
+  Reset a specific (or all) floppy drive.
+
+Floppy / Disable unused drives
+
+  Turn off the emulation of all floppy drives that are currently active,
+  but have no disk image attached. This can be useful to reduce CPU
+  usage when a drive is no longer needed, without having to reset the
+  emulated machine.
+
 Set working directory
 
   Set the directory to be accessed by the optional file I/O ROM
   extension modules. This directory is also used by monitor commands
   that take a file name argument.
+  To enable the file I/O extension, you need to load 'p4fileio.rom' to
+  the C2L bank in the ROM configuration, and also check the
+  'Enable virtual file I/O' button. It is then possible to load and save
+  PRG files in the selected working directory by using device 7 as a
+  parameter of the load/save commands. The module can be initialized by
+  running G 063A in the TEDMON - this may be necessary when the
+  load/save vectors are overwritten, for example after a Run/Stop+Reset.
+  Alternatively, p4fileio.rom can also be used as a tape turbo, with one
+  of these monitor commands:
+    >0647 17            (slowest speed)
+    >0647 27
+    >0647 37
+    >0647 47            (fastest speed)
+  Saving to device 7 will then use the tape turbo, but loading will
+  still access the filesystem. Loading files saved this way to tape does
+  not require the ROM. To restore the original mode of operation, use
+  the >0647 07 command.
 
 'Debug' menu
 ------------
@@ -544,6 +590,224 @@ Start debugger (Alt+M)
     X       same as the 'Continue' button
     Y       same as the 'Step over' button
     Z       same as the 'Step' button
+
+  Lua scripting
+  -------------
+
+  Starting from version 1.2.5, it is possible to run scripts written in
+  Lua from the debugger. This document only describes the use of scripts
+  in the emulator, and the new API functions added; for general
+  information about programming in Lua, see http://www.lua.org/docs.html
+
+  Clicking the 'Run' button will run the script, and also enable the
+  breakpoint callback function (see below) if it is defined. If there
+  are any syntax or runtime errors, the script is terminated, and the
+  breakpoint callback is disabled. After making any changes to the
+  script, you need to click 'Run' and restart the script for the changes
+  to take effect.
+
+  It is possible to define a breakpoint callback function in the script,
+  which will be automatically called whenever a breakpoint is triggered,
+  and the debugger window would be shown. This function has the
+  following syntax:
+
+    function breakPointCallback(debugContext, bpType, addr, value)
+      ...
+      return showWindow
+    end
+
+  where 'showWindow' is a boolean value, which, if true, will allow the
+  debugger window to be shown like normal, or have the emulated program
+  continue without any break if it is false. The four parameters passed
+  to the function are as follows:
+
+    debugContext
+
+      The debugging context from which the break was triggered. The
+      possible values are:
+        0: the main CPU
+        1: floppy drive / unit 8
+        2: floppy drive / unit 9
+        3: floppy drive / unit 10
+        4: floppy drive / unit 11
+        5: printer
+
+    bpType
+
+      The type of break, one of the following:
+        0: breakpoint at opcode read by the CPU
+        1: data read from memory
+        2: data written to memory
+        3: opcode read in single step mode; this happens when 'Step' or
+           'Step over' are being used, and if the breakpoint callback
+           function returns false, breaks will continue to occur until
+           true is returned
+        4: video breakpoint; the address is encoded in a special way in
+           this case (see below at setBreakPoint()), and the value is
+           not used
+
+    addr
+
+      This is the 16 bit address where the break occured.
+
+    value
+
+      The value or CPU opcode read from or written to memory. Not used
+      (always zero) by video breakpoints.
+
+  The breakpoint callback function will remain active until either a new
+  script is run which does not define one, or the 'Stop' button is
+  clicked.
+
+  NOTE: an infinite loop in the script will hang the emulator, and a
+  very frequently called and/or complex breakpoint callback may slow
+  down the emulation.
+
+  The following new functions are defined by the emulator for use in the
+  scripts:
+
+    AND(...)    OR(...)    XOR(...)    SHL(a, b)    SHR(a, b)
+
+      These simple helper functions implement bitwise operations that
+      are not available in the Lua language by default. AND, OR, and XOR
+      can take any number of integer arguments, and return the bitwise
+      AND, OR, and XOR of the values, respectively. In the case of zero
+      arguments, OR and XOR return zero, while AND returns -1.
+      SHL returns 'a' shifted to the left by 'b' bits, and SHR returns
+      'a' shifted to the right by 'b' bits. If 'b' is zero, the value is
+      not changed, while a negative 'b' will reverse the direction of
+      shifting. The result of shifting negative values to the right is
+      unspecified.
+
+    getDebugContext()
+
+      Returns the current debugging context, which can be one of the
+      following:
+
+        0: the main CPU
+        1: floppy drive / unit 8
+        2: floppy drive / unit 9
+        3: floppy drive / unit 10
+        4: floppy drive / unit 11
+        5: printer
+
+    setDebugContext(n)
+
+      Set the debugging context to 'n' (0 to 5, see above). It is
+      recommended to restore the original debugging context before the
+      script returns.
+
+    setBreakPoint(bptype, addr, priority)
+
+      Set a breakpoint or watchpoint at address 'addr' (0-0xFFFF) for
+      the current debugging context, with priority 'priority' (0 to 3).
+      'bptype' can be one of the following values:
+
+        0: memory read or write
+        1: memory read
+        2: memory write
+        3: memory read or write (same as bptype == 0)
+        4: video breakpoint, breaks at the TED video position defined by
+           'addr'; this is only allowed for the main CPU, and cannot be
+           set for floppy drives or printers. Bits 7 to 15 of the
+           address are the vertical position (which is compared against
+           the latched value of the vertical counter in the TED), and
+           bits 0 to 6 are the most significant bits of the horizontal
+           position (compared against the value that would be read from
+           $FF1E)
+        5: ignore other breakpoints if the program counter is at this
+           address (note: the priority parameter is ignored)
+
+      NOTE: the changes made to the breakpoint list by the script are
+      not reflected in the breakpoint editor. To restore the previously
+      defined breakpoints, click the 'Apply' button.
+
+    clearBreakPoints()
+
+      Deletes all breakpoints that were previously defined for the
+      current debugging context.
+
+    getMemoryPage(n)
+
+      Returns the memory bank selected for $0000-$3FFF if 'n' is 0,
+      $4000-$7FFF if 'n' is 1, $8000-$BFFF if 'n' is 2, or $C000-$FFFF
+      if 'n' is 3. The returned value is a 8 bit integer, as described
+      above at the beginning of the debugger documentation.
+
+    readMemory(addr)
+
+      Read a byte from 'addr' (0 to 0xFFFF) in the address space of the
+      current debugging context.
+
+    writeMemory(addr, value)
+
+      Write 'value' to 'addr' (0 to 0xFFFF) in the address space of the
+      current debugging context.
+
+    readMemoryRaw(addr)
+
+      Read a byte from 'addr' (0 to 0x3FFFFF) in the "physical" address
+      space described above at the beginning of the debugger
+      documentation.
+
+    writeMemoryRaw(addr, value)
+
+      Write 'value' to 'addr' (0 to 0x3FFFFF) in the "physical" address
+      space described above at the beginning of the debugger
+      documentation.
+
+    getPC()    getSR()    getAC()    getXR()    getYR()    getSP()
+
+      These functions return the registers of the currently selected
+      CPU. PC is a 16 bit value, while the others are 8 bit.
+
+    setPC(n)   setSR(n)   setAC(n)   setXR(n)   setYR(n)   setSP(n)
+
+      Set registers of the currently selected CPU. 'n' should be a 16
+      bit value when setting PC, and 8 bit for the other registers. Note
+      that changing the program counter only takes effect after the
+      execution of the current instruction is completed.
+
+    loadProgram(fname)
+
+      Load PRG or P00 file 'fname', which must be a full path file name.
+      The current debugging context is ignored, and zeropage variables
+      at $2D-$32 and $9D-$9E are updated according to the file loaded.
+
+    saveProgram(fname)
+
+      Save the memory area defined by zeropage variables $2B-$2E to a
+      PRG file 'fname', which must be a full path file name. The current
+      debugging context is ignored, and the data is always read from
+      RAM, regardless of memory paging by $FF3E/$FF3F.
+
+    mprint(...)
+
+      Prints any number of strings or numbers to the monitor.
+      No separator characters are inserted between the arguments being
+      printed, and a newline character is automatically added at the end
+      of the message.
+
+  Example:
+
+    mprint("Running Lua script example...")
+    setDebugContext(0)
+    clearBreakPoints()
+    setBreakPoint(2, 0x0C00, 2)
+    setBreakPoint(2, 0x0C01, 2)
+    function breakPointCallback(d, t, a, v)
+      if (a == 0x0C00 and v == 0x00) or
+         (a == 0x0C01 and v == 0x01) then
+        return true
+      end
+      return false
+    end
+    mprint("done.")
+
+  This will break only when $00 is written to $0C00, or $01 is written
+  to $0C01.
+
+------------------------------------------------------------------------
 
 Copyright
 =========
