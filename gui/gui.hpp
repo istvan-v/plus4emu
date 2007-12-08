@@ -32,11 +32,12 @@
 #include "vmthread.hpp"
 #include "cfg_db.hpp"
 #include "emucfg.hpp"
-
+#include "script.hpp"
 #include "plus4vm.hpp"
 
 #include <FL/Fl_File_Chooser.H>
 
+class Plus4EmuGUI;
 class Plus4EmuGUI_DiskConfigWindow;
 class Plus4EmuGUI_DisplayConfigWindow;
 class Plus4EmuGUI_KbdConfigWindow;
@@ -46,7 +47,10 @@ class Plus4EmuGUI_DebugWindow;
 class Plus4EmuGUI_PrinterWindow;
 class Plus4EmuGUI_AboutWindow;
 class Plus4EmuGUIMonitor;
+class Plus4EmuGUI_LuaScript;
+class Plus4EmuGUI_ScrollableOutput;
 
+#include "debugger.hpp"
 #include "gui_fl.hpp"
 #include "disk_cfg_fl.hpp"
 #include "disp_cfg_fl.hpp"
