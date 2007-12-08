@@ -3,23 +3,43 @@
 import sys
 
 win32CrossCompile = 0
+linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
+disableLua = 0
 enableGLShaders = 1
+enableDebug = 1
+buildRelease = 0
 
-compilerFlags = Split('''
-    -Wall -W -ansi -pedantic -Wno-long-long -Wshadow -g -O2
-''')
+compilerFlags = ''
+if buildRelease:
+    if linux32CrossCompile:
+        compilerFlags = ' -march=pentium2 -mtune=generic '
+    elif win32CrossCompile:
+        compilerFlags = ' -march=pentium2 -mtune=athlon-xp '
+if enableDebug and not buildRelease:
+    compilerFlags = ' -Wno-long-long -Wshadow -g -O2 ' + compilerFlags
+    compilerFlags = ' -Wall -W -ansi -pedantic ' + compilerFlags
+else:
+    compilerFlags = ' -Wall -O3 ' + compilerFlags
+    compilerFlags = compilerFlags + ' -fno-inline-functions '
+    compilerFlags = compilerFlags + ' -fomit-frame-pointer -ffast-math '
 
 fltkConfig = 'fltk-config'
 
 # -----------------------------------------------------------------------------
 
 plus4emuLibEnvironment = Environment()
-plus4emuLibEnvironment.Append(CCFLAGS = compilerFlags)
+if linux32CrossCompile:
+    compilerFlags = ' -m32 ' + compilerFlags
+plus4emuLibEnvironment.Append(CCFLAGS = Split(compilerFlags))
 plus4emuLibEnvironment.Append(CPPPATH = ['.', './src', '/usr/local/include'])
 if sys.platform[:6] == 'darwin':
     plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
-plus4emuLibEnvironment.Append(LINKFLAGS = ['-L.'])
+if not linux32CrossCompile:
+    linkFlags = ' -L. '
+else:
+    linkFlags = ' -m32 -L. -L/usr/X11R6/lib '
+plus4emuLibEnvironment.Append(LINKFLAGS = Split(linkFlags))
 if win32CrossCompile:
     plus4emuLibEnvironment['AR'] = 'wine C:/MinGW/bin/ar.exe'
     plus4emuLibEnvironment['CC'] = 'wine C:/MinGW/bin/gcc-sjlj.exe'
@@ -84,6 +104,12 @@ if not disableSDL:
     haveSDL = configure.CheckCHeader('SDL/SDL.h')
 else:
     haveSDL = 0
+if not disableLua:
+    haveLua = configure.CheckCHeader('lua.h')
+    haveLua = haveLua and configure.CheckCHeader('lauxlib.h')
+    haveLua = haveLua and configure.CheckCHeader('lualib.h')
+else:
+    haveLua = 0
 configure.Finish()
 
 if not havePortAudioV19:
@@ -92,6 +118,8 @@ if haveDotconf:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_DOTCONF_H'])
 if haveSDL:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_SDL_H'])
+if haveLua:
+    plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_LUA_H'])
 if enableGLShaders:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DENABLE_GL_SHADERS'])
 
@@ -130,6 +158,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/plus4vm.cpp
     src/render.cpp
     src/riot6532.cpp
+    src/script.cpp
     src/snd_conv.cpp
     src/soundio.cpp
     src/system.cpp
@@ -182,12 +211,16 @@ plus4emuEnvironment.Append(CPPPATH = ['./gui'])
 plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 if haveDotconf:
     plus4emuEnvironment.Append(LIBS = ['dotconf'])
+if haveLua:
+    plus4emuEnvironment.Append(LIBS = ['lua'])
 if haveSDL:
     plus4emuEnvironment.Append(LIBS = ['SDL'])
 plus4emuEnvironment.Append(LIBS = ['portaudio', 'sndfile'])
 if not win32CrossCompile:
     if sys.platform[:5] == 'linux':
-        plus4emuEnvironment.Append(LIBS = ['jack', 'asound', 'pthread', 'rt'])
+        if not buildRelease:
+            plus4emuEnvironment.Append(LIBS = ['jack'])
+        plus4emuEnvironment.Append(LIBS = ['asound', 'pthread', 'rt'])
     else:
         plus4emuEnvironment.Append(LIBS = ['pthread'])
 else:
@@ -198,7 +231,7 @@ plus4emu = plus4emuEnvironment.Program('plus4emu',
     + fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl', 'gui/disp_cfg.fl',
                     'gui/kbd_cfg.fl', 'gui/snd_cfg.fl', 'gui/vm_cfg.fl',
                     'gui/debug.fl', 'gui/printer.fl', 'gui/about.fl'])
-    + ['gui/monitor.cpp', 'gui/main.cpp'])
+    + ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp'])
 Depends(plus4emu, plus4emuLib)
 Depends(plus4emu, residLib)
 
