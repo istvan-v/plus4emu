@@ -112,7 +112,6 @@ class Plus4EmuGUI {open
   decl {static void errorMessageCallback(void *userData, const char *msg);} {}
   decl {static void fileNameCallback(void *userData, std::string& fileName);} {}
   decl {static void fltkCheckCallback(void *userData);} {}
-  decl {static void breakPointCallback(void *userData, int debugContext_, int type, uint16_t addr, uint8_t value);} {}
   decl {static void screenshotCallback(void *userData, const unsigned char *buf, int w_, int h_);} {}
   decl {static void pollJoystickInput(void *userData);} {}
   decl {bool closeDemoFile(bool stopDemo_);} {}
@@ -167,6 +166,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_ResetFreqs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ResetAll(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_EnableSID(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_DisableSID(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_EnableLP(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgL1(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgL2(Fl_Widget *o, void *v);} {}
@@ -192,6 +192,12 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FloppyRpC(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRpD(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRpl(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRsA(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRsB(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRsC(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRsD(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyRst(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyGC(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_KbdConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}
@@ -253,14 +259,11 @@ class Plus4EmuGUI {open
           xywh {130 335 150 20} color 48 labelsize 12 align 16
           code0 {o->label("Tape: none");}
         }
-        Fl_Group tapeStatusDisplayGroup {open
-          xywh {290 335 100 20} box THIN_DOWN_BOX color 56 labelsize 12 labelcolor 6 align 4
+        Fl_Group tapePositionDisplay {open
+          xywh {290 335 100 20} box THIN_DOWN_BOX color 56 labelfont 4 labelsize 12 labelcolor 6 align 24
         } {
           Fl_Box tapeStatusDisplay {
             xywh {290 335 20 20} color 56 labelfont 5 labelsize 12 labelcolor 6 align 24
-          }
-          Fl_Box tapePositionDisplay {
-            xywh {310 335 73 20} color 56 labelfont 4 labelsize 12 labelcolor 6 align 24
           }
         }
       }
