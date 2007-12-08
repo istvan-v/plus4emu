@@ -44,6 +44,8 @@ namespace Plus4Emu {
       unsigned int  cpuClockFrequency;
       unsigned int  videoClockFrequency;
       unsigned int  speedPercentage;    // NOTE: this uses soundSettingsChanged
+      int           serialBusDelayOffset;
+      bool          enableACIA;
       bool          sidModel6581;
       bool          sidDigiBlaster;
       bool          enableFileIO;
@@ -167,6 +169,7 @@ namespace Plus4Emu {
       int         defaultSampleRate;
       int         feedbackLevel;
       int         soundFileChannel;
+      bool        invertSoundFileSignal;
       bool        enableSoundFileFilter;
       double      soundFileFilterMinFreq;
       double      soundFileFilterMaxFreq;

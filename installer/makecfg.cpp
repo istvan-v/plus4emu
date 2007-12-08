@@ -182,6 +182,8 @@ class Plus4EmuMachineConfiguration {
   struct {
     unsigned int  cpuClockFrequency;
     unsigned int  videoClockFrequency;
+    int           serialBusDelayOffset;
+    bool          enableACIA;
   } vm;
   struct {
     struct {
@@ -235,6 +237,8 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
 {
   vm.cpuClockFrequency = 1U;
   vm.videoClockFrequency = ((n & 1) == 0 ? 17734475U : 14318180U);
+  vm.serialBusDelayOffset = 0;
+  vm.enableACIA = bool(n & 2);
   memory.ram.size = ((n & 2) == 0 ? 16 : 64);
   memory.rom[0x00].file = romDirectory + "p4_basic.rom";
   if ((n & 1) == 0) {
@@ -259,6 +263,8 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   memory.rom[0x31].offset = 16384;
   config.createKey("vm.cpuClockFrequency", vm.cpuClockFrequency);
   config.createKey("vm.videoClockFrequency", vm.videoClockFrequency);
+  config.createKey("vm.serialBusDelayOffset", vm.serialBusDelayOffset);
+  config.createKey("vm.enableACIA", vm.enableACIA);
   config.createKey("memory.ram.size", memory.ram.size);
   config.createKey("memory.rom.00.file", memory.rom[0x00].file);
   config.createKey("memory.rom.00.offset", memory.rom[0x00].offset);

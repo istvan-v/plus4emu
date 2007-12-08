@@ -93,6 +93,12 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.speedPercentage",
                                 vm.speedPercentage, 100U,
                                 soundSettingsChanged, 0.0, 1000.0);
+    defineConfigurationVariable(*this, "vm.serialBusDelayOffset",
+                                vm.serialBusDelayOffset, int(0),
+                                vmConfigurationChanged, -100.0, 100.0);
+    defineConfigurationVariable(*this, "vm.enableACIA",
+                                vm.enableACIA, false,
+                                vmConfigurationChanged);
     defineConfigurationVariable(*this, "vm.sidModel6581",
                                 vm.sidModel6581, false,
                                 vmConfigurationChanged);
@@ -324,6 +330,9 @@ namespace Plus4Emu {
                                 tape.soundFileChannel, int(0),
                                 tapeSoundFileSettingsChanged,
                                 0.0, 15.0);
+    defineConfigurationVariable(*this, "tape.invertSoundFileSignal",
+                                tape.invertSoundFileSignal, false,
+                                tapeSoundFileSettingsChanged);
     defineConfigurationVariable(*this, "tape.enableSoundFileFilter",
                                 tape.enableSoundFileFilter, false,
                                 tapeSoundFileSettingsChanged);
@@ -369,6 +378,8 @@ namespace Plus4Emu {
       // assume none of these will throw exceptions
       vm_.setCPUFrequency(vm.cpuClockFrequency);
       vm_.setVideoFrequency(vm.videoClockFrequency);
+      vm_.setSerialBusDelayOffset(vm.serialBusDelayOffset);
+      vm_.setEnableACIAEmulation(vm.enableACIA);
       vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster);
       vm_.setEnableFileIO(vm.enableFileIO);
       vmConfigurationChanged = false;
@@ -563,6 +574,7 @@ namespace Plus4Emu {
     }
     if (tapeSoundFileSettingsChanged) {
       vm_.setTapeSoundFileParameters(tape.soundFileChannel,
+                                     tape.invertSoundFileSignal,
                                      tape.enableSoundFileFilter,
                                      float(tape.soundFileFilterMinFreq),
                                      float(tape.soundFileFilterMaxFreq));
