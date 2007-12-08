@@ -911,7 +911,11 @@ namespace Plus4Emu {
     if (sf_seek(sf, filePos, SEEK_SET) != filePos)
       return false;
     // write data
+    if (invertSignal)
+      invertBuffer_();
     long    n = long(sf_writef_short(sf, &(buf.front()), sf_count_t(1024)));
+    if (invertSignal)
+      invertBuffer_();
     n = (n >= 0L ? n : 0L);
     size_t  endPos = filePos + size_t(n);
     if (endPos > tapeLength)
@@ -946,6 +950,8 @@ namespace Plus4Emu {
     n = (n >= 0 ? n : 0) * nChannels;
     for ( ; n < int(buf.size()); n++)
       buf[n] = 0;
+    if (invertSignal)
+      invertBuffer_();
     if (err)
       throw Exception("error writing tape file - is the disk full ?");
   }
@@ -960,12 +966,20 @@ namespace Plus4Emu {
     }
   }
 
+  void Tape_SoundFile::invertBuffer_()
+  {
+    for (size_t i = 0; i < buf.size(); i++) {
+      buf[i] = short(-1 - int(buf[i]));
+    }
+  }
+
   Tape_SoundFile::Tape_SoundFile(const char *fileName,
                                  int mode, int bitsPerSample)
     : Tape(bitsPerSample),
       sf((SNDFILE *) 0),
       nChannels(1),
       requestedChannel(0),
+      invertSignal(false),
       enableFIRFilter(false),
       isBufferDirty(false),
       firFilter(2048)
@@ -1069,7 +1083,7 @@ namespace Plus4Emu {
       int   tmp2 = (inputState >= 0 ? inputState : 0);
       switch (requestedBitsPerSample) {
       case 1:
-        tmp2 = (tmp2 > 0 ? 16384 : -16384);
+        tmp2 = (tmp2 > 0 ? 32767 : -32768);
         break;
       case 2:
         tmp2 = ((tmp2 <= 3 ? tmp2 : 3) << 14) - 24576;
@@ -1118,6 +1132,8 @@ namespace Plus4Emu {
     n = (n >= 0 ? n : 0) * nChannels;
     for ( ; n < int(buf.size()); n++)
       buf[n] = 0;
+    if (invertSignal)
+      invertBuffer_();
     if (err)
       throw Exception("error writing tape file - is the disk full ?");
   }
@@ -1162,6 +1178,7 @@ namespace Plus4Emu {
   }
 
   void Tape_SoundFile::setParameters(int requestedChannel_,
+                                     bool invertSignal_,
                                      bool enableFIRFilter_,
                                      float filterMinFreq_,
                                      float filterMaxFreq_)
@@ -1170,6 +1187,16 @@ namespace Plus4Emu {
         (requestedChannel_ >= 0 ?
          (requestedChannel_ < nChannels ? requestedChannel_ : (nChannels - 1))
          : 0);
+    if (invertSignal_ != invertSignal) {
+      // FIXME: errors are not handled here
+      try {
+        flushBuffer_();
+      }
+      catch (...) {
+      }
+      invertSignal = invertSignal_;
+      invertBuffer_();
+    }
     enableFIRFilter = enableFIRFilter_;
     if (enableFIRFilter) {
       firFilter.setFilterParameters(float(sampleRate),

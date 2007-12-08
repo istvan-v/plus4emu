@@ -333,6 +333,7 @@ namespace Plus4Emu {
     std::vector<short>  buf;    // 1024 interleaved sample frames
     int         nChannels;
     int         requestedChannel;
+    bool        invertSignal;
     bool        enableFIRFilter;
     bool        isBufferDirty;  // true if 'buf' has been changed,
                                 // and not written to file yet
@@ -341,6 +342,7 @@ namespace Plus4Emu {
     void seek_(size_t pos_);
     bool writeBuffer_();
     void flushBuffer_();
+    void invertBuffer_();
    public:
     /*!
      * Open tape file 'fileName'.
@@ -392,7 +394,8 @@ namespace Plus4Emu {
     /*!
      * Set parameters for sound file reading.
      */
-    void setParameters(int requestedChannel_, bool enableFIRFilter_,
+    void setParameters(int requestedChannel_, bool invertSignal_,
+                       bool enableFIRFilter_,
                        float filterMinFreq_, float filterMaxFreq_);
   };
 
