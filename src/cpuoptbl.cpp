@@ -4393,10 +4393,10 @@ namespace Plus4 {
     CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,
     // 0x101: RST
-    CPU_OP_PUSH_PCH,
-    CPU_OP_PUSH_PCL,
+    CPU_OP_DEC_SP,
+    CPU_OP_DEC_SP,
     CPU_OP_RESET,
-    CPU_OP_PUSH_TMP,
+    CPU_OP_DEC_SP,
     CPU_OP_LD_TMP_MEM,
     CPU_OP_LD_H_MEMP1_L_TMP,
     CPU_OP_LD_PC_HL,

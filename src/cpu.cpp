@@ -176,11 +176,6 @@ namespace Plus4 {
             checkReadBreakPoint(addr, reg_TMP);
         }
         break;
-      case CPU_OP_LD_TMP_MEM_NODEBUG:
-        reg_TMP = readMemory(uint16_t(reg_L) | (uint16_t(reg_H) << 8));
-        if (haltFlag)
-          currentOpcode--;
-        break;
       case CPU_OP_LD_MEM_TMP:
         {
           uint16_t  addr = uint16_t(reg_L) | (uint16_t(reg_H) << 8);
@@ -264,6 +259,11 @@ namespace Plus4 {
         }
         else
           currentOpcode--;
+        break;
+      case CPU_OP_DEC_SP:
+        // dummy push operation for reset
+        (void) readMemory(uint16_t(0x0100) | uint16_t(reg_SP));
+        reg_SP = (reg_SP - uint8_t(1)) & uint8_t(0xFF);
         break;
       case CPU_OP_LD_TMP_SR:
         {
