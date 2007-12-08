@@ -117,6 +117,7 @@ namespace Plus4Emu {
       tapeFileName(""),
       defaultTapeSampleRate(24000L),
       tapeSoundFileChannel(0),
+      tapeSoundFileInvertSignal(false),
       tapeEnableSoundFileFilter(false),
       tapeSoundFileFilterMinFreq(500.0f),
       tapeSoundFileFilterMaxFreq(5000.0f),
@@ -305,10 +306,19 @@ namespace Plus4Emu {
     (void) freq_;
   }
 
+  void VirtualMachine::setEnableACIAEmulation(bool isEnabled)
+  {
+    (void) isEnabled;
+  }
+
   void VirtualMachine::setSIDConfiguration(bool is6581, bool enableDigiBlaster)
   {
     (void) is6581;
     (void) enableDigiBlaster;
+  }
+
+  void VirtualMachine::disableSIDEmulation()
+  {
   }
 
   void VirtualMachine::setKeyboardState(int keyCode, bool isPressed)
@@ -436,6 +446,20 @@ namespace Plus4Emu {
   void VirtualMachine::setFloppyDriveHighAccuracy(bool isEnabled)
   {
     (void) isEnabled;
+  }
+
+  void VirtualMachine::setSerialBusDelayOffset(int n)
+  {
+    (void) n;
+  }
+
+  void VirtualMachine::disableUnusedFloppyDrives()
+  {
+  }
+
+  void VirtualMachine::resetFloppyDrive(int n)
+  {
+    (void) n;
   }
 
   void VirtualMachine::setEnableFileIO(bool isEnabled)
@@ -590,16 +614,19 @@ namespace Plus4Emu {
   }
 
   void VirtualMachine::setTapeSoundFileParameters(int requestedChannel_,
+                                                  bool invertSignal_,
                                                   bool enableFilter_,
                                                   float filterMinFreq_,
                                                   float filterMaxFreq_)
   {
     if (requestedChannel_ == tapeSoundFileChannel &&
+        invertSignal_ == tapeSoundFileInvertSignal &&
         enableFilter_ == tapeEnableSoundFileFilter &&
         filterMinFreq_ == tapeSoundFileFilterMinFreq &&
         filterMaxFreq_ == tapeSoundFileFilterMaxFreq)
       return;
     tapeSoundFileChannel = requestedChannel_;
+    tapeSoundFileInvertSignal = invertSignal_;
     tapeEnableSoundFileFilter = enableFilter_;
     tapeSoundFileFilterMinFreq = filterMinFreq_;
     tapeSoundFileFilterMaxFreq = filterMaxFreq_;
@@ -607,6 +634,7 @@ namespace Plus4Emu {
       if (typeid(*tape) == typeid(Tape_SoundFile)) {
         Tape_SoundFile& tape_ = *(dynamic_cast<Tape_SoundFile *>(tape));
         tape_.setParameters(tapeSoundFileChannel,
+                            tapeSoundFileInvertSignal,
                             tapeEnableSoundFileFilter,
                             tapeSoundFileFilterMinFreq,
                             tapeSoundFileFilterMaxFreq);
@@ -792,6 +820,7 @@ namespace Plus4Emu {
     if (typeid(*tape) == typeid(Tape_SoundFile)) {
       Tape_SoundFile& tape_ = *(dynamic_cast<Tape_SoundFile *>(tape));
       tape_.setParameters(tapeSoundFileChannel,
+                          tapeSoundFileInvertSignal,
                           tapeEnableSoundFileFilter,
                           tapeSoundFileFilterMinFreq,
                           tapeSoundFileFilterMaxFreq);

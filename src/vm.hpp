@@ -56,6 +56,7 @@ namespace Plus4Emu {
     std::string     tapeFileName;
     long            defaultTapeSampleRate;
     int             tapeSoundFileChannel;
+    bool            tapeSoundFileInvertSignal;
     bool            tapeEnableSoundFileFilter;
     float           tapeSoundFileFilterMinFreq;
     float           tapeSoundFileFilterMaxFreq;
@@ -200,9 +201,18 @@ namespace Plus4Emu {
      */
     virtual void setVideoFrequency(size_t freq_);
     /*!
+     * Set if the 6551 ACIA should be emulated.
+     */
+    virtual void setEnableACIAEmulation(bool isEnabled);
+    /*!
      * Set SID emulation parameters.
      */
     virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
+    /*!
+     * Disable SID emulation (which is automatically enabled by writing to
+     * any of the SID registers) to reduce CPU usage.
+     */
+    virtual void disableSIDEmulation();
     /*!
      * Set state of key 'keyCode' (0 to 127).
      */
@@ -329,6 +339,20 @@ namespace Plus4Emu {
      */
     virtual void setFloppyDriveHighAccuracy(bool isEnabled);
     /*!
+     * Set the serial bus delay offset to 'n' (-100 to 100) nanoseconds for
+     * devices that support this configuration option.
+     */
+    virtual void setSerialBusDelayOffset(int n);
+    /*!
+     * Disable all floppy drives with no disk image attached to reduce CPU
+     * usage.
+     */
+    virtual void disableUnusedFloppyDrives();
+    /*!
+     * Reset floppy drive 'n' (0 to 3), or all drives if 'n' is negative.
+     */
+    virtual void resetFloppyDrive(int n);
+    /*!
      * Set if the emulated machine should be allowed to access files in the
      * working directory.
      */
@@ -429,6 +453,7 @@ namespace Plus4Emu {
      * Set parameters for tape sound file I/O.
      */
     virtual void setTapeSoundFileParameters(int requestedChannel_,
+                                            bool invertSignal_,
                                             bool enableFilter_,
                                             float filterMinFreq_,
                                             float filterMaxFreq_);
