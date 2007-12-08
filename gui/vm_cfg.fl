@@ -61,7 +61,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
         } {
           Fl_Group {} {
             label {Clock frequency and timing settings} open
-            xywh {20 45 360 100} box ENGRAVED_FRAME align 21
+            xywh {20 45 360 135} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input vmCPUFrequencyValuator {
               label {CPU frequency}
@@ -91,23 +91,39 @@ class Plus4EmuGUI_MachineConfigWindow {open
               xywh {30 105 120 25} align 8 when 4 minimum 7e+06 maximum 3.6e+07 step 1 value 1.77345e+07
               code0 {o->cursor_color(Fl_Color(3));}
             }
+            Fl_Value_Slider vm1541SerialDelayValuator {
+              label {1541 serial bus delay offset (ns)}
+              callback {{
+  gui.config.vm.serialBusDelayOffset =
+      int(o->value() + 100.5) - 100;
+  gui.config.vmConfigurationChanged = true;
+}}
+              tooltip {Note: this option is only supported in the 1541 high timing accuracy mode} xywh {30 141 120 23} type Horizontal color 47 selection_color 52 align 8 minimum -100 maximum 100 step 4
+            }
           }
-          Fl_Group {} {
-            label {File I/O} open
-            xywh {20 155 360 65} box ENGRAVED_FRAME align 21
+          Fl_Group {} {open
+            xywh {20 190 360 95} box ENGRAVED_FRAME align 21
           } {
+            Fl_Light_Button vmEnableACIAValuator {
+              label {Enable 6551 ACIA emulation}
+              callback {{
+  gui.config.vm.enableACIA = (o->value() != 0);
+  gui.config.vmConfigurationChanged = true;
+}}
+              xywh {30 205 240 25} color 50 selection_color 3
+            }
             Fl_Light_Button vmEnableFileIOValuator {
               label {Enable virtual file I/O}
               callback {{
   gui.config.vm.enableFileIO = (o->value() != 0);
   gui.config.vmConfigurationChanged = true;
 }}
-              tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 180 240 25} color 50 selection_color 3
+              tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 245 240 25} color 50 selection_color 3
             }
           }
           Fl_Group {} {
             label {Video capture settings} open
-            xywh {20 230 360 100} box ENGRAVED_FRAME align 21
+            xywh {20 295 360 100} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input videoCaptureFrameRateValuator {
               label {Frame rate}
@@ -115,7 +131,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.frameRate = int(o->clamp(o->value()) + 0.5);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 255 120 25} align 8 when 4 minimum 24 maximum 60 step 1 value 30
+              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 320 120 25} align 8 when 4 minimum 24 maximum 60 step 1 value 30
               code0 {o->cursor_color(Fl_Color(3));}
             }
             Fl_Light_Button videoCaptureYUVFormatValuator {
@@ -124,7 +140,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.yuvFormat = (o->value() != 0);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are not recorded, and the frame rate is converted without interpolation)} xywh {30 290 240 25} value 1 color 50 selection_color 3
+              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are not recorded, and the frame rate is converted without interpolation)} xywh {30 355 240 25} value 1 color 50 selection_color 3
             }
           }
         }
@@ -555,8 +571,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
             Fl_Value_Slider tapeFeedbackLevelValuator {
               label {Tape signal to sound output}
               callback {{
-  gui.config.tape.feedbackLevel =
-      int(o->value() >= 0.0 ? (o->value() + 0.5) : (o->value() - 0.5));
+  gui.config.tape.feedbackLevel = int(o->value() + 10.5) - 10;
   gui.config.tapeSettingsChanged = true;
 }}
               tooltip {If non-zero, tape playback or recording is also sent to the sound output} xywh {30 106 120 23} type Horizontal color 47 selection_color 52 align 8 minimum -10 maximum 10 step 1
@@ -564,7 +579,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
           }
           Fl_Group {} {
             label {Sound file input} open
-            xywh {20 155 360 100} box ENGRAVED_FRAME align 21
+            xywh {20 155 360 135} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input tapeChannelValuator {
               label {Channel number}
@@ -576,13 +591,21 @@ class Plus4EmuGUI_MachineConfigWindow {open
               tooltip {Channel to use in multichannel sound files (for stereo files, channel 0 is left, and channel 1 is right)} xywh {30 180 40 25} align 8 when 4 maximum 15 step 1
               code0 {o->cursor_color(Fl_Color(3));}
             }
+            Fl_Light_Button tapeInvertSndFileSignalValuator {
+              label {Invert signal}
+              callback {{
+  gui.config.tape.invertSoundFileSignal = (o->value() != 0);
+  gui.config.tapeSoundFileSettingsChanged = true;
+}}
+              tooltip {Invert the audio signal that is read from or written to the file} xywh {30 215 160 25} color 50 selection_color 3
+            }
             Fl_Light_Button tapeEnableFilterValuator {
               label {Enable filter}
               callback {{
   gui.config.tape.enableSoundFileFilter = (o->value() != 0);
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {Apply a linear phase FIR bandpass filter to sound file input (enabling this increases CPU usage)} xywh {30 215 160 25} color 50 selection_color 3
+              tooltip {Apply a linear phase FIR bandpass filter to sound file input (enabling this increases CPU usage)} xywh {30 250 160 25} color 50 selection_color 3
             }
             Fl_Value_Slider tapeMinFreqValuator {
               label {Min freq}
@@ -590,7 +613,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tape.soundFileFilterMinFreq = o->value();
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {The lowest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 181 110 23} type Horizontal color 47 selection_color 52 align 4 maximum 2000 step 1 value 500
+              tooltip {The lowest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 216 110 23} type Horizontal color 47 selection_color 52 align 4 maximum 2000 step 1 value 500
             }
             Fl_Value_Slider tapeMaxFreqValuator {
               label {Max freq}
@@ -598,7 +621,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.tape.soundFileFilterMaxFreq = o->value();
   gui.config.tapeSoundFileSettingsChanged = true;
 }}
-              tooltip {The highest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 216 110 23} type Horizontal color 47 selection_color 52 align 4 minimum 1000 maximum 20000 step 10 value 5000
+              tooltip {The highest frequency not attenuated by the bandpass filter (if enabled) in Hz} xywh {260 251 110 23} type Horizontal color 47 selection_color 52 align 4 minimum 1000 maximum 20000 step 10 value 5000
             }
           }
         }
@@ -660,6 +683,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
     code {{
   vmCPUFrequencyValuator->value(double(gui.config.vm.cpuClockFrequency));
   vmVideoFrequencyValuator->value(double(gui.config.vm.videoClockFrequency));
+  vm1541SerialDelayValuator->value(double(gui.config.vm.serialBusDelayOffset));
+  vmEnableACIAValuator->value(gui.config.vm.enableACIA ? 1 : 0);
   vmEnableFileIOValuator->value(gui.config.vm.enableFileIO ? 1 : 0);
   videoCaptureFrameRateValuator->value(double(gui.config.videoCapture.frameRate));
   videoCaptureYUVFormatValuator->value(gui.config.videoCapture.yuvFormat ? 1 : 0);
@@ -694,6 +719,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   tapeDefaultSampleRateValuator->value(double(gui.config.tape.defaultSampleRate));
   tapeFeedbackLevelValuator->value(double(gui.config.tape.feedbackLevel));
   tapeChannelValuator->value(double(gui.config.tape.soundFileChannel));
+  tapeInvertSndFileSignalValuator->value(gui.config.tape.invertSoundFileSignal ? 1 : 0);
   tapeEnableFilterValuator->value(gui.config.tape.enableSoundFileFilter ? 1 : 0);
   tapeMinFreqValuator->value(gui.config.tape.soundFileFilterMinFreq);
   tapeMaxFreqValuator->value(gui.config.tape.soundFileFilterMaxFreq);
