@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.5-beta.exe"
+  OutFile "plus4emu-1.2.5.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -65,6 +65,7 @@ Section "plus4emu" SecMain
 
   File "..\COPYING"
   File /nonfatal "..\LICENSE.FLTK"
+  File /nonfatal "..\LICENSE.Lua"
   File /nonfatal "..\LICENSE.PortAudio"
   File /nonfatal "..\LICENSE.SDL"
   File /nonfatal "..\LICENSE.dotconf"
@@ -274,6 +275,7 @@ Section "Uninstall"
 
   Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\LICENSE.FLTK"
+  Delete "$INSTDIR\LICENSE.Lua"
   Delete "$INSTDIR\LICENSE.PortAudio"
   Delete "$INSTDIR\LICENSE.SDL"
   Delete "$INSTDIR\LICENSE.dotconf"
