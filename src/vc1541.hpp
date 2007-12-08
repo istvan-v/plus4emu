@@ -85,9 +85,9 @@ namespace Plus4 {
     M7501_      cpu;
     VIA6522_    via1;                   // serial port interface (1800..1BFF)
     VIA6522_    via2;                   // floppy control (1C00..1FFF)
-    SerialBus&  serialBus;
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
     uint8_t     memory_ram[2048];       // 2K RAM, 0000..0FFF
+    uint32_t    serialBusDelay;
     uint8_t     deviceNumber;
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
@@ -123,7 +123,8 @@ namespace Plus4 {
     static void writeMemory_VIA2(void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
-    void runOneCycle_();
+    static void processCallback(void *userData);
+    static void processCallbackHighAccuracy(void *userData);
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:
@@ -138,8 +139,9 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     * if this drive type does not use the selected ROM bank, the function call
-     * is ignored.
+     *   4: 1526 printer (data size is 8192 bytes)
+     * if this device type does not use the selected ROM bank, the function
+     * call is ignored.
      */
     virtual void setROMImage(int n, const uint8_t *romData_);
     /*!
@@ -151,35 +153,16 @@ namespace Plus4 {
      */
     virtual bool haveDisk() const;
     /*!
-     * Run floppy emulation for one microsecond.
+     * Returns the process function to be called at the time interval
+     * determined by serialBus.timesliceLength.
      */
-    virtual void runOneCycle();
+    virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
     /*!
-     * Run floppy emulation for 'timeRemaining' / 2^32 microseconds.
-     * Returns the remaining time in 2^-32 microseconds.
+     * Returns pointer to an optional process function that is called
+     * at twice the normal clock frequency, allowing for more accurate
+     * emulation.
      */
-    inline int64_t run(int64_t timeRemaining)
-    {
-      while (timeRemaining > int64_t(-715827882)) {
-        if (!halfCycleFlag) {
-          // delay serial port output by ~833.3 ns
-          halfCycleFlag = true;
-          uint8_t via1PortBOutput = via1.getPortB();
-          uint8_t atnAck_ = via1PortBOutput ^ (serialBus.getATN() ^ 0xFF);
-          atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-          serialBus.setCLKAndDATA(deviceNumber,
-                                  !(via1PortBOutput & 0x08), !(atnAck_));
-        }
-        if (timeRemaining > int64_t(0)) {
-          this->runOneCycle_();
-          halfCycleFlag = false;
-          timeRemaining -= (int64_t(1) << 32);
-        }
-        else
-          break;
-      }
-      return timeRemaining;
-    }
+    virtual SerialDevice::ProcessCallbackPtr getHighAccuracyProcessCallback();
     /*!
      * Reset floppy drive.
      */
@@ -228,6 +211,10 @@ namespace Plus4 {
      * the 1581).
      */
     virtual uint16_t getHeadPosition() const;
+    /*!
+     * Set the serial bus delay offset to 'n' (-100 to 100) nanoseconds.
+     */
+    virtual void setSerialBusDelayOffset(int n);
     // snapshot save/load functions
     virtual void saveState(Plus4Emu::File::Buffer&);
     virtual void saveState(Plus4Emu::File&);

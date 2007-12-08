@@ -779,8 +779,8 @@ namespace Plus4 {
       cpu(*this),
       via1(*this),
       via2(*this),
-      serialBus(serialBus_),
       memory_rom((uint8_t *) 0),
+      serialBusDelay(715827882U),
       deviceNumber(uint8_t(driveNum_)),
       dataBusState(0x00),
       via1PortBInput(0xFF),
@@ -845,66 +845,105 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1541::runOneCycle()
+  void VC1541::processCallback(void *userData)
   {
-    {
-      uint8_t via1PortBOutput = via1.getPortB();
-      uint8_t atnInput = serialBus.getATN() ^ 0xFF;
-      uint8_t atnAck_ = via1PortBOutput ^ atnInput;
-      atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-      serialBus.setCLKAndDATA(deviceNumber,
-                              !(via1PortBOutput & 0x08), !(atnAck_));
-      via1.setCA1(bool(atnInput));
-    }
-    via1.runOneCycle();
-    via2.runOneCycle();
-    cpu.runOneCycle();
-    if (!motorUpdateCnt) {
-      motorUpdateCnt = 16;
-      headLoadedFlag = updateMotors();
-    }
-    motorUpdateCnt--;
-    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
-                              + trackSpeedTable[currentTrack];
-    if (shiftRegisterBitCntFrac >= 65536) {
-      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-      if (shiftRegisterBitCnt >= 7) {
-        shiftRegisterBitCnt = 0;
-        // read/write next byte
-        updateHead();
+    VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
+    vc1541.timeRemaining += vc1541.serialBus.timesliceLength;
+    while (vc1541.timeRemaining >= 0) {
+      vc1541.timeRemaining -= (int64_t(1) << 32);
+      {
+        uint8_t via1PortBOutput = vc1541.via1.getPortB();
+        uint8_t atnInput = (~(uint8_t(vc1541.serialBus.getATN())));
+        uint8_t atnAck_ = via1PortBOutput ^ atnInput;
+        atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
+        vc1541.serialBus.setCLKAndDATA(vc1541.deviceNumber,
+                                       !(via1PortBOutput & 0x08), !(atnAck_));
+        vc1541.via1.setCA1(bool(atnInput));
       }
-      else if (++shiftRegisterBitCnt == 1) {
-        // clear byte ready flag
-        via2.setCA1(true);
+      vc1541.via1.runOneCycle();
+      vc1541.via2.runOneCycle();
+      vc1541.cpu.runOneCycle();
+      if (!vc1541.motorUpdateCnt) {
+        vc1541.motorUpdateCnt = 16;
+        vc1541.headLoadedFlag = vc1541.updateMotors();
+      }
+      vc1541.motorUpdateCnt--;
+      vc1541.shiftRegisterBitCntFrac =
+          vc1541.shiftRegisterBitCntFrac
+          + vc1541.trackSpeedTable[vc1541.currentTrack];
+      if (vc1541.shiftRegisterBitCntFrac >= 65536) {
+        vc1541.shiftRegisterBitCntFrac =
+            vc1541.shiftRegisterBitCntFrac & 0xFFFF;
+        if (vc1541.shiftRegisterBitCnt >= 7) {
+          vc1541.shiftRegisterBitCnt = 0;
+          // read/write next byte
+          vc1541.updateHead();
+        }
+        else if (++(vc1541.shiftRegisterBitCnt) == 1) {
+          // clear byte ready flag
+          vc1541.via2.setCA1(true);
+        }
       }
     }
   }
 
-  void VC1541::runOneCycle_()
+  void VC1541::processCallbackHighAccuracy(void *userData)
   {
-    via1.setCA1(!(serialBus.getATN()));
-    via1.runOneCycle();
-    via2.runOneCycle();
-    cpu.runOneCycle();
-    if (!motorUpdateCnt) {
-      motorUpdateCnt = 16;
-      headLoadedFlag = updateMotors();
-    }
-    motorUpdateCnt--;
-    shiftRegisterBitCntFrac = shiftRegisterBitCntFrac
-                              + trackSpeedTable[currentTrack];
-    if (shiftRegisterBitCntFrac >= 65536) {
-      shiftRegisterBitCntFrac = shiftRegisterBitCntFrac & 0xFFFF;
-      if (shiftRegisterBitCnt >= 7) {
-        shiftRegisterBitCnt = 0;
-        // read/write next byte
-        updateHead();
+    VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
+    vc1541.timeRemaining += (vc1541.serialBus.timesliceLength >> 1);
+    while (vc1541.timeRemaining >= 0) {
+      if (!vc1541.halfCycleFlag) {
+        // delay serial port output by ~833.3 ns
+        vc1541.halfCycleFlag = true;
+        uint8_t via1PortBOutput = vc1541.via1.getPortB();
+        uint8_t atnAck_ =
+            via1PortBOutput ^ (~(uint8_t(vc1541.serialBus.getATN())));
+        atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
+        vc1541.serialBus.setCLKAndDATA(vc1541.deviceNumber,
+                                       !(via1PortBOutput & 0x08), !(atnAck_));
       }
-      else if (++shiftRegisterBitCnt == 1) {
-        // clear byte ready flag
-        via2.setCA1(true);
+      if (vc1541.timeRemaining >= int64_t(vc1541.serialBusDelay)) {
+        vc1541.via1.setCA1(!vc1541.serialBus.getATN());
+        vc1541.via1.runOneCycle();
+        vc1541.via2.runOneCycle();
+        vc1541.cpu.runOneCycle();
+        if (!vc1541.motorUpdateCnt) {
+          vc1541.motorUpdateCnt = 16;
+          vc1541.headLoadedFlag = vc1541.updateMotors();
+        }
+        vc1541.motorUpdateCnt--;
+        vc1541.shiftRegisterBitCntFrac =
+            vc1541.shiftRegisterBitCntFrac
+            + vc1541.trackSpeedTable[vc1541.currentTrack];
+        if (vc1541.shiftRegisterBitCntFrac >= 65536) {
+          vc1541.shiftRegisterBitCntFrac =
+              vc1541.shiftRegisterBitCntFrac & 0xFFFF;
+          if (vc1541.shiftRegisterBitCnt >= 7) {
+            vc1541.shiftRegisterBitCnt = 0;
+            // read/write next byte
+            vc1541.updateHead();
+          }
+          else if (++(vc1541.shiftRegisterBitCnt) == 1) {
+            // clear byte ready flag
+            vc1541.via2.setCA1(true);
+          }
+        }
+        vc1541.halfCycleFlag = false;
+        vc1541.timeRemaining -= (int64_t(1) << 32);
       }
+      else
+        break;
     }
+  }
+
+  SerialDevice::ProcessCallbackPtr VC1541::getProcessCallback()
+  {
+    return &processCallback;
+  }
+
+  SerialDevice::ProcessCallbackPtr VC1541::getHighAccuracyProcessCallback()
+  {
+    return &processCallbackHighAccuracy;
   }
 
   void VC1541::reset()
@@ -988,6 +1027,12 @@ namespace Plus4 {
     // FIXME: this is not accurate
     retval |= uint16_t((headPosition / 367) & 0x7F);
     return retval;
+  }
+
+  void VC1541::setSerialBusDelayOffset(int n)
+  {
+    n = (n > -100 ? (n < 100 ? n : 100) : -100);
+    serialBusDelay = uint32_t(715827882 - (n * 4294967));
   }
 
   void VC1541::saveState(Plus4Emu::File::Buffer& buf)
