@@ -109,8 +109,8 @@ Section "plus4emu" SecMain
     CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
     SetOutPath "$INSTDIR"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - OpenGL mode.lnk" "$INSTDIR\plus4emu.exe" '-opengl'
-    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl' '-colorscheme 1'
-    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl' '-colorscheme 2'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 1'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 2'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - software mode.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\README.lnk" "$INSTDIR\readme.txt"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Reinstall configuration files.lnk" "$INSTDIR\makecfg.exe" '"$INSTDIR"'
