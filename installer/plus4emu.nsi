@@ -108,6 +108,8 @@ Section "plus4emu" SecMain
     CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
     SetOutPath "$INSTDIR"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - OpenGL mode.lnk" "$INSTDIR\plus4emu.exe" '-opengl'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl' '-colorscheme 1'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl' '-colorscheme 2'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - software mode.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\README.lnk" "$INSTDIR\readme.txt"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Reinstall configuration files.lnk" "$INSTDIR\makecfg.exe" '"$INSTDIR"'
@@ -221,31 +223,73 @@ SectionEnd
 
 Section "Download ROM images" SecDLRoms
 
+  Var /GLOBAL useZimmersNet
+  Var /GLOBAL romFileName
+  Var /GLOBAL altDLPath
+  Var /GLOBAL romDLPath
+  StrCpy $useZimmersNet "no"
+  StrCpy $romFileName ""
+  StrCpy $altDLPath ""
+  StrCpy $romDLPath ""
+
   SetOutPath "$INSTDIR\roms"
 
   Push ""
+  Push ""
   Push "p4_ntsc.rom"
+  Push "firmware/computers/plus4/kernal.318005-05.bin"
   Push "p4kernal.rom"
+  Push "firmware/computers/plus4/kernal.318004-05.bin"
   Push "p4_basic.rom"
+  Push "firmware/computers/plus4/basic.318006-01.bin"
   Push "dos1581.rom"
+  Push "firmware/drives/new/1581/1581-rom.318045-02.bin"
   Push "dos1551.rom"
+  Push "firmware/computers/plus4/1551.318008-01.bin"
   Push "dos15412.rom"
+  Push "firmware/drives/new/1541/1541-II.251968-03.bin"
   Push "dos1541.rom"
+  Push "firmware/drives/new/1541/1541-II.251968-03.bin"
   Push "3plus1lo.rom"
+  Push "firmware/computers/plus4/3-plus-1.317053-01.bin"
   Push "3plus1hi.rom"
+  Push "firmware/computers/plus4/3-plus-1.317054-01.bin"
   Push "1526_mod.rom"
+  Push "firmware/printers/1526/1526-07c.bin"
   Push "1526_07c.rom"
+  Push "firmware/printers/1526/1526-07c.bin"
 
   downloadLoop:
 
-    Pop $0
-    StrCmp $0 "" downloadLoopDone 0
-    NSISdl::download "http://www.sharemation.com/IstvanV/roms/$0" "$INSTDIR\roms\$0"
+    Pop $altDLPath
+    Pop $romFileName
+    StrCmp $romFileName "" downloadLoopDone 0
+
+  setROMFileDLPath:
+
+    StrCmp $useZimmersNet "yes" setDLPath2 0
+    StrCpy $romDLPath "http://www.sharemation.com/IstvanV/roms/$romFileName"
+    Goto dlROMFile
+
+  setDLPath2:
+
+    StrCpy $romDLPath "http://www.zimmers.net/anonftp/pub/cbm/$altDLPath"
+
+  dlROMFile:
+
+    NSISdl::download "$romDLPath" "$INSTDIR\roms\$romFileName"
     Pop $R0
     StrCmp $R0 "success" downloadLoop 0
     StrCmp $R0 "cancel" downloadLoop 0
+    StrCmp $useZimmersNet "no" tryZimmersNet 0
     MessageBox MB_OK "Download failed: $R0"
     Goto downloadLoop
+
+  tryZimmersNet:
+
+    MessageBox MB_OK "WARNING: download from www.sharemation.com failed ($R0), using www.zimmers.net instead"
+    StrCpy $useZimmersNet "yes"
+    Goto setROMFileDLPath
 
   downloadLoopDone:
 
@@ -331,6 +375,8 @@ Section "Uninstall"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $MUI_TEMP
 
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - OpenGL mode.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - Win2000 theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - plastic theme.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - software mode.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\README.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Reinstall configuration files.lnk"
