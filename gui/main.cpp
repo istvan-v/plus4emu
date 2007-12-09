@@ -278,7 +278,7 @@ int main(int argc, char **argv)
       config->applySettings();
       vm->setEnableDisplay(false);
       vm->setEnableAudioOutput(false);
-      vm->run(2500000);
+      vm->run(2475000);
       writeKeyboardBuffer(*vm, "Lo\"*\",8,1\n");
       for (int i = 0; i < 1000; i++) {
         vm->run(1000);

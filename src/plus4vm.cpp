@@ -531,7 +531,7 @@ namespace Plus4 {
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.tapeTimeRemaining += vm.tedTimesliceLength;
-    if (vm.tapeTimeRemaining > 0) {
+    if (vm.tapeTimeRemaining >= 0) {
       // assume tape sample rate < single clock frequency
       int64_t timesliceLength = vm.tapeTimesliceLength;
       if (timesliceLength <= 0)
@@ -794,7 +794,7 @@ namespace Plus4 {
       ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
     tedTimeRemaining += (int64_t(microseconds) << 32);
-    while (tedTimeRemaining > 0) {
+    while (tedTimeRemaining >= 0) {
       ted->runOneCycle();
       tedTimeRemaining -= tedTimesliceLength;
     }
