@@ -86,7 +86,7 @@ namespace Plus4 {
     VIA6522_    via1;                   // serial port interface (1800..1BFF)
     VIA6522_    via2;                   // floppy control (1C00..1FFF)
     const uint8_t *memory_rom;          // 16K ROM, 8000..FFFF
-    uint8_t     memory_ram[2048];       // 2K RAM, 0000..0FFF
+    uint8_t     memory_ram[2048];       // 2K RAM, 0000..07FF
     uint32_t    serialBusDelay;
     uint8_t     deviceNumber;
     uint8_t     dataBusState;

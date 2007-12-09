@@ -528,25 +528,26 @@ namespace Plus4 {
   {
     // initialize memory map
     setMemoryCallbackUserData((void *) &vc1541_);
-    for (uint16_t i = 0x0000; i <= 0x0FFF; i++) {
-      setMemoryReadCallback(i, &VC1541::readMemory_RAM);
-      setMemoryWriteCallback(i, &VC1541::writeMemory_RAM);
-    }
-    for (uint16_t i = 0x1000; i <= 0x17FF; i++) {
-      setMemoryReadCallback(i, &VC1541::readMemory_Dummy);
-      setMemoryWriteCallback(i, &VC1541::writeMemory_Dummy);
-    }
-    for (uint16_t i = 0x1800; i <= 0x1BFF; i++) {
-      setMemoryReadCallback(i, &VC1541::readMemory_VIA1);
-      setMemoryWriteCallback(i, &VC1541::writeMemory_VIA1);
-    }
-    for (uint16_t i = 0x1C00; i <= 0x1FFF; i++) {
-      setMemoryReadCallback(i, &VC1541::readMemory_VIA2);
-      setMemoryWriteCallback(i, &VC1541::writeMemory_VIA2);
-    }
-    for (uint16_t i = 0x2000; i <= 0x7FFF; i++) {
-      setMemoryReadCallback(i, &VC1541::readMemory_Dummy);
-      setMemoryWriteCallback(i, &VC1541::writeMemory_Dummy);
+    for (uint16_t i = 0x0000; i <= 0x7FFF; i++) {
+      switch (i & 0x1C00) {
+      case 0x0000:
+      case 0x0400:
+        setMemoryReadCallback(i, &VC1541::readMemory_RAM);
+        setMemoryWriteCallback(i, &VC1541::writeMemory_RAM);
+        break;
+      case 0x1800:
+        setMemoryReadCallback(i, &VC1541::readMemory_VIA1);
+        setMemoryWriteCallback(i, &VC1541::writeMemory_VIA1);
+        break;
+      case 0x1C00:
+        setMemoryReadCallback(i, &VC1541::readMemory_VIA2);
+        setMemoryWriteCallback(i, &VC1541::writeMemory_VIA2);
+        break;
+      default:
+        setMemoryReadCallback(i, &VC1541::readMemory_Dummy);
+        setMemoryWriteCallback(i, &VC1541::writeMemory_Dummy);
+        break;
+      }
     }
     for (uint32_t i = 0x8000; i <= 0xFFFF; i++) {
       setMemoryReadCallback(uint16_t(i), &VC1541::readMemory_ROM);
@@ -987,31 +988,38 @@ namespace Plus4 {
 
   uint8_t VC1541::readMemoryDebug(uint16_t addr) const
   {
-    if (addr < 0x2000) {
-      if (addr < 0x1000)
+    if (addr < 0x8000) {
+      switch (addr & 0x1C00) {
+      case 0x0000:
+      case 0x0400:
         return memory_ram[addr & 0x07FF];
-      else if (addr >= 0x1C00)
-        return via2.readRegisterDebug(addr & 0x000F);
-      else if (addr >= 0x1800)
+      case 0x1800:
         return via1.readRegisterDebug(addr & 0x000F);
+      case 0x1C00:
+        return via2.readRegisterDebug(addr & 0x000F);
+      }
     }
-    else if (addr >= 0x8000) {
-      if (memory_rom)
-        return memory_rom[addr & 0x3FFF];
-    }
+    else if (memory_rom)
+      return memory_rom[addr & 0x3FFF];
     return uint8_t(0xFF);
   }
 
   void VC1541::writeMemoryDebug(uint16_t addr, uint8_t value)
   {
-    if (addr < 0x1800) {
-      if (addr < 0x1000)
+    if (addr < 0x8000) {
+      switch (addr & 0x1C00) {
+      case 0x0000:
+      case 0x0400:
         memory_ram[addr & 0x07FF] = value;
+        break;
+      case 0x1800:
+        via1.writeRegister(addr & 0x000F, value);
+        break;
+      case 0x1C00:
+        via2.writeRegister(addr & 0x000F, value);
+        break;
+      }
     }
-    else if (addr < 0x1C00)
-      via1.writeRegister(addr & 0x000F, value);
-    else if (addr < 0x2000)
-      via2.writeRegister(addr & 0x000F, value);
   }
 
   uint8_t VC1541::getLEDState() const
