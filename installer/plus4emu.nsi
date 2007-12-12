@@ -144,6 +144,8 @@ Section "Source code" SecSrc
   SetOutPath "$INSTDIR\src\gui"
 
   File "..\gui\*.fl"
+  File "..\gui\debugger.cpp"
+  File "..\gui\debugger.hpp"
   File "..\gui\gui.cpp"
   File "..\gui\gui.hpp"
   File "..\gui\main.cpp"
