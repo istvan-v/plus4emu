@@ -360,7 +360,7 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyViewAddress = disassemblySearchBack(20);
   updateDisassemblyDisplay();
 }}
-              tooltip {View previous page} xywh {750 630 55 25} color 50 selection_color 51
+              tooltip {View previous page} xywh {685 630 55 25} color 50 selection_color 51
             }
             Fl_Button {} {
               label {@|<}
@@ -370,7 +370,7 @@ class Plus4EmuGUI_DebugWindow {open
     updateDisassemblyDisplay();
   }
 }}
-              tooltip {Return to start address} xywh {810 630 55 25} color 50 selection_color 51
+              tooltip {Return to start address} xywh {745 630 55 25} color 50 selection_color 51
             }
             Fl_Button disassemblyNxtPageButton {
               label {@>}
@@ -378,7 +378,15 @@ class Plus4EmuGUI_DebugWindow {open
   disassemblyViewAddress = disassemblyNextAddress;
   updateDisassemblyDisplay();
 }}
-              tooltip {View next page} xywh {870 630 55 25} color 50 selection_color 51
+              tooltip {View next page} xywh {805 630 55 25} color 50 selection_color 51
+            }
+            Fl_Button {} {
+              label PC
+              callback {{
+  disassemblyViewAddress = gui.vm.getProgramCounter();
+  updateDisassemblyDisplay();
+}}
+              tooltip {View code at the program counter} xywh {870 630 55 25} color 50 selection_color 51
             }
           }
         }
