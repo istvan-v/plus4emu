@@ -1830,6 +1830,12 @@ namespace Plus4 {
 
   void Plus4VM::setCPURegisters(const M7501Registers& r)
   {
+    if (isRecordingDemo | isPlayingDemo) {
+      if (currentDebugContext == 0) {
+        stopDemoPlayback();
+        stopDemoRecording(false);
+      }
+    }
     M7501   *p = getDebugCPU();
     if (p)
       p->setRegisters(r);
