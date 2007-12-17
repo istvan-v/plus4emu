@@ -80,6 +80,7 @@ void Plus4EmuGUI::init_()
   debugWindow = (Plus4EmuGUI_DebugWindow *) 0;
   printerWindow = (Plus4EmuGUI_PrinterWindow *) 0;
   aboutWindow = (Plus4EmuGUI_AboutWindow *) 0;
+  savedSpeedPercentage = 0U;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
   demoDirectory = defaultDir_;
@@ -1346,6 +1347,7 @@ void Plus4EmuGUI::saveQuickConfig(int n)
     Plus4Emu::ConfigurationDB tmpCfg;
     tmpCfg.createKey("vm.cpuClockFrequency", config.vm.cpuClockFrequency);
     tmpCfg.createKey("vm.videoClockFrequency", config.vm.videoClockFrequency);
+    tmpCfg.createKey("vm.speedPercentage", config.vm.speedPercentage);
     tmpCfg.createKey("vm.serialBusDelayOffset", config.vm.serialBusDelayOffset);
     tmpCfg.saveState(fName, true);
   }
@@ -1780,7 +1782,12 @@ void Plus4EmuGUI::menuCallback_Machine_FullSpeed(Fl_Widget *o, void *v)
   try {
     Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
         gui_.config["vm.speedPercentage"];
-    cv = ((unsigned int) cv == 0U ? 100U : 0U);
+    if ((unsigned int) cv != 0U) {
+      gui_.savedSpeedPercentage = (unsigned int) cv;
+      cv = 0U;
+    }
+    else
+      cv = gui_.savedSpeedPercentage;
     gui_.applyEmulatorConfiguration();
   }
   catch (std::exception& e) {
