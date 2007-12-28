@@ -283,9 +283,11 @@ static void convert8x2Pixels(int x, int y,
         for (int i = 0; i < 16; i++) {
           double  err0 = double(tmpBuf[i] - minVal);
           double  err1 = double(tmpBuf[i] - maxVal);
+          double  err_ = err0 + err1;
           err0 = err0 * err0;
           err1 = err1 * err1;
-          err = err + (err0 < err1 ? err0 : err1) + ((err0 + err1) * 0.000001);
+          err_ = err_ * err_;
+          err = err + (err0 < err1 ? err0 : err1) + (err_ * 0.00001);
         }
         if (err < minErr) {
           minErr = err;
