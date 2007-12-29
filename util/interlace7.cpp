@@ -24,7 +24,7 @@
 static  double  yMin = 0.0;
 static  double  yMax = 1.0;
 static  double  colorSaturationMult = 1.0;
-static  double  colorSaturationPow = 0.3;
+static  double  colorSaturationPow = 0.5;
 static  double  monitorGamma = 1.33;
 static  double  ditherLimit = 0.1;
 static  int     colorSearchMode = 1;
@@ -144,6 +144,8 @@ static  float   resizedImageU[320 * 400];
 static  float   resizedImageV[320 * 400];
 static  float   prvLineU[320];
 static  float   prvLineV[320];
+static  float   prvBitmapU[24];
+static  float   prvBitmapV[24];
 static  int     ditherTable[256];
 
 static void createDitherTable()
@@ -255,6 +257,7 @@ static void convert8x2Pixels(int x, int y,
   int     l1 = 8;
   int     c0 = 0;
   int     c1 = 0;
+  // find the best pair of luminance values
   {
     float   tmpBuf[16];
     for (int i = 0; i < 16; i++)
@@ -299,6 +302,7 @@ static void convert8x2Pixels(int x, int y,
   }
   float   minVal = yTable[l0];
   float   maxVal = yTable[l1];
+  // get PRG data pointers
   static const int bitmapOffsetTable[16] = {
     0x2000, 0x4000, 0x2001, 0x4001, 0x2002, 0x4002, 0x2003, 0x4003,
     0x2004, 0x4004, 0x2005, 0x4005, 0x2006, 0x4006, 0x2007, 0x4007
@@ -320,6 +324,7 @@ static void convert8x2Pixels(int x, int y,
   unsigned char   *clrPtr = &(prgData[((y / 16) * 40)
                                       + (x / 8)
                                       + clrOffsetTable[y & 15] - 0x0FFF]);
+  // calculate two bitmap bytes with dithering
   for (int i = 0; i < 16; i++) {
     float   c = yTbl[i];
     float   err0 = float(std::fabs(double(c - minVal)));
@@ -338,8 +343,31 @@ static void convert8x2Pixels(int x, int y,
     if (c >= tmp)
       bitmapPtr[i >> 3] |= (unsigned char) (1 << (7 - (i & 7)));
   }
+  // if all bits are 0 or 1, replace with dither pattern
+  // to improve color conversion
+  if (bitmapPtr[0] == bitmapPtr[1] &&
+      (bitmapPtr[0] == 0x00 || bitmapPtr[0] == 0xFF)) {
+    if (bitmapPtr[0] == 0x00)
+      l1 = l0;
+    else
+      l0 = l1;
+    bitmapPtr[0] = 0x00;
+    bitmapPtr[1] = 0x00;
+    for (int i = 0; i < 16; i++) {
+      int     ditherIndex = ((((y + ((i & 8) >> 2)) & 15) << 4)
+                            | ((x + (i & 7)) & 15));
+      ditherIndex = ditherIndex ^ (i < 8 ? ditherXORValue0 : ditherXORValue1);
+      if (oddField && !disableXShift)
+        ditherIndex = (ditherIndex & 0xF0) | ((ditherIndex + 4) & 0x0F);
+      float   tmp = (float(ditherTable[ditherIndex]) + 0.5f) / 256.0f;
+      if (tmp <= 0.5f)
+        bitmapPtr[i >> 3] |= (unsigned char) (1 << (7 - (i & 7)));
+    }
+  }
+  // store luminance code
   (*lumPtr) = (unsigned char) (((l0 > 0 ? (l0 - 1) : l0) << 4)
                                | (l1 > 0 ? (l1 - 1) : l1));
+  // find the pair of colors that gives the least amount of error
   float   tmpUTbl_[24];
   float   *tmpUTbl = &(tmpUTbl_[8]);
   float   tmpVTbl_[24];
@@ -380,9 +408,34 @@ static void convert8x2Pixels(int x, int y,
         }
         tmpUTbl[j] = u_;
         tmpVTbl[j] = v_;
+      }
+      for (int j = 0; j < 16; j++) {
+        float   u_ = tmpUTbl[j];
+        float   v_ = tmpVTbl[j];
         if (!disablePAL) {
-          u_ = (u_ + tmpUTbl[j - 8]) * 0.5f;
-          v_ = (v_ + tmpVTbl[j - 8]) * 0.5f;
+          // assume PAL filtering if requested
+          u_ += tmpUTbl[j - 8];
+          v_ += tmpVTbl[j - 8];
+          if ((j & 7) != 7) {
+            u_ *= 0.96f;
+            v_ *= 0.96f;
+            if ((j & 7) != 0) {
+              u_ += ((tmpUTbl[j - 1] + tmpUTbl[j - 9]) * 0.52f);
+              v_ += ((tmpVTbl[j - 1] + tmpVTbl[j - 9]) * 0.52f);
+            }
+            else {
+              u_ += ((prvBitmapU[j + 15] + prvBitmapU[j + 7]) * 0.52f);
+              v_ += ((prvBitmapV[j + 15] + prvBitmapV[j + 7]) * 0.52f);
+            }
+            u_ += ((tmpUTbl[j + 1] + tmpUTbl[j - 7]) * 0.52f);
+            v_ += ((tmpVTbl[j + 1] + tmpVTbl[j - 7]) * 0.52f);
+          }
+          else {
+            u_ += (tmpUTbl[j - 1] + tmpUTbl[j - 9]);
+            v_ += (tmpVTbl[j - 1] + tmpVTbl[j - 9]);
+          }
+          u_ *= 0.25f;
+          v_ *= 0.25f;
         }
         double  errU = double(u_) - double(uTbl[j]);
         double  errV = double(v_) - double(vTbl[j]);
@@ -392,22 +445,19 @@ static void convert8x2Pixels(int x, int y,
         c0 = c0tmp;
         c1 = c1tmp;
         minColorErr = err;
+        // save previous color information for PAL filtering
+        for (int j = 0; j < 24; j++) {
+          prvBitmapU[j] = tmpUTbl_[j];
+          prvBitmapV[j] = tmpVTbl_[j];
+        }
+        for (int j = 0; j < 8; j++) {
+          prvLineU[offsX + j] = tmpUTbl[j + 8];
+          prvLineV[offsX + j] = tmpVTbl[j + 8];
+        }
       }
     }
   }
-  for (int i = 0; i < 8; i++) {
-    int     c_ = c0;
-    if (int(bitmapPtr[1]) & (1 << (7 - i)))
-      c_ = c1;
-    float   u_ = 0.0f;
-    float   v_ = 0.0f;
-    if (c_ > 0) {
-      u_ = uvTable[c_ - 1].u;
-      v_ = uvTable[c_ - 1].v;
-    }
-    prvLineU[offsX + i] = u_;
-    prvLineV[offsX + i] = v_;
-  }
+  // store color code
   (*clrPtr) = (unsigned char) ((c1 << 4) | c0);
 }
 
@@ -517,7 +567,7 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "    -ymax <MAX>         (default: 1.0)\n");
     std::fprintf(stderr, "        scale luminance range from 0..1 to "
                          "MIN..MAX\n");
-    std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.25)\n");
+    std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.5)\n");
     std::fprintf(stderr, "    -mgamma <N>         (default: 1.33)\n");
     std::fprintf(stderr, "        assume monitor gamma N\n");
     std::fprintf(stderr, "    -ditherlimit <N>    (default: 0.1)\n");
@@ -625,6 +675,10 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "\r  %3d%%  ", y * 50 / 400);
     int     xorValue0 = int((std::rand() & 0x4000) >> 14);
     int     xorValue1 = int((std::rand() & 0x4000) >> 14);
+    for (int i = 0; i < 24; i++) {
+      prvBitmapU[i] = 0.0f;
+      prvBitmapV[i] = 0.0f;
+    }
     for (int x = 0; x < 320; x += 8)
       convert8x2Pixels(x, y, xorValue0, xorValue1);
   }
@@ -636,6 +690,10 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "\r  %3d%%  ", (y + 400) * 50 / 400);
     int     xorValue0 = int((std::rand() & 0x4000) >> 14);
     int     xorValue1 = int((std::rand() & 0x4000) >> 14);
+    for (int i = 0; i < 24; i++) {
+      prvBitmapU[i] = 0.0f;
+      prvBitmapV[i] = 0.0f;
+    }
     for (int x = 0; x < 320; x += 8)
       convert8x2Pixels(x, y, xorValue0, xorValue1);
   }
