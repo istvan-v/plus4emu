@@ -388,26 +388,6 @@ static inline void limitValue(double& x, double min_, double max_)
   }
 }
 
-static inline int minValue(double& x, double a, double b)
-{
-  if (b < a) {
-    x = b;
-    return 1;
-  }
-  x = a;
-  return 0;
-}
-
-static inline int maxValue(double& x, double a, double b)
-{
-  if (b > a) {
-    x = b;
-    return 1;
-  }
-  x = a;
-  return 0;
-}
-
 static bool ditherPixelValue(long xc, long yc, double n)
 {
   return (n >= ((double(ditherTable[((yc & 63L) << 6)
@@ -573,8 +553,8 @@ const unsigned char PRGData::prgHeader[0x0401] = {
   0x69, 0x01, 0x29, 0x0E, 0x18, 0x69, 0x98, 0x85, 0xDF, 0x84, 0xDE, 0xA9,
   0x00, 0x85, 0xDC, 0x8A, 0x0A, 0x0A, 0x0A, 0x09, 0xF0, 0x85, 0xE0, 0xA9,
   0x13, 0x85, 0xE1, 0xC6, 0xD8, 0xC6, 0xD9, 0x20, 0x80, 0x12, 0x20, 0xC0,
-  0x12, 0xE6, 0xDC, 0xA5, 0xDC, 0xC9, 0x65, 0xD0, 0xF2, 0xA9, 0x60, 0x20,
-  0xE7, 0x13, 0x60, 0xEA, 0xEA, 0xEA, 0xEA, 0xA9, 0xEA, 0x20, 0xE7, 0x13,
+  0x12, 0xE6, 0xDC, 0xA5, 0xDC, 0xC9, 0x64, 0xD0, 0xF2, 0x20, 0x80, 0x12,
+  0xA9, 0x60, 0x20, 0xE7, 0x13, 0x60, 0xEA, 0xA9, 0xEA, 0x20, 0xE7, 0x13,
   0xA9, 0xEA, 0x20, 0xE7, 0x13, 0x60, 0x48, 0xA9, 0xA9, 0x20, 0xE7, 0x13,
   0x68, 0x20, 0xE7, 0x13, 0xA9, 0x8D, 0x20, 0xE7, 0x13, 0x8A, 0x20, 0xE7,
   0x13, 0xA9, 0xFF, 0x20, 0xE7, 0x13, 0x60, 0xA1, 0x00, 0xF6, 0x00, 0xD0,
@@ -921,6 +901,8 @@ class Plus4FLIConverter {
   bool    disablePAL;
   bool    disableInterlace;
   bool    luminance1BitMode;
+  bool    noFLIDisplayCode;
+  bool    noLuminanceInterlace;
  private:
   struct UVTableEntry {
     int     c0;
@@ -949,7 +931,8 @@ class Plus4FLIConverter {
   void createUVTables();
   void checkParameters();
   void ditherPixel(long xc, long yc);
-  void findLuminanceCodes(long xc, long yc);
+  inline double calculateLuminanceError(float n, int l0, int l1);
+  double findLuminanceCodes(long xc, long yc);
   void generateBitmaps();
   void findColorCodes(long xc, long yc, int dir_);
  public:
@@ -976,13 +959,15 @@ Plus4FLIConverter::Plus4FLIConverter()
     ditherLimit(0.125),
     ditherScale(0.5),
     ditherMode(0),
-    luminanceSearchMode(2),
+    luminanceSearchMode(4),
     xShift0(-1),
     xShift1(-1),
     borderColor(0x00),
     disablePAL(false),
     disableInterlace(false),
-    luminance1BitMode(false)
+    luminance1BitMode(false),
+    noFLIDisplayCode(false),
+    noLuminanceInterlace(false)
 {
   createYTable();
   createUVTables();
@@ -1059,7 +1044,7 @@ void Plus4FLIConverter::checkParameters()
   limitValue(ditherScale, 0.0, 1.0);
   ditherMode = (ditherMode > 0 ? (ditherMode < 1 ? ditherMode : 1) : 0);
   luminanceSearchMode = (luminanceSearchMode > 0 ?
-                         (luminanceSearchMode < 3 ? luminanceSearchMode : 3)
+                         (luminanceSearchMode < 4 ? luminanceSearchMode : 4)
                          : 0);
   xShift0 = (xShift0 > -2 ? (xShift0 < 7 ? xShift0 : 7) : -2);
   xShift1 = (xShift1 > -2 ? (xShift1 < 7 ? xShift1 : 7) : -2);
@@ -1080,7 +1065,6 @@ void Plus4FLIConverter::ditherPixel(long xc, long yc)
   float   pixelValueDithered = pixelValueOriginal + ditherError;
   float   pixelValue0 = yTable[l0];
   float   pixelValue1 = yTable[l1];
-  float   newPixelValue = pixelValue0;
   bool    bitValue = false;
   if (ditherMode == 0 && pixelValue1 > pixelValue0) {
     // ordered dithering
@@ -1105,9 +1089,11 @@ void Plus4FLIConverter::ditherPixel(long xc, long yc)
     bitValue = (calculateError(pixelValue1, pixelValueDithered)
                 < calculateError(pixelValue0, pixelValueDithered));
   }
-  if (bitValue)
-    newPixelValue = pixelValue1;
   prgData.setPixel(xcShifted, yc, bitValue);
+  if (ditherMode == 0)
+    return;
+  // diffuse error
+  float   newPixelValue = (bitValue ? pixelValue1 : pixelValue0);
   pixelValueDithered = pixelValueOriginal
                        + ((pixelValueDithered - pixelValueOriginal)
                           * float(ditherScale));
@@ -1115,7 +1101,6 @@ void Plus4FLIConverter::ditherPixel(long xc, long yc)
     pixelValueDithered = pixelValue0;
   if (pixelValueDithered > pixelValue1)
     pixelValueDithered = pixelValue1;
-  // diffuse error
   double  err = double(pixelValueDithered) - double(newPixelValue);
   for (int i = 0; i < 3; i++) {
     long    yc_ = yc + i;
@@ -1133,74 +1118,110 @@ void Plus4FLIConverter::ditherPixel(long xc, long yc)
   }
 }
 
-void Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
+inline double Plus4FLIConverter::calculateLuminanceError(
+    float n, int l0, int l1)
+{
+  float   l_0 = yTable[l0];
+  float   l_1 = yTable[l1];
+  double  err0 = calculateErrorSqr(l_0, n);
+  double  err1 = calculateErrorSqr(l_1, n);
+  double  err = (err0 < err1 ? err0 : err1);
+  switch (luminanceSearchMode) {
+  case 2:
+    return (n < l_0 || n > l_1 ? (err * 6.0) : err);
+  case 4:
+    {
+      float   l_037 = (l_0 * 0.63f) + (l_1 * 0.37f);
+      float   l_063 = (l_0 * 0.37f) + (l_1 * 0.63f);
+      double  err_037 = calculateErrorSqr(l_037, n);
+      double  err_063 = calculateErrorSqr(l_063, n);
+      double  err_ = (err_037 > err_063 ? err_037 : err_063);
+      return (err_ < err ? err_ : err);
+    }
+  }
+  return err;
+}
+
+double Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
 {
   int     l0 = 0;
   int     l1 = 8;
-  if (luminance1BitMode) {
-    luminanceCodeTable.l0(xc, yc) = l0;
-    luminanceCodeTable.l1(xc, yc) = l1;
-    prgData.luminance(xc, yc) = luminanceCodeTable.luminanceCode(xc, yc);
-    return;
-  }
-  float   tmpBuf[16];
-  for (int i = 0; i < 16; i++) {
-    long    x_ = (xc & (~(long(7)))) | long(i & 7);
-    long    y_ = (yc & (~(long(2)))) | long((i & 8) >> 2);
+  xc = xc & (~(long(7)));
+  yc = yc & (~(long(noLuminanceInterlace ? 3 : 2)));
+  float   tmpBuf[32];
+  int     nPixels = (noLuminanceInterlace ? 32 : 16);
+  for (int i = 0; i < nPixels; i++) {
+    long    x_ = xc | long(i & 7);
+    long    y_ = yc | long((i & 8) >> 2) | long(i >> 4);
     tmpBuf[i] = resizedImage.y()[y_].getPixelShifted(x_);
   }
-  // find the best pair of luminance values
-  if (luminanceSearchMode == 3) {
-    l0 = 8;
-    l1 = 0;
-    for (int i = 0; i < 16; i++) {
-      while (l0 > 0 && tmpBuf[i] < yTable[l0])
-        l0--;
-      while (l1 < 8 && tmpBuf[i] > yTable[l1])
-        l1++;
-    }
-  }
-  else {
+  if (!luminance1BitMode) {
+    // find the best pair of luminance values, depending on the search mode
     if (luminanceSearchMode == 1) {
-      for (int i = 0; i < 15; i++) {
-        for (int j = i + 1; j < 16; j++) {
-          if (tmpBuf[i] > tmpBuf[j]) {
-            float   tmp = tmpBuf[i];
-            tmpBuf[i] = tmpBuf[j];
-            tmpBuf[j] = tmp;
-          }
+      float   minVal = 1.0f;
+      float   maxVal = 0.0f;
+      for (int i = 0; i < nPixels; i++) {
+        if (tmpBuf[i] < minVal)
+          minVal = tmpBuf[i];
+        if (tmpBuf[i] > maxVal)
+          maxVal = tmpBuf[i];
+      }
+      double  minErr0 = 1000000.0;
+      double  minErr1 = 1000000.0;
+      for (int i = 0; i < 9; i++) {
+        double  err = calculateError(yTable[i], minVal);
+        if (err < minErr0) {
+          l0 = i;
+          minErr0 = err;
+        }
+        err = calculateError(yTable[i], maxVal);
+        if (err < minErr1) {
+          l1 = i;
+          minErr1 = err;
         }
       }
-      for (int i = 1; i < 15; i++)
-        tmpBuf[i] = tmpBuf[(i < 8 ? 0 : 15)];
-    }
-    float   minVal = 0.0f;
-    float   maxVal = 1.0f;
-    double  minErr = 1000000.0f;
-    for (int l0tmp = 0; l0tmp < 8; l0tmp++) {
-      for (int l1tmp = l0tmp + 1; l1tmp < 9; l1tmp++) {
-        minVal = yTable[l0tmp];
-        maxVal = yTable[l1tmp];
-        double  err = 0.0;
-        for (int i = 0; i < 16; i++) {
-          double  err0 = calculateErrorSqr(tmpBuf[i], minVal);
-          double  err1 = calculateErrorSqr(tmpBuf[i], maxVal);
-          double  err_ = calculateErrorSqr(tmpBuf[i], (minVal + maxVal) * 0.5f);
-          if (err0 < err1) {
-            if (luminanceSearchMode == 2 && tmpBuf[i] < minVal)
-              err0 = err0 * 6.0;
-            err = err + err0 + (err_ * 0.00001);
-          }
-          else {
-            if (luminanceSearchMode == 2 && tmpBuf[i] > maxVal)
-              err1 = err1 * 6.0;
-            err = err + err1 + (err_ * 0.00001);
-          }
+      if (l0 == l1) {
+        if (minErr0 < minErr1) {
+          if (l1 < 8)
+            l1++;
+          else
+            l0--;
         }
-        if (err < minErr) {
-          minErr = err;
-          l0 = l0tmp;
-          l1 = l1tmp;
+        else {
+          if (l0 > 0)
+            l0--;
+          else
+            l1++;
+        }
+      }
+    }
+    else if (luminanceSearchMode == 3) {
+      l0 = 8;
+      l1 = 0;
+      for (int i = 0; i < nPixels; i++) {
+        while (l0 > 0 && tmpBuf[i] < yTable[l0])
+          l0--;
+        while (l1 < 8 && tmpBuf[i] > yTable[l1])
+          l1++;
+      }
+    }
+    else {
+      double  minErr = 1000000.0f;
+      for (int l0tmp = 0; l0tmp < 8; l0tmp++) {
+        for (int l1tmp = l0tmp + 1; l1tmp < 9; l1tmp++) {
+          float   minVal = yTable[l0tmp];
+          float   maxVal = yTable[l1tmp];
+          double  err = 0.0;
+          for (int i = 0; i < nPixels; i++) {
+            err += calculateLuminanceError(tmpBuf[i], l0tmp, l1tmp);
+            err += (calculateErrorSqr(tmpBuf[i], (minVal + maxVal) * 0.5f)
+                    * 0.00001);
+          }
+          if (err < minErr) {
+            minErr = err;
+            l0 = l0tmp;
+            l1 = l1tmp;
+          }
         }
       }
     }
@@ -1209,6 +1230,21 @@ void Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
   luminanceCodeTable.l0(xc, yc) = l0;
   luminanceCodeTable.l1(xc, yc) = l1;
   prgData.luminance(xc, yc) = luminanceCodeTable.luminanceCode(xc, yc);
+  if (noLuminanceInterlace) {
+    luminanceCodeTable.l0(xc, yc + 1L) = l0;
+    luminanceCodeTable.l1(xc, yc + 1L) = l1;
+    prgData.luminance(xc, yc + 1L) =
+        luminanceCodeTable.luminanceCode(xc, yc + 1L);
+  }
+  // return the total amount of error (used when optimizing horizontal shifts)
+  double  err = 0.0;
+  for (int i = 0; i < nPixels; i++) {
+    long    y_ = yc | long((i & 8) >> 2) | long(i >> 4);
+    long    x_ = (xc | long(i & 7)) + resizedImage.y()[y_].getXShift();
+    if (x_ >= 8L && x_ < 312L)  // ignore pixels that are not visible
+      err += calculateLuminanceError(tmpBuf[i], l0, l1);
+  }
+  return err;
 }
 
 void Plus4FLIConverter::generateBitmaps()
@@ -1269,7 +1305,7 @@ void Plus4FLIConverter::findColorCodes(long xc, long yc, int dir_)
   double  minColorErr = 1000000.0;
   int     colorCnt = 29;        // could be 43 to interlace colors with grey
   for (int i0 = 0; i0 < colorCnt; i0++) {
-    for (int i1 = i0; i1 < colorCnt; i1++) {
+    for (int i1 = 0; i1 < colorCnt; i1++) {
       float   u0 = 0.0f;
       float   v0 = 0.0f;
       float   u1 = 0.0f;
@@ -1452,7 +1488,7 @@ int Plus4FLIConverter::processImage(const char *infileName,
       resizedImage.v()[yc].setXShift(xShift_);
     }
     for (int yc = 0; yc < 400; yc++) {
-      if (yc & 2)
+      if ((yc & (noLuminanceInterlace ? 3 : 2)) != 0)
         continue;
       std::fprintf(stderr, "\r  %3d%%  ", int((yc * 33) / 400));
       if (!(xShift0 == -1 || xShift1 == -1)) {
@@ -1488,23 +1524,13 @@ int Plus4FLIConverter::processImage(const char *infileName,
             }
           }
           if (!skipFlag) {
-            for (int xc = 0; xc < 320; xc += 8)
-              findLuminanceCodes(xc, yc);
-            for (int xc = 0; xc < 320; xc += 8)
-              findLuminanceCodes(xc, yc + 1);
             // calculate the total error for four lines
             double  err = 0.0;
-            for (int x_ = 8; x_ < 312; x_++) {
-              for (int i = 0; i < 4; i++) {
-                float   l0 = yTable[luminanceCodeTable.l0(x_ - xs[i], yc + i)];
-                float   l1 = yTable[luminanceCodeTable.l1(x_ - xs[i], yc + i)];
-                float   tmp = resizedImage.y()[yc + i].getPixel(x_);
-                double  err0 = calculateErrorSqr(l0, tmp);
-                double  err1 = calculateErrorSqr(l1, tmp);
-                err0 = err0 * err0;
-                err1 = err1 * err1;
-                err += (err0 < err1 ? err0 : err1);
-              }
+            for (int xc = 0; xc < 320; xc += 8)
+              err += findLuminanceCodes(xc, yc);
+            if (!noLuminanceInterlace) {
+              for (int xc = 0; xc < 320; xc += 8)
+                err += findLuminanceCodes(xc, yc + 1);
             }
             if (err < minErr) {
               for (int i = 0; i < 4; i++)
@@ -1526,8 +1552,10 @@ int Plus4FLIConverter::processImage(const char *infileName,
         }
         for (int xc = 0; xc < 320; xc += 8)
           findLuminanceCodes(xc, yc);
-        for (int xc = 0; xc < 320; xc += 8)
-          findLuminanceCodes(xc, yc + 1);
+        if (!noLuminanceInterlace) {
+          for (int xc = 0; xc < 320; xc += 8)
+            findLuminanceCodes(xc, yc + 1);
+        }
       }
     }
     generateBitmaps();
@@ -1568,7 +1596,14 @@ int Plus4FLIConverter::processImage(const char *infileName,
     }
     for (int yc = 0; yc < 400; yc++)
       prgData.lineXShift(yc) = (unsigned char) resizedImage.y()[yc].getXShift();
-    for (int i = 0; i < 0x8801; i++) {
+    if (noFLIDisplayCode) {
+      if (std::fputc(0x00, f) == EOF || std::fputc(0x14, f) == EOF) {
+        std::fprintf(stderr, " *** error writing output file\n");
+        std::fclose(f);
+        return -1;
+      }
+    }
+    for (int i = (noFLIDisplayCode ? 0x0401 : 0x0000); i < 0x8801; i++) {
       if (std::fputc(int(prgData[i]), f) == EOF) {
         std::fprintf(stderr, " *** error writing output file\n");
         std::fclose(f);
@@ -1676,12 +1711,26 @@ int main(int argc, char **argv)
       }
       fliConv.luminance1BitMode = bool(std::atoi(argv[i]));
     }
+    else if (std::strcmp(argv[i], "-no_li") == 0) {
+      if (++i >= argc) {
+        std::fprintf(stderr, " *** missing argument for '%s'\n", argv[i - 1]);
+        return -1;
+      }
+      fliConv.noLuminanceInterlace = bool(std::atoi(argv[i]));
+    }
     else if (std::strcmp(argv[i], "-searchmode") == 0) {
       if (++i >= argc) {
         std::fprintf(stderr, " *** missing argument for '%s'\n", argv[i - 1]);
         return -1;
       }
       fliConv.luminanceSearchMode = std::atoi(argv[i]);
+    }
+    else if (std::strcmp(argv[i], "-raw") == 0) {
+      if (++i >= argc) {
+        std::fprintf(stderr, " *** missing argument for '%s'\n", argv[i - 1]);
+        return -1;
+      }
+      fliConv.noFLIDisplayCode = bool(std::atoi(argv[i]));
     }
     else if (std::strcmp(argv[i], "-h") == 0 ||
              std::strcmp(argv[i], "-help") == 0 ||
@@ -1728,8 +1777,12 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "        do not use double vertical resolution\n");
     std::fprintf(stderr, "    -y1bit <N>          (0 or 1, default: 0)\n");
     std::fprintf(stderr, "        use 1 bit (black and white) luminance\n");
-    std::fprintf(stderr, "    -searchmode <N>     (0 to 3, default: 2)\n");
+    std::fprintf(stderr, "    -no_li <N>          (0 or 1, default: 0)\n");
+    std::fprintf(stderr, "        do not interlace luminance attributes\n");
+    std::fprintf(stderr, "    -searchmode <N>     (0 to 4, default: 4)\n");
     std::fprintf(stderr, "        select luminance search algorithm\n");
+    std::fprintf(stderr, "    -raw <N>            (0 or 1, default: 0)\n");
+    std::fprintf(stderr, "        write the image data only\n");
     return (printUsageFlag ? 0 : -1);
   }
   return fliConv.processImage(infileName, outfileName);

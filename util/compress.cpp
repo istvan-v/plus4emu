@@ -37,6 +37,8 @@ static bool   noCLI = false;
 static bool   noROM = false;
 // do not update zeropage variables after decompression if this is set to true
 static bool   noZPUpdate = false;
+// do not include decompressor code in the PRG output
+static bool   noDecompCode = false;
 
 // compression tuning parameters
 static size_t bitsPerByte = 7;
@@ -560,6 +562,9 @@ int main(int argc, char **argv)
     else if (tmp == "-nozp") {
       noZPUpdate = true;
     }
+    else if (tmp == "-raw") {
+      noDecompCode = true;
+    }
     else if (tmp == "-start") {
       runAddr = -1L;
       if ((i + 1) < argc) {
@@ -592,6 +597,8 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "    -nozp\n");
     std::fprintf(stderr, "        do not update zeropage variables at $2D-$32 "
                          "and $9D-$9E\n");
+    std::fprintf(stderr, "    -raw\n");
+    std::fprintf(stderr, "        write the compressed data only\n");
     std::fprintf(stderr, "    -start <ADDR>\n");
     std::fprintf(stderr, "        start program at address ADDR (decimal), or "
                          "RUN if ADDR is -1,\n        return to basic if -2 "
@@ -600,19 +607,25 @@ int main(int argc, char **argv)
   }
   std::vector< unsigned char >  outBuf;
   std::vector< unsigned int >   outBufTmp;
-  for (size_t i = 0; i < 0x0213; i++)
-    outBuf.push_back(decomp_code[i]);
-  if (c16Mode) {
-    outBuf[0x0A] = 0x31;
-    outBuf[0x0B] = 0x32;
-    outBuf[0x11] = 0xA9;
-    outBuf[0x12] = 0x00;
-    outBuf[0x13] = 0x85;
-    outBuf[0x14] = 0x37;
-    outBuf[0x15] = 0xA9;
-    outBuf[0x16] = 0x40;
-    outBuf[0x17] = 0x85;
-    outBuf[0x18] = 0x38;
+  if (!noDecompCode) {
+    for (size_t i = 0; i < 0x0213; i++)
+      outBuf.push_back(decomp_code[i]);
+    if (c16Mode) {
+      outBuf[0x0A] = 0x31;
+      outBuf[0x0B] = 0x32;
+      outBuf[0x11] = 0xA9;
+      outBuf[0x12] = 0x00;
+      outBuf[0x13] = 0x85;
+      outBuf[0x14] = 0x37;
+      outBuf[0x15] = 0xA9;
+      outBuf[0x16] = 0x40;
+      outBuf[0x17] = 0x85;
+      outBuf[0x18] = 0x38;
+    }
+  }
+  else {
+    outBuf.push_back(0x12);
+    outBuf.push_back(0x12);
   }
   std::vector< unsigned char >  inBuf;
   {
