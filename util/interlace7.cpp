@@ -895,6 +895,7 @@ class Plus4FLIConverter {
   double  ditherScale;
   int     ditherMode;
   int     luminanceSearchMode;
+  double  luminanceSearchModeParam;
   int     xShift0;
   int     xShift1;
   int     borderColor;
@@ -959,7 +960,8 @@ Plus4FLIConverter::Plus4FLIConverter()
     ditherLimit(0.125),
     ditherScale(0.5),
     ditherMode(0),
-    luminanceSearchMode(4),
+    luminanceSearchMode(2),
+    luminanceSearchModeParam(4.0),
     xShift0(-1),
     xShift1(-1),
     borderColor(0x00),
@@ -1044,8 +1046,22 @@ void Plus4FLIConverter::checkParameters()
   limitValue(ditherScale, 0.0, 1.0);
   ditherMode = (ditherMode > 0 ? (ditherMode < 1 ? ditherMode : 1) : 0);
   luminanceSearchMode = (luminanceSearchMode > 0 ?
-                         (luminanceSearchMode < 4 ? luminanceSearchMode : 4)
+                         (luminanceSearchMode < 5 ? luminanceSearchMode : 5)
                          : 0);
+  switch (luminanceSearchMode) {
+  case 2:
+    limitValue(luminanceSearchModeParam, 1.0, 16.0);
+    break;
+  case 4:
+    limitValue(luminanceSearchModeParam, 0.0, 0.5);
+    break;
+  case 5:
+    limitValue(luminanceSearchModeParam, 0.0, 0.25);
+    break;
+  default:
+    limitValue(luminanceSearchModeParam, 0.0, 1.0);
+    break;
+  }
   xShift0 = (xShift0 > -2 ? (xShift0 < 7 ? xShift0 : 7) : -2);
   xShift1 = (xShift1 > -2 ? (xShift1 < 7 ? xShift1 : 7) : -2);
   borderColor = (borderColor & 0x7F) | 0x80;
@@ -1126,18 +1142,16 @@ inline double Plus4FLIConverter::calculateLuminanceError(
   double  err0 = calculateErrorSqr(l_0, n);
   double  err1 = calculateErrorSqr(l_1, n);
   double  err = (err0 < err1 ? err0 : err1);
-  switch (luminanceSearchMode) {
-  case 2:
-    return (n < l_0 || n > l_1 ? (err * 6.0) : err);
-  case 4:
-    {
-      float   l_037 = (l_0 * 0.63f) + (l_1 * 0.37f);
-      float   l_063 = (l_0 * 0.37f) + (l_1 * 0.63f);
-      double  err_037 = calculateErrorSqr(l_037, n);
-      double  err_063 = calculateErrorSqr(l_063, n);
-      double  err_ = (err_037 > err_063 ? err_037 : err_063);
-      return (err_ < err ? err_ : err);
-    }
+  if (luminanceSearchMode == 2 && (n < l_0 || n > l_1))
+    err *= luminanceSearchModeParam;
+  if (luminanceSearchMode == 4) {
+    double  tmp = 0.5 + luminanceSearchModeParam;
+    double  l_0_ = (double(l_0) * tmp) + (double(l_1) * (1.0 - tmp));
+    double  l_1_ = (double(l_0) * (1.0 - tmp)) + (double(l_1) * tmp);
+    double  err0_ = calculateErrorSqr(l_0_, n);
+    double  err1_ = calculateErrorSqr(l_1_, n);
+    double  err_ = (err0_ > err1_ ? err0_ : err1_);
+    err = (err_ < err ? err_ : err);
   }
   return err;
 }
@@ -1157,7 +1171,9 @@ double Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
   }
   if (!luminance1BitMode) {
     // find the best pair of luminance values, depending on the search mode
-    if (luminanceSearchMode == 1) {
+    int     l0min = 0;
+    int     l1max = 8;
+    if (luminanceSearchMode == 1 || luminanceSearchMode == 5) {
       float   minVal = 1.0f;
       float   maxVal = 0.0f;
       for (int i = 0; i < nPixels; i++) {
@@ -1171,29 +1187,33 @@ double Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
       for (int i = 0; i < 9; i++) {
         double  err = calculateError(yTable[i], minVal);
         if (err < minErr0) {
-          l0 = i;
+          l0min = i;
           minErr0 = err;
         }
         err = calculateError(yTable[i], maxVal);
         if (err < minErr1) {
-          l1 = i;
+          l1max = i;
           minErr1 = err;
         }
       }
-      if (l0 == l1) {
+      if (l0min == l1max) {
         if (minErr0 < minErr1) {
-          if (l1 < 8)
-            l1++;
+          if (l1max < 8)
+            l1max++;
           else
-            l0--;
+            l0min--;
         }
         else {
-          if (l0 > 0)
-            l0--;
+          if (l0min > 0)
+            l0min--;
           else
-            l1++;
+            l1max++;
         }
       }
+    }
+    if (luminanceSearchMode == 1) {
+      l0 = l0min;
+      l1 = l1max;
     }
     else if (luminanceSearchMode == 3) {
       l0 = 8;
@@ -1223,6 +1243,34 @@ double Plus4FLIConverter::findLuminanceCodes(long xc, long yc)
             l1 = l1tmp;
           }
         }
+      }
+      if (luminanceSearchMode == 5) {
+        bool    l0DecFlag;
+        bool    l1IncFlag;
+        do {
+          l0DecFlag = false;
+          l1IncFlag = false;
+          if (l1 < l1max) {
+            l1++;
+            double  err = 0.0;
+            for (int i = 0; i < nPixels; i++)
+              err += calculateLuminanceError(tmpBuf[i], l0, l1);
+            if ((err - minErr) < (double(nPixels) * luminanceSearchModeParam))
+              l1IncFlag = true;
+            else
+              l1--;
+          }
+          if (l0 > l0min) {
+            l0--;
+            double  err = 0.0;
+            for (int i = 0; i < nPixels; i++)
+              err += calculateLuminanceError(tmpBuf[i], l0, l1);
+            if ((err - minErr) < (double(nPixels) * luminanceSearchModeParam))
+              l0DecFlag = true;
+            else
+              l0++;
+          }
+        } while (l0DecFlag || l1IncFlag);
       }
     }
   }
@@ -1719,11 +1767,13 @@ int main(int argc, char **argv)
       fliConv.noLuminanceInterlace = bool(std::atoi(argv[i]));
     }
     else if (std::strcmp(argv[i], "-searchmode") == 0) {
-      if (++i >= argc) {
-        std::fprintf(stderr, " *** missing argument for '%s'\n", argv[i - 1]);
+      if ((i + 2) >= argc) {
+        std::fprintf(stderr, " *** missing arguments for '%s'\n", argv[i]);
         return -1;
       }
-      fliConv.luminanceSearchMode = std::atoi(argv[i]);
+      fliConv.luminanceSearchMode = std::atoi(argv[i + 1]);
+      fliConv.luminanceSearchModeParam = std::atof(argv[i + 2]);
+      i = i + 2;
     }
     else if (std::strcmp(argv[i], "-raw") == 0) {
       if (++i >= argc) {
@@ -1763,14 +1813,14 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "        assume monitor gamma N\n");
     std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 0, 0.125, 0.5)\n");
     std::fprintf(stderr, "        dither mode (0: ordered, 1: diffuse), "
-                         "limit,\n        and error diffusion factor\n");
+                         "limit, and error diffusion\n        factor\n");
     std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
     std::fprintf(stderr, "        assume PAL chrominance filtering "
                          "if set to 1\n");
     std::fprintf(stderr, "    -xshift <S0> <S1>   "
                          "(-2 to 7, defaults: -1, -1)\n");
     std::fprintf(stderr, "        set horizontal shift for each field (-2 is "
-                         "random,\n        -1 finds optimal values)\n");
+                         "random, -1 finds\n        optimal values)\n");
     std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
     std::fprintf(stderr, "        set border color\n");
     std::fprintf(stderr, "    -nointerlace <N>    (0 or 1, default: 0)\n");
@@ -1779,8 +1829,9 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "        use 1 bit (black and white) luminance\n");
     std::fprintf(stderr, "    -no_li <N>          (0 or 1, default: 0)\n");
     std::fprintf(stderr, "        do not interlace luminance attributes\n");
-    std::fprintf(stderr, "    -searchmode <N>     (0 to 4, default: 4)\n");
-    std::fprintf(stderr, "        select luminance search algorithm\n");
+    std::fprintf(stderr, "    -searchmode <M> <P> (defaults: 2, 4.0)\n");
+    std::fprintf(stderr, "        select luminance search algorithm (0 to 5), "
+                         "and parameter for\n        modes 2, 4, and 5\n");
     std::fprintf(stderr, "    -raw <N>            (0 or 1, default: 0)\n");
     std::fprintf(stderr, "        write the image data only\n");
     return (printUsageFlag ? 0 : -1);
