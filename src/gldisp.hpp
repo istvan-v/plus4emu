@@ -30,7 +30,7 @@
 namespace Plus4Emu {
 
   class OpenGLDisplay : public Fl_Gl_Window, public FLTKDisplay_ {
-   private:
+   protected:
     bool compileShader(int shaderMode_);
     void deleteShader();
     bool enableShader();
