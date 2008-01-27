@@ -1,0 +1,722 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0107 
+do_not_include_H_from_C 
+header_name {.hpp} 
+code_name {.cpp}
+decl {\#include "p4fliconv.hpp"} {selected
+} 
+
+decl {\#include <FL/Fl_File_Chooser.H>} {} 
+
+class Plus4FLIConvGUI {open
+} {
+  decl {friend class Plus4FLIConvGUI_Display;} {public
+  }
+  decl {friend class Plus4FLIConvGUI_TED7360;} {public
+  }
+  decl {Plus4FLIConvGUI_Display *display;} {}
+  decl {Plus4FLIConvGUI_TED7360 *ted;} {}
+  decl {Plus4FLIConv::FLIConfiguration& config;} {}
+  decl {Fl_Window *emulatorWindow;} {}
+  decl {unsigned char *imageFileData;} {}
+  decl {std::string imageFileName;} {}
+  decl {bool busyFlag;} {}
+  decl {bool stopFlag;} {}
+  decl {bool previewEnabled;} {}
+  decl {bool fileChangedFlag;} {}
+  decl {bool fileNotSavedFlag;} {}
+  decl {bool confirmStatus;} {}
+  decl {Fl_File_Chooser *browseFileWindow;} {}
+  decl {std::string imageFileDirectory;} {}
+  decl {std::string configDirectory;} {}
+  decl {std::string prgFileDirectory;} {}
+  decl {Plus4Emu::ConfigurationDB guiConfig;} {}
+  decl {Plus4Emu::Timer emulationTimer;} {}
+  decl {Plus4FLIConv::PRGData prgData;} {}
+  decl {unsigned int prgEndAddress;} {}
+  decl {void init_();} {}
+  decl {void updateDisplay(double t = 0.02);} {public
+  }
+  decl {bool confirmMessage(const char *msg);} {public
+  }
+  decl {void errorMessage(const char *msg);} {public
+  }
+  decl {bool browseFile(std::string& fileName, std::string& dirName, const char *pattern, int type, const char *title);} {public
+  }
+  decl {void applyConfigurationChanges();} {public
+  }
+  decl {void updateConfigWindow();} {public
+  }
+  decl {void openImageFile();} {public
+  }
+  decl {void savePRGFile();} {public
+  }
+  decl {void setBusyFlag(bool newState);} {public
+  }
+  decl {static void fltkCheckCallback(void *userData);} {}
+  decl {static void progressMessageCallback(void *userData, const char *msg);} {}
+  decl {static bool progressPercentageCallback(void *userData, int n);} {}
+  decl {static void pixelStoreCallback(void *userData, int xc, int yc, float y, float u, float v);} {}
+  decl {void run();} {public
+  }
+  Function {Plus4FLIConvGUI(Plus4FLIConv::FLIConfiguration& config_) : config(config_)} {open
+  } {
+    code {{
+  this->init_();
+}} {}
+    Fl_Window mainWindow {
+      label {plus4emu FLI converter}
+      callback {{
+  if (config.isFLIConfigurationChanged() || fileNotSavedFlag) {
+    if (confirmMessage("Quit without saving program ?"))
+      o->hide();
+  }
+  else
+    o->hide();
+}} open
+      xywh {186 188 780 615} type Single color 48
+      code0 {o->add(emulatorWindow);} size_range {780 615 780 615} visible
+    } {
+      Fl_Button openImageButton {
+        label {Open image}
+        callback {{
+  if (!busyFlag)
+    openImageFile();
+}}
+        xywh {6 5 100 25} selection_color 50
+      }
+      Fl_Button savePRGButton {
+        label {Save PRG}
+        callback {{
+  if (!busyFlag)
+    savePRGFile();
+}}
+        xywh {116 5 100 25} selection_color 50
+      }
+      Fl_Button {} {
+        label Options
+        callback {{
+  if (!configWindow->shown())
+    updateConfigWindow();
+  configWindow->show();
+}}
+        xywh {236 5 80 25} selection_color 50
+      }
+      Fl_Check_Button {} {
+        label Preview
+        callback {{
+  previewEnabled = (o->value() != 0);
+  emulatorWindow->redraw();
+  if (previewEnabled && !busyFlag)
+    applyConfigurationChanges();
+}}
+        xywh {335 5 80 25} box FLAT_BOX down_box DOWN_BOX color 48
+      }
+      Fl_Progress progressDisplay {
+        xywh {425 5 200 25} selection_color 15
+        code0 {o->minimum(0.0f);}
+        code1 {o->maximum(100.0f);}
+        code2 {o->value(0.0f);}
+      }
+      Fl_Button stopButton {
+        label Stop
+        callback {{
+  if (busyFlag)
+    stopFlag = true;
+}}
+        xywh {630 5 60 25} selection_color 50 deactivate
+      }
+      Fl_Button {} {
+        label About
+        callback {{
+  aboutWindow->show();
+}}
+        xywh {710 5 64 25} selection_color 50
+      }
+    }
+    Fl_Window configWindow {
+      label {FLI conversion options}
+      callback {{
+  o->hide();
+  applyConfigurationChanges();
+}} open
+      xywh {230 203 600 450} type Double color 48 visible
+    } {
+      Fl_Group {} {open
+        tooltip {NOTE: all values can also be adjusted by clicking and dragging with the mouse to the left or right} xywh {10 10 290 395} box THIN_UP_BOX
+      } {
+        Fl_Box {} {
+          label {Conversion type}
+          xywh {20 20 120 25} box FLAT_BOX align 20
+        }
+        Fl_Choice conversionTypeValuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["conversionType"] = int(o->value());
+      o->value(int(config["conversionType"]));
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {145 20 145 25} down_box BORDER_BOX
+          code0 {o->add("Interlace7");}
+        } {}
+        Fl_Box {} {
+          label {Vertical resolution}
+          xywh {20 55 130 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input verticalSizeValuator {
+          callback {{
+  try {
+    config["verticalSize"] = int(o->value());
+    o->value(int(config["verticalSize"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 55 60 25} when 4 minimum 200 maximum 496 step 4 value 464
+        }
+        Fl_Box {} {
+          label Scale
+          xywh {20 90 70 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input scaleXValuator {
+          label X
+          callback {{
+  try {
+    config["scaleX"] = double(o->value());
+    o->value(double(config["scaleX"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {145 90 60 25} when 4 minimum 0.1 maximum 10 step 0.01 value 1
+        }
+        Fl_Value_Input scaleYValuator {
+          label Y
+          callback {{
+  try {
+    config["scaleY"] = double(o->value());
+    o->value(double(config["scaleY"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 90 60 25} when 4 minimum 0.1 maximum 10 step 0.01 value 1
+        }
+        Fl_Box {} {
+          label Offset
+          xywh {20 125 70 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input offsetXValuator {
+          label X
+          callback {{
+  try {
+    config["offsetX"] = double(o->value());
+    o->value(double(config["offsetX"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {145 125 60 25} when 4 minimum -10000 maximum 10000 step 0.5
+        }
+        Fl_Value_Input offsetYValuator {
+          label Y
+          callback {{
+  try {
+    config["offsetY"] = double(o->value());
+    o->value(double(config["offsetY"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 125 60 25} when 4 minimum -10000 maximum 10000 step 0.5
+        }
+        Fl_Box {} {
+          label {RGB range scale}
+          xywh {20 160 120 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input yMinValuator {
+          label Min
+          callback {{
+  try {
+    config["yMin"] = double(o->value());
+    o->value(double(config["yMin"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {175 160 40 25} when 4 minimum -0.5 step 0.01
+        }
+        Fl_Value_Input yMaxValuator {
+          label Max
+          callback {{
+  try {
+    config["yMax"] = double(o->value());
+    o->value(double(config["yMax"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {250 160 40 25} when 4 maximum 2 step 0.01 value 1
+        }
+        Fl_Box {} {
+          label {Color saturation}
+          xywh {20 195 115 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input saturationMultValuator {
+          label Mult
+          callback {{
+  try {
+    config["saturationMult"] = double(o->value());
+    o->value(double(config["saturationMult"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {175 195 40 25} when 4 maximum 8 step 0.01 value 1
+        }
+        Fl_Value_Input saturationPowValuator {
+          label Pow
+          callback {{
+  try {
+    config["saturationPow"] = double(o->value());
+    o->value(double(config["saturationPow"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {250 195 40 25} when 4 minimum 0.1 maximum 2 step 0.01 value 0.6
+        }
+        Fl_Box {} {
+          label {Luminance gamma correction}
+          xywh {20 230 200 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input gammaCorrectionValuator {
+          callback {{
+  try {
+    config["gammaCorrection"] = double(o->value());
+    o->value(double(config["gammaCorrection"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 230 60 25} when 4 minimum 0.25 maximum 4 step 0.01 value 1
+        }
+        Fl_Box {} {
+          label {Monitor gamma}
+          xywh {20 265 200 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input monitorGammaValuator {
+          callback {{
+  try {
+    config["monitorGamma"] = double(o->value());
+    o->value(double(config["monitorGamma"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 265 60 25} when 4 minimum 0.25 maximum 4 step 0.01 value 1.33
+        }
+        Fl_Box {} {
+          label {Border color}
+          xywh {20 300 200 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input borderColorValuator {
+          callback {{
+  try {
+    config["borderColor"] = int(o->value());
+    o->value(int(config["borderColor"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {230 300 60 25} when 4 maximum 255 step 1
+        }
+        Fl_Light_Button rawPRGModeValuator {
+          label {Write the raw FLI data only}
+          callback {{
+  try {
+    config["rawPRGMode"] = bool(o->value());
+    o->value(int(bool(config["rawPRGMode"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {20 335 270 25} color 50 selection_color 3
+        }
+        Fl_Box {} {
+          label {PRG compression}
+          xywh {20 370 140 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Slider prgCompressionLevelValuator {
+          callback {{
+  try {
+    config["prgCompressionLevel"] = int(o->value() + 0.5);
+    o->value(double(int(config["prgCompressionLevel"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {175 371 115 23} type Horizontal color 47 selection_color 52 align 4 maximum 9 step 1
+        }
+      }
+      Fl_Group {} {open
+        xywh {300 10 290 395} box THIN_UP_BOX
+      } {
+        Fl_Box {} {
+          label {Dither type}
+          xywh {310 20 120 25} box FLAT_BOX align 20
+        }
+        Fl_Choice ditherModeValuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["ditherMode"] = int(o->value());
+      o->value(int(config["ditherMode"]));
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {440 20 140 25} down_box BORDER_BOX
+          code0 {o->add("Ordered|Diffuse (Stucki)");}
+        } {}
+        Fl_Box {} {
+          label {Dither limit}
+          xywh {310 55 120 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input ditherLimitValuator {
+          callback {{
+  try {
+    config["ditherLimit"] = double(o->value());
+    o->value(double(config["ditherLimit"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {520 55 60 25} when 4 step 0.001 value 0.125
+        }
+        Fl_Box {} {
+          label {Dither diffusion parameter}
+          xywh {310 90 180 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input ditherDiffusionValuator {
+          callback {{
+  try {
+    config["ditherDiffusion"] = double(o->value());
+    o->value(double(config["ditherDiffusion"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {520 90 60 25} when 4 step 0.001 value 0.5
+        }
+        Fl_Box {} {
+          label {X shift (field 0)}
+          xywh {310 125 120 25} box FLAT_BOX align 20
+        }
+        Fl_Choice xShift0Valuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["xShift0"] = int(o->value() - 2);
+      o->value(int(config["xShift0"]) + 2);
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {440 125 140 25} down_box BORDER_BOX
+          code0 {o->add("Random|Optimized|0|1|2|3|4|5|6|7");}
+        } {}
+        Fl_Box {} {
+          label {X shift (field 1)}
+          xywh {310 160 120 25} box FLAT_BOX align 20
+        }
+        Fl_Choice xShift1Valuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["xShift1"] = int(o->value() - 2);
+      o->value(int(config["xShift1"]) + 2);
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {440 160 140 25} down_box BORDER_BOX
+          code0 {o->add("Random|Optimized|0|1|2|3|4|5|6|7");}
+        } {}
+        Fl_Light_Button luminance1BitModeValuator {
+          label {Use 1 bit (black and white) luminance}
+          callback {{
+  try {
+    config["luminance1BitMode"] = bool(o->value());
+    o->value(int(bool(config["luminance1BitMode"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {310 195 270 25} color 50 selection_color 3
+        }
+        Fl_Light_Button enablePALValuator {
+          label {Optimize for PAL color filtering}
+          callback {{
+  try {
+    config["enablePAL"] = bool(o->value());
+    o->value(int(bool(config["enablePAL"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {310 230 270 25} color 50 selection_color 3
+        }
+        Fl_Light_Button noLuminanceInterlaceValuator {
+          label {Do not interlace luminance attributes}
+          callback {{
+  try {
+    config["noLuminanceInterlace"] = bool(o->value());
+    o->value(int(bool(config["noLuminanceInterlace"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          xywh {310 265 270 25} color 50 selection_color 3
+        }
+        Fl_Box {} {
+          label {Color interlace mode}
+          xywh {310 300 145 25} box FLAT_BOX align 20
+        }
+        Fl_Choice colorInterlaceModeValuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["colorInterlaceMode"] = int(o->value());
+      o->value(int(config["colorInterlaceMode"]));
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {460 300 120 25} down_box BORDER_BOX
+          code0 {o->add("None|Hue only|Hue and saturation");}
+        } {}
+        Fl_Box {} {
+          label {Lum. search mode}
+          xywh {310 335 145 25} box FLAT_BOX align 20
+        }
+        Fl_Choice luminanceSearchModeValuator {
+          callback {{
+  try {
+    if (o->value() >= 0) {
+      config["luminanceSearchMode"] = int(o->value());
+      o->value(int(config["luminanceSearchMode"]));
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}} open
+          xywh {460 335 120 25} down_box BORDER_BOX
+          code0 {o->add("MinRMSErr|MinMaxNearest|MinRMSErr_OutOfRangeMult|FloorMinCeilMax|MinRMSErr_Dither50|MinRMSErr_MinMaxNearest");}
+        } {}
+        Fl_Box {} {
+          label {Lum. search mode parameter}
+          xywh {310 370 200 25} box FLAT_BOX align 20
+        }
+        Fl_Value_Input lumSearchModeParamValuator {
+          callback {{
+  try {
+    config["luminanceSearchModeParam"] = double(o->value());
+    o->value(double(config["luminanceSearchModeParam"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+          tooltip {This parameter is used only by modes 2, 4, and 5, and the allowed ranges for each mode are 1.0 to 16.0, 0.0 to 0.5, and 0.0 to 0.25, respectively} xywh {520 370 60 25} when 4 maximum 16 step 0.001 value 4
+        }
+      }
+      Fl_Button {} {
+        label Load
+        callback {{
+  try {
+    std::string fileName;
+    if (!browseFile(fileName, configDirectory,
+                    "Configuration files (*.cfg)",
+                    Fl_File_Chooser::SINGLE,
+                    "Load configuration file")) {
+      fileName = "";
+    }
+    if (fileName != "") {
+      config.loadState(fileName.c_str(), false);
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+  updateConfigWindow();
+}}
+        xywh {15 415 60 25} selection_color 50
+      }
+      Fl_Button {} {
+        label Save
+        callback {{
+  try {
+    std::string fileName;
+    if (!browseFile(fileName, configDirectory,
+                    "Configuration files (*.cfg)",
+                    Fl_File_Chooser::CREATE,
+                    "Save configuration file")) {
+      fileName = "";
+    }
+    if (fileName != "") {
+      config.saveState(fileName.c_str(), false);
+    }
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+        xywh {85 415 60 25} selection_color 50
+      }
+      Fl_Button {} {
+        label {Reset to defaults}
+        callback {{
+  if (confirmMessage("Reset all options to the default settings ?")) {
+    config.resetDefaultSettings();
+    updateConfigWindow();
+  }
+}}
+        xywh {230 415 140 25} selection_color 50
+      }
+      Fl_Button {} {
+        label Apply
+        callback {{
+  applyConfigurationChanges();
+}}
+        xywh {455 415 60 25} selection_color 50
+      }
+      Fl_Button {} {
+        label OK
+        callback {{
+  configWindow->hide();
+  applyConfigurationChanges();
+}}
+        xywh {525 415 60 25} selection_color 50
+      }
+    }
+    Fl_Window aboutWindow {
+      label {Copyright information} open
+      xywh {322 303 600 435} type Double color 48 visible
+    } {
+      Fl_Output aboutWindowText {
+        xywh {10 10 580 380} type Multiline textfont 4
+        code0 {o->cursor_color(FL_BACKGROUND2_COLOR);}
+      }
+      Fl_Button {} {
+        label OK
+        callback {{
+  aboutWindow->hide();
+}}
+        xywh {265 400 70 25}
+      }
+    }
+    Fl_Window confirmMessageWindow {
+      callback {{
+  confirmStatus = false;
+  o->hide();
+}} open
+      xywh {641 387 280 150} type Double color 48 modal visible
+    } {
+      Fl_Box {} {
+        xywh {10 10 260 95} box THIN_UP_BOX
+      }
+      Fl_Box confirmMessageText {
+        xywh {20 15 240 85} box FLAT_BOX align 144
+      }
+      Fl_Button {} {
+        label OK
+        callback {{
+  confirmMessageWindow->hide();
+  confirmStatus = true;
+}}
+        xywh {60 115 70 25} selection_color 50
+      }
+      Fl_Button {} {
+        label Cancel
+        callback {{
+  confirmMessageWindow->hide();
+  confirmStatus = false;
+}}
+        xywh {150 115 70 25} selection_color 50
+      }
+    }
+    Fl_Window errorMessageWindow {
+      label Error open
+      xywh {640 613 280 150} type Double color 48 modal visible
+    } {
+      Fl_Box {} {
+        xywh {10 10 260 95} box THIN_UP_BOX
+      }
+      Fl_Box errorMessageText {
+        xywh {20 15 240 85} box FLAT_BOX align 144
+      }
+      Fl_Button {} {
+        label OK
+        callback {errorMessageWindow->hide();}
+        xywh {105 115 70 25} selection_color 50
+      }
+    }
+  }
+  Function {~Plus4FLIConvGUI()} {open
+  } {
+    code {{
+  confirmMessageWindow->hide();
+  errorMessageWindow->hide();
+  browseFileWindow->hide();
+  configWindow->hide();
+  aboutWindow->hide();
+  mainWindow->hide();
+  Fl::remove_check(&fltkCheckCallback, (void *) this);
+  Fl::wait(0.0);
+  mainWindow->remove(*emulatorWindow);
+  delete confirmMessageWindow;
+  delete errorMessageWindow;
+  delete browseFileWindow;
+  delete configWindow;
+  delete aboutWindow;
+  delete mainWindow;
+  delete[] imageFileData;
+  delete ted;
+  delete display;
+}} {}
+  }
+} 
