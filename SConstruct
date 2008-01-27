@@ -249,6 +249,11 @@ Depends(tapconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 
+compressEnvironment = plus4emuLibEnvironment.Copy()
+compress = compressEnvironment.Program('compress', ['util/compress.cpp'])
+
+# -----------------------------------------------------------------------------
+
 makecfgEnvironment = plus4emuGUIEnvironment.Copy()
 makecfgEnvironment.Append(CPPPATH = ['./installer'])
 makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
@@ -268,5 +273,31 @@ Depends(makecfg, plus4emuLib)
 
 if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/makecfg', 'makecfg',
+            'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
+
+# -----------------------------------------------------------------------------
+
+p4fliconvEnvironment = plus4emuGLGUIEnvironment.Copy()
+p4fliconvEnvironment.Append(CPPPATH = ['./util/p4fliconv'])
+p4fliconvEnvironment.Prepend(LIBS = ['plus4emu', 'fltk_images'])
+if win32CrossCompile or buildRelease:
+    p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+if haveDotconf:
+    p4fliconvEnvironment.Append(LIBS = ['dotconf'])
+if not win32CrossCompile:
+    p4fliconvEnvironment.Append(LIBS = ['pthread'])
+else:
+    p4fliconvEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
+
+p4fliconv = p4fliconvEnvironment.Program('p4fliconv',
+    ['util/p4fliconv/compress.cpp', 'util/p4fliconv/dither.cpp',
+     'util/p4fliconv/flicfg.cpp', 'util/p4fliconv/flidisp.cpp',
+     'util/p4fliconv/imageconv.cpp', 'util/p4fliconv/interlace7.cpp',
+     'util/p4fliconv/p4fliconv.cpp', 'util/p4fliconv/prgdata.cpp']
+    + fluidCompile(['util/p4fliconv/p4fliconv.fl']))
+Depends(p4fliconv, plus4emuLib)
+
+if sys.platform[:6] == 'darwin':
+    Command('plus4emu.app/Contents/MacOS/p4fliconv', 'p4fliconv',
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
