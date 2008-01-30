@@ -25,6 +25,10 @@
 #include "compress.hpp"
 #include "guicolor.hpp"
 
+#include <string>
+#include <vector>
+#include <map>
+
 #include <FL/Fl.H>
 #include <FL/Fl_Image.H>
 #include <FL/Fl_Shared_Image.H>
@@ -264,7 +268,7 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           if (convType == 0)
             fliConv = new Plus4FLIConv::P4FLI_Interlace7();
         }
-        if (fliConv ) {
+        if (fliConv) {
           setBusyFlag(true);
           Plus4FLIConv::YUVImageConverter imgConv;
           imgConv.setXYScaleAndOffset(float(double(config["scaleX"])),
@@ -298,12 +302,15 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           delete fliConv;
           fliConv = (Plus4FLIConv::FLIConverter *) 0;
         }
+        prgData.clear();
+        prgData[2] = 0x00;
+        prgData[3] = 0x00;
+        prgEndAddress = 0x1003U;
         setBusyFlag(false);
         errorMessage(e.what());
         return;
       }
       fileChangedFlag = false;
-      fileNotSavedFlag = true;
       config.clearConfigurationChangeFlag();
       if (!doneConversion) {
         prgData.clear();
@@ -311,17 +318,19 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         prgData[3] = 0x00;
         prgEndAddress = 0x1003U;
       }
+      else
+        fileNotSavedFlag = true;
       // store the new PRG in the Plus/4 memory, and run it
       setBusyFlag(true);
       ted->reset(true);
       for (int i = 0; i < 400000; i++)
         ted->runOneCycle();
-      for (unsigned int i = 0x1001; i < prgEndAddress; i++)
+      for (unsigned int i = 0x1001U; i < prgEndAddress; i++)
         ted->writeMemoryCPU(uint16_t(i), uint8_t(prgData[i - 0x0FFFU]));
-      ted->writeMemoryCPU(0x0527, 0x52);
-      ted->writeMemoryCPU(0x0528, 0x55);
-      ted->writeMemoryCPU(0x0529, 0x4E);
-      ted->writeMemoryCPU(0x052A, 0x0D);
+      ted->writeMemoryCPU(0x0527, 0x52);        // 'R'
+      ted->writeMemoryCPU(0x0528, 0x55);        // 'U'
+      ted->writeMemoryCPU(0x0529, 0x4E);        // 'N'
+      ted->writeMemoryCPU(0x052A, 0x0D);        // Return
       ted->writeMemoryCPU(0x00EF, 0x04);
       setBusyFlag(false);
       // set display parameters depending on whether interlacing is enabled
@@ -446,7 +455,7 @@ void Plus4FLIConvGUI::savePRGFile()
         if (!f)
           throw Plus4Emu::Exception("error opening PRG file");
         bool    rawMode = config["rawPRGMode"];
-        int     compressionLevel = int(config["prgCompressionLevel"]);
+        int     compressionLevel = config["prgCompressionLevel"];
         unsigned int  prgStartAddress = (rawMode ? 0x1400U : 0x1001U);
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
@@ -467,11 +476,11 @@ void Plus4FLIConvGUI::savePRGFile()
           }
           if (!rawMode) {
             compress_.addDecompressCode(false);
-            compress_.addDecompressEndCode(-1, false, false, false, false);
+            compress_.addDecompressEndCode(-1L, false, true, false, false);
             compress_.addZeroPageUpdate(prgEndAddress, false);
           }
           else {
-            compress_.addDecompressEndCode(-2, false, false, false, false);
+            compress_.addDecompressEndCode(-2L, false, false, false, false);
           }
           setBusyFlag(true);
           if (!compress_.compressData(compressInBuf, prgStartAddress,
@@ -499,8 +508,8 @@ void Plus4FLIConvGUI::savePRGFile()
               std::fputc(int(prgStartAddress >> 8), f) == EOF) {
             throw Plus4Emu::Exception("error writing PRG file");
           }
-          for (int i = int(prgStartAddress - 0x0FFFU);
-               i < int(prgEndAddress - 0x0FFFU);
+          for (unsigned int i = prgStartAddress - 0x0FFFU;
+               i < (prgEndAddress - 0x0FFFU);
                i++) {
             if (std::fputc(int(prgData[i]), f) == EOF)
               throw Plus4Emu::Exception("error writing PRG file");
@@ -641,10 +650,12 @@ void Plus4FLIConvGUI::run()
       plus4Config.createKey(cvName, romFileOffsets[i]);
     }
     plus4Config.createKey("display.ntscMode", ntscMode);
-    {
+    try {
       Plus4Emu::File  f("plus4cfg.dat", true);
       plus4Config.registerChunkType(f);
       f.processAllChunks();
+    }
+    catch (...) {
     }
     ted->setRAMSize(64);
     for (int i = 0; i < 8; i++) {
@@ -673,7 +684,7 @@ void Plus4FLIConvGUI::run()
     dp.indexToYUVFunc = &Plus4::TED7360::convertPixelToYUV;
     dp.lineShade = 1.0f;
     dp.blendScale = 1.0f;
-    dp.motionBlur = 0.5f;
+    dp.motionBlur = 0.333f;
     display->setDisplayParameters(dp);
   }
   catch (...) {
@@ -699,32 +710,298 @@ void Plus4FLIConvGUI::run()
 
 int main(int argc, char **argv)
 {
-  (void) argc;
-  (void) argv;
-  Fl::lock();
-  fl_register_images();
-  Plus4Emu::setGUIColorScheme(0);
-  Plus4FLIConv::FLIConfiguration  config;
-  config.resetDefaultSettings();
+  bool    printUsageFlag = false;
+  bool    helpFlag = false;
   try {
-    // load configuration
-    Plus4Emu::File  f("p4flicfg.dat", true);
-    config.registerChunkType(f);
-    f.processAllChunks();
+    Fl::lock();
+    fl_register_images();
+    Plus4Emu::setGUIColorScheme(0);
+    Plus4FLIConv::FLIConfiguration  config;
+    config.resetDefaultSettings();
+    std::string infileName = "";
+    std::string outfileName = "";
+    {
+      std::vector< std::string >    args;
+      std::map< std::string, std::vector< std::string > >   optionTable;
+      optionTable["-mode"].push_back("i:conversionType");
+      optionTable["-ymin"].push_back("f:yMin");
+      optionTable["-ymax"].push_back("f:yMax");
+      optionTable["-scale"].push_back("f:scaleX");
+      optionTable["-scale"].push_back("f:scaleY");
+      optionTable["-offset"].push_back("f:offsetX");
+      optionTable["-offset"].push_back("f:offsetY");
+      optionTable["-saturation"].push_back("f:saturationMult");
+      optionTable["-saturation"].push_back("f:saturationPow");
+      optionTable["-gamma"].push_back("f:gammaCorrection");
+      optionTable["-gamma"].push_back("f:monitorGamma");
+      optionTable["-dither"].push_back("i:ditherMode");
+      optionTable["-dither"].push_back("f:ditherLimit");
+      optionTable["-dither"].push_back("f:ditherDiffusion");
+      optionTable["-pal"].push_back("b:enablePAL");
+      optionTable["-xshift"].push_back("i:xShift0");
+      optionTable["-xshift"].push_back("i:xShift1");
+      optionTable["-border"].push_back("i:borderColor");
+      optionTable["-size"].push_back("i:verticalSize");
+      optionTable["-y1bit"].push_back("b:luminance1BitMode");
+      optionTable["-no_li"].push_back("b:noLuminanceInterlace");
+      optionTable["-ci"].push_back("i:colorInterlaceMode");
+      optionTable["-searchmode"].push_back("i:luminanceSearchMode");
+      optionTable["-searchmode"].push_back("f:luminanceSearchModeParam");
+      optionTable["-raw"].push_back("b:rawPRGMode");
+      optionTable["-compress"].push_back("i:prgCompressionLevel");
+      bool    endOfOptions = false;
+      size_t  skipCnt = 0;
+      for (int i = 1; i < argc; i++) {
+        const char  *s = argv[i];
+        if (s == (char *) 0 || s[0] == '\0')
+          continue;
+        if (skipCnt > 0) {
+          args.push_back(s);
+          skipCnt--;
+          continue;
+        }
+#ifdef __APPLE__
+        if (std::strncmp(s, "-psn_", 5) == 0)
+          continue;
+#endif
+        if (s[0] != '-' || endOfOptions) {
+          if (infileName == "") {
+            infileName = s;
+          }
+          else if (outfileName == "") {
+            outfileName = s;
+          }
+          else {
+            printUsageFlag = true;
+            throw Plus4Emu::Exception("too many file name arguments");
+          }
+          continue;
+        }
+        if (std::strcmp(s, "--") == 0) {
+          endOfOptions = true;
+          continue;
+        }
+        if (std::strcmp(s, "-h") == 0 ||
+            std::strcmp(s, "-help") == 0 ||
+            std::strcmp(s, "--help") == 0) {
+          helpFlag = true;
+          throw Plus4Emu::Exception("");
+        }
+        if (optionTable.find(s) == optionTable.end()) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("invalid command line option");
+        }
+        args.push_back(s);
+        skipCnt = optionTable[s].size();
+      }
+      if (skipCnt > 0) {
+        printUsageFlag = true;
+        throw Plus4Emu::Exception("missing argument(s) "
+                                  "for command line option");
+      }
+      if (infileName != "" && outfileName == "") {
+        printUsageFlag = true;
+        throw Plus4Emu::Exception("missing file name");
+      }
+      // if there are no file name arguments, run in GUI mode,
+      // but still use any command line options specified
+      if (infileName == "") {
+        try {
+          // load configuration
+          Plus4Emu::File  f("p4flicfg.dat", true);
+          config.registerChunkType(f);
+          f.processAllChunks();
+        }
+        catch (...) {
+        }
+      }
+      for (size_t i = 0; i < args.size(); i++) {
+        std::vector< std::string >&   v = optionTable[args[i]];
+        for (size_t j = 0; j < v.size(); j++) {
+          char        optionType = v[j][0];
+          const char  *optionName = v[j].c_str() + 2;
+          i++;
+          if (optionType == 'b')
+            config[optionName] = bool(std::atoi(args[i].c_str()));
+          else if (optionType == 'i')
+            config[optionName] = int(std::atoi(args[i].c_str()));
+          else if (optionType == 'f')
+            config[optionName] = double(std::atof(args[i].c_str()));
+        }
+      }
+    }
+    if (infileName != "") {
+      // run in command line mode
+      Plus4FLIConv::FLIConverter  *fliConv = (Plus4FLIConv::FLIConverter *) 0;
+      Plus4FLIConv::PRGData       prgData;
+      unsigned int  prgEndAddr = 0x1003U;
+      try {
+        int     convType = config["conversionType"];
+        if (convType == 0)
+          fliConv = new Plus4FLIConv::P4FLI_Interlace7();
+        else
+          throw Plus4Emu::Exception("invalid conversion type");
+        Plus4FLIConv::YUVImageConverter imgConv;
+        imgConv.setXYScaleAndOffset(float(double(config["scaleX"])),
+                                    float(double(config["scaleY"])),
+                                    float(double(config["offsetX"])),
+                                    float(double(config["offsetY"])));
+        imgConv.setYGamma(float(double(config["monitorGamma"])
+                                / double(config["gammaCorrection"])));
+        imgConv.setLuminanceRange(float(double(config["yMin"])),
+                                  float(double(config["yMax"])));
+        imgConv.setColorSaturation(float(double(config["saturationMult"])),
+                                   float(double(config["saturationPow"])));
+        fliConv->processImage(prgData, prgEndAddr,
+                              infileName.c_str(), imgConv, config);
+        delete fliConv;
+        fliConv = (Plus4FLIConv::FLIConverter *) 0;
+      }
+      catch (...) {
+        if (fliConv)
+          delete fliConv;
+        throw;
+      }
+      config.clearConfigurationChangeFlag();
+      std::FILE *f = (std::FILE *) 0;
+      try {
+        f = std::fopen(outfileName.c_str(), "wb");
+        if (!f)
+          throw Plus4Emu::Exception("error opening PRG file");
+        bool    rawMode = config["rawPRGMode"];
+        int     compressionLevel = config["prgCompressionLevel"];
+        unsigned int  prgStartAddr = (rawMode ? 0x1400U : 0x1001U);
+        if (compressionLevel > 0) {
+          std::vector< unsigned char >  compressInBuf;
+          std::vector< unsigned char >  compressOutBuf;
+          Plus4FLIConv::PRGCompressor   compress_(compressOutBuf);
+          Plus4FLIConv::PRGCompressor::CompressionParameters  compressCfg;
+          compress_.getCompressionParameters(compressCfg);
+          compressCfg.setCompressionLevel(compressionLevel);
+          compress_.setCompressionParameters(compressCfg);
+          for (unsigned int i = prgStartAddr - 0x0FFFU;
+               i < (prgEndAddr - 0x0FFFU);
+               i++) {
+            compressInBuf.push_back(prgData[i]);
+          }
+          if (!rawMode) {
+            compress_.addDecompressCode(false);
+            compress_.addDecompressEndCode(-1L, false, true, true, false);
+            compress_.addZeroPageUpdate(prgEndAddr, false);
+          }
+          else {
+            compress_.addDecompressEndCode(-2L, false, false, false, false);
+          }
+          compress_.compressData(compressInBuf, prgStartAddr, true, true);
+          prgStartAddr = 0x1001U;
+          if (rawMode)
+            prgStartAddr = compress_.getCompressedDataStartAddress();
+          if (std::fputc(int(prgStartAddr & 0xFFU), f) == EOF ||
+              std::fputc(int(prgStartAddr >> 8), f) == EOF) {
+            throw Plus4Emu::Exception("error writing PRG file");
+          }
+          for (size_t i = 0; i < compressOutBuf.size(); i++) {
+            if (std::fputc(int(compressOutBuf[i]), f) == EOF)
+              throw Plus4Emu::Exception("error writing PRG file");
+          }
+        }
+        else {
+          if (std::fputc(int(prgStartAddr & 0xFFU), f) == EOF ||
+              std::fputc(int(prgStartAddr >> 8), f) == EOF) {
+            throw Plus4Emu::Exception("error writing PRG file");
+          }
+          for (unsigned int i = prgStartAddr - 0x0FFFU;
+               i < (prgEndAddr - 0x0FFFU);
+               i++) {
+            if (std::fputc(int(prgData[i]), f) == EOF)
+              throw Plus4Emu::Exception("error writing PRG file");
+          }
+        }
+        if (std::fflush(f) != 0)
+          throw Plus4Emu::Exception("error writing PRG file");
+        std::fclose(f);
+        f = (std::FILE *) 0;
+      }
+      catch (...) {
+        if (f)
+          std::fclose(f);
+        throw;
+      }
+      return 0;
+    }
+    config.clearConfigurationChangeFlag();
+    Plus4FLIConvGUI *gui = new Plus4FLIConvGUI(config);
+    gui->run();
+    delete gui;
+    try {
+      // save configuration
+      Plus4Emu::File  f;
+      config.saveState(f);
+      f.writeFile("p4flicfg.dat", true);
+    }
+    catch (...) {
+    }
   }
-  catch (...) {
-  }
-  config.clearConfigurationChangeFlag();
-  Plus4FLIConvGUI *gui = new Plus4FLIConvGUI(config);
-  gui->run();
-  delete gui;
-  try {
-    // save configuration
-    Plus4Emu::File  f;
-    config.saveState(f);
-    f.writeFile("p4flicfg.dat", true);
-  }
-  catch (...) {
+  catch (std::exception& e) {
+    if (printUsageFlag || helpFlag) {
+      std::fprintf(stderr, "Usage: %s [OPTIONS...] infile.jpg outfile.prg\n",
+                           argv[0]);
+      std::fprintf(stderr, "Options:\n");
+      std::fprintf(stderr, "    -mode <N>           (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        select video mode\n");
+      std::fprintf(stderr, "    -ymin <MIN>         (default: 0.0)\n");
+      std::fprintf(stderr, "    -ymax <MAX>         (default: 1.0)\n");
+      std::fprintf(stderr, "        scale luminance range from 0..1 to "
+                           "MIN..MAX\n");
+      std::fprintf(stderr, "    -scale <X> <Y>      (defaults: 1.0, 1.0)\n");
+      std::fprintf(stderr, "        scale image size\n");
+      std::fprintf(stderr, "    -offset <X> <Y>     (defaults: 0.0, 0.0)\n");
+      std::fprintf(stderr, "        set image position offset\n");
+      std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.6)\n");
+      std::fprintf(stderr, "        color saturation scale and power\n");
+      std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 1.33)\n");
+      std::fprintf(stderr, "        set gamma correction (G) and assumed "
+                           "monitor gamma (M)\n");
+      std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 0, 0.125, "
+                           "0.5)\n");
+      std::fprintf(stderr, "        dither mode (0: ordered, 1: diffuse), "
+                           "limit, and error diffusion\n        factor\n");
+      std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
+      std::fprintf(stderr, "        assume PAL chrominance filtering "
+                           "if set to 1\n");
+      std::fprintf(stderr, "    -xshift <S0> <S1>   "
+                           "(-2 to 7, defaults: -1, -1)\n");
+      std::fprintf(stderr, "        set horizontal shift for each field (-2 is "
+                           "random, -1 finds\n        optimal values)\n");
+      std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
+      std::fprintf(stderr, "        set border color\n");
+      std::fprintf(stderr, "    -size <N>           "
+                           "(200 to 496, default: 464)\n");
+      std::fprintf(stderr, "        set vertical resolution (< 400 implies "
+                           "no interlace)\n");
+      std::fprintf(stderr, "    -y1bit <N>          (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        use 1 bit (black and white) luminance\n");
+      std::fprintf(stderr, "    -no_li <N>          (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        do not interlace luminance attributes\n");
+      std::fprintf(stderr, "    -ci <N>             (0 to 2, default: 1)\n");
+      std::fprintf(stderr, "        color interlace mode (0: none, 1: hue "
+                           "only, 2: hue and\n        saturation)\n");
+      std::fprintf(stderr, "    -searchmode <M> <P> (defaults: 2, 4.0)\n");
+      std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
+                           " and parameter for\n        modes 2, 4, and 5\n");
+      std::fprintf(stderr, "    -raw <N>            (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        write the image data only\n");
+      std::fprintf(stderr, "    -compress <N>       (0 to 9, default: 0)\n");
+      std::fprintf(stderr, "        compress output file if N is not zero\n");
+    }
+    if (!helpFlag) {
+      const char  *errMsg = e.what();
+      if (!errMsg)
+        errMsg = "";
+      std::fprintf(stderr, " *** p4fliconv error: %s\n", errMsg);
+      return -1;
+    }
+    return 0;
   }
   return 0;
 }
