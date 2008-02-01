@@ -22,6 +22,7 @@
 
 #include "p4fliconv.hpp"
 #include "interlace7.hpp"
+#include "mcfli.hpp"
 #include "compress.hpp"
 #include "guicolor.hpp"
 
@@ -32,6 +33,15 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Image.H>
 #include <FL/Fl_Shared_Image.H>
+
+static const float brightnessToYTable[9] = {
+  2.00f,  2.40f,  2.55f,  2.70f,  2.90f,  3.30f,  3.60f,  4.10f,  4.80f
+};
+
+static const float colorPhaseTablePAL[16] = {
+    0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
+  129.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    3.0f,  213.0f
+};
 
 static void defaultProgressMessageCb(void *userData, const char *msg)
 {
@@ -51,6 +61,34 @@ static bool defaultProgressPercentageCb(void *userData, int n)
 }
 
 namespace Plus4FLIConv {
+
+  const float FLIConverter::defaultColorSaturation = 0.19f;
+
+  void FLIConverter::convertPlus4Color(int c, float& y, float& u, float& v,
+                                       double monitorGamma_)
+  {
+    int     l = ((c & 0x70) >> 4) + 1;
+    c = c & 0x0F;
+    if (c != 0) {
+      y = (brightnessToYTable[l] - brightnessToYTable[0])
+          / (brightnessToYTable[8] - brightnessToYTable[0]);
+      y = float(std::pow(double(y), monitorGamma_));
+      if (c != 1) {
+        double  phs = double(colorPhaseTablePAL[c]) * 3.14159265 / 180.0;
+        u = float(std::cos(phs)) * defaultColorSaturation;
+        v = float(std::sin(phs)) * defaultColorSaturation;
+      }
+      else {
+        u = 0.0f;
+        v = 0.0f;
+      }
+    }
+    else {
+      y = 0.0f;
+      u = 0.0f;
+      v = 0.0f;
+    }
+  }
 
   FLIConverter::FLIConverter()
     : progressMessageCallback(&defaultProgressMessageCb),
@@ -267,6 +305,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         if (imageFileName != "") {
           if (convType == 0)
             fliConv = new Plus4FLIConv::P4FLI_Interlace7();
+          else if (convType == 1)
+            fliConv = new Plus4FLIConv::P4FLI_MultiColor();
         }
         if (fliConv) {
           setBusyFlag(true);
@@ -281,6 +321,13 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
                                     float(double(config["yMax"])));
           imgConv.setColorSaturation(float(double(config["saturationMult"])),
                                      float(double(config["saturationPow"])));
+          float   borderY = 0.0f;
+          float   borderU = 0.0f;
+          float   borderV = 0.0f;
+          Plus4FLIConv::FLIConverter::convertPlus4Color(
+              int(config["borderColor"]), borderY, borderU, borderV,
+              double(config["monitorGamma"]));
+          imgConv.setBorderColor(borderY, borderU, borderV);
           imgConv.setProgressMessageCallback(&progressMessageCallback,
                                              (void *) this);
           imgConv.setProgressPercentageCallback(&progressPercentageCallback,
@@ -337,7 +384,9 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
       try {
         Plus4Emu::VideoDisplay::DisplayParameters dp;
         dp = display->getDisplayParameters();
-        if (int(config["verticalSize"]) < 400) {
+        if (prgEndAddress <= 0x1003U ||
+            int(config["conversionType"]) != 0 ||
+            int(config["verticalSize"]) < 400) {
           dp.lineShade = 1.0f;
           dp.blendScale = 1.0f;
           dp.motionBlur = 0.333f;
@@ -715,7 +764,11 @@ int main(int argc, char **argv)
   try {
     Fl::lock();
     fl_register_images();
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+    Plus4Emu::setGUIColorScheme(1);
+#else
     Plus4Emu::setGUIColorScheme(0);
+#endif
     Plus4FLIConv::FLIConfiguration  config;
     config.resetDefaultSettings();
     std::string infileName = "";
@@ -839,6 +892,8 @@ int main(int argc, char **argv)
         int     convType = config["conversionType"];
         if (convType == 0)
           fliConv = new Plus4FLIConv::P4FLI_Interlace7();
+        else if (convType == 1)
+          fliConv = new Plus4FLIConv::P4FLI_MultiColor();
         else
           throw Plus4Emu::Exception("invalid conversion type");
         Plus4FLIConv::YUVImageConverter imgConv;
@@ -852,6 +907,13 @@ int main(int argc, char **argv)
                                   float(double(config["yMax"])));
         imgConv.setColorSaturation(float(double(config["saturationMult"])),
                                    float(double(config["saturationPow"])));
+        float   borderY = 0.0f;
+        float   borderU = 0.0f;
+        float   borderV = 0.0f;
+        Plus4FLIConv::FLIConverter::convertPlus4Color(
+            int(config["borderColor"]), borderY, borderU, borderV,
+            double(config["monitorGamma"]));
+        imgConv.setBorderColor(borderY, borderU, borderV);
         fliConv->processImage(prgData, prgEndAddr,
                               infileName.c_str(), imgConv, config);
         delete fliConv;
@@ -948,7 +1010,8 @@ int main(int argc, char **argv)
                            argv[0]);
       std::fprintf(stderr, "Options:\n");
       std::fprintf(stderr, "    -mode <N>           (0 or 1, default: 0)\n");
-      std::fprintf(stderr, "        select video mode\n");
+      std::fprintf(stderr, "        select video mode (0: hires, "
+                           "1: multicolor)\n");
       std::fprintf(stderr, "    -ymin <MIN>         (default: 0.0)\n");
       std::fprintf(stderr, "    -ymax <MAX>         (default: 1.0)\n");
       std::fprintf(stderr, "        scale luminance range from 0..1 to "
@@ -963,9 +1026,9 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        set gamma correction (G) and assumed "
                            "monitor gamma (M)\n");
       std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 0, 0.125, "
-                           "0.5)\n");
-      std::fprintf(stderr, "        dither mode (0: ordered, 1: diffuse), "
-                           "limit, and error diffusion\n        factor\n");
+                           "0.75)\n");
+      std::fprintf(stderr, "        dither mode (0: ordered, 1-3: diffuse), "
+                           "limit, and error\n        diffusion factor\n");
       std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
       std::fprintf(stderr, "        assume PAL chrominance filtering "
                            "if set to 1\n");

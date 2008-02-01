@@ -83,7 +83,7 @@ namespace Plus4FLIConv {
   {
     resetDefaultSettings();
     createKey("conversionType", conversionType);
-    (*this)["conversionType"].setRange(0.0, 0.0);
+    (*this)["conversionType"].setRange(0.0, 1.0);
     (*this)["conversionType"].setCallback(&configChangeCallbackInteger,
                                           (void *) this, true);
     createKey("yMin", yMin);
@@ -127,7 +127,7 @@ namespace Plus4FLIConv {
     (*this)["monitorGamma"].setCallback(&configChangeCallbackFloat,
                                         (void *) this, true);
     createKey("ditherMode", ditherMode);
-    (*this)["ditherMode"].setRange(0.0, 1.0);
+    (*this)["ditherMode"].setRange(0.0, 3.0);
     (*this)["ditherMode"].setCallback(&configChangeCallbackInteger,
                                       (void *) this, true);
     createKey("ditherLimit", ditherLimit);
@@ -199,7 +199,7 @@ namespace Plus4FLIConv {
     monitorGamma = 1.33;
     ditherMode = 0;
     ditherLimit = 0.125;
-    ditherDiffusion = 0.5;
+    ditherDiffusion = 0.75;
     enablePAL = true;
     xShift0 = -1;
     xShift1 = -1;

@@ -162,7 +162,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
           xywh {145 20 145 25} down_box BORDER_BOX
-          code0 {o->add("Interlace7");}
+          code0 {o->add("Interlace7|Multicolor");}
         } {}
         Fl_Box {} {
           label {Vertical resolution}
@@ -398,7 +398,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
           xywh {440 20 140 25} down_box BORDER_BOX
-          code0 {o->add("Ordered|Diffuse (Stucki)");}
+          code0 {o->add("Ordered|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)");}
         } {}
         Fl_Box {} {
           label {Dither limit}
@@ -430,7 +430,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-          xywh {520 90 60 25} when 4 step 0.001 value 0.5
+          xywh {520 90 60 25} when 4 step 0.001 value 0.75
         }
         Fl_Box {} {
           label {X shift (field 0)}

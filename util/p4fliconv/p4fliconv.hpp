@@ -58,6 +58,7 @@ namespace Plus4FLIConv {
     void    *progressPercentageUserData;
     int     prvProgressPercentage;
    public:
+    static const float  defaultColorSaturation;
     FLIConverter();
     virtual ~FLIConverter();
     // the return value is false if the processing has been stopped
@@ -71,6 +72,8 @@ namespace Plus4FLIConv {
     virtual void setProgressPercentageCallback(bool (*func)(void *userData,
                                                             int n),
                                                void *userData_);
+    static void convertPlus4Color(int c, float& y, float& u, float& v,
+                                  double monitorGamma_ = 1.0);
    protected:
     virtual void progressMessage(const char *msg);
     virtual bool setProgressPercentage(int n);

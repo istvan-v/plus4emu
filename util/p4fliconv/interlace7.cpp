@@ -130,19 +130,10 @@ namespace Plus4FLIConv {
 
   // --------------------------------------------------------------------------
 
-  const float P4FLI_Interlace7::yTableSrc[9] = {
-    2.00f,  2.40f,  2.55f,  2.70f,  2.90f,  3.30f,  3.60f,  4.10f,  4.80f
-  };
-
-  const float P4FLI_Interlace7::colorPhaseTablePAL[16] = {
-      0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-    129.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    3.0f,  213.0f
-  };
-
   P4FLI_Interlace7::P4FLI_Interlace7()
     : monitorGamma(1.33),
       ditherLimit(0.125),
-      ditherScale(0.5),
+      ditherScale(0.75),
       ditherMode(0),
       luminanceSearchMode(2),
       luminanceSearchModeParam(4.0),
@@ -176,23 +167,17 @@ namespace Plus4FLIConv {
 
   void P4FLI_Interlace7::colorToUV(int c, float& u, float& v)
   {
-    u = 0.0f;
-    v = 0.0f;
-    c = c & 15;
-    if (c < 2)
-      return;
-    u = float(std::cos(colorPhaseTablePAL[c] * 3.14159265 / 180.0) * 0.19);
-    v = float(std::sin(colorPhaseTablePAL[c] * 3.14159265 / 180.0) * 0.19);
+    float   y = 0.0f;
+    FLIConverter::convertPlus4Color(c, y, u, v, monitorGamma);
   }
 
   void P4FLI_Interlace7::createYTable()
   {
     for (int i = 0; i < 9; i++) {
-      double  tmp = yTableSrc[i];
-      tmp = (tmp - yTableSrc[0]) / (yTableSrc[8] - yTableSrc[0]);
-      tmp = (tmp > 0.0 ? (tmp < 1.0 ? tmp : 1.0) : 0.0);
-      tmp = std::pow(tmp, monitorGamma);
-      yTable[i] = float(tmp);
+      float   u = 0.0f;
+      float   v = 0.0f;
+      FLIConverter::convertPlus4Color((i == 0 ? 0 : (((i - 1) << 4) + 1)),
+                                      yTable[i], u, v, monitorGamma);
     }
   }
 
@@ -229,7 +214,7 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 0.25, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 1);
+    limitValue(ditherMode, 0, 3);
     limitValue(luminanceSearchMode, 0, 5);
     switch (luminanceSearchMode) {
     case 2:
@@ -281,21 +266,20 @@ namespace Plus4FLIConv {
       else
         pixelValueDithered = pixelValue0;
     }
+    bitValue = (calculateError(pixelValue1, pixelValueDithered)
+                < calculateError(pixelValue0, pixelValueDithered));
+    // save quantized pixel value for error calculation
+    float   newPixelValue = (bitValue ? pixelValue1 : pixelValue0);
     if (calculateError(calculateError(pixelValue1, pixelValueOriginal),
                        calculateError(pixelValue0, pixelValueOriginal))
         >= ditherLimit) {
       bitValue = (calculateError(pixelValue1, pixelValueOriginal)
                   < calculateError(pixelValue0, pixelValueOriginal));
     }
-    else {
-      bitValue = (calculateError(pixelValue1, pixelValueDithered)
-                  < calculateError(pixelValue0, pixelValueDithered));
-    }
     prgData.setPixel(xcShifted, yc, bitValue);
     if (ditherMode == 0)
       return;
     // diffuse error
-    float   newPixelValue = (bitValue ? pixelValue1 : pixelValue0);
     pixelValueDithered = pixelValueOriginal
                          + ((pixelValueDithered - pixelValueOriginal)
                             * float(ditherScale));
@@ -304,19 +288,58 @@ namespace Plus4FLIConv {
     if (pixelValueDithered > pixelValue1)
       pixelValueDithered = pixelValue1;
     double  err = double(pixelValueDithered) - double(newPixelValue);
-    for (int i = 0; i < 3; i++) {
-      long    yc_ = yc + i;
-      if (yc_ >= 496L)
-        break;
-      for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
-        long    xc_ = j;
-        if (yc & 1L)
-          xc_ = -xc_;
-        xc_ += xc;
-        int     tmp = 16 >> (i + (j >= 0 ? j : (-j)));
+    if (ditherMode == 1) {
+      // Floyd-Steinberg dithering
+      static const int    xOffsTbl[4] = { 1, -1, 0, 1 };
+      static const int    yOffsTbl[4] = { 0, 1, 1, 1 };
+      static const float  errMultTbl[4] = {
+        0.4375f, 0.1875f, 0.3125f, 0.0625f
+      };
+      for (int i = 0; i < 4; i++) {
+        long    yc_ = yc + yOffsTbl[i];
+        if (yc_ >= 496L)
+          break;
+        long    xc_ = xOffsTbl[i];
+        xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
         ditherErrorImage[yc_].setPixel(xc_,
                                        ditherErrorImage[yc_].getPixel(xc_)
-                                       + float(err * (double(tmp) / 42.0)));
+                                       + (float(err) * errMultTbl[i]));
+      }
+    }
+    else if (ditherMode == 2) {
+      // Jarvis dithering
+      for (int i = 0; i < 3; i++) {
+        long    yc_ = yc + i;
+        if (yc_ >= 496L)
+          break;
+        for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
+          long    xc_ = j;
+          if (yc & 1L)
+            xc_ = -xc_;
+          xc_ += xc;
+          int     tmp = 9 - ((i + (j >= 0 ? j : (-j))) << 1);
+          ditherErrorImage[yc_].setPixel(xc_,
+                                         ditherErrorImage[yc_].getPixel(xc_)
+                                         + float(err * (double(tmp) / 48.0)));
+        }
+      }
+    }
+    else {
+      // Stucki dithering
+      for (int i = 0; i < 3; i++) {
+        long    yc_ = yc + i;
+        if (yc_ >= 496L)
+          break;
+        for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
+          long    xc_ = j;
+          if (yc & 1L)
+            xc_ = -xc_;
+          xc_ += xc;
+          int     tmp = 16 >> (i + (j >= 0 ? j : (-j)));
+          ditherErrorImage[yc_].setPixel(xc_,
+                                         ditherErrorImage[yc_].getPixel(xc_)
+                                         + float(err * (double(tmp) / 42.0)));
+        }
       }
     }
   }
@@ -669,11 +692,12 @@ namespace Plus4FLIConv {
       noLuminanceInterlace = config["noLuminanceInterlace"];
       checkParameters();
       createYTable();
-      float   borderY = yTable[((borderColor & 0x0F) != 0 ?
-                                (((borderColor & 0x70) >> 4) + 1) : 0)];
+      createUVTables();
+      float   borderY = 0.0f;
       float   borderU = 0.0f;
       float   borderV = 0.0f;
-      colorToUV(borderColor & 0x0F, borderU, borderV);
+      FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
+                                      monitorGamma);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
       prgData.setVerticalSize(nLines);
@@ -695,7 +719,6 @@ namespace Plus4FLIConv {
       line1V.setBorderColor(borderV);
       imgConv.setImageSize(640, nLines);
       imgConv.setPixelAspectRatio(1.0f);
-      imgConv.setBorderColor(borderY, borderU, borderV);
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
       progressMessage("Calculating FLI data");

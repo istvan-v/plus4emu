@@ -151,8 +151,6 @@ namespace Plus4FLIConv {
       float   v;
       double  err;
     };
-    static const float  yTableSrc[9];
-    static const float  colorPhaseTablePAL[16];
     float               yTable[9];
     UVTableEntry        uvTable[43];
     YUVImage320x496     resizedImage;

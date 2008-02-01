@@ -158,7 +158,7 @@ namespace Plus4FLIConv {
           y = float(std::pow(y, yGamma));
           double  c = std::sqrt((u * u) + (v * v));
           if (c > 0.000001) {
-            c = c * (1.0 / 0.19);
+            c = c * (1.0 / double(FLIConverter::defaultColorSaturation));
             c = std::pow(c, double(colorSaturationPow)) / c;
             u = float(c * u);
             v = float(c * v);
