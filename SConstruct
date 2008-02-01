@@ -286,16 +286,24 @@ if haveDotconf:
     p4fliconvEnvironment.Append(LIBS = ['dotconf'])
 if not win32CrossCompile:
     p4fliconvEnvironment.Append(LIBS = ['pthread'])
-else:
-    p4fliconvEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
 
-p4fliconv = p4fliconvEnvironment.Program('p4fliconv',
-    ['util/p4fliconv/compress.cpp', 'util/p4fliconv/dither.cpp',
-     'util/p4fliconv/flicfg.cpp', 'util/p4fliconv/flidisp.cpp',
-     'util/p4fliconv/imageconv.cpp', 'util/p4fliconv/interlace7.cpp',
-     'util/p4fliconv/p4fliconv.cpp', 'util/p4fliconv/prgdata.cpp']
-    + fluidCompile(['util/p4fliconv/p4fliconv.fl']))
+p4fliconvSources = ['util/p4fliconv/compress.cpp', 'util/p4fliconv/dither.cpp',
+                    'util/p4fliconv/flicfg.cpp', 'util/p4fliconv/flidisp.cpp',
+                    'util/p4fliconv/imageconv.cpp',
+                    'util/p4fliconv/interlace7.cpp',
+                    'util/p4fliconv/mcfli.cpp', 'util/p4fliconv/p4fliconv.cpp',
+                    'util/p4fliconv/prgdata.cpp']
+p4fliconvSources += fluidCompile(['util/p4fliconv/p4fliconv.fl'])
+
+p4fliconv = p4fliconvEnvironment.Program('p4fliconv', p4fliconvSources)
 Depends(p4fliconv, plus4emuLib)
+
+if win32CrossCompile:
+    p4fliconvGUIEnvironment = p4fliconvEnvironment.Copy()
+    p4fliconvGUIEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
+    p4fliconvGUI = p4fliconvGUIEnvironment.Program('p4fliconv_gui',
+                                                   p4fliconvSources)
+    Depends(p4fliconvGUI, plus4emuLib)
 
 if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/p4fliconv', 'p4fliconv',

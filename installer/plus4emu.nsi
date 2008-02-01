@@ -72,6 +72,9 @@ Section "plus4emu" SecMain
   File /nonfatal "..\LICENSE.libsndfile"
   File "/oname=news.txt" "..\NEWS"
   File "/oname=readme.txt" "..\README"
+  File "..\compress.exe"
+  File "..\p4fliconv.exe"
+  File "..\p4fliconv_gui.exe"
   File "..\plus4emu.exe"
   File "C:\MinGW\bin\libsndfile-1.dll"
   File "C:\MinGW\bin\lua51.dll"
@@ -112,6 +115,7 @@ Section "plus4emu" SecMain
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 1'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 2'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - software mode.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Image converter utility.lnk" "$INSTDIR\p4fliconv_gui.exe"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\README.lnk" "$INSTDIR\readme.txt"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Reinstall configuration files.lnk" "$INSTDIR\makecfg.exe" '"$INSTDIR"'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
@@ -203,6 +207,28 @@ Section "Source code" SecSrc
 
   File "..\util\*.c"
   File "..\util\*.cpp"
+
+  SetOutPath "$INSTDIR\src\util\p4fliconv"
+
+  File "..\util\p4fliconv\*.fl"
+  File "..\util\p4fliconv\compress.cpp"
+  File "..\util\p4fliconv\compress.hpp"
+  File "..\util\p4fliconv\dither.cpp"
+  File "..\util\p4fliconv\dither.hpp"
+  File "..\util\p4fliconv\flicfg.cpp"
+  File "..\util\p4fliconv\flicfg.hpp"
+  File "..\util\p4fliconv\flidisp.cpp"
+  File "..\util\p4fliconv\flidisp.hpp"
+  File "..\util\p4fliconv\imageconv.cpp"
+  File "..\util\p4fliconv\imageconv.hpp"
+  File "..\util\p4fliconv\interlace7.cpp"
+  File "..\util\p4fliconv\interlace7.hpp"
+  File "..\util\p4fliconv\mcfli.cpp"
+  File "..\util\p4fliconv\mcfli.hpp"
+  File "..\util\p4fliconv\p4fliconv.cpp"
+  File "..\util\p4fliconv\p4fliconv.hpp"
+  File "..\util\p4fliconv\prgdata.cpp"
+  File "..\util\p4fliconv\prgdata.hpp"
 
 SectionEnd
 
@@ -327,8 +353,11 @@ Section "Uninstall"
   Delete "$INSTDIR\LICENSE.SDL"
   Delete "$INSTDIR\LICENSE.dotconf"
   Delete "$INSTDIR\LICENSE.libsndfile"
+  Delete "$INSTDIR\compress.exe"
   Delete "$INSTDIR\news.txt"
   Delete "$INSTDIR\readme.txt"
+  Delete "$INSTDIR\p4fliconv.exe"
+  Delete "$INSTDIR\p4fliconv_gui.exe"
   Delete "$INSTDIR\plus4emu.exe"
   Delete "$INSTDIR\libsndfile-1.dll"
   Delete "$INSTDIR\lua51.dll"
@@ -382,6 +411,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - Win2000 theme.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - plastic theme.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - software mode.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\Image converter utility.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\README.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Reinstall configuration files.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
