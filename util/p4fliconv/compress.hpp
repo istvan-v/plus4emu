@@ -36,6 +36,7 @@ namespace Plus4FLIConv {
       size_t  optimizeIterations;
       size_t  splitOptimizationDepth;
       bool    optimalParsingEnabled;
+      bool    optimizeMatchDistanceRepeats;
       CompressionParameters();
       CompressionParameters(const CompressionParameters& r);
       ~CompressionParameters()

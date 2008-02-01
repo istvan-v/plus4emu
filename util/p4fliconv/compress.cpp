@@ -559,7 +559,8 @@ namespace Plus4FLIConv {
   PRGCompressor::CompressionParameters::CompressionParameters()
     : optimizeIterations(2),
       splitOptimizationDepth(1),
-      optimalParsingEnabled(false)
+      optimalParsingEnabled(false),
+      optimizeMatchDistanceRepeats(false)
   {
   }
 
@@ -577,6 +578,7 @@ namespace Plus4FLIConv {
     if (splitOptimizationDepth > 9)
       splitOptimizationDepth = 9;
     optimalParsingEnabled = r.optimalParsingEnabled;
+    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
   }
 
   PRGCompressor::CompressionParameters::CompressionParameters&
@@ -594,6 +596,7 @@ namespace Plus4FLIConv {
     if (splitOptimizationDepth > 9)
       splitOptimizationDepth = 9;
     optimalParsingEnabled = r.optimalParsingEnabled;
+    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
     return (*this);
   }
 
@@ -603,6 +606,7 @@ namespace Plus4FLIConv {
     optimizeIterations = size_t(n > 1 ? n : 2);
     splitOptimizationDepth = size_t(n);
     optimalParsingEnabled = (n >= 2);
+    optimizeMatchDistanceRepeats = (n >= 8);
   }
 
   // --------------------------------------------------------------------------
@@ -769,6 +773,12 @@ namespace Plus4FLIConv {
     }
   }
 
+  struct BitCountTableEntry {
+    long    totalBits;
+    unsigned short  prvDistances[4];
+    long    prvDistanceCounts[4];
+  };
+
   void PRGCompressor::compressData_(std::vector< unsigned int >& tmpOutBuf,
                                     const std::vector< unsigned char >& inBuf,
                                     unsigned int startAddr, bool isLastBlock,
@@ -787,10 +797,7 @@ namespace Plus4FLIConv {
     for (size_t i = 0; i < 4; i++)
       prvDistances[i] = 0;
     std::vector< LZMatchParameters >  matchTable;
-    std::vector< size_t >   bitCountTable;
     matchTable.resize(nBytes);
-    bitCountTable.resize(nBytes + 1);
-    bitCountTable[nBytes] = 0;
     for (size_t i = offs; i < endPos; i++) {
       matchTable[i - offs].clear();
       matchTable[i - offs].nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
@@ -801,28 +808,118 @@ namespace Plus4FLIConv {
         findBestMatch(matchTable[i - offs], inBuf, i, maxLen);
     }
     if (config.optimalParsingEnabled) {
-      for (size_t i = endPos; i > offs; ) {
-        i--;
-        size_t  maxLen = matchTable[i - offs].len;
-        size_t  bestSize = 0x7FFFFFFFUL;
-        LZMatchParameters tmp;
-        for (size_t k = maxLen; k >= minRepeatLen; k--) {
-          findBestMatch(tmp, inBuf, i, k);
-          size_t  nBits = size_t(tmp.nBits) + bitCountTable[i + k - offs];
+      if (config.optimizeMatchDistanceRepeats) {
+        std::vector< BitCountTableEntry >   bitCountTable;
+        bitCountTable.resize(nBytes + 1);
+        bitCountTable[nBytes].totalBits = 0L;
+        for (size_t i = 0; i < 4; i++) {
+          bitCountTable[nBytes].prvDistances[i] = 0;
+          bitCountTable[nBytes].prvDistanceCounts[i] = 0L;
+        }
+        for (size_t i = endPos; i > offs; ) {
+          i--;
+          size_t  maxLen = matchTable[i - offs].len;
+          long    bestSize = 0x7FFFFFFFL;
+          LZMatchParameters tmp;
+          for (size_t k = maxLen; k >= minRepeatLen; k--) {
+            findBestMatch(tmp, inBuf, i, k);
+            BitCountTableEntry& nxtMatch = bitCountTable[i + k - offs];
+            BitCountTableEntry  curMatch = nxtMatch;
+            curMatch.totalBits += long(tmp.nBits);
+            if (tmp.d > 8) {
+              int     distNdx = -1;
+              for (int nn = 0; nn < 4; nn++) {
+                if (curMatch.prvDistances[nn] == tmp.d) {
+                  distNdx = nn;
+                  break;
+                }
+              }
+              if (distNdx < 0) {
+                unsigned short  d = curMatch.prvDistances[0];
+                curMatch.totalBits +=
+                    ((long(tmpCharBitsTable[0x0140])
+                      - (long(tmpCharBitsTable[distanceCodeTable[d]])
+                         + long(distanceBitsTable[d])))
+                     * curMatch.prvDistanceCounts[0]);
+                for (int nn = 0; nn < 3; nn++) {
+                  curMatch.prvDistances[nn] = curMatch.prvDistances[nn + 1];
+                  curMatch.prvDistanceCounts[nn] =
+                      curMatch.prvDistanceCounts[nn + 1];
+                }
+                curMatch.prvDistances[3] = tmp.d;
+                curMatch.prvDistanceCounts[3] = 0L;
+              }
+              else {
+                curMatch.prvDistanceCounts[distNdx]++;
+              }
+            }
+            long    nBits = curMatch.totalBits;
+            for (int nn = 0; nn < 4; nn++) {
+              if (curMatch.prvDistanceCounts[nn] > 0L) {
+                unsigned short  d = curMatch.prvDistances[nn];
+                nBits += ((long(tmpCharBitsTable[0x0140 | nn])
+                           - (long(tmpCharBitsTable[distanceCodeTable[d]])
+                              + long(distanceBitsTable[d])))
+                          * curMatch.prvDistanceCounts[nn]);
+              }
+            }
+            if (nBits < bestSize) {
+              bestSize = nBits;
+              matchTable[i - offs] = tmp;
+              bitCountTable[i - offs] = curMatch;
+            }
+          }
+          {
+            BitCountTableEntry& nxtMatch = bitCountTable[i + 1 - offs];
+            BitCountTableEntry  curMatch = nxtMatch;
+            tmp.clear();
+            tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
+            curMatch.totalBits += long(tmp.nBits);
+            long    nBits = curMatch.totalBits;
+            for (int nn = 0; nn < 4; nn++) {
+              if (curMatch.prvDistanceCounts[nn] > 0L) {
+                unsigned short  d = curMatch.prvDistances[nn];
+                nBits += ((long(tmpCharBitsTable[0x0140 | nn])
+                           - (long(tmpCharBitsTable[distanceCodeTable[d]])
+                              + long(distanceBitsTable[d])))
+                          * curMatch.prvDistanceCounts[nn]);
+              }
+            }
+            if (nBits < bestSize) {
+              bestSize = nBits;
+              matchTable[i - offs] = tmp;
+              bitCountTable[i - offs] = curMatch;
+            }
+          }
+        }
+      }
+      else {
+        std::vector< size_t >   bitCountTable;
+        bitCountTable.resize(nBytes + 1);
+        bitCountTable[nBytes] = 0;
+        for (size_t i = endPos; i > offs; ) {
+          i--;
+          size_t  maxLen = matchTable[i - offs].len;
+          size_t  bestSize = 0x7FFFFFFFUL;
+          LZMatchParameters tmp;
+          for (size_t k = maxLen; k >= minRepeatLen; k--) {
+            findBestMatch(tmp, inBuf, i, k);
+            size_t  nBits = size_t(tmp.nBits) + bitCountTable[i + k - offs];
+            if (nBits < bestSize) {
+              matchTable[i - offs] = tmp;
+              bestSize = nBits;
+            }
+          }
+          size_t  nBits =
+              tmpCharBitsTable[inBuf[i]] + bitCountTable[i + 1 - offs];
           if (nBits < bestSize) {
+            tmp.clear();
+            tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
             matchTable[i - offs] = tmp;
             bestSize = nBits;
           }
+          bitCountTable[i - offs] = bestSize;
         }
-        size_t  nBits =
-            tmpCharBitsTable[inBuf[i]] + bitCountTable[i + 1 - offs];
-        if (nBits < bestSize) {
-          tmp.clear();
-          tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
-          matchTable[i - offs] = tmp;
-          bestSize = nBits;
-        }
-        bitCountTable[i - offs] = bestSize;
       }
     }
     for (size_t i = offs; i < endPos; ) {
