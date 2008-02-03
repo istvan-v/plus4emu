@@ -68,11 +68,15 @@ class Plus4FLIConvGUI {open
       label {plus4emu FLI converter}
       callback {{
   if (config.isFLIConfigurationChanged() || fileNotSavedFlag) {
-    if (confirmMessage("Quit without saving program ?"))
+    if (confirmMessage("Quit without saving program ?")) {
+      stopFlag = true;
       o->hide();
+    }
   }
-  else
+  else {
+    stopFlag = true;
     o->hide();
+  }
 }} open
       xywh {186 188 780 615} type Single color 48
       code0 {o->add(emulatorWindow);} size_range {780 615 780 615} visible
@@ -255,7 +259,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-          xywh {175 160 40 25} when 4 minimum -0.5 step 0.01
+          xywh {175 160 40 25} when 4 minimum -0.5 step 0.01 value -0.02
         }
         Fl_Value_Input yMaxValuator {
           label Max
@@ -268,7 +272,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-          xywh {250 160 40 25} when 4 maximum 2 step 0.01 value 1
+          xywh {250 160 40 25} when 4 maximum 2 step 0.01 value 1.03
         }
         Fl_Box {} {
           label {Color saturation}
@@ -298,7 +302,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-          xywh {250 195 40 25} when 4 minimum 0.1 maximum 2 step 0.01 value 0.6
+          xywh {250 195 40 25} when 4 minimum 0.1 maximum 2 step 0.01 value 0.8
         }
         Fl_Box {} {
           label {Luminance gamma correction}

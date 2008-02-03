@@ -187,14 +187,14 @@ namespace Plus4FLIConv {
   void FLIConfiguration::resetDefaultSettings()
   {
     conversionType = 0;
-    yMin = 0.0;
-    yMax = 1.0;
+    yMin = -0.02;
+    yMax = 1.03;
     scaleX = 1.0;
     scaleY = 1.0;
     offsetX = 0.0;
     offsetY = 0.0;
     saturationMult = 1.0;
-    saturationPow = 0.6;
+    saturationPow = 0.8;
     gammaCorrection = 1.0;
     monitorGamma = 1.33;
     ditherMode = 0;

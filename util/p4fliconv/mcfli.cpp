@@ -292,8 +292,8 @@ namespace Plus4FLIConv {
         float   c1v = 0.0f;
         FLIConverter::convertPlus4Color(c1, c1y, c1u, c1v, monitorGamma);
         errorTable[(c0 << 7) | c1] = calculateErrorSqr(c0y, c1y)
-                                     + (calculateErrorSqr(c0u, c1u) * 0.25)
-                                     + (calculateErrorSqr(c0v, c1v) * 0.25);
+                                     + (calculateErrorSqr(c0u, c1u) * 0.5)
+                                     + (calculateErrorSqr(c0v, c1v) * 0.5);
       }
     }
   }
@@ -441,10 +441,17 @@ namespace Plus4FLIConv {
           minErr = err;
         }
       }
-      if (calculateError(std::sqrt(minErr), std::sqrt(minErr0)) < ditherLimit)
+      if (calculateError(
+              std::sqrt(minErr0),
+              std::sqrt(calculateErrorSqr(paletteY[c], y0)
+                        + (calculateErrorSqr(paletteU[c], u0) * 0.0625)
+                        + (calculateErrorSqr(paletteV[c], v0) * 0.0625)))
+          < ditherLimit) {
         ditheredImage[yc * 304L + xc] = c;
-      else
+      }
+      else {
         ditheredImage[yc * 304L + xc] = c0;
+      }
       y = y0 + ((y - y0) * float(ditherScale));
       u = u0 + ((u - u0) * float(ditherScale));
       v = v0 + ((v - v0) * float(ditherScale));
@@ -548,6 +555,105 @@ namespace Plus4FLIConv {
         attrBlocks[n].addPixel(ditheredImage[(yc + i) * 304L + xc]);
       }
     }
+    // find the set of colors that needs to be searched for optimal conversion
+    std::vector< int >  colorTable0;                    // for color #0 and #3
+    std::vector< std::vector< int > >   colorTables;    // for color #1 and #2
+    colorTables.resize(40);
+    {
+      float   minY0 = 1.0f;
+      float   maxY0 = 0.0f;
+      float   minU0 = 1.0f;
+      float   maxU0 = -1.0f;
+      float   minV0 = 1.0f;
+      float   maxV0 = -1.0f;
+      for (int i = 0; i < 40; i++) {
+        float   minY = 1.0f;
+        float   maxY = 0.0f;
+        float   minU = 1.0f;
+        float   maxU = -1.0f;
+        float   minV = 1.0f;
+        float   maxV = -1.0f;
+        for (int j = 0; j < attrBlocks[i].nColors; j++) {
+          float   y = 0.0f;
+          float   u = 0.0f;
+          float   v = 0.0f;
+          FLIConverter::convertPlus4Color(attrBlocks[i].pixelColorCodes[j],
+                                          y, u, v, monitorGamma);
+          minY = (y < minY ? y : minY);
+          maxY = (y > maxY ? y : maxY);
+          minU = (u < minU ? u : minU);
+          maxU = (u > maxU ? u : maxU);
+          minV = (v < minV ? v : minV);
+          maxV = (v > maxV ? v : maxV);
+          if (attrBlocks[i].nColors > 2) {
+            minY0 = (y < minY0 ? y : minY0);
+            maxY0 = (y > maxY0 ? y : maxY0);
+            minU0 = (u < minU0 ? u : minU0);
+            maxU0 = (u > maxU0 ? u : maxU0);
+            minV0 = (v < minV0 ? v : minV0);
+            maxV0 = (v > maxV0 ? v : maxV0);
+          }
+        }
+        if (minV < 0.0f && maxV > 0.0f) {
+          if (minU < 0.0f)
+            minU = -(FLIConverter::defaultColorSaturation);
+          if (maxU > 0.0f)
+            maxU = FLIConverter::defaultColorSaturation;
+        }
+        if (minU < 0.0f && maxU > 0.0f) {
+          if (minV < 0.0f)
+            minV = -(FLIConverter::defaultColorSaturation);
+          if (maxV > 0.0f)
+            maxV = FLIConverter::defaultColorSaturation;
+        }
+        minY = minY - 0.0001f;
+        maxY = maxY + 0.0001f;
+        minU = minU - 0.0001f;
+        maxU = maxU + 0.0001f;
+        minV = minV - 0.0001f;
+        maxV = maxV + 0.0001f;
+        for (int j = 0; j < 128; j++) {
+          float   y = 0.0f;
+          float   u = 0.0f;
+          float   v = 0.0f;
+          FLIConverter::convertPlus4Color(j, y, u, v, monitorGamma);
+          if (y > minY && y < maxY &&
+              u > minU && u < maxU &&
+              v > minV && v < maxV) {
+            colorTables[i].push_back(j);
+          }
+        }
+      }
+      if (minV0 < 0.0f && maxV0 > 0.0f) {
+        if (minU0 < 0.0f)
+          minU0 = -(FLIConverter::defaultColorSaturation);
+        if (maxU0 > 0.0f)
+          maxU0 = FLIConverter::defaultColorSaturation;
+      }
+      if (minU0 < 0.0f && maxU0 > 0.0f) {
+        if (minV0 < 0.0f)
+          minV0 = -(FLIConverter::defaultColorSaturation);
+        if (maxV0 > 0.0f)
+          maxV0 = FLIConverter::defaultColorSaturation;
+      }
+      minY0 = minY0 - 0.0001f;
+      maxY0 = maxY0 + 0.0001f;
+      minU0 = minU0 - 0.0001f;
+      maxU0 = maxU0 + 0.0001f;
+      minV0 = minV0 - 0.0001f;
+      maxV0 = maxV0 + 0.0001f;
+      for (int j = 0; j < 128; j++) {
+        float   y = 0.0f;
+        float   u = 0.0f;
+        float   v = 0.0f;
+        FLIConverter::convertPlus4Color(j, y, u, v, monitorGamma);
+        if (y > minY0 && y < maxY0 &&
+            u > minU0 && u < maxU0 &&
+            v > minV0 && v < maxV0) {
+          colorTable0.push_back(j);
+        }
+      }
+    }
     double  bestErr = 1000000.0;
     int     bestColors[82];
     std::vector< int >  colorCnts(128);
@@ -609,71 +715,118 @@ namespace Plus4FLIConv {
         double  prvErr = 0.0;
         for (int k = 0; k < 40; k++)
           prvErr += attrBlocks[k].calculateError();
-        // color #0 (FF15)
-        double  minErr = 1000000.0;
-        int     bestColor = color0;
-        for (int j = 0; j < 128; j++) {
-          color0 = j;
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            err += attrBlocks[k].calculateError();
-          }
-          if (err < minErr) {
-            bestColor = j;
-            minErr = err;
-          }
-        }
-        color0 = bestColor;
-        // color #3 (FF16)
-        minErr = 1000000.0;
-        bestColor = color3;
-        for (int j = 0; j < 128; j++) {
-          color3 = j;
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            err += attrBlocks[k].calculateError();
-          }
-          if (err < minErr) {
-            bestColor = j;
-            minErr = err;
-          }
-        }
-        color3 = bestColor;
-        // color #1
-        for (int k = 0; k < 40; k++) {
-          if (attrBlocks[k].nColors <= 2)
-            continue;
+        double  minErr;
+        int     bestColor;
+        if (colorTable0.size() <= 24) {
+          // color #0 (FF15) and color #3 (FF16)
           minErr = 1000000.0;
-          bestColor = attrBlocks[k].color1;
-          for (int j = 0; j < 128; j++) {
-            attrBlocks[k].color1 = j;
-            double  err = attrBlocks[k].calculateError();
+          int     bestColor0 = color0;
+          int     bestColor3 = color3;
+          for (size_t c0i = 0; c0i < colorTable0.size(); c0i++) {
+            for (size_t c3i = c0i + 1; c3i < colorTable0.size(); c3i++) {
+              color0 = colorTable0[c0i];
+              color3 = colorTable0[c3i];
+              double  err = 0.0;
+              for (int k = 0; k < 40; k++) {
+                if (attrBlocks[k].nColors <= 2)
+                  continue;
+                err += attrBlocks[k].calculateError();
+              }
+              if (err < minErr) {
+                bestColor0 = color0;
+                bestColor3 = color3;
+                minErr = err;
+              }
+            }
+          }
+          color0 = bestColor0;
+          color3 = bestColor3;
+        }
+        else {
+          // color #0 (FF15)
+          minErr = 1000000.0;
+          bestColor = color0;
+          for (size_t j = 0; j < colorTable0.size(); j++) {
+            color0 = colorTable0[j];
+            double  err = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              err += attrBlocks[k].calculateError();
+            }
             if (err < minErr) {
-              bestColor = j;
+              bestColor = color0;
               minErr = err;
             }
           }
-          attrBlocks[k].color1 = bestColor;
-        }
-        // color #2
-        for (int k = 0; k < 40; k++) {
-          if (attrBlocks[k].nColors <= 2)
-            continue;
+          color0 = bestColor;
+          // color #3 (FF16)
           minErr = 1000000.0;
-          bestColor = attrBlocks[k].color2;
-          for (int j = 0; j < 128; j++) {
-            attrBlocks[k].color2 = j;
-            double  err = attrBlocks[k].calculateError();
+          bestColor = color3;
+          for (size_t j = 0; j < colorTable0.size(); j++) {
+            color3 = colorTable0[j];
+            double  err = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              err += attrBlocks[k].calculateError();
+            }
             if (err < minErr) {
-              bestColor = j;
+              bestColor = color3;
               minErr = err;
             }
           }
-          attrBlocks[k].color2 = bestColor;
+          color3 = bestColor;
+        }
+        for (int k = 0; k < 40; k++) {
+          if (attrBlocks[k].nColors <= 2)
+            continue;
+          if (colorTables[k].size() <= 32) {
+            // color #1 and color #2
+            minErr = 1000000.0;
+            int     bestColor1 = attrBlocks[k].color1;
+            int     bestColor2 = attrBlocks[k].color2;
+            for (size_t c1i = 0; c1i < colorTables[k].size(); c1i++) {
+              for (size_t c2i = c1i + 1; c2i < colorTables[k].size(); c2i++) {
+                attrBlocks[k].color1 = colorTables[k][c1i];
+                attrBlocks[k].color2 = colorTables[k][c2i];
+                double  err = attrBlocks[k].calculateError();
+                if (err < minErr) {
+                  bestColor1 = attrBlocks[k].color1;
+                  bestColor2 = attrBlocks[k].color2;
+                  minErr = err;
+                }
+              }
+            }
+            attrBlocks[k].color1 = bestColor1;
+            attrBlocks[k].color2 = bestColor2;
+          }
+          else {
+            // color #1
+            minErr = 1000000.0;
+            bestColor = attrBlocks[k].color1;
+            for (size_t j = 0; j < colorTables[k].size(); j++) {
+              attrBlocks[k].color1 = colorTables[k][j];
+              double  err = attrBlocks[k].calculateError();
+              if (err < minErr) {
+                bestColor = attrBlocks[k].color1;
+                minErr = err;
+              }
+            }
+            attrBlocks[k].color1 = bestColor;
+            // color #2
+            minErr = 1000000.0;
+            bestColor = attrBlocks[k].color2;
+            for (size_t j = 0; j < colorTables[k].size(); j++) {
+              attrBlocks[k].color2 = colorTables[k][j];
+              double  err = attrBlocks[k].calculateError();
+              if (err < minErr) {
+                bestColor = attrBlocks[k].color2;
+                minErr = err;
+              }
+            }
+            attrBlocks[k].color2 = bestColor;
+          }
         }
         // quit the optimization loop earlier if the error could not be reduced
         double  err = 0.0;
