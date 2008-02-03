@@ -657,38 +657,54 @@ namespace Plus4FLIConv {
     double  bestErr = 1000000.0;
     int     bestColors[82];
     std::vector< int >  colorCnts(128);
-    for (int l = 0; l < 4; l++) {
-      // set initial palette with four different methods, and choose the one
+    for (int l = 0; l < 6; l++) {
+      // set initial palette with six different methods, and choose the one
       // that results in the least error after optimization
       for (int i = 0; i < 128; i++)
         colorCnts[i] = 0;
       for (int i = 0; i < 40; i++) {
         int     nColors = attrBlocks[i].nColors;
-        if (nColors <= 2 || l == 0) {
+        if (nColors <= 2) {
           attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
           attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
         }
-        else if (l == 1) {
-          attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[nColors - 1];
-          attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 2];
-        }
-        else if (l == 2) {
-          attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
-          attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 1];
-        }
         else {
-          attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
-          double  maxErr = 0.0;
-          for (int j = 1; j < nColors; j++) {
-            double  err = errorTable[(attrBlocks[i].color1 << 7)
-                                     | (attrBlocks[i].pixelColorCodes[j])];
-            if (err >= maxErr) {
-              attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[j];
-              maxErr = err;
+          switch (l) {
+          case 0:
+            attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
+            attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
+            break;
+          case 1:
+            attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[nColors - 1];
+            attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 2];
+            break;
+          case 2:
+            attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
+            attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 1];
+            break;
+          case 3:
+            {
+              attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
+              double  maxErr = 0.0;
+              for (int j = 1; j < nColors; j++) {
+                double  err = errorTable[(attrBlocks[i].color1 << 7)
+                                         | (attrBlocks[i].pixelColorCodes[j])];
+                if (err >= maxErr) {
+                  attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[j];
+                  maxErr = err;
+                }
+              }
             }
+            break;
+          case 4:
+            attrBlocks[i].color1 = 0;
+            attrBlocks[i].color2 = 0;
+            break;
+          case 5:
+            attrBlocks[i].color1 = 121;
+            attrBlocks[i].color2 = 121;
+            break;
           }
-        }
-        if (nColors > 2) {
           for (int j = 0; j < nColors; j++) {
             int     c = attrBlocks[i].pixelColorCodes[j];
             if (c != attrBlocks[i].color1 && c != attrBlocks[i].color2)
@@ -696,18 +712,28 @@ namespace Plus4FLIConv {
           }
         }
       }
-      int     maxCnt1 = 0;
-      int     maxCnt2 = 0;
-      for (int i = 0; i < 128; i++) {
-        if (colorCnts[i] > maxCnt1) {
-          maxCnt2 = maxCnt1;
-          color3 = color0;
-          maxCnt1 = colorCnts[i];
-          color0 = i;
-        }
-        else if (colorCnts[i] > maxCnt2) {
-          maxCnt2 = colorCnts[i];
-          color3 = i;
+      if (l == 4) {
+        color0 = 121;
+        color3 = 121;
+      }
+      else if (l == 5) {
+        color0 = 0;
+        color3 = 0;
+      }
+      else {
+        int     maxCnt1 = 0;
+        int     maxCnt2 = 0;
+        for (int i = 0; i < 128; i++) {
+          if (colorCnts[i] > maxCnt1) {
+            maxCnt2 = maxCnt1;
+            color3 = color0;
+            maxCnt1 = colorCnts[i];
+            color0 = i;
+          }
+          else if (colorCnts[i] > maxCnt2) {
+            maxCnt2 = colorCnts[i];
+            color3 = i;
+          }
         }
       }
       // optimize attributes and color registers
