@@ -1,5 +1,12 @@
-Changes in version 1.2.6
-------------------------
+Changes in version 1.2.5.1
+--------------------------
+
+  * the full speed mode (Alt+W) now restores the original speed setting
+    when turned off
+  * added a "go to program counter" button to the disassembler in the
+    debugger
+  * some new utilities have been added
+  * a few minor bugs have been fixed
 
 Changes in version 1.2.5
 ------------------------
