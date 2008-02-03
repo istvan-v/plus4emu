@@ -223,6 +223,7 @@ Section "Source code" SecSrc
   File "..\util\p4fliconv\imageconv.hpp"
   File "..\util\p4fliconv\interlace7.cpp"
   File "..\util\p4fliconv\interlace7.hpp"
+  File "..\util\p4fliconv\main.cpp"
   File "..\util\p4fliconv\mcfli.cpp"
   File "..\util\p4fliconv\mcfli.hpp"
   File "..\util\p4fliconv\p4fliconv.cpp"
