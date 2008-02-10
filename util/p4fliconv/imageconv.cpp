@@ -149,14 +149,29 @@ namespace Plus4FLIConv {
           r = (r * (yMax - yMin)) + yMin;
           g = (g * (yMax - yMin)) + yMin;
           b = (b * (yMax - yMin)) + yMin;
-          r = (r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f);
-          g = (g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f);
-          b = (b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f);
           float   y = (r * 0.299f) + (g * 0.587f) + (b * 0.114f);
           float   u = (b - y) * 0.492f * colorSaturationMult;
           float   v = (r - y) * 0.877f * colorSaturationMult;
-          y = float(std::pow(y, yGamma));
           double  c = std::sqrt((u * u) + (v * v));
+          if (double(y) < (c - 0.05) || double(y) > (1.05 - c)) {
+            double  tmp = 0.5 / c;
+            if (double(y) < (c - 0.05))
+              tmp = tmp * (double(y) + c + 0.05);
+            else
+              tmp = tmp * ((1.05 + c) - double(y));
+            if (tmp < 0.0) {
+              u = 0.0f;
+              v = 0.0f;
+              c = 0.0;
+            }
+            else {
+              u = u * float(tmp);
+              v = v * float(tmp);
+              c = c * tmp;
+            }
+          }
+          y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+          y = float(std::pow(y, yGamma));
           if (c > 0.000001) {
             c = c * (1.0 / double(FLIConverter::defaultColorSaturation));
             c = std::pow(c, double(colorSaturationPow)) / c;
