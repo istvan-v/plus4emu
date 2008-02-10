@@ -34,10 +34,10 @@ class Plus4EmuGUI_AboutWindow {open
       }
     }
     code {{
-  buf->append("                      plus4emu version 1.2.5.1\\n");
+  buf->append("                      plus4emu version 1.2.5.2\\n");
   buf->append("\\n");
   buf->append("Portable Commodore Plus/4 emulator\\n");
-  buf->append("Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>\\n");
+  buf->append("Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>\\n");
   buf->append("  http://sourceforge.net/projects/plus4emu/\\n");
   buf->append("reSID 0.16 copyright (C) 2004 by Dag Lem\\n");
   buf->append("\\n");
