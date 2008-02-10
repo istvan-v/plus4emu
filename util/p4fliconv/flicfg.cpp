@@ -83,7 +83,7 @@ namespace Plus4FLIConv {
   {
     resetDefaultSettings();
     createKey("conversionType", conversionType);
-    (*this)["conversionType"].setRange(0.0, 1.0);
+    (*this)["conversionType"].setRange(0.0, 2.0);
     (*this)["conversionType"].setCallback(&configChangeCallbackInteger,
                                           (void *) this, true);
     createKey("yMin", yMin);
