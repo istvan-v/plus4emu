@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -144,8 +144,10 @@ namespace Plus4 {
         if (renderWindow) {
           if (characterLine == 6)       // latch DMA pos. at character line 6
             delayedEvents0.latchDMAPosition();
-          if (prvCharacterLine == 6)    // latch character position to reload
-            delayedEvents0.latchCharacterPosition();
+          if (prvCharacterLine == 6) {  // latch character position to reload
+            if (!(bitmapAddressDisableFlags & 0x02))
+              delayedEvents0.latchCharacterPosition();
+          }
         }
         break;
       case 74:                          // DRAM refresh start
@@ -511,6 +513,7 @@ namespace Plus4 {
           videoOutputFlags |=
               uint8_t(((savedVideoLine & int(~videoOutputFlags)) & 1) << 2);
           savedVideoLine = (videoLine + 1) & 0x01FF;
+          renderWindow = renderWindow | dmaEnabled;
           if (savedVideoLine >= 226 && savedVideoLine <= 269) {
             checkVerticalEvents();
           }
@@ -527,7 +530,8 @@ namespace Plus4 {
               displayWindow = false;
             if (savedVideoLine == 204) {
               renderWindow = false;
-              incrementingCharacterLine = false;
+              incrementingCharacterLine =
+                  incrementingCharacterLine & dmaEnabled;
             }
           }
           videoLine = savedVideoLine;
