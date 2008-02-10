@@ -23,6 +23,7 @@
 #include "p4fliconv.hpp"
 #include "interlace7.hpp"
 #include "mcfli.hpp"
+#include "mcnofli.hpp"
 #include "compress.hpp"
 #include "guicolor.hpp"
 
@@ -274,6 +275,29 @@ bool Plus4FLIConvGUI::browseFile(std::string& fileName, std::string& dirName,
   browseFileWindow->type(type);
   browseFileWindow->label(title);
   browseFileWindow->show();
+  try {
+    std::string tmp = dirName;
+    if (tmp.length() < 1 ||
+        (tmp[tmp.length() - 1] != '/' && tmp[tmp.length() - 1] != '\\')) {
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+      tmp += '\\';
+#else
+      tmp += '/';
+#endif
+    }
+    size_t  n = fileName.length();
+    while (n > 0) {
+      if (fileName[n - 1] == '/' || fileName[n - 1] == '\\')
+        break;
+      n--;
+    }
+    for (size_t i = n; i < fileName.length(); i++)
+      tmp += fileName[i];
+    browseFileWindow->value(tmp.c_str());
+  }
+  catch (...) {
+    browseFileWindow->value("");
+  }
   do {
     updateDisplay();
   } while (browseFileWindow->shown());
@@ -307,6 +331,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
             fliConv = new Plus4FLIConv::P4FLI_Interlace7();
           else if (convType == 1)
             fliConv = new Plus4FLIConv::P4FLI_MultiColor();
+          else if (convType == 2)
+            fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
         }
         if (fliConv) {
           setBusyFlag(true);
@@ -447,33 +473,36 @@ void Plus4FLIConvGUI::openImageFile()
   if (busyFlag)
     return;
   try {
-    if (!browseFile(imageFileName, imageFileDirectory,
-                    "Image files (*.{bmp,jpg,png})", Fl_File_Chooser::SINGLE,
-                    "Open image file")) {
-      imageFileName = "";
+    {
+      std::string tmp = imageFileName;
+      if (!browseFile(tmp, imageFileDirectory,
+                      "Image files (*.{bmp,jpg,png})", Fl_File_Chooser::SINGLE,
+                      "Open image file")) {
+        tmp = "";
+      }
+      if (tmp == "")
+        return;
+      imageFileName = tmp;
     }
-    if (imageFileName != "") {
-      Plus4FLIConv::YUVImageConverter imgConv;
-      imgConv.setImageSize(768, 576);
-      imgConv.setPixelAspectRatio(1.0f);
-      unsigned char r = 0x00;
-      unsigned char g = 0x00;
-      unsigned char b = 0x00;
-      Fl::get_color(Fl_Color(48), r, g, b);
-      float   y =
-          (float(r) * 0.299f) + (float(g) * 0.587f) + (float(b) * 0.114f);
-      float   u = (float(b) - y) * 0.492f;
-      float   v = (float(r) - y) * 0.877f;
-      imgConv.setBorderColor(y / 255.0f, u / 255.0f, v / 255.0f);
-      imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
-      imgConv.setProgressMessageCallback(&progressMessageCallback,
-                                         (void *) this);
-      imgConv.setProgressPercentageCallback(&progressPercentageCallback,
-                                            (void *) this);
-      setBusyFlag(true);
-      fileChangedFlag = imgConv.convertImageFile(imageFileName.c_str());
-      setBusyFlag(false);
-    }
+    Plus4FLIConv::YUVImageConverter imgConv;
+    imgConv.setImageSize(768, 576);
+    imgConv.setPixelAspectRatio(1.0f);
+    unsigned char r = 0x00;
+    unsigned char g = 0x00;
+    unsigned char b = 0x00;
+    Fl::get_color(Fl_Color(48), r, g, b);
+    float   y = (float(r) * 0.299f) + (float(g) * 0.587f) + (float(b) * 0.114f);
+    float   u = (float(b) - y) * 0.492f;
+    float   v = (float(r) - y) * 0.877f;
+    imgConv.setBorderColor(y / 255.0f, u / 255.0f, v / 255.0f);
+    imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
+    imgConv.setProgressMessageCallback(&progressMessageCallback,
+                                       (void *) this);
+    imgConv.setProgressPercentageCallback(&progressPercentageCallback,
+                                          (void *) this);
+    setBusyFlag(true);
+    fileChangedFlag = imgConv.convertImageFile(imageFileName.c_str());
+    setBusyFlag(false);
   }
   catch (std::exception& e) {
     setBusyFlag(false);
@@ -493,7 +522,20 @@ void Plus4FLIConvGUI::savePRGFile()
     }
     std::FILE *f = (std::FILE *) 0;
     try {
-      std::string prgFileName;
+      std::string prgFileName = imageFileName;
+      if (prgFileName.length() > 4) {
+        const char  *s = prgFileName.c_str() + (prgFileName.length() - 4);
+        if (s[0] == '.' &&
+            (((s[1] == 'J' || s[1] == 'j') && (s[2] == 'P' || s[2] == 'p') &&
+              (s[3] == 'G' || s[3] == 'g')) ||
+             ((s[1] == 'P' || s[1] == 'p') && (s[2] == 'N' || s[2] == 'n') &&
+              (s[3] == 'G' || s[3] == 'g')) ||
+             ((s[1] == 'B' || s[1] == 'b') && (s[2] == 'M' || s[2] == 'm') &&
+              (s[3] == 'P' || s[3] == 'p')))) {
+          prgFileName.resize(prgFileName.length() - 4);
+        }
+      }
+      prgFileName += ".prg";
       if (!browseFile(prgFileName, prgFileDirectory,
                       "Plus/4 program files (*.prg)", Fl_File_Chooser::CREATE,
                       "Save PRG file")) {
@@ -505,7 +547,11 @@ void Plus4FLIConvGUI::savePRGFile()
           throw Plus4Emu::Exception("error opening PRG file");
         bool    rawMode = config["rawPRGMode"];
         int     compressionLevel = config["prgCompressionLevel"];
-        unsigned int  prgStartAddress = (rawMode ? 0x1400U : 0x1001U);
+        unsigned int  prgStartAddress = 0x1001U;
+        if (rawMode) {
+          prgStartAddress = (int(config["conversionType"]) != 2 ?
+                             0x1400U : 0x7800U);
+        }
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;
@@ -552,7 +598,6 @@ void Plus4FLIConvGUI::savePRGFile()
           }
         }
         if (compressionLevel < 1) {
-          prgStartAddress = (rawMode ? 0x1400U : 0x1001U);
           if (std::fputc(int(prgStartAddress & 0xFFU), f) == EOF ||
               std::fputc(int(prgStartAddress >> 8), f) == EOF) {
             throw Plus4Emu::Exception("error writing PRG file");
