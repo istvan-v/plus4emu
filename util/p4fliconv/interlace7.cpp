@@ -160,6 +160,11 @@ namespace Plus4FLIConv {
   {
     P4FLI_Interlace7&  this_ =
         *(reinterpret_cast<P4FLI_Interlace7 *>(userData));
+    float   c = float(std::sqrt(double(u * u) + double(v * v)));
+    if (c > FLIConverter::defaultColorSaturation) {
+      u = u * FLIConverter::defaultColorSaturation / c;
+      v = v * FLIConverter::defaultColorSaturation / c;
+    }
     this_.resizedImage.y()[yc][xc >> 1] += (y * 0.5f);
     this_.resizedImage.u()[yc][xc >> 1] += (u * 0.5f);
     this_.resizedImage.v()[yc][xc >> 1] += (v * 0.5f);

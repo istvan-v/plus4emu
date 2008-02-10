@@ -23,6 +23,7 @@
 #include "p4fliconv.hpp"
 #include "interlace7.hpp"
 #include "mcfli.hpp"
+#include "mcnofli.hpp"
 #include "compress.hpp"
 #include "guicolor.hpp"
 
@@ -165,12 +166,14 @@ int main(int argc, char **argv)
       Plus4FLIConv::FLIConverter  *fliConv = (Plus4FLIConv::FLIConverter *) 0;
       Plus4FLIConv::PRGData       prgData;
       unsigned int  prgEndAddr = 0x1003U;
+      int     convType = config["conversionType"];
       try {
-        int     convType = config["conversionType"];
         if (convType == 0)
           fliConv = new Plus4FLIConv::P4FLI_Interlace7();
         else if (convType == 1)
           fliConv = new Plus4FLIConv::P4FLI_MultiColor();
+        else if (convType == 2)
+          fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
         else
           throw Plus4Emu::Exception("invalid conversion type");
         Plus4FLIConv::YUVImageConverter imgConv;
@@ -209,7 +212,9 @@ int main(int argc, char **argv)
           throw Plus4Emu::Exception("error opening PRG file");
         bool    rawMode = config["rawPRGMode"];
         int     compressionLevel = config["prgCompressionLevel"];
-        unsigned int  prgStartAddr = (rawMode ? 0x1400U : 0x1001U);
+        unsigned int  prgStartAddr = 0x1001U;
+        if (rawMode)
+          prgStartAddr = (convType != 2 ? 0x1400U : 0x7800U);
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;

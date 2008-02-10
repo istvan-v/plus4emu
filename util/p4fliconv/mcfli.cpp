@@ -178,6 +178,11 @@ namespace Plus4FLIConv {
   {
     P4FLI_MultiColor&  this_ =
         *(reinterpret_cast<P4FLI_MultiColor *>(userData));
+    float   c = float(std::sqrt(double(u * u) + double(v * v)));
+    if (c > FLIConverter::defaultColorSaturation) {
+      u = u * FLIConverter::defaultColorSaturation / c;
+      v = v * FLIConverter::defaultColorSaturation / c;
+    }
     this_.resizedImage.y()[yc >> 1][xc >> 1] += (y * 0.25f);
     this_.resizedImage.u()[yc >> 1][xc >> 1] += (u * 0.25f);
     this_.resizedImage.v()[yc >> 1][xc >> 1] += (v * 0.25f);
@@ -346,8 +351,6 @@ namespace Plus4FLIConv {
         float   u = resizedImage.u()[yc].getPixel(xc);
         float   v = resizedImage.v()[yc].getPixel(xc);
         float   s = float(std::sqrt(double(u * u) + double(v * v)));
-        if (s > FLIConverter::defaultColorSaturation)
-          s = FLIConverter::defaultColorSaturation;
         float   h = float(std::atan2(double(v), double(u)));
         h = h / (2.0f * 3.14159265f);
         if (h < 0.0f)
@@ -398,14 +401,6 @@ namespace Plus4FLIConv {
       float   y0 = resizedImage.y()[yc].getPixel(xc);
       float   u0 = resizedImage.u()[yc].getPixel(xc);
       float   v0 = resizedImage.v()[yc].getPixel(xc);
-      {
-        float   tmp = float(std::sqrt(double(u0 * u0) + double(v0 * v0)));
-        if (tmp > FLIConverter::defaultColorSaturation) {
-          tmp = FLIConverter::defaultColorSaturation / tmp;
-          u0 = u0 * tmp;
-          v0 = v0 * tmp;
-        }
-      }
       int     c0 = 0;
       double  minErr0 = 1000000.0;
       for (int i = (luminance1BitMode ? 112 : 0); i < 128; i++) {
