@@ -197,8 +197,8 @@ namespace Plus4FLIConv {
     limitValue(xShift0, -2, 7);
     limitValue(xShift1, -2, 7);
     borderColor = (borderColor & 0x7F) | 0x80;
-    nLines = (nLines <= 228 ? (nLines <= 200 ? 200 : 228)
-                              : (nLines <= 232 ? 232 : 248));
+    nLines = (nLines > 128 ? (nLines < 248 ? nLines : 248) : 128);
+    nLines = (nLines + 3) & (~(int(3)));
   }
 
   P4FLI_MultiColor::FLIBlock4x2::FLIBlock4x2(const double *errorTable_,
@@ -876,8 +876,14 @@ namespace Plus4FLIConv {
     color0 = bestColors[80];
     color3 = bestColors[81];
     // store the attributes and color registers
-    prgData.lineColor0((yc << 1) | long(oddField)) = (unsigned char) color0;
-    prgData.lineColor1((yc << 1) | long(oddField)) = (unsigned char) color3;
+    prgData.lineColor0((yc << 1) | long(oddField)) =
+        (unsigned char) color0;
+    prgData.lineColor0((yc << 1) | 2L | long(oddField)) =
+        (unsigned char) color0;
+    prgData.lineColor3((yc << 1) | long(oddField)) =
+        (unsigned char) color3;
+    prgData.lineColor3((yc << 1) | 2L | long(oddField)) =
+        (unsigned char) color3;
     for (int i = 0; i < 40; i++) {
       int     l0 = (attrBlocks[i].color2 >> 4) & 0x07;
       int     l1 = (attrBlocks[i].color1 >> 4) & 0x07;
@@ -945,7 +951,7 @@ namespace Plus4FLIConv {
       xShift1 = config["xShift1"];
       borderColor = config["borderColor"];
       nLines = config["verticalSize"];
-      if (nLines >= 400)
+      if (nLines >= 256)
         nLines = nLines >> 1;
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
@@ -958,7 +964,7 @@ namespace Plus4FLIConv {
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
       prgData.setVerticalSize(nLines);
-      prgData.interlaceDisabled() = 0x01;
+      prgData.interlaceFlags() = 0xC0;
       for (int yc = 0; yc < 248; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);
@@ -1074,7 +1080,7 @@ namespace Plus4FLIConv {
         prgData.lineXShift((yc << 1) + 1) = (unsigned char) xs1;
       }
       prgData.convertImageData();
-      prgEndAddr = (nLines <= 200 ? 0x9800U : 0xE500U);
+      prgEndAddr = (nLines <= 200 ? 0xA000U : 0xE500U);
     }
     catch (...) {
       prgData[0] = 0x01;

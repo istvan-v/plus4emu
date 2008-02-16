@@ -412,7 +412,7 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         dp = display->getDisplayParameters();
         if (prgEndAddress <= 0x1003U ||
             int(config["conversionType"]) != 0 ||
-            int(config["verticalSize"]) < 400) {
+            int(config["verticalSize"]) < 256) {
           dp.lineShade = 1.0f;
           dp.blendScale = 1.0f;
           dp.motionBlur = 0.333f;
@@ -550,7 +550,7 @@ void Plus4FLIConvGUI::savePRGFile()
         unsigned int  prgStartAddress = 0x1001U;
         if (rawMode) {
           prgStartAddress = (int(config["conversionType"]) != 2 ?
-                             0x1400U : 0x7800U);
+                             0x17FEU : 0x7800U);
         }
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;

@@ -182,7 +182,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-          xywh {230 55 60 25} when 4 minimum 200 maximum 496 step 4 value 464
+          xywh {230 55 60 25} when 4 minimum 128 maximum 496 step 4 value 464
         }
         Fl_Box {} {
           label Scale

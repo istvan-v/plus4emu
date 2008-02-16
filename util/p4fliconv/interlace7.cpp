@@ -238,8 +238,8 @@ namespace Plus4FLIConv {
     limitValue(xShift0, -2, 7);
     limitValue(xShift1, -2, 7);
     borderColor = (borderColor & 0x7F) | 0x80;
-    nLines = (nLines <= 456 ? (nLines <= 400 ? 400 : 456)
-                              : (nLines <= 464 ? 464 : 496));
+    nLines = (nLines > 256 ? (nLines < 496 ? nLines : 496) : 256);
+    nLines = (nLines + 7) & (~(int(7)));
     limitValue(colorInterlaceMode, 0, 2);
   }
 
@@ -690,7 +690,7 @@ namespace Plus4FLIConv {
       nLines = config["verticalSize"];
       colorInterlaceMode = config["colorInterlaceMode"];
       disablePAL = !(bool(config["enablePAL"]));
-      disableInterlace = (nLines < 400);
+      disableInterlace = (nLines < 256);
       if (disableInterlace)
         nLines = nLines << 1;
       luminance1BitMode = config["luminance1BitMode"];
@@ -705,8 +705,8 @@ namespace Plus4FLIConv {
                                       monitorGamma);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
-      prgData.setVerticalSize(nLines);
-      prgData.interlaceDisabled() = (unsigned char) disableInterlace;
+      prgData.setVerticalSize(disableInterlace ? (nLines >> 1) : nLines);
+      prgData.interlaceFlags() = 0xC0;
       for (int yc = 0; yc < 496; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);
@@ -903,7 +903,7 @@ namespace Plus4FLIConv {
             (unsigned char) resizedImage.y()[yc].getXShift();
       }
       prgData.convertImageData();
-      prgEndAddr = (nLines <= 400 ? 0x9800U : 0xE500U);
+      prgEndAddr = (nLines <= 400 ? 0xA000U : 0xE500U);
     }
     catch (...) {
       prgData[0] = 0x01;

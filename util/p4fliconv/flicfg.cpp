@@ -59,22 +59,15 @@ namespace Plus4FLIConv {
     (void) name_;
     FLIConfiguration& this_ =
         *(reinterpret_cast<FLIConfiguration *>(userData_));
-    if (value_ <= 200)
-      this_.verticalSize = 200;
-    else if (value_ <= 228)
-      this_.verticalSize = 228;
-    else if (value_ <= 232)
-      this_.verticalSize = 232;
-    else if (value_ < 400)
-      this_.verticalSize = 248;
-    else if (value_ <= 400)
-      this_.verticalSize = 400;
-    else if (value_ <= 456)
-      this_.verticalSize = 456;
-    else if (value_ <= 464)
-      this_.verticalSize = 464;
-    else
-      this_.verticalSize = 496;
+    if (value_ < 256) {
+      value_ = (value_ > 128 ? (value_ < 248 ? value_ : 248) : 128);
+      value_ = (value_ + 3) & (~(int(3)));
+    }
+    else {
+      value_ = (value_ > 256 ? (value_ < 496 ? value_ : 496) : 256);
+      value_ = (value_ + 7) & (~(int(7)));
+    }
+    this_.verticalSize = value_;
     this_.configChangeFlag = true;
   }
 
@@ -154,7 +147,7 @@ namespace Plus4FLIConv {
     (*this)["borderColor"].setCallback(&configChangeCallbackInteger,
                                        (void *) this, true);
     createKey("verticalSize", verticalSize);
-    (*this)["verticalSize"].setRange(200.0, 496.0);
+    (*this)["verticalSize"].setRange(128.0, 496.0);
     (*this)["verticalSize"].setCallback(&configChangeCallbackVSize,
                                         (void *) this, true);
     createKey("luminance1BitMode", luminance1BitMode);

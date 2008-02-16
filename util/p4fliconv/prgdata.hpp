@@ -29,16 +29,13 @@ namespace Plus4FLIConv {
 
   class PRGData {
    private:
-    static const unsigned char prgHeader_320x400[0x0401];
-    static const unsigned char prgHeader_320x456[0x0401];
-    static const unsigned char prgHeader_320x464[0x0401];
-    static const unsigned char prgHeader_320x496[0x0401];
+    static const unsigned char prgHeader_FLI[0x0801];
     unsigned char   *buf;
     int     *luminanceCodeTable;
     int     *colorCodeTable;
     bool    *bitmapTable;
-    const unsigned char *prgHeader;
     int     nLines;
+    bool    interlaceEnabled;
    public:
     PRGData();
     virtual ~PRGData();
@@ -49,27 +46,29 @@ namespace Plus4FLIConv {
     {
       return buf[n];
     }
+    inline unsigned char& lineBlankFXEnabled()
+    {
+      return buf[0x0FFCL];
+    }
     inline unsigned char& borderColor()
     {
-      return buf[0x0500L];
+      return buf[0x0FFDL];
     }
-    inline unsigned char& interlaceDisabled()
+    inline unsigned char& interlaceFlags()
     {
-      return buf[0x0800L];
-    }
-    inline unsigned char& lineColor0(long yc)
-    {
-      return buf[(0x0400L | ((yc & 1L) << 8) | ((yc & (~(long(3)))) >> 1))
-                 + 1L];
-    }
-    inline unsigned char& lineColor1(long yc)
-    {
-      return buf[(0x0400L | ((yc & 1L) << 8) | ((yc & (~(long(3)))) >> 1))
-                 + 2L];
+      return buf[0x0FFEL];
     }
     inline unsigned char& lineXShift(long yc)
     {
-      return buf[(0x0600L | ((yc & 1L) << 8) | (yc >> 1)) + 1L];
+      return buf[(((yc & 1L) << 10) | 0x0900L | (yc >> 1)) + 1L];
+    }
+    inline unsigned char& lineColor0(long yc)
+    {
+      return buf[(((yc & 1L) << 10) | 0x0A00L | (yc >> 1)) + 1L];
+    }
+    inline unsigned char& lineColor3(long yc)
+    {
+      return buf[(((yc & 1L) << 10) | 0x0B00L | (yc >> 1)) + 1L];
     }
     inline bool getPixel(long xc, long yc) const
     {
