@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.5.2.exe"
+  OutFile "plus4emu-1.2.6-beta.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -226,8 +226,11 @@ Section "Source code" SecSrc
   File "..\util\p4fliconv\main.cpp"
   File "..\util\p4fliconv\mcfli.cpp"
   File "..\util\p4fliconv\mcfli.hpp"
+  File "..\util\p4fliconv\mcnofli.cpp"
+  File "..\util\p4fliconv\mcnofli.hpp"
   File "..\util\p4fliconv\p4fliconv.cpp"
   File "..\util\p4fliconv\p4fliconv.hpp"
+  File "..\util\p4fliconv\p4flidisp.s"
   File "..\util\p4fliconv\prgdata.cpp"
   File "..\util\p4fliconv\prgdata.hpp"
 
