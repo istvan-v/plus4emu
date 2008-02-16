@@ -659,7 +659,7 @@ namespace Plus4FLIConv {
     // optimize attributes and color registers
     int     progressCnt = int(colorTable0.size());
     int     progressMax = int(colorTable0.size()) * 5;
-    if (!setProgressPercentage(0))
+    if (!setProgressPercentage(20))
       return false;
     for (int i = 0; i < 2; i++) {
       // color #0 (FF15)
@@ -834,7 +834,7 @@ namespace Plus4FLIConv {
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
       prgData.setVerticalSize(200);
-      prgData.interlaceDisabled() = 0x01;
+      prgData.interlaceFlags() = 0x00;
       for (int yc = 0; yc < 200; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);

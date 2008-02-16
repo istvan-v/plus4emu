@@ -214,7 +214,7 @@ int main(int argc, char **argv)
         int     compressionLevel = config["prgCompressionLevel"];
         unsigned int  prgStartAddr = 0x1001U;
         if (rawMode)
-          prgStartAddr = (convType != 2 ? 0x1400U : 0x7800U);
+          prgStartAddr = (convType != 2 ? 0x17FEU : 0x7800U);
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;
@@ -291,9 +291,10 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "Usage: %s [OPTIONS...] infile.jpg outfile.prg\n",
                            argv[0]);
       std::fprintf(stderr, "Options:\n");
-      std::fprintf(stderr, "    -mode <N>           (0 or 1, default: 0)\n");
-      std::fprintf(stderr, "        select video mode (0: hires, "
-                           "1: multicolor)\n");
+      std::fprintf(stderr, "    -mode <N>           (0 to 2, default: 0)\n");
+      std::fprintf(stderr, "        select video mode (0: hires FLI, "
+                           "1: multicolor FLI,\n        "
+                           "2: multicolor 160x200)\n");
       std::fprintf(stderr, "    -ymin <MIN>         (default: -0.02)\n");
       std::fprintf(stderr, "    -ymax <MAX>         (default: 1.03)\n");
       std::fprintf(stderr, "        scale luminance range from 0..1 to "
@@ -322,8 +323,8 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
       std::fprintf(stderr, "        set border color\n");
       std::fprintf(stderr, "    -size <N>           "
-                           "(200 to 496, default: 464)\n");
-      std::fprintf(stderr, "        set vertical resolution (< 400 implies "
+                           "(128 to 496, default: 464)\n");
+      std::fprintf(stderr, "        set vertical resolution (< 256 implies "
                            "no interlace)\n");
       std::fprintf(stderr, "    -y1bit <N>          (0 or 1, default: 0)\n");
       std::fprintf(stderr, "        use 1 bit (black and white) luminance\n");
