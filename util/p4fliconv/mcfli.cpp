@@ -202,35 +202,58 @@ namespace Plus4FLIConv {
   }
 
   P4FLI_MultiColor::FLIBlock4x2::FLIBlock4x2(const double *errorTable_,
-                                             int& color0_, int& color3_)
+                                             int& color0_0_, int& color0_1_,
+                                             int& color3_0_, int& color3_1_)
     : errorTable(errorTable_),
-      color0(color0_),
-      color3(color3_),
+      color0_0(color0_0_),
+      color0_1(color0_1_),
+      color3_0(color3_0_),
+      color3_1(color3_1_),
       color1(0x00),
       color2(0x00),
-      nColors(0)
+      nColors(0),
+      nColors_0(0),
+      nColors_1(0)
   {
     for (int i = 0; i < 8; i++) {
       pixelColorCodes[i] = 0x00;
       pixelColorCounts[i] = 0;
     }
+    for (int i = 0; i < 4; i++) {
+      pixelColorCodes_0[i] = 0x00;
+      pixelColorCounts_0[i] = 0;
+      pixelColorCodes_1[i] = 0x00;
+      pixelColorCounts_1[i] = 0;
+    }
   }
 
   P4FLI_MultiColor::FLIBlock4x2::FLIBlock4x2(const FLIBlock4x2& r)
     : errorTable(r.errorTable),
-      color0(r.color0),
-      color3(r.color3),
+      color0_0(r.color0_0),
+      color0_1(r.color0_1),
+      color3_0(r.color3_0),
+      color3_1(r.color3_1),
       color1(r.color1),
       color2(r.color2),
-      nColors(r.nColors)
+      nColors(r.nColors),
+      nColors_0(r.nColors_0),
+      nColors_1(r.nColors_1)
   {
     for (int i = 0; i < 8; i++) {
       pixelColorCodes[i] = r.pixelColorCodes[i];
       pixelColorCounts[i] = r.pixelColorCounts[i];
     }
+    for (int i = 0; i < 4; i++) {
+      pixelColorCodes_0[i] = r.pixelColorCodes_0[i];
+      pixelColorCounts_0[i] = r.pixelColorCounts_0[i];
+      pixelColorCodes_1[i] = r.pixelColorCodes_1[i];
+      pixelColorCounts_1[i] = r.pixelColorCounts_1[i];
+    }
   }
 
-  void P4FLI_MultiColor::FLIBlock4x2::addPixel(int c)
+  static void addPixel_(int& nColors,
+                        int *pixelColorCodes, int *pixelColorCounts,
+                        int c)
   {
     c = c & 0x7F;
     if ((c & 0x0F) == 0)
@@ -264,24 +287,261 @@ namespace Plus4FLIConv {
     }
   }
 
+  void P4FLI_MultiColor::FLIBlock4x2::addPixel(int l, int c)
+  {
+    addPixel_(nColors, &(pixelColorCodes[0]), &(pixelColorCounts[0]), c);
+    if (l == 0) {
+      addPixel_(nColors_0, &(pixelColorCodes_0[0]), &(pixelColorCounts_0[0]),
+                c);
+    }
+    else {
+      addPixel_(nColors_1, &(pixelColorCodes_1[0]), &(pixelColorCounts_1[0]),
+                c);
+    }
+  }
+
   inline double P4FLI_MultiColor::FLIBlock4x2::calculateError() const
   {
     double  totalErr = 0.0;
-    for (int i = 0; i < nColors; i++) {
-      int     c = pixelColorCodes[i];
-      double  minErr = errorTable[(c << 7) | color0];
+    for (int i = 0; i < nColors_0; i++) {
+      int     c = pixelColorCodes_0[i];
+      double  minErr = errorTable[(c << 7) | color0_0];
       double  err = errorTable[(c << 7) | color1];
       if (err < minErr)
         minErr = err;
       err = errorTable[(c << 7) | color2];
       if (err < minErr)
         minErr = err;
-      err = errorTable[(c << 7) | color3];
+      err = errorTable[(c << 7) | color3_0];
       if (err < minErr)
         minErr = err;
-      totalErr += (minErr * double(pixelColorCounts[i]));
+      totalErr += (minErr * double(pixelColorCounts_0[i]));
+    }
+    for (int i = 0; i < nColors_1; i++) {
+      int     c = pixelColorCodes_1[i];
+      double  minErr = errorTable[(c << 7) | color0_1];
+      double  err = errorTable[(c << 7) | color1];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color2];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color3_1];
+      if (err < minErr)
+        minErr = err;
+      totalErr += (minErr * double(pixelColorCounts_1[i]));
     }
     return totalErr;
+  }
+
+  double P4FLI_MultiColor::FLIBlock4x2::optimizeColors(
+      const std::vector< int >& colorTable_)
+  {
+    if (nColors <= 2) {
+      color1 = pixelColorCodes[0];
+      color2 = pixelColorCodes[1];
+      return 0.0;
+    }
+    int     nColors_ = 0;
+    int     nColors_0_ = 0;
+    int     nColors_1_ = 0;
+    int     pixelColorCodes_[8];
+    int     pixelColorCounts_[8];
+    int     pixelColorCodes_0_[4];
+    int     pixelColorCounts_0_[4];
+    int     pixelColorCodes_1_[4];
+    int     pixelColorCounts_1_[4];
+    for (int i = 0; i < nColors_0; i++) {
+      int     c = pixelColorCodes_0[i];
+      if (c == color0_0 || c == color3_0)
+        continue;
+      pixelColorCodes_0_[nColors_0_] = c;
+      pixelColorCounts_0_[nColors_0_] = pixelColorCounts_0[i];
+      nColors_0_++;
+    }
+    for (int i = 0; i < nColors_1; i++) {
+      int     c = pixelColorCodes_1[i];
+      if (c == color0_1 || c == color3_1)
+        continue;
+      pixelColorCodes_1_[nColors_1_] = c;
+      pixelColorCounts_1_[nColors_1_] = pixelColorCounts_1[i];
+      nColors_1_++;
+    }
+    for (int i = 0; i < nColors_0_; i++) {
+      int     c = pixelColorCodes_0_[i];
+      int     n = pixelColorCounts_0_[i];
+      int     j = 0;
+      while (j < nColors_) {
+        if (pixelColorCodes_[j] == c) {
+          pixelColorCounts_[j] += n;
+          break;
+        }
+        j++;
+      }
+      if (j >= nColors_) {
+        pixelColorCodes_[nColors_] = c;
+        pixelColorCounts_[nColors_] = n;
+        nColors_++;
+      }
+    }
+    for (int i = 0; i < nColors_1_; i++) {
+      int     c = pixelColorCodes_1_[i];
+      int     n = pixelColorCounts_1_[i];
+      int     j = 0;
+      while (j < nColors_) {
+        if (pixelColorCodes_[j] == c) {
+          pixelColorCounts_[j] += n;
+          break;
+        }
+        j++;
+      }
+      if (j >= nColors_) {
+        pixelColorCodes_[nColors_] = c;
+        pixelColorCounts_[nColors_] = n;
+        nColors_++;
+      }
+    }
+    if (nColors_ <= 2) {
+      if (nColors_ >= 1)
+        color1 = pixelColorCodes_[0];
+      else
+        color1 = 0x00;
+      if (nColors_ >= 2)
+        color2 = pixelColorCodes_[1];
+      else
+        color2 = 0x00;
+      return 0.0;
+    }
+    double  minErr = 1000000.0;
+    if (colorTable_.size() <= 48) {
+      // color #1 and color #2
+      int     bestColor1 = color1;
+      int     bestColor2 = color2;
+      for (size_t c1i = 0; c1i < colorTable_.size(); c1i++) {
+        for (size_t c2i = c1i + 1; c2i < colorTable_.size(); c2i++) {
+          color1 = colorTable_[c1i];
+          color2 = colorTable_[c2i];
+          double  err = 0.0;
+          for (int i = 0; i < nColors_0_; i++) {
+            int     c = pixelColorCodes_0_[i];
+            double  minErr2 = errorTable[(c << 7) | color0_0];
+            double  err2 = errorTable[(c << 7) | color1];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color2];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color3_0];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err += (minErr2 * double(pixelColorCounts_0_[i]));
+          }
+          for (int i = 0; i < nColors_1_; i++) {
+            int     c = pixelColorCodes_1_[i];
+            double  minErr2 = errorTable[(c << 7) | color0_1];
+            double  err2 = errorTable[(c << 7) | color1];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color2];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color3_1];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err += (minErr2 * double(pixelColorCounts_1_[i]));
+          }
+          if (err < minErr) {
+            bestColor1 = color1;
+            bestColor2 = color2;
+            minErr = err;
+          }
+        }
+      }
+      color1 = bestColor1;
+      color2 = bestColor2;
+    }
+    else {
+      // color #1
+      int     bestColor = color1;
+      for (size_t j = 0; j < colorTable_.size(); j++) {
+        color1 = colorTable_[j];
+        double  err = 0.0;
+        for (int i = 0; i < nColors_0_; i++) {
+          int     c = pixelColorCodes_0_[i];
+          double  minErr2 = errorTable[(c << 7) | color0_0];
+          double  err2 = errorTable[(c << 7) | color1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color2];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color3_0];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err += (minErr2 * double(pixelColorCounts_0_[i]));
+        }
+        for (int i = 0; i < nColors_1_; i++) {
+          int     c = pixelColorCodes_1_[i];
+          double  minErr2 = errorTable[(c << 7) | color0_1];
+          double  err2 = errorTable[(c << 7) | color1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color2];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color3_1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err += (minErr2 * double(pixelColorCounts_1_[i]));
+        }
+        if (err < minErr) {
+          bestColor = color1;
+          minErr = err;
+        }
+      }
+      color1 = bestColor;
+      // color #2
+      minErr = 1000000.0;
+      bestColor = color2;
+      for (size_t j = 0; j < colorTable_.size(); j++) {
+        color2 = colorTable_[j];
+        double  err = 0.0;
+        for (int i = 0; i < nColors_0_; i++) {
+          int     c = pixelColorCodes_0_[i];
+          double  minErr2 = errorTable[(c << 7) | color0_0];
+          double  err2 = errorTable[(c << 7) | color1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color2];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color3_0];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err += (minErr2 * double(pixelColorCounts_0_[i]));
+        }
+        for (int i = 0; i < nColors_1_; i++) {
+          int     c = pixelColorCodes_1_[i];
+          double  minErr2 = errorTable[(c << 7) | color0_1];
+          double  err2 = errorTable[(c << 7) | color1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color2];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err2 = errorTable[(c << 7) | color3_1];
+          if (err2 < minErr2)
+            minErr2 = err2;
+          err += (minErr2 * double(pixelColorCounts_1_[i]));
+        }
+        if (err < minErr) {
+          bestColor = color2;
+          minErr = err;
+        }
+      }
+      color2 = bestColor;
+    }
+    return minErr;
   }
 
   void P4FLI_MultiColor::createErrorTable()
@@ -536,19 +796,34 @@ namespace Plus4FLIConv {
   double P4FLI_MultiColor::convertTwoLines(PRGData& prgData,
                                            long yc, bool oddField)
   {
-    int     color0 = 0;
-    int     color3 = 0;
+    int     color0_0 = 0;
+    int     color0_1 = 0;
+    int     color3_0 = 0;
+    int     color3_1 = 0;
     // find the color indexes used in each attribute block area
-    std::vector< FLIBlock4x2 >
-        attrBlocks(40, FLIBlock4x2(errorTable, color0, color3));
+    std::vector< FLIBlock4x2 >  attrBlocks(40, FLIBlock4x2(errorTable,
+                                                           color0_0, color0_1,
+                                                           color3_0, color3_1));
+    int     xs[2];
+    xs[0] = xShiftTable[((yc + 0) << 1) | long(oddField)];
+    xs[1] = xShiftTable[((yc + 1) << 1) | long(oddField)];
     for (int i = 0; i < 2; i++) {
-      int     xs = xShiftTable[((yc + i) << 1) | long(oddField)];
-      if (oddField)
-        attrBlocks[(7 - xs) >> 3].addPixel(ditheredImage[(yc + i) * 304L]);
-      for (int xc = int(oddField); xc < 304; xc += 2) {
-        int     n = (xc + 8 - xs) >> 3;
-        attrBlocks[n].addPixel(ditheredImage[(yc + i) * 304L + xc]);
+      if (oddField) {
+        attrBlocks[(7 - xs[i]) >> 3].addPixel(i,
+                                              ditheredImage[(yc + i) * 304L]);
       }
+      for (int xc = int(oddField); xc < 304; xc += 2) {
+        int     n = (xc + 8 - xs[i]) >> 3;
+        attrBlocks[n].addPixel(i, ditheredImage[(yc + i) * 304L + xc]);
+      }
+    }
+    bool    color0ChangeEnabled = (nLines <= 200 || xs[1] == xs[0]);
+    std::vector< float >  paletteY(128);
+    std::vector< float >  paletteU(128);
+    std::vector< float >  paletteV(128);
+    for (int i = 0; i < 128; i++) {
+      FLIConverter::convertPlus4Color(i, paletteY[i], paletteU[i], paletteV[i],
+                                      monitorGamma);
     }
     // find the set of colors that needs to be searched for optimal conversion
     std::vector< int >  colorTable0;                    // for color #0 and #3
@@ -569,11 +844,9 @@ namespace Plus4FLIConv {
         float   minV = 1.0f;
         float   maxV = -1.0f;
         for (int j = 0; j < attrBlocks[i].nColors; j++) {
-          float   y = 0.0f;
-          float   u = 0.0f;
-          float   v = 0.0f;
-          FLIConverter::convertPlus4Color(attrBlocks[i].pixelColorCodes[j],
-                                          y, u, v, monitorGamma);
+          float   y = paletteY[attrBlocks[i].pixelColorCodes[j]];
+          float   u = paletteU[attrBlocks[i].pixelColorCodes[j]];
+          float   v = paletteV[attrBlocks[i].pixelColorCodes[j]];
           minY = (y < minY ? y : minY);
           maxY = (y > maxY ? y : maxY);
           minU = (u < minU ? u : minU);
@@ -608,10 +881,11 @@ namespace Plus4FLIConv {
         minV = minV - 0.0001f;
         maxV = maxV + 0.0001f;
         for (int j = 0; j < 128; j++) {
-          float   y = 0.0f;
-          float   u = 0.0f;
-          float   v = 0.0f;
-          FLIConverter::convertPlus4Color(j, y, u, v, monitorGamma);
+          if (j > 0 && (j & 15) == 0)
+            continue;
+          float   y = paletteY[j];
+          float   u = paletteU[j];
+          float   v = paletteV[j];
           if (y > minY && y < maxY &&
               u > minU && u < maxU &&
               v > minV && v < maxV) {
@@ -638,10 +912,11 @@ namespace Plus4FLIConv {
       minV0 = minV0 - 0.0001f;
       maxV0 = maxV0 + 0.0001f;
       for (int j = 0; j < 128; j++) {
-        float   y = 0.0f;
-        float   u = 0.0f;
-        float   v = 0.0f;
-        FLIConverter::convertPlus4Color(j, y, u, v, monitorGamma);
+        if (j > 0 && (j & 15) == 0)
+          continue;
+        float   y = paletteY[j];
+        float   u = paletteU[j];
+        float   v = paletteV[j];
         if (y > minY0 && y < maxY0 &&
             u > minU0 && u < maxU0 &&
             v > minV0 && v < maxV0) {
@@ -650,7 +925,11 @@ namespace Plus4FLIConv {
       }
     }
     double  bestErr = 1000000.0;
-    int     bestColors[82];
+    int     bestColors[4];
+    bestColors[0] = color0_0;
+    bestColors[1] = color0_1;
+    bestColors[2] = color3_0;
+    bestColors[3] = color3_1;
     std::vector< int >  colorCnts(128);
     for (int l = 0; l < 6; l++) {
       // set initial palette with six different methods, and choose the one
@@ -692,12 +971,12 @@ namespace Plus4FLIConv {
             }
             break;
           case 4:
-            attrBlocks[i].color1 = 0;
-            attrBlocks[i].color2 = 0;
+            attrBlocks[i].color1 = 0x00;
+            attrBlocks[i].color2 = 0x00;
             break;
           case 5:
-            attrBlocks[i].color1 = 121;
-            attrBlocks[i].color2 = 121;
+            attrBlocks[i].color1 = 0x71;
+            attrBlocks[i].color2 = 0x71;
             break;
           }
           for (int j = 0; j < nColors; j++) {
@@ -708,12 +987,12 @@ namespace Plus4FLIConv {
         }
       }
       if (l == 4) {
-        color0 = 121;
-        color3 = 121;
+        color0_0 = 0x71;
+        color3_0 = 0x71;
       }
       else if (l == 5) {
-        color0 = 0;
-        color3 = 0;
+        color0_0 = 0x00;
+        color3_0 = 0x00;
       }
       else {
         int     maxCnt1 = 0;
@@ -721,169 +1000,191 @@ namespace Plus4FLIConv {
         for (int i = 0; i < 128; i++) {
           if (colorCnts[i] > maxCnt1) {
             maxCnt2 = maxCnt1;
-            color3 = color0;
+            color3_0 = color0_0;
             maxCnt1 = colorCnts[i];
-            color0 = i;
+            color0_0 = i;
           }
           else if (colorCnts[i] > maxCnt2) {
             maxCnt2 = colorCnts[i];
-            color3 = i;
+            color3_0 = i;
           }
         }
       }
+      color0_1 = color0_0;
+      color3_1 = color3_0;
       // optimize attributes and color registers
-      for (int i = 15; i >= 0; i--) {
-        double  prvErr = 0.0;
-        for (int k = 0; k < 40; k++)
-          prvErr += attrBlocks[k].calculateError();
-        double  minErr;
-        int     bestColor;
-        if (colorTable0.size() <= 24) {
-          // color #0 (FF15) and color #3 (FF16)
-          minErr = 1000000.0;
-          int     bestColor0 = color0;
-          int     bestColor3 = color3;
-          for (size_t c0i = 0; c0i < colorTable0.size(); c0i++) {
-            for (size_t c3i = c0i + 1; c3i < colorTable0.size(); c3i++) {
-              color0 = colorTable0[c0i];
-              color3 = colorTable0[c3i];
-              double  err = 0.0;
-              for (int k = 0; k < 40; k++) {
-                if (attrBlocks[k].nColors <= 2)
-                  continue;
-                err += attrBlocks[k].calculateError();
-              }
-              if (err < minErr) {
-                bestColor0 = color0;
-                bestColor3 = color3;
-                minErr = err;
-              }
-            }
+      double  prvErr = 1000000.0;
+      for (int i = 7; i >= 0; i--) {
+        // color #0 (FF15), line 0 and 1
+        double  minErr = 1000000.0;
+        int     bestColor = color0_0;
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color0_0 = colorTable0[j];
+          color0_1 = color0_0;
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
           }
-          color0 = bestColor0;
-          color3 = bestColor3;
-        }
-        else {
-          // color #0 (FF15)
-          minErr = 1000000.0;
-          bestColor = color0;
-          for (size_t j = 0; j < colorTable0.size(); j++) {
-            color0 = colorTable0[j];
-            double  err = 0.0;
-            for (int k = 0; k < 40; k++) {
-              if (attrBlocks[k].nColors <= 2)
-                continue;
-              err += attrBlocks[k].calculateError();
-            }
-            if (err < minErr) {
-              bestColor = color0;
-              minErr = err;
-            }
-          }
-          color0 = bestColor;
-          // color #3 (FF16)
-          minErr = 1000000.0;
-          bestColor = color3;
-          for (size_t j = 0; j < colorTable0.size(); j++) {
-            color3 = colorTable0[j];
-            double  err = 0.0;
-            for (int k = 0; k < 40; k++) {
-              if (attrBlocks[k].nColors <= 2)
-                continue;
-              err += attrBlocks[k].calculateError();
-            }
-            if (err < minErr) {
-              bestColor = color3;
-              minErr = err;
-            }
-          }
-          color3 = bestColor;
-        }
-        for (int k = 0; k < 40; k++) {
-          if (attrBlocks[k].nColors <= 2)
-            continue;
-          if (colorTables[k].size() <= 32) {
-            // color #1 and color #2
-            minErr = 1000000.0;
-            int     bestColor1 = attrBlocks[k].color1;
-            int     bestColor2 = attrBlocks[k].color2;
-            for (size_t c1i = 0; c1i < colorTables[k].size(); c1i++) {
-              for (size_t c2i = c1i + 1; c2i < colorTables[k].size(); c2i++) {
-                attrBlocks[k].color1 = colorTables[k][c1i];
-                attrBlocks[k].color2 = colorTables[k][c2i];
-                double  err = attrBlocks[k].calculateError();
-                if (err < minErr) {
-                  bestColor1 = attrBlocks[k].color1;
-                  bestColor2 = attrBlocks[k].color2;
-                  minErr = err;
-                }
-              }
-            }
-            attrBlocks[k].color1 = bestColor1;
-            attrBlocks[k].color2 = bestColor2;
-          }
-          else {
-            // color #1
-            minErr = 1000000.0;
-            bestColor = attrBlocks[k].color1;
-            for (size_t j = 0; j < colorTables[k].size(); j++) {
-              attrBlocks[k].color1 = colorTables[k][j];
-              double  err = attrBlocks[k].calculateError();
-              if (err < minErr) {
-                bestColor = attrBlocks[k].color1;
-                minErr = err;
-              }
-            }
-            attrBlocks[k].color1 = bestColor;
-            // color #2
-            minErr = 1000000.0;
-            bestColor = attrBlocks[k].color2;
-            for (size_t j = 0; j < colorTables[k].size(); j++) {
-              attrBlocks[k].color2 = colorTables[k][j];
-              double  err = attrBlocks[k].calculateError();
-              if (err < minErr) {
-                bestColor = attrBlocks[k].color2;
-                minErr = err;
-              }
-            }
-            attrBlocks[k].color2 = bestColor;
+          if (err < minErr) {
+            bestColor = color0_0;
+            minErr = err;
           }
         }
-        // quit the optimization loop earlier if the error could not be reduced
+        color0_0 = bestColor;
+        color0_1 = color0_0;
+        // color #3 (FF16), line 0 and 1
+        minErr = 1000000.0;
+        bestColor = color3_0;
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color3_0 = colorTable0[j];
+          color3_1 = color3_0;
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
+          }
+          if (err < minErr) {
+            bestColor = color3_0;
+            minErr = err;
+          }
+        }
+        color3_0 = bestColor;
+        color3_1 = color3_0;
+        // color #1 and color #2
         double  err = 0.0;
         for (int k = 0; k < 40; k++)
-          err += attrBlocks[k].calculateError();
-        if (err >= (prvErr * 0.99999999))
+          err += attrBlocks[k].optimizeColors(colorTables[k]);
+        // quit the optimization loop earlier if the error could not be reduced
+        if (err >= (prvErr * 0.99999999)) {
+          prvErr = err;
           break;
-      }
-      double  err = 0.0;
-      for (int i = 0; i < 40; i++)
-        err += attrBlocks[i].calculateError();
-      if (err < bestErr) {
-        for (int i = 0; i < 80; i += 2) {
-          bestColors[i] = attrBlocks[i >> 1].color1;
-          bestColors[i + 1] = attrBlocks[i >> 1].color2;
         }
-        bestColors[80] = color0;
-        bestColors[81] = color3;
-        bestErr = err;
+        prvErr = err;
+      }
+      for (int i = 7; i >= 0; i--) {
+        // color #0 (FF15), line 0
+        double  minErr = 1000000.0;
+        int     bestColor = color0_0;
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color0_0 = colorTable0[j];
+          if (!color0ChangeEnabled)
+            color0_1 = color0_0;
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
+          }
+          if (err < minErr) {
+            bestColor = color0_0;
+            minErr = err;
+          }
+        }
+        color0_0 = bestColor;
+        if (!color0ChangeEnabled)
+          color0_1 = color0_0;
+        // color #0 (FF15), line 1
+        if (color0ChangeEnabled) {
+          minErr = 1000000.0;
+          bestColor = color0_1;
+          for (size_t j = 0; j < colorTable0.size(); j++) {
+            color0_1 = colorTable0[j];
+            double  err = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              err += attrBlocks[k].calculateError();
+              if (err > (minErr * 1.000001))
+                break;
+            }
+            if (err < minErr) {
+              bestColor = color0_1;
+              minErr = err;
+            }
+          }
+          color0_1 = bestColor;
+        }
+        // color #3 (FF16), line 0
+        minErr = 1000000.0;
+        bestColor = color3_0;
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color3_0 = colorTable0[j];
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
+          }
+          if (err < minErr) {
+            bestColor = color3_0;
+            minErr = err;
+          }
+        }
+        color3_0 = bestColor;
+        // color #3 (FF16), line 1
+        minErr = 1000000.0;
+        bestColor = color3_1;
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color3_1 = colorTable0[j];
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
+          }
+          if (err < minErr) {
+            bestColor = color3_1;
+            minErr = err;
+          }
+        }
+        color3_1 = bestColor;
+        // color #1 and color #2
+        double  err = 0.0;
+        for (int k = 0; k < 40; k++)
+          err += attrBlocks[k].optimizeColors(colorTables[k]);
+        // quit the optimization loop earlier if the error could not be reduced
+        if (err >= (prvErr * 0.99999999)) {
+          prvErr = err;
+          break;
+        }
+        prvErr = err;
+      }
+      if (prvErr < bestErr) {
+        bestColors[0] = color0_0;
+        bestColors[1] = color0_1;
+        bestColors[2] = color3_0;
+        bestColors[3] = color3_1;
+        bestErr = prvErr;
       }
     }
-    for (int i = 0; i < 80; i += 2) {
-      attrBlocks[i >> 1].color1 = bestColors[i];
-      attrBlocks[i >> 1].color2 = bestColors[i + 1];
-    }
-    color0 = bestColors[80];
-    color3 = bestColors[81];
+    color0_0 = bestColors[0];
+    color0_1 = bestColors[1];
+    color3_0 = bestColors[2];
+    color3_1 = bestColors[3];
+    for (int i = 0; i < 40; i++)
+      attrBlocks[i].optimizeColors(colorTables[i]);
     // store the attributes and color registers
     prgData.lineColor0((yc << 1) | long(oddField)) =
-        (unsigned char) color0;
+        (unsigned char) color0_0;
     prgData.lineColor0((yc << 1) | 2L | long(oddField)) =
-        (unsigned char) color0;
+        (unsigned char) color0_1;
     prgData.lineColor3((yc << 1) | long(oddField)) =
-        (unsigned char) color3;
+        (unsigned char) color3_0;
     prgData.lineColor3((yc << 1) | 2L | long(oddField)) =
-        (unsigned char) color3;
+        (unsigned char) color3_1;
     for (int i = 0; i < 40; i++) {
       int     l0 = (attrBlocks[i].color2 >> 4) & 0x07;
       int     l1 = (attrBlocks[i].color1 >> 4) & 0x07;
@@ -909,7 +1210,7 @@ namespace Plus4FLIConv {
         int     n = xc >> 3;
         int     c = ditheredImage[(yc + i) * 304L + (j >= 0 ? j : 0)];
         int     ci = 0;
-        double  minErr = errorTable[(c << 7) | color0];
+        double  minErr = errorTable[(c << 7) | (i == 0 ? color0_0 : color0_1)];
         double  err = errorTable[(c << 7) | attrBlocks[n].color1];
         if (err < minErr) {
           ci = 1;
@@ -920,7 +1221,7 @@ namespace Plus4FLIConv {
           ci = 2;
           minErr = err;
         }
-        err = errorTable[(c << 7) | color3];
+        err = errorTable[(c << 7) | (i == 0 ? color3_0 : color3_1)];
         if (err < minErr)
           ci = 3;
         prgData.setPixel(xc & (~(int(1))), ((yc + i) << 1) | long(oddField),

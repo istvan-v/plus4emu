@@ -140,20 +140,31 @@ namespace Plus4FLIConv {
    private:
     struct FLIBlock4x2 {
       const double  *errorTable;
-      int&    color0;
-      int&    color3;
+      int&    color0_0;
+      int&    color0_1;
+      int&    color3_0;
+      int&    color3_1;
       int     color1;
       int     color2;
       int     nColors;
       int     pixelColorCodes[8];
       int     pixelColorCounts[8];
-      FLIBlock4x2(const double *errorTable_, int& color0_, int& color3_);
+      int     nColors_0;
+      int     pixelColorCodes_0[4];
+      int     pixelColorCounts_0[4];
+      int     nColors_1;
+      int     pixelColorCodes_1[4];
+      int     pixelColorCounts_1[4];
+      FLIBlock4x2(const double *errorTable_,
+                  int& color0_0_, int& color0_1_,
+                  int& color3_0_, int& color3_1_);
       FLIBlock4x2(const FLIBlock4x2& r);
       ~FLIBlock4x2()
       {
       }
-      void addPixel(int c);
+      void addPixel(int l, int c);
       inline double calculateError() const;
+      double optimizeColors(const std::vector< int >& colorTable_);
     };
     YUVImage304x248 resizedImage;
     YUVImage304x248 ditherErrorImage;
