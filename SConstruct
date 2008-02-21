@@ -281,7 +281,7 @@ p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
                        'util/p4fliconv/flidisp.cpp',
                        'util/p4fliconv/imageconv.cpp',
                        'util/p4fliconv/interlace7.cpp',
-                       'util/p4fliconv/mcfli.cpp',
+                       'util/p4fliconv/mcifli.cpp',
                        'util/p4fliconv/mcnofli.cpp',
                        'util/p4fliconv/p4fliconv.cpp',
                        'util/p4fliconv/prgdata.cpp']

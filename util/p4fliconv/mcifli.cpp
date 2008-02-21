@@ -24,7 +24,7 @@
 #include "dither.hpp"
 #include "imageconv.hpp"
 #include "prgdata.hpp"
-#include "mcfli.hpp"
+#include "mcifli.hpp"
 
 namespace Plus4FLIConv {
 

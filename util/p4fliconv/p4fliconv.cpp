@@ -22,7 +22,7 @@
 
 #include "p4fliconv.hpp"
 #include "interlace7.hpp"
-#include "mcfli.hpp"
+#include "mcifli.hpp"
 #include "mcnofli.hpp"
 #include "compress.hpp"
 #include "guicolor.hpp"
