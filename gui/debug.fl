@@ -40,6 +40,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {Fl_Text_Buffer *scriptEditBuffer;} {}
   decl {std::string breakPointLists[6];} {}
   decl {Plus4EmuGUI_LuaScript luaScript;} {}
+  decl {uint8_t prvTEDRegisterState[32];} {}
   decl {Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_);} {public
   }
   decl {~Plus4EmuGUI_DebugWindow();} {public
@@ -108,8 +109,8 @@ class Plus4EmuGUI_DebugWindow {open
           Fl_Group {} {open
             xywh {545 45 395 165} box THIN_UP_BOX align 21
           } {
-            Fl_Output codeMemoryDumpDisplay {
-              label Code
+            Fl_Output tedRegisterDisplay {
+              label {TED registers}
               xywh {555 70 375 130} type Multiline align 5 textfont 5 textcolor 2
               code0 {o->cursor_color(FL_BACKGROUND2_COLOR);}
             }

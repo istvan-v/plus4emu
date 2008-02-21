@@ -1828,6 +1828,12 @@ namespace Plus4 {
                                                      addr, isCPUAddress, offs);
   }
 
+  void Plus4VM::getVideoPosition(int& xPos, int& yPos) const
+  {
+    xPos = int(ted->getVideoPositionX()) << 1;
+    yPos = int(ted->getVideoPositionY());
+  }
+
   void Plus4VM::setCPURegisters(const M7501Registers& r)
   {
     if (isRecordingDemo | isPlayingDemo) {

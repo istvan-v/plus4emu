@@ -751,6 +751,12 @@ namespace Plus4Emu {
     return addr;
   }
 
+  void VirtualMachine::getVideoPosition(int& xPos, int& yPos) const
+  {
+    xPos = 0;
+    yPos = 0;
+  }
+
   void VirtualMachine::saveState(File& f)
   {
     (void) f;

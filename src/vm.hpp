@@ -563,6 +563,10 @@ namespace Plus4Emu {
     virtual uint32_t disassembleInstruction(std::string& buf, uint32_t addr,
                                             bool isCPUAddress = false,
                                             int32_t offs = 0) const;
+    /*!
+     * Returns the current horizontal and vertical video position.
+     */
+    virtual void getVideoPosition(int& xPos, int& yPos) const;
     // ------------------------------- FILE I/O -------------------------------
     /*!
      * Save snapshot of virtual machine state, including all ROM and RAM

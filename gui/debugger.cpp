@@ -94,6 +94,8 @@ Plus4EmuGUI_DebugWindow::Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_)
   memoryDumpDisplay->downWidget = memoryDumpNxtPageButton;
   disassemblyDisplay->upWidget = disassemblyPrvPageButton;
   disassemblyDisplay->downWidget = disassemblyNxtPageButton;
+  for (int i = 0; i < 32; i++)
+    prvTEDRegisterState[i] = 0x00;
 }
 
 Plus4EmuGUI_DebugWindow::~Plus4EmuGUI_DebugWindow()
@@ -145,6 +147,8 @@ bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
     if (type == 3)
       return false;
   }
+  setDebugContext(debugContext_);
+  debugContextValuator->value(debugContext_);
   switch (type) {
   case 0:
   case 3:
@@ -180,8 +184,6 @@ bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
     std::sprintf(&(windowTitle[0]), "Break");
   }
   window->label(&(windowTitle[0]));
-  setDebugContext(debugContext_);
-  debugContextValuator->value(debugContext_);
   disassemblyViewAddress = uint32_t(gui.vm.getProgramCounter() & 0xFFFF);
   if (focusWidget == monitor_)
     monitor_->breakMessage(&(windowTitle[0]));
@@ -196,23 +198,46 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
     gui.vm.listCPURegisters(buf);
     cpuRegisterDisplay->value(buf.c_str());
     {
-      char  tmpBuf[64];
-      std::sprintf(&(tmpBuf[0]), "0000-3FFF: %02X\n4000-7FFF: %02X\n"
-                                 "8000-BFFF: %02X\nC000-FFFF: %02X",
+      char    tmpBuf[64];
+      char    *s = &(tmpBuf[0]);
+      std::sprintf(s, "0000-3FFF: %02X\n4000-7FFF: %02X\n"
+                      "8000-BFFF: %02X\nC000-FFFF: %02X",
                    (unsigned int) gui.vm.getMemoryPage(0),
                    (unsigned int) gui.vm.getMemoryPage(1),
                    (unsigned int) gui.vm.getMemoryPage(2),
                    (unsigned int) gui.vm.getMemoryPage(3));
-      memoryPagingDisplay->value(&(tmpBuf[0]));
+      memoryPagingDisplay->value(s);
+      dumpMemory(buf, 0x0010FF00U, 0x0010FF1FU, 0x0010FF00U, false, false);
+      buf[0] = ' ';
+      buf[1] = ' ';
+      buf[41] = ' ';
+      buf[42] = ' ';
+      buf[82] = ' ';
+      buf[83] = ' ';
+      buf[123] = ' ';
+      buf[124] = ' ';
+      for (int i = 0; i < 32; i++) {
+        uint8_t tmp = gui.vm.readMemory(0x0010FF00U | (unsigned int) i, false);
+        if (tmp != prvTEDRegisterState[i]) {
+          if (prvTEDRegisterState[0x1F] != 0x00) {
+            buf[((i >> 3) * 41) + (((i & 4) >> 2) * 17) + ((i & 3) << 2) + 8] =
+                '*';
+          }
+          prvTEDRegisterState[i] = tmp;
+        }
+      }
+      int     xPos = 0;
+      int     yPos = 0;
+      gui.vm.getVideoPosition(xPos, yPos);
+      std::sprintf(s, "\n\n  Horizontal position:  %04X\n"
+                      "  Vertical position:    %04X",
+                   (unsigned int) xPos, (unsigned int) yPos);
+      buf += s;
+      tedRegisterDisplay->value(buf.c_str());
     }
-    uint32_t  tmp = gui.vm.getProgramCounter();
-    uint32_t  startAddr = (tmp + 0xFFE8U) & 0xFFF8U;
-    uint32_t  endAddr = (startAddr + 0x0037U) & 0xFFFFU;
-    dumpMemory(buf, startAddr, endAddr, tmp, true, true);
-    codeMemoryDumpDisplay->value(buf.c_str());
-    tmp = gui.vm.getStackPointer();
-    startAddr = (tmp + 0xFFF4U) & 0xFFF8U;
-    endAddr = (startAddr + 0x002FU) & 0xFFFFU;
+    uint32_t  tmp = gui.vm.getStackPointer();
+    uint32_t  startAddr = (tmp + 0xFFF4U) & 0xFFF8U;
+    uint32_t  endAddr = (startAddr + 0x002FU) & 0xFFFFU;
     dumpMemory(buf, startAddr, endAddr, tmp, true, true);
     stackMemoryDumpDisplay->value(buf.c_str());
     updateMemoryDumpDisplay();

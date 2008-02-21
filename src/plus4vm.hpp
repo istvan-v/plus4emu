@@ -493,6 +493,11 @@ namespace Plus4 {
                                             bool isCPUAddress = false,
                                             int32_t offs = 0) const;
     /*!
+     * Returns the current horizontal (0 to 455) and vertical (0 to 311)
+     * video position.
+     */
+    virtual void getVideoPosition(int& xPos, int& yPos) const;
+    /*!
      * Set the registers of the currently selected CPU; see cpu.hpp for more
      * information.
      */
