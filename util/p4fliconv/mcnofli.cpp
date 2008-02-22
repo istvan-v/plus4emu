@@ -611,6 +611,8 @@ namespace Plus4FLIConv {
         minV = minV - 0.0001f;
         maxV = maxV + 0.0001f;
         for (int j = 0; j < 128; j++) {
+          if (j > 0 && (j & 15) == 0)
+            continue;
           float   y = 0.0f;
           float   u = 0.0f;
           float   v = 0.0f;
@@ -641,6 +643,8 @@ namespace Plus4FLIConv {
       minV0 = minV0 - 0.0001f;
       maxV0 = maxV0 + 0.0001f;
       for (int j = 0; j < 128; j++) {
+        if (j > 0 && (j & 15) == 0)
+          continue;
         float   y = 0.0f;
         float   u = 0.0f;
         float   v = 0.0f;
