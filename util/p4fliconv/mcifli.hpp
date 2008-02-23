@@ -20,8 +20,8 @@
 // GNU General Public License, and can be used, modified, and distributed
 // without any restrictions.
 
-#ifndef P4FLICONV_MCFLI_HPP
-#define P4FLICONV_MCFLI_HPP
+#ifndef P4FLICONV_MCIFLI_HPP
+#define P4FLICONV_MCIFLI_HPP
 
 #include "p4fliconv.hpp"
 
@@ -188,5 +188,5 @@ namespace Plus4FLIConv {
 
 }       // namespace Plus4FLIConv
 
-#endif  // P4FLICONV_MCFLI_HPP
+#endif  // P4FLICONV_MCIFLI_HPP
 
