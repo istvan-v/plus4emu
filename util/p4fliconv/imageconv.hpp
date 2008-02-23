@@ -36,7 +36,8 @@ namespace Plus4FLIConv {
     float   scaleY;
     float   offsetX;
     float   offsetY;
-    float   yGamma;
+    float   gammaCorrection;
+    float   monitorGamma;
     float   yMin;
     float   yMax;
     float   colorSaturationMult;
@@ -54,6 +55,8 @@ namespace Plus4FLIConv {
     int     prvProgressPercentage;
     static void defaultStorePixelFunc(void *userData, int xc, int yc,
                                       float y, float u, float v);
+    static bool isC64ImageFile(const char *fileName);
+    bool convertC64ImageFile(const char *fileName);
    public:
     YUVImageConverter();
     virtual ~YUVImageConverter();
@@ -75,9 +78,10 @@ namespace Plus4FLIConv {
       offsetX = xo;
       offsetY = yo;
     }
-    inline void setYGamma(float g)
+    inline void setGammaCorrection(float gammaCorrection_, float monitorGamma_)
     {
-      yGamma = g;
+      gammaCorrection = gammaCorrection_;
+      monitorGamma = monitorGamma_;
     }
     inline void setLuminanceRange(float minVal, float maxVal)
     {

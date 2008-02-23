@@ -23,6 +23,8 @@
 #include "p4fliconv.hpp"
 #include "imageconv.hpp"
 
+#include <vector>
+
 #include <FL/Fl.H>
 #include <FL/Fl_Image.H>
 #include <FL/Fl_Shared_Image.H>
@@ -43,6 +45,11 @@ static bool defaultProgressPercentageCb(void *userData, int n)
     std::fprintf(stderr, "\r  %3d%%    \n", n);
   return true;
 }
+
+static const unsigned char c64ColorTable[16] = {
+  0x00, 0x71, 0x22, 0x53, 0x34, 0x4F, 0x1E, 0x67,
+  0x38, 0x19, 0x42, 0x21, 0x41, 0x6F, 0x4E, 0x51
+};
 
 namespace Plus4FLIConv {
 
@@ -71,7 +78,8 @@ namespace Plus4FLIConv {
       scaleY(1.0f),
       offsetX(0.0f),
       offsetY(0.0f),
-      yGamma(1.0f),
+      gammaCorrection(1.0f),
+      monitorGamma(1.0f),
       yMin(0.0f),
       yMax(1.0f),
       colorSaturationMult(1.0f),
@@ -93,10 +101,192 @@ namespace Plus4FLIConv {
   {
   }
 
+  bool YUVImageConverter::isC64ImageFile(const char *fileName)
+  {
+    if (fileName == (char *) 0 || fileName[0] == '\0')
+      return false;
+    size_t  n = std::strlen(fileName);
+    if (n < 4)
+      return false;
+    if (!(fileName[n - 4] == '.' &&
+          (((fileName[n - 3] == 'K' || fileName[n - 3] == 'k') &&
+            (fileName[n - 2] == 'O' || fileName[n - 2] == 'o') &&
+            (fileName[n - 1] == 'A' || fileName[n - 1] == 'a')) ||
+           ((fileName[n - 3] == 'O' || fileName[n - 3] == 'o') &&
+            (fileName[n - 2] == 'C' || fileName[n - 2] == 'c') &&
+            (fileName[n - 1] == 'P' || fileName[n - 1] == 'p'))))) {
+      return false;
+    }
+    std::FILE *f = std::fopen(fileName, "rb");
+    if (!f)
+      return false;
+    if (std::fseek(f, 0L, SEEK_END) < 0) {
+      std::fclose(f);
+      return false;
+    }
+    long    fileSize = std::ftell(f);
+    if (std::fseek(f, 0L, SEEK_SET) < 0) {
+      std::fclose(f);
+      return false;
+    }
+    unsigned char startAddr[2];
+    if (std::fread(&(startAddr[0]), sizeof(unsigned char), 2, f) != 2) {
+      std::fclose(f);
+      return false;
+    }
+    std::fclose(f);
+    f = (std::FILE *) 0;
+    if (startAddr[0] != 0x00)
+      return false;
+    if ((fileName[n - 3] == 'K' || fileName[n - 3] == 'k') &&
+        fileSize == 10003L && startAddr[1] == 0x60) {
+      // Koala Painter format
+      return true;
+    }
+    if ((fileName[n - 3] == 'O' || fileName[n - 3] == 'o') &&
+        fileSize == 10018L && startAddr[1] == 0x20) {
+      // Advanced Art Studio format
+      return true;
+    }
+    return false;
+  }
+
+  bool YUVImageConverter::convertC64ImageFile(const char *fileName)
+  {
+    std::vector< unsigned char >  fileData;
+    std::vector< unsigned char >  bitmapData;
+    std::vector< unsigned char >  attr12Data;
+    std::vector< unsigned char >  attr3Data;
+    std::vector< unsigned char >  imageData;
+    unsigned char color0 = 0x00;
+    fileData.resize(10240);
+    bitmapData.resize(8000);
+    attr12Data.resize(1000);
+    attr3Data.resize(1000);
+    imageData.resize(64000);    // 320x200 Plus/4 color codes
+    std::FILE *f = std::fopen(fileName, "rb");
+    if (!f)
+      throw Plus4Emu::Exception("error opening image file");
+    size_t  fileSize =
+        std::fread(&(fileData.front()), sizeof(unsigned char), 10240, f);
+    std::fclose(f);
+    f = (std::FILE *) 0;
+    if (fileSize == 10003 && fileData[0] == 0x00 && fileData[1] == 0x60) {
+      // Koala Painter format
+      for (int i = 0; i < 8000; i++)
+        bitmapData[i] = fileData[i + 0x0002];
+      for (int i = 0; i < 1000; i++)
+        attr12Data[i] = fileData[i + 0x1F42];
+      for (int i = 0; i < 1000; i++)
+        attr3Data[i] = fileData[i + 0x232A];
+      color0 = fileData[0x2712];
+    }
+    else if (fileSize == 10018 && fileData[0] == 0x00 && fileData[1] == 0x20) {
+      // Advanced Art Studio format
+      for (int i = 0; i < 8000; i++)
+        bitmapData[i] = fileData[i + 0x0002];
+      for (int i = 0; i < 1000; i++)
+        attr12Data[i] = fileData[i + 0x1F42];
+      for (int i = 0; i < 1000; i++)
+        attr3Data[i] = fileData[i + 0x233A];
+      color0 = fileData[0x232B];
+    }
+    else {
+      throw Plus4Emu::Exception("image format is not supported");
+    }
+    progressMessage("Resizing image");
+    setProgressPercentage(0);
+    // read C64 image data, and convert it to a temporary 320x200 Plus/4 image
+    for (int yc = 0; yc < 200; yc++) {
+      for (int xc = 0; xc < 320; xc++) {
+        int     n = ((yc >> 3) * 40) + (xc >> 3);
+        unsigned char color1 = (attr12Data[n] & 0xF0) >> 4;
+        unsigned char color2 = attr12Data[n] & 0x0F;
+        unsigned char color3 = attr3Data[n] & 0x0F;
+        int     c = color0;
+        int     b = int(bitmapData[(n << 3) | (yc & 7)]);
+        b = (b & (3 << (6 - (xc & 6)))) >> (6 - (xc & 6));
+        switch (b) {
+        case 1:
+          c = color1;
+          break;
+        case 2:
+          c = color2;
+          break;
+        case 3:
+          c = color3;
+          break;
+        }
+        imageData[(yc * 320) + xc] = c64ColorTable[c];
+      }
+    }
+    // calculate scale and offset
+    float   aspectScale = (float(width) * pixelAspectRatio / float(height))
+                          / (320.0f / 200.0f);
+    float   xScale = 320.0f / float(width);
+    float   yScale = 200.0f / float(height);
+    if (aspectScale < 1.0f)
+      yScale = yScale / aspectScale;
+    else
+      xScale = xScale * aspectScale;
+    xScale = xScale / scaleX;
+    yScale = yScale / scaleY;
+    int     xScale_i = int((1.0f / xScale) + 0.5f);
+    int     yScale_i = int((1.0f / yScale) + 0.5f);
+    xScale_i = (xScale_i > 1 ? xScale_i : 1);
+    yScale_i = (yScale_i > 1 ? yScale_i : 1);
+    xScale = 1.0f / float(xScale_i);
+    yScale = 1.0f / float(yScale_i);
+    float   xOffs = (320.0f * 0.5f) - (float(width) * 0.5f * xScale);
+    float   yOffs = (200.0f * 0.5f) - (float(height) * 0.5f * yScale);
+    xOffs = xOffs - (offsetX * xScale);
+    yOffs = yOffs - (offsetY * yScale);
+    int     xOffs_i = int(xOffs + (xOffs >= 0.0f ? 0.5f : -0.5f));
+    int     yOffs_i = int(yOffs + (yOffs >= 0.0f ? 0.5f : -0.5f));
+    // scale image to the specified width and height
+    float   borderY = borderColorY;
+    borderY = (borderY > 0.0f ? (borderY < 1.0f ? borderY : 1.0f) : 0.0f);
+    borderY = float(std::pow(borderY, monitorGamma));
+    float   borderU = borderColorU;
+    float   borderV = borderColorV;
+    for (int yc = 0; yc < height; yc++) {
+      if (!setProgressPercentage(yc * 100 / height)) {
+        for (int tmpY = 0; tmpY < height; tmpY++) {
+          for (int tmpX = 0; tmpX < width; tmpX++) {
+            storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
+                           borderY, borderU, borderV);
+          }
+        }
+        progressMessage("");
+        return false;
+      }
+      int     yi = (yc / yScale_i) + yOffs_i;
+      for (int xc = 0; xc < width; xc++) {
+        int     xi = (xc / xScale_i) + xOffs_i;
+        float   y = borderY;
+        float   u = borderU;
+        float   v = borderV;
+        if (xi >= 0 && xi < 320 && yi >= 0 && yi < 200) {
+          FLIConverter::convertPlus4Color(imageData[(yi * 320) + xi], y, u, v,
+                                          monitorGamma);
+        }
+        y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+        u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
+        v = (v > -0.615f ? (v < 0.615f ? v : 0.615f) : -0.615f);
+        storePixelFunc(storePixelFuncUserData, xc, yc, y, u, v);
+      }
+    }
+    setProgressPercentage(100);
+    progressMessage("");
+    return true;
+  }
+
   bool YUVImageConverter::convertImageFile(const char *fileName)
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Plus4Emu::Exception("invalid image file name");
+    if (isC64ImageFile(fileName))
+      return convertC64ImageFile(fileName);
     float     *windowX = (float *) 0;
     float     *windowY = (float *) 0;
     float     *inputImage = (float *) 0;
@@ -119,12 +309,18 @@ namespace Plus4FLIConv {
       progressMessage("Resizing image");
       inputImage = new float[w * h * 3];
       bool    haveAlpha = !(d & 1);
+      float   borderY = borderColorY;
+      borderY = (borderY > 0.0f ? (borderY < 1.0f ? borderY : 1.0f) : 0.0f);
+      borderY = float(std::pow(borderY, monitorGamma));
+      float   borderU = borderColorU;
+      float   borderV = borderColorV;
+      float   yGamma = monitorGamma / gammaCorrection;
       for (size_t yc = 0; yc < h; yc++) {
         if (!setProgressPercentage(int(yc) * 50 / int(h))) {
           for (int tmpY = 0; tmpY < height; tmpY++) {
             for (int tmpX = 0; tmpX < width; tmpX++) {
               storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
-                             borderColorY, borderColorU, borderColorV);
+                             borderY, borderU, borderV);
             }
           }
           delete[] inputImage;
@@ -181,9 +377,9 @@ namespace Plus4FLIConv {
           if (haveAlpha) {
             float   a =
                 float((unsigned char) pixelPtr[d - 1]) * (1.0f / 255.0f);
-            y = (y * a) + (borderColorY * (1.0f - a));
-            u = (u * a) + (borderColorU * (1.0f - a));
-            v = (v * a) + (borderColorV * (1.0f - a));
+            y = (y * a) + (borderY * (1.0f - a));
+            u = (u * a) + (borderU * (1.0f - a));
+            v = (v * a) + (borderV * (1.0f - a));
           }
           float   *ptr = &(inputImage[((yc * w) + xc) * 3]);
           ptr[0] = y;
@@ -238,7 +434,7 @@ namespace Plus4FLIConv {
           for (int tmpY = 0; tmpY < height; tmpY++) {
             for (int tmpX = 0; tmpX < width; tmpX++) {
               storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
-                             borderColorY, borderColorU, borderColorV);
+                             borderY, borderU, borderV);
             }
           }
           delete[] windowX;
@@ -303,9 +499,9 @@ namespace Plus4FLIConv {
                 float   wsx = (windowX[wxi] * xs0) + (windowX[wxi + 1] * xs1);
                 float   w_ = wsx * wsy;
                 if (x_ < 0 || x_ >= int(w) || y_ < 0 || y_ >= int(h)) {
-                  y += (borderColorY * w_);
-                  u += (borderColorU * w_);
-                  v += (borderColorV * w_);
+                  y += (borderY * w_);
+                  u += (borderU * w_);
+                  v += (borderV * w_);
                 }
                 else {
                   float   *ptr = &(inputImage[((y_ * int(w)) + x_) * 3]);
