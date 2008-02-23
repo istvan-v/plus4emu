@@ -166,7 +166,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
           xywh {145 20 145 25} down_box BORDER_BOX
-          code0 {o->add("Interlaced hires FLI|Multicolor FLI|Multicolor 160x200");}
+          code0 {o->add("Interlaced hires FLI|Interlaced multicolor FLI|Hires FLI|Multicolor FLI|Hires 320x200|Multicolor 160x200");}
         } {}
         Fl_Box {} {
           label {Vertical resolution}

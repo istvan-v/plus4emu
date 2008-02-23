@@ -21,7 +21,10 @@
 // without any restrictions.
 
 #include "p4fliconv.hpp"
+#include "hiresfli.hpp"
+#include "hiresnofli.hpp"
 #include "interlace7.hpp"
+#include "mcfli.hpp"
 #include "mcifli.hpp"
 #include "mcnofli.hpp"
 #include "compress.hpp"
@@ -173,6 +176,12 @@ int main(int argc, char **argv)
         else if (convType == 1)
           fliConv = new Plus4FLIConv::P4FLI_MultiColor();
         else if (convType == 2)
+          fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
+        else if (convType == 3)
+          fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+        else if (convType == 4)
+          fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+        else if (convType == 5)
           fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
         else
           throw Plus4Emu::Exception("invalid conversion type");
@@ -181,8 +190,8 @@ int main(int argc, char **argv)
                                     float(double(config["scaleY"])),
                                     float(double(config["offsetX"])),
                                     float(double(config["offsetY"])));
-        imgConv.setYGamma(float(double(config["monitorGamma"])
-                                / double(config["gammaCorrection"])));
+        imgConv.setGammaCorrection(float(double(config["gammaCorrection"])),
+                                   float(double(config["monitorGamma"])));
         imgConv.setLuminanceRange(float(double(config["yMin"])),
                                   float(double(config["yMax"])));
         imgConv.setColorSaturation(float(double(config["saturationMult"])),
@@ -191,8 +200,7 @@ int main(int argc, char **argv)
         float   borderU = 0.0f;
         float   borderV = 0.0f;
         Plus4FLIConv::FLIConverter::convertPlus4Color(
-            int(config["borderColor"]), borderY, borderU, borderV,
-            double(config["monitorGamma"]));
+            int(config["borderColor"]), borderY, borderU, borderV, 1.0);
         imgConv.setBorderColor(borderY, borderU, borderV);
         fliConv->processImage(prgData, prgEndAddr,
                               infileName.c_str(), imgConv, config);
@@ -214,7 +222,7 @@ int main(int argc, char **argv)
         int     compressionLevel = config["prgCompressionLevel"];
         unsigned int  prgStartAddr = 0x1001U;
         if (rawMode)
-          prgStartAddr = (convType != 2 ? 0x17FEU : 0x7800U);
+          prgStartAddr = (convType < 4 ? 0x17FEU : 0x7800U);
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;
@@ -291,10 +299,12 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "Usage: %s [OPTIONS...] infile.jpg outfile.prg\n",
                            argv[0]);
       std::fprintf(stderr, "Options:\n");
-      std::fprintf(stderr, "    -mode <N>           (0 to 2, default: 0)\n");
-      std::fprintf(stderr, "        select video mode (0: hires FLI, "
-                           "1: multicolor FLI,\n        "
-                           "2: multicolor 160x200)\n");
+      std::fprintf(stderr, "    -mode <N>           (0 to 5, default: 0)\n");
+      std::fprintf(stderr, "        select video mode (0: interlaced hires "
+                           "FLI,\n        1: interlaced multicolor FLI, 2: "
+                           "hires FLI, 3: multicolor FLI,\n        4: hires "
+                           "320x200 (no FLI), 5: multicolor 160x200 "
+                           "(no FLI))\n");
       std::fprintf(stderr, "    -ymin <MIN>         (default: -0.02)\n");
       std::fprintf(stderr, "    -ymax <MAX>         (default: 1.03)\n");
       std::fprintf(stderr, "        scale luminance range from 0..1 to "

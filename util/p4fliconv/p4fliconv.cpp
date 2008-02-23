@@ -21,7 +21,10 @@
 // without any restrictions.
 
 #include "p4fliconv.hpp"
+#include "hiresfli.hpp"
+#include "hiresnofli.hpp"
 #include "interlace7.hpp"
+#include "mcfli.hpp"
 #include "mcifli.hpp"
 #include "mcnofli.hpp"
 #include "compress.hpp"
@@ -324,14 +327,21 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
     if (fileChangedFlag || config.isFLIConfigurationChanged()) {
       Plus4FLIConv::FLIConverter  *fliConv = (Plus4FLIConv::FLIConverter *) 0;
       bool    doneConversion = false;
+      int     convType = 0;
       try {
-        int     convType = config["conversionType"];
+        convType = config["conversionType"];
         if (imageFileName != "") {
           if (convType == 0)
             fliConv = new Plus4FLIConv::P4FLI_Interlace7();
           else if (convType == 1)
             fliConv = new Plus4FLIConv::P4FLI_MultiColor();
           else if (convType == 2)
+            fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
+          else if (convType == 3)
+            fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+          else if (convType == 4)
+            fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+          else if (convType == 5)
             fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
         }
         if (fliConv) {
@@ -341,8 +351,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
                                       float(double(config["scaleY"])),
                                       float(double(config["offsetX"])),
                                       float(double(config["offsetY"])));
-          imgConv.setYGamma(float(double(config["monitorGamma"])
-                                  / double(config["gammaCorrection"])));
+          imgConv.setGammaCorrection(float(double(config["gammaCorrection"])),
+                                     float(double(config["monitorGamma"])));
           imgConv.setLuminanceRange(float(double(config["yMin"])),
                                     float(double(config["yMax"])));
           imgConv.setColorSaturation(float(double(config["saturationMult"])),
@@ -351,8 +361,7 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           float   borderU = 0.0f;
           float   borderV = 0.0f;
           Plus4FLIConv::FLIConverter::convertPlus4Color(
-              int(config["borderColor"]), borderY, borderU, borderV,
-              double(config["monitorGamma"]));
+              int(config["borderColor"]), borderY, borderU, borderV, 1.0);
           imgConv.setBorderColor(borderY, borderU, borderV);
           imgConv.setProgressMessageCallback(&progressMessageCallback,
                                              (void *) this);
@@ -400,6 +409,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         ted->runOneCycle();
       for (unsigned int i = 0x1001U; i < prgEndAddress; i++)
         ted->writeMemoryCPU(uint16_t(i), uint8_t(prgData[i - 0x0FFFU]));
+      if (convType < 4)
+        ted->writeMemoryCPU(0x1FFB, 0x00);
       ted->writeMemoryCPU(0x0527, 0x52);        // 'R'
       ted->writeMemoryCPU(0x0528, 0x55);        // 'U'
       ted->writeMemoryCPU(0x0529, 0x4E);        // 'N'
@@ -411,8 +422,7 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         Plus4Emu::VideoDisplay::DisplayParameters dp;
         dp = display->getDisplayParameters();
         if (prgEndAddress <= 0x1003U ||
-            int(config["conversionType"]) != 0 ||
-            int(config["verticalSize"]) < 256) {
+            convType != 0 || int(config["verticalSize"]) < 256) {
           dp.lineShade = 1.0f;
           dp.blendScale = 1.0f;
           dp.motionBlur = 0.333f;
@@ -476,7 +486,8 @@ void Plus4FLIConvGUI::openImageFile()
     {
       std::string tmp = imageFileName;
       if (!browseFile(tmp, imageFileDirectory,
-                      "Image files (*.{bmp,jpg,png})", Fl_File_Chooser::SINGLE,
+                      "Image files (*.{bmp,jpg,png,koa,ocp})",
+                      Fl_File_Chooser::SINGLE,
                       "Open image file")) {
         tmp = "";
       }
@@ -525,13 +536,14 @@ void Plus4FLIConvGUI::savePRGFile()
       std::string prgFileName = imageFileName;
       if (prgFileName.length() > 4) {
         const char  *s = prgFileName.c_str() + (prgFileName.length() - 4);
-        if (s[0] == '.' &&
-            (((s[1] == 'J' || s[1] == 'j') && (s[2] == 'P' || s[2] == 'p') &&
-              (s[3] == 'G' || s[3] == 'g')) ||
-             ((s[1] == 'P' || s[1] == 'p') && (s[2] == 'N' || s[2] == 'n') &&
-              (s[3] == 'G' || s[3] == 'g')) ||
-             ((s[1] == 'B' || s[1] == 'b') && (s[2] == 'M' || s[2] == 'm') &&
-              (s[3] == 'P' || s[3] == 'p')))) {
+        uint32_t    tmp = (uint32_t((unsigned char) s[0]) << 24)
+                          | (uint32_t((unsigned char) s[1]) << 16)
+                          | (uint32_t((unsigned char) s[2]) << 8)
+                          | uint32_t((unsigned char) s[3]);
+        tmp = tmp & 0xFFDFDFDFU;
+        if (tmp == 0x2E4A5047U || tmp == 0x2E504E47U ||     // ".JPG" || ".PNG"
+            tmp == 0x2E424D50U || tmp == 0x2E4B4F41U ||     // ".BMP" || ".KOA"
+            tmp == 0x2E4F4350U) {                           // ".OCP"
           prgFileName.resize(prgFileName.length() - 4);
         }
       }
@@ -549,7 +561,7 @@ void Plus4FLIConvGUI::savePRGFile()
         int     compressionLevel = config["prgCompressionLevel"];
         unsigned int  prgStartAddress = 0x1001U;
         if (rawMode) {
-          prgStartAddress = (int(config["conversionType"]) != 2 ?
+          prgStartAddress = (int(config["conversionType"]) < 4 ?
                              0x17FEU : 0x7800U);
         }
         if (compressionLevel > 0) {
