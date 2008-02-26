@@ -745,10 +745,14 @@ namespace Plus4FLIConv {
           resizedImage.v()[yc + 1].setPixel(xc, (v0 + v1) * 0.5f);
         }
       }
+      // initialize horizontal scroll table
+      int     randomSeed = 0;
+      Plus4Emu::setRandomSeed(randomSeed,
+                              Plus4Emu::Timer::getRandomSeedFromTime());
       for (int yc = 0; yc < 496; yc++) {
         int     xShift_ = (!(yc & 1) ? xShift0 : xShift1);
         if (xShift_ == -2)
-          xShift_ = int(std::rand() & 0x7000) >> 12;
+          xShift_ = Plus4Emu::getRandomNumber(randomSeed) & 7;
         else if (xShift_ == -1)
           xShift_ = 0;
         resizedImage.y()[yc].setXShift(xShift_);
@@ -898,7 +902,8 @@ namespace Plus4FLIConv {
       }
       setProgressPercentage(100);
       progressMessage("");
-      for (int yc = 0; yc < 496; yc++) {
+      // write PRG output
+      for (int yc = 0; yc < nLines; yc++) {
         prgData.lineXShift(yc) =
             (unsigned char) resizedImage.y()[yc].getXShift();
       }
