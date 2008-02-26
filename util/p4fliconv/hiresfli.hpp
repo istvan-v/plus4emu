@@ -90,39 +90,39 @@ namespace Plus4FLIConv {
       }
     };
     // ------------------------
-    class Image320x496 {
+    class Image320x248 {
      private:
       Line320 *buf;
      public:
-      Image320x496();
-      Image320x496(const Image320x496& r);
-      virtual ~Image320x496();
-      Image320x496& operator=(const Image320x496& r);
+      Image320x248();
+      Image320x248(const Image320x248& r);
+      virtual ~Image320x248();
+      Image320x248& operator=(const Image320x248& r);
       inline Line320& operator[](long n)
       {
         return buf[n];
       }
     };
     // ------------------------
-    class YUVImage320x496 {
+    class YUVImage320x248 {
      private:
-      Image320x496  imageY;
-      Image320x496  imageU;
-      Image320x496  imageV;
+      Image320x248  imageY;
+      Image320x248  imageU;
+      Image320x248  imageV;
      public:
-      YUVImage320x496();
-      YUVImage320x496(const YUVImage320x496& r);
-      virtual ~YUVImage320x496();
-      YUVImage320x496& operator=(const YUVImage320x496& r);
-      inline Image320x496& y()
+      YUVImage320x248();
+      YUVImage320x248(const YUVImage320x248& r);
+      virtual ~YUVImage320x248();
+      YUVImage320x248& operator=(const YUVImage320x248& r);
+      inline Image320x248& y()
       {
         return imageY;
       }
-      inline Image320x496& u()
+      inline Image320x248& u()
       {
         return imageU;
       }
-      inline Image320x496& v()
+      inline Image320x248& v()
       {
         return imageV;
       }
@@ -135,26 +135,20 @@ namespace Plus4FLIConv {
     int     luminanceSearchMode;
     double  luminanceSearchModeParam;
     int     xShift0;
-    int     xShift1;
     int     borderColor;
     int     nLines;
-    int     colorInterlaceMode;
     bool    disablePAL;
-    bool    disableInterlace;
     bool    luminance1BitMode;
-    bool    noLuminanceInterlace;
    private:
     struct UVTableEntry {
-      int     c0;
-      int     c1;
+      int     c;
       float   u;
       float   v;
-      double  err;
     };
     float               yTable[9];
-    UVTableEntry        uvTable[43];
-    YUVImage320x496     resizedImage;
-    Image320x496        ditherErrorImage;
+    UVTableEntry        uvTable[15];
+    YUVImage320x248     resizedImage;
+    Image320x248        ditherErrorImage;
     Line320 prvLineU;
     Line320 prvLineV;
     Line320 line0U;

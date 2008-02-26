@@ -77,52 +77,52 @@ namespace Plus4FLIConv {
 
   // --------------------------------------------------------------------------
 
-  P4FLI_HiResNoInterlace::Image320x496::Image320x496()
+  P4FLI_HiResNoInterlace::Image320x248::Image320x248()
   {
-    buf = new Line320[496];
+    buf = new Line320[248];
   }
 
-  P4FLI_HiResNoInterlace::Image320x496::Image320x496(const Image320x496& r)
+  P4FLI_HiResNoInterlace::Image320x248::Image320x248(const Image320x248& r)
   {
-    buf = new Line320[496];
-    for (size_t i = 0; i < 496; i++)
+    buf = new Line320[248];
+    for (size_t i = 0; i < 248; i++)
       buf[i] = r.buf[i];
   }
 
-  P4FLI_HiResNoInterlace::Image320x496&
-      P4FLI_HiResNoInterlace::Image320x496::operator=(const Image320x496& r)
+  P4FLI_HiResNoInterlace::Image320x248&
+      P4FLI_HiResNoInterlace::Image320x248::operator=(const Image320x248& r)
   {
-    for (size_t i = 0; i < 496; i++)
+    for (size_t i = 0; i < 248; i++)
       buf[i] = r.buf[i];
     return (*this);
   }
 
-  P4FLI_HiResNoInterlace::Image320x496::~Image320x496()
+  P4FLI_HiResNoInterlace::Image320x248::~Image320x248()
   {
     delete[] buf;
   }
 
   // --------------------------------------------------------------------------
 
-  P4FLI_HiResNoInterlace::YUVImage320x496::YUVImage320x496()
+  P4FLI_HiResNoInterlace::YUVImage320x248::YUVImage320x248()
   {
   }
 
-  P4FLI_HiResNoInterlace::YUVImage320x496::YUVImage320x496(
-      const YUVImage320x496& r)
+  P4FLI_HiResNoInterlace::YUVImage320x248::YUVImage320x248(
+      const YUVImage320x248& r)
     : imageY(r.imageY),
       imageU(r.imageU),
       imageV(r.imageV)
   {
   }
 
-  P4FLI_HiResNoInterlace::YUVImage320x496::~YUVImage320x496()
+  P4FLI_HiResNoInterlace::YUVImage320x248::~YUVImage320x248()
   {
   }
 
-  P4FLI_HiResNoInterlace::YUVImage320x496&
-      P4FLI_HiResNoInterlace::YUVImage320x496::operator=(
-          const YUVImage320x496& r)
+  P4FLI_HiResNoInterlace::YUVImage320x248&
+      P4FLI_HiResNoInterlace::YUVImage320x248::operator=(
+          const YUVImage320x248& r)
   {
     imageY = r.imageY;
     imageU = r.imageU;
@@ -140,14 +140,10 @@ namespace Plus4FLIConv {
       luminanceSearchMode(2),
       luminanceSearchModeParam(4.0),
       xShift0(-1),
-      xShift1(-1),
       borderColor(0x00),
-      nLines(464),
-      colorInterlaceMode(1),
+      nLines(232),
       disablePAL(false),
-      disableInterlace(false),
-      luminance1BitMode(false),
-      noLuminanceInterlace(false)
+      luminance1BitMode(false)
   {
     createYTable();
     createUVTables();
@@ -167,9 +163,9 @@ namespace Plus4FLIConv {
       u = u * FLIConverter::defaultColorSaturation / c;
       v = v * FLIConverter::defaultColorSaturation / c;
     }
-    this_.resizedImage.y()[yc][xc >> 1] += (y * 0.5f);
-    this_.resizedImage.u()[yc][xc >> 1] += (u * 0.5f);
-    this_.resizedImage.v()[yc][xc >> 1] += (v * 0.5f);
+    this_.resizedImage.y()[yc >> 1][xc >> 1] += (y * 0.25f);
+    this_.resizedImage.u()[yc >> 1][xc >> 1] += (u * 0.25f);
+    this_.resizedImage.v()[yc >> 1][xc >> 1] += (v * 0.25f);
   }
 
   void P4FLI_HiResNoInterlace::colorToUV(int c, float& u, float& v)
@@ -190,29 +186,9 @@ namespace Plus4FLIConv {
 
   void P4FLI_HiResNoInterlace::createUVTables()
   {
-    static const unsigned char  colorIndexTable[86] = {
-       1,  1,   2,  2,  12, 12,   7,  7,   6,  6,  15, 15,   4,  4,   8,  8,
-       3,  3,  10, 10,  14, 14,   9,  9,  13, 13,   5,  5,  11, 11,   2,  8,
-       3, 12,  10,  7,   6, 14,   5, 15,   4, 11,   9,  8,   3, 13,  10, 15,
-       4, 14,   9,  7,   6, 13,   5, 12,   2, 11,   1,  2,  12,  1,   7,  1,
-       1,  6,  15,  1,   1,  4,   8,  1,   1,  3,   1, 10,  14,  1,   1,  9,
-      13,  1,   1,  5,  11,  1
-    };
-    for (int i = 0; i < 43; i++) {
-      int     c0 = colorIndexTable[i << 1];
-      int     c1 = colorIndexTable[(i << 1) + 1];
-      uvTable[i].c0 = c0;
-      uvTable[i].c1 = c1;
-      float   u0 = 0.0f;
-      float   v0 = 0.0f;
-      float   u1 = 0.0f;
-      float   v1 = 0.0f;
-      colorToUV(c0, u0, v0);
-      colorToUV(c1, u1, v1);
-      uvTable[i].u = (u0 + u1) * 0.5f;
-      uvTable[i].v = (v0 + v1) * 0.5f;
-      uvTable[i].err = (calculateErrorSqr(u0, u1) + calculateErrorSqr(v0, v1))
-                       / 20.0;
+    for (int i = 0; i < 15; i++) {
+      uvTable[i].c = i + 1;
+      colorToUV(uvTable[i].c, uvTable[i].u, uvTable[i].v);
     }
   }
 
@@ -238,22 +214,20 @@ namespace Plus4FLIConv {
       break;
     }
     limitValue(xShift0, -2, 7);
-    limitValue(xShift1, -2, 7);
     borderColor = (borderColor & 0x7F) | 0x80;
-    nLines = (nLines > 256 ? (nLines < 496 ? nLines : 496) : 256);
-    nLines = (nLines + 7) & (~(int(7)));
-    limitValue(colorInterlaceMode, 0, 2);
+    nLines = (nLines > 128 ? (nLines < 248 ? nLines : 248) : 128);
+    nLines = (nLines + 3) & (~(int(3)));
   }
 
   void P4FLI_HiResNoInterlace::ditherPixel(PRGData& prgData, long xc, long yc)
   {
-    if (xc < 0L || xc >= 320L || yc < 0L || yc >= 496L)
+    if (xc < 0L || xc >= 320L || yc < 0L || yc >= 248L)
       return;
     long    xcShifted = xc - resizedImage.y()[yc].getXShift();
     if (xcShifted < 0L)
       return;
-    int     l0 = prgData.l0(xcShifted, yc);
-    int     l1 = prgData.l1(xcShifted, yc);
+    int     l0 = prgData.l0(xcShifted, yc << 1);
+    int     l1 = prgData.l1(xcShifted, yc << 1);
     float   pixelValueOriginal = resizedImage.y()[yc].getPixel(xc);
     float   ditherError = ditherErrorImage[yc].getPixel(xc);
     float   pixelValueDithered = pixelValueOriginal + ditherError;
@@ -283,7 +257,7 @@ namespace Plus4FLIConv {
       bitValue = (calculateError(pixelValue1, pixelValueOriginal)
                   < calculateError(pixelValue0, pixelValueOriginal));
     }
-    prgData.setPixel(xcShifted, yc, bitValue);
+    prgData.setPixel(xcShifted, yc << 1, bitValue);
     if (ditherMode == 0)
       return;
     // diffuse error
@@ -304,7 +278,7 @@ namespace Plus4FLIConv {
       };
       for (int i = 0; i < 4; i++) {
         long    yc_ = yc + yOffsTbl[i];
-        if (yc_ >= 496L)
+        if (yc_ >= 248L)
           break;
         long    xc_ = xOffsTbl[i];
         xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
@@ -317,7 +291,7 @@ namespace Plus4FLIConv {
       // Jarvis dithering
       for (int i = 0; i < 3; i++) {
         long    yc_ = yc + i;
-        if (yc_ >= 496L)
+        if (yc_ >= 248L)
           break;
         for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
           long    xc_ = j;
@@ -335,7 +309,7 @@ namespace Plus4FLIConv {
       // Stucki dithering
       for (int i = 0; i < 3; i++) {
         long    yc_ = yc + i;
-        if (yc_ >= 496L)
+        if (yc_ >= 248L)
           break;
         for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
           long    xc_ = j;
@@ -379,12 +353,12 @@ namespace Plus4FLIConv {
     int     l0 = 0;
     int     l1 = 8;
     xc = xc & (~(long(7)));
-    yc = yc & (~(long(noLuminanceInterlace ? 3 : 2)));
-    float   tmpBuf[32];
-    int     nPixels = (noLuminanceInterlace ? 32 : 16);
+    yc = yc & (~(long(1)));
+    float   tmpBuf[16];
+    const int nPixels = 16;
     for (int i = 0; i < nPixels; i++) {
       long    x_ = xc | long(i & 7);
-      long    y_ = yc | long((i & 8) >> 2) | long(i >> 4);
+      long    y_ = yc | long((i & 8) >> 3);
       tmpBuf[i] = resizedImage.y()[y_].getPixelShifted(x_);
     }
     if (!luminance1BitMode) {
@@ -497,16 +471,12 @@ namespace Plus4FLIConv {
       }
     }
     // store luminance codes
-    prgData.l0(xc, yc) = l0;
-    prgData.l1(xc, yc) = l1;
-    if (noLuminanceInterlace) {
-      prgData.l0(xc, yc + 1L) = l0;
-      prgData.l1(xc, yc + 1L) = l1;
-    }
+    prgData.l0(xc, yc << 1) = l0;
+    prgData.l1(xc, yc << 1) = l1;
     // return the total amount of error (used when optimizing horizontal shifts)
     double  err = 0.0;
     for (int i = 0; i < nPixels; i++) {
-      long    y_ = yc | long((i & 8) >> 2) | long(i >> 4);
+      long    y_ = yc | long((i & 8) >> 3);
       long    x_ = (xc | long(i & 7)) + resizedImage.y()[y_].getXShift();
       if (x_ >= 8L && x_ < 312L)  // ignore pixels that are not visible
         err += calculateLuminanceError(tmpBuf[i], l0, l1);
@@ -516,36 +486,35 @@ namespace Plus4FLIConv {
 
   void P4FLI_HiResNoInterlace::generateBitmaps(PRGData& prgData)
   {
-    for (int yc = 0; yc < 496; yc += 2) {
+    for (int yc = 0; yc < 248; yc += 2) {
       for (int xc = 0; xc < 320; xc++)
         ditherPixel(prgData, xc, yc);
       for (int xc = 319; xc >= 0; xc--)
         ditherPixel(prgData, xc, yc + 1);
     }
-    for (int yc = 0; yc < 496; yc++) {
-      if (yc & 2)
-        continue;
+    for (int yc = 0; yc < 248; yc += 2) {
       for (int xc = 0; xc < 320; xc += 8) {
         // if all bits are 0 or 1, replace the bitmaps with
         // a dither pattern to improve color conversion
         int     b0 = 0;
         int     b1 = 1;
         for (int i = 0; i < 16; i++) {
-          bool    tmp = prgData.getPixel(xc | (i & 7), yc | ((i & 8) >> 2));
+          bool    tmp =
+              prgData.getPixel(xc | (i & 7), (yc | ((i & 8) >> 3)) << 1);
           b0 = b0 | int(tmp);
           b1 = b1 & int(tmp);
         }
-        int&    l0 = prgData.l0(xc, yc);
-        int&    l1 = prgData.l1(xc, yc);
+        int&    l0 = prgData.l0(xc, yc << 1);
+        int&    l1 = prgData.l1(xc, yc << 1);
         if ((b0 == 0 && l0 != 0) || (b1 == 1 && l1 != 0)) {
           if (b0 == 0)
             l1 = l0;
           else
             l0 = l1;
           for (int i = 0; i < 16; i++) {
-            int     tmpY = yc | ((i & 8) >> 2);
+            int     tmpY = yc | ((i & 8) >> 3);
             int     tmpX = (xc | (i & 7)) + resizedImage.y()[tmpY].getXShift();
-            prgData.setPixel(xc | (i & 7), tmpY,
+            prgData.setPixel(xc | (i & 7), tmpY << 1,
                              ditherPixelValue(tmpX, tmpY, 0.66667f));
           }
         }
@@ -556,7 +525,6 @@ namespace Plus4FLIConv {
   void P4FLI_HiResNoInterlace::findColorCodes(PRGData& prgData,
                                               long xc, long yc, int dir_)
   {
-    bool    oddField = bool(yc & 1L);
     float   savedU0[9];
     float   savedV0[9];
     float   savedU1[9];
@@ -570,13 +538,11 @@ namespace Plus4FLIConv {
     // find the pair of colors that gives the least amount of error
     int     c0 = 0;
     int     c1 = 0;
-    int     l0 = prgData.l0(xc, yc);
-    int     l1 = prgData.l1(xc, yc);
+    int     l0 = prgData.l0(xc, yc << 1);
+    int     l1 = prgData.l1(xc, yc << 1);
     double  minColorErr = 1000000.0;
-    int     colorCnt =
-        (colorInterlaceMode == 0 ? 15 : (colorInterlaceMode == 2 ? 43 : 29));
-    for (int i0 = 0; i0 < colorCnt; i0++) {
-      for (int i1 = 0; i1 < colorCnt; i1++) {
+    for (int i0 = 0; i0 < 15; i0++) {
+      for (int i1 = 0; i1 < 15; i1++) {
         int     c0tmp = 0;
         int     c1tmp = 0;
         double  err = 0.0;
@@ -585,33 +551,27 @@ namespace Plus4FLIConv {
           float   v0 = 0.0f;
           float   u1 = 0.0f;
           float   v1 = 0.0f;
-          double  err0 = 0.0;
-          double  err1 = 0.0;
           if (l0 > 0) {
-            c0tmp = (oddField ? uvTable[i0].c1 : uvTable[i0].c0);
+            c0tmp = uvTable[i0].c;
             u0 = uvTable[i0].u;
             v0 = uvTable[i0].v;
-            err0 = uvTable[i0].err;
           }
           if (l1 > 0) {
-            c1tmp = (oddField ? uvTable[i1].c1 : uvTable[i1].c0);
+            c1tmp = uvTable[i1].c;
             u1 = uvTable[i1].u;
             v1 = uvTable[i1].v;
-            err1 = uvTable[i1].err;
           }
           for (int x = 0; x < 9; x++) {
-            bool    b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_), yc);
+            bool    b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
+                                         yc << 1);
             float   u_ = (b ? u1 : u0);
             float   v_ = (b ? v1 : v0);
-            if (x < 8)
-              err += (b ? err1 : err0);
             line0U.setPixelShifted(xc + (x * dir_), u_);
             line0V.setPixelShifted(xc + (x * dir_), v_);
-            b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_), yc + 2L);
+            b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
+                                 (yc + 1L) << 1);
             u_ = (b ? u1 : u0);
             v_ = (b ? v1 : v0);
-            if (x < 8)
-              err += (b ? err1 : err0);
             line1U.setPixelShifted(xc + (x * dir_), u_);
             line1V.setPixelShifted(xc + (x * dir_), v_);
           }
@@ -643,11 +603,11 @@ namespace Plus4FLIConv {
           }
           double  errU =
               double(u_)
-              - double(resizedImage.u()[yc + ((j & 8) >> 2)].getPixelShifted(
+              - double(resizedImage.u()[yc + ((j & 8) >> 3)].getPixelShifted(
                            xc + (x * dir_)));
           double  errV =
               double(v_)
-              - double(resizedImage.v()[yc + ((j & 8) >> 2)].getPixelShifted(
+              - double(resizedImage.v()[yc + ((j & 8) >> 3)].getPixelShifted(
                            xc + (x * dir_)));
           err = err + (errU * errU) + (errV * errV);
           if (err > (minColorErr * 1.000001))
@@ -669,8 +629,8 @@ namespace Plus4FLIConv {
       }
     }
     // store color codes
-    prgData.c0(xc, yc) = c0;
-    prgData.c1(xc, yc) = c1;
+    prgData.c0(xc, yc << 1) = c0;
+    prgData.c1(xc, yc << 1) = c1;
   }
 
   bool P4FLI_HiResNoInterlace::processImage(
@@ -686,16 +646,12 @@ namespace Plus4FLIConv {
       luminanceSearchMode = config["luminanceSearchMode"];
       luminanceSearchModeParam = config["luminanceSearchModeParam"];
       xShift0 = config["xShift0"];
-      xShift1 = config["xShift1"];
       borderColor = config["borderColor"];
       nLines = config["verticalSize"];
-      colorInterlaceMode = config["colorInterlaceMode"];
+      if (nLines >= 256)
+        nLines = nLines >> 1;
       disablePAL = !(bool(config["enablePAL"]));
-      disableInterlace = (nLines < 256);
-      if (disableInterlace)
-        nLines = nLines << 1;
       luminance1BitMode = config["luminance1BitMode"];
-      noLuminanceInterlace = config["noLuminanceInterlace"];
       checkParameters();
       createYTable();
       createUVTables();
@@ -706,9 +662,9 @@ namespace Plus4FLIConv {
                                       monitorGamma);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
-      prgData.setVerticalSize(disableInterlace ? (nLines >> 1) : nLines);
-      prgData.interlaceFlags() = 0xC0;
-      for (int yc = 0; yc < 496; yc++) {
+      prgData.setVerticalSize(nLines);
+      prgData.interlaceFlags() = 0x00;
+      for (int yc = 0; yc < 248; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);
         resizedImage.u()[yc].clear();
@@ -723,41 +679,27 @@ namespace Plus4FLIConv {
       line0V.setBorderColor(borderV);
       line1U.setBorderColor(borderU);
       line1V.setBorderColor(borderV);
-      imgConv.setImageSize(640, nLines);
+      imgConv.setImageSize(640, nLines << 1);
       imgConv.setPixelAspectRatio(1.0f);
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
       progressMessage("Calculating FLI data");
-      for (int yc = 0; yc < 496; yc += 2) {
-        for (int xc = 0; xc < 320; xc++) {
-          if (disableInterlace) {
-            float   y0 = resizedImage.y()[yc].getPixel(xc);
-            float   y1 = resizedImage.y()[yc + 1].getPixel(xc);
-            resizedImage.y()[yc].setPixel(xc, (y0 + y1) * 0.5f);
-            resizedImage.y()[yc + 1].setPixel(xc, (y0 + y1) * 0.5f);
-          }
-          float   u0 = resizedImage.u()[yc].getPixel(xc);
-          float   u1 = resizedImage.u()[yc + 1].getPixel(xc);
-          float   v0 = resizedImage.v()[yc].getPixel(xc);
-          float   v1 = resizedImage.v()[yc + 1].getPixel(xc);
-          resizedImage.u()[yc].setPixel(xc, (u0 + u1) * 0.5f);
-          resizedImage.u()[yc + 1].setPixel(xc, (u0 + u1) * 0.5f);
-          resizedImage.v()[yc].setPixel(xc, (v0 + v1) * 0.5f);
-          resizedImage.v()[yc + 1].setPixel(xc, (v0 + v1) * 0.5f);
-        }
-      }
-      for (int yc = 0; yc < 496; yc++) {
-        int     xShift_ = (!(yc & 1) ? xShift0 : xShift1);
+      // initialize horizontal scroll table
+      int     randomSeed = 0;
+      Plus4Emu::setRandomSeed(randomSeed,
+                              Plus4Emu::Timer::getRandomSeedFromTime());
+      for (int yc = 0; yc < 248; yc++) {
+        int     xShift_ = xShift0;
         if (xShift_ == -2)
-          xShift_ = int(std::rand() & 0x7000) >> 12;
+          xShift_ = Plus4Emu::getRandomNumber(randomSeed) & 7;
         else if (xShift_ == -1)
           xShift_ = 0;
         resizedImage.y()[yc].setXShift(xShift_);
         resizedImage.u()[yc].setXShift(xShift_);
         resizedImage.v()[yc].setXShift(xShift_);
       }
-      if (!(xShift0 == 0 && xShift1 == 0)) {
-        for (int yc = 0; yc < 496; yc++) {
+      if (xShift0 != 0) {
+        for (int yc = 0; yc < 248; yc++) {
           for (int i = 0; i < 8; i++) {
             resizedImage.y()[yc][i] = resizedImage.y()[yc][15 - i];
             resizedImage.y()[yc][312 + i] = resizedImage.y()[yc][311 - i];
@@ -768,9 +710,7 @@ namespace Plus4FLIConv {
           }
         }
       }
-      for (int yc = 0; yc < nLines; yc++) {
-        if ((yc & (noLuminanceInterlace ? 3 : 2)) != 0)
-          continue;
+      for (int yc = 0; yc < nLines; yc += 2) {
         if (!setProgressPercentage(yc * 33 / nLines)) {
           prgData[0] = 0x01;
           prgData[1] = 0x10;
@@ -780,131 +720,90 @@ namespace Plus4FLIConv {
           progressMessage("");
           return false;
         }
-        if (!(xShift0 == -1 || xShift1 == -1)) {
+        if (xShift0 != -1) {
           for (int xc = 0; xc < 320; xc += 8)
             findLuminanceCodes(prgData, xc, yc);
         }
-        else if (!(yc & 3)) {
+        else {
           // find optimal horizontal shifts
           double  minErr = 1000000.0;
-          int     bestXShift[4];
-          int     xs[4];
-          for (int i = 0; i < 4; i++) {
-            bestXShift[i] = 0;
-            xs[i] = 0;
-          }
-          do {
-            for (int i = 0; i < 4; i++) {
-              xs[i] = xs[i] & 7;
-              resizedImage.y()[yc + i].setXShift(xs[i]);
-              resizedImage.u()[yc + i].setXShift(xs[i]);
-              resizedImage.v()[yc + i].setXShift(xs[i]);
-            }
-            bool    skipFlag = false;
-            for (int i = 0; i < 4; i++) {
-              // do not allow stepping by more than one pixel at once
-              if ((yc + i) > 0) {
-                int     d = resizedImage.y()[yc + i].getXShift()
-                            - resizedImage.y()[yc + i - 1].getXShift();
-                if (!(d == 0 || d == 1 || d == -1 || d == 7 || d == -7)) {
-                  skipFlag = true;
-                  break;
-                }
-              }
-            }
-            if (!skipFlag) {
-              // calculate the total error for four lines
+          int     bestXShift[2];
+          bestXShift[0] = 0;
+          bestXShift[1] = 0;
+          for (int xs0 = 0; xs0 < 8; xs0++) {
+            for (int xs1 = 0; xs1 < 8; xs1++) {
+              resizedImage.y()[yc + 0].setXShift(xs0);
+              resizedImage.u()[yc + 0].setXShift(xs0);
+              resizedImage.v()[yc + 0].setXShift(xs0);
+              resizedImage.y()[yc + 1].setXShift(xs1);
+              resizedImage.u()[yc + 1].setXShift(xs1);
+              resizedImage.v()[yc + 1].setXShift(xs1);
+              // calculate the total error for two lines
               double  err = 0.0;
               for (int xc = 0; xc < 320; xc += 8)
                 err += findLuminanceCodes(prgData, xc, yc);
-              if (!noLuminanceInterlace) {
-                for (int xc = 0; xc < 320; xc += 8)
-                  err += findLuminanceCodes(prgData, xc, yc + 1);
-              }
               if (err < minErr) {
-                for (int i = 0; i < 4; i++)
-                  bestXShift[i] = xs[i];
+                bestXShift[0] = xs0;
+                bestXShift[1] = xs1;
                 minErr = err;
               }
             }
-            for (int i = 0; i < 4; i++) {
-              xs[i] = xs[i] + 1;
-              if (xs[i] < 8)
-                break;
-            }
-          } while (xs[3] < 8);
+          }
           // use the best horizontal shift that was found
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 2; i++) {
             resizedImage.y()[yc + i].setXShift(bestXShift[i]);
             resizedImage.u()[yc + i].setXShift(bestXShift[i]);
             resizedImage.v()[yc + i].setXShift(bestXShift[i]);
           }
           for (int xc = 0; xc < 320; xc += 8)
             findLuminanceCodes(prgData, xc, yc);
-          if (!noLuminanceInterlace) {
-            for (int xc = 0; xc < 320; xc += 8)
-              findLuminanceCodes(prgData, xc, yc + 1);
-          }
         }
       }
       generateBitmaps(prgData);
       // convert color information
-      {
-        Line320 savedPrvLineU;
-        Line320 savedPrvLineV;
-        savedPrvLineU.setBorderColor(borderU);
-        savedPrvLineV.setBorderColor(borderV);
-        for (int xc = 0; xc < 320; xc++) {
-          prvLineU[xc] = borderU;
-          prvLineV[xc] = borderV;
-          savedPrvLineU[xc] = borderU;
-          savedPrvLineV[xc] = borderV;
+      for (int xc = 0; xc < 320; xc++) {
+        prvLineU[xc] = borderU;
+        prvLineV[xc] = borderV;
+      }
+      for (int yc = 0; yc < nLines; yc += 2) {
+        if (!setProgressPercentage((yc * 67 / nLines) + 33)) {
+          prgData[0] = 0x01;
+          prgData[1] = 0x10;
+          prgData[2] = 0x00;
+          prgData[3] = 0x00;
+          prgEndAddr = 0x1003U;
+          progressMessage("");
+          return false;
         }
-        for (int yc = 0; yc < nLines; yc++) {
-          if (yc & 2)
-            continue;
-          if (!setProgressPercentage((yc * 67 / nLines) + 33)) {
-            prgData[0] = 0x01;
-            prgData[1] = 0x10;
-            prgData[2] = 0x00;
-            prgData[3] = 0x00;
-            prgEndAddr = 0x1003U;
-            progressMessage("");
-            return false;
-          }
-          line0U.clear();
-          line0V.clear();
-          line1U.clear();
-          line1V.clear();
-          line0U.setXShift(resizedImage.u()[yc].getXShift());
-          line0V.setXShift(resizedImage.v()[yc].getXShift());
-          line1U.setXShift(resizedImage.u()[yc + 2].getXShift());
-          line1V.setXShift(resizedImage.v()[yc + 2].getXShift());
-          if (resizedImage.y()[yc].getXShift()
-              >= resizedImage.y()[yc + 2].getXShift()) {
-            for (int xc = 0; xc < 320; xc += 8)
-              findColorCodes(prgData, xc, yc, 1);
-          }
-          else {
-            for (int xc = 319; xc >= 0; xc -= 8)
-              findColorCodes(prgData, xc, yc, -1);
-          }
-          for (int xc = 0; xc < 320; xc++) {
-            prvLineU[xc] = (line1U[xc] * 0.5f) + (savedPrvLineU[xc] * 0.5f);
-            prvLineV[xc] = (line1V[xc] * 0.5f) + (savedPrvLineV[xc] * 0.5f);
-          }
-          savedPrvLineU = line1U;
-          savedPrvLineV = line1V;
+        line0U.clear();
+        line0V.clear();
+        line1U.clear();
+        line1V.clear();
+        line0U.setXShift(resizedImage.u()[yc + 0].getXShift());
+        line0V.setXShift(resizedImage.v()[yc + 0].getXShift());
+        line1U.setXShift(resizedImage.u()[yc + 1].getXShift());
+        line1V.setXShift(resizedImage.v()[yc + 1].getXShift());
+        if (resizedImage.y()[yc].getXShift()
+            >= resizedImage.y()[yc + 1].getXShift()) {
+          for (int xc = 0; xc < 320; xc += 8)
+            findColorCodes(prgData, xc, yc, 1);
         }
+        else {
+          for (int xc = 319; xc >= 0; xc -= 8)
+            findColorCodes(prgData, xc, yc, -1);
+        }
+        prvLineU = line1U;
+        prvLineV = line1V;
       }
       setProgressPercentage(100);
       progressMessage("");
-      for (int yc = 0; yc < 496; yc++) {
-        prgData.lineXShift(yc) =
+      // write PRG output
+      for (int yc = 0; yc < nLines; yc++) {
+        prgData.lineXShift(yc << 1) =
             (unsigned char) resizedImage.y()[yc].getXShift();
       }
       prgData.convertImageData();
-      prgEndAddr = (nLines <= 400 ? 0xA000U : 0xE500U);
+      prgEndAddr = (nLines <= 200 ? 0x6000U : 0xC000U);
     }
     catch (...) {
       prgData[0] = 0x01;
