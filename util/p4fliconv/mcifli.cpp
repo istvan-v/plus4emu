@@ -139,6 +139,7 @@ namespace Plus4FLIConv {
       xShift1(-1),
       borderColor(0x00),
       nLines(232),
+      conversionQuality(6),
       luminance1BitMode(false),
       ditheredImage((int *) 0),
       errorTable((double *) 0),
@@ -199,6 +200,7 @@ namespace Plus4FLIConv {
     borderColor = (borderColor & 0x7F) | 0x80;
     nLines = (nLines > 128 ? (nLines < 248 ? nLines : 248) : 128);
     nLines = (nLines + 3) & (~(int(3)));
+    limitValue(conversionQuality, 1, 20);
   }
 
   P4FLI_MultiColor::FLIBlock4x2::FLIBlock4x2(const double *errorTable_,
@@ -317,6 +319,46 @@ namespace Plus4FLIConv {
         minErr = err;
       totalErr += (minErr * double(pixelColorCounts_0[i]));
     }
+    for (int i = 0; i < nColors_1; i++) {
+      int     c = pixelColorCodes_1[i];
+      double  minErr = errorTable[(c << 7) | color0_1];
+      double  err = errorTable[(c << 7) | color1];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color2];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color3_1];
+      if (err < minErr)
+        minErr = err;
+      totalErr += (minErr * double(pixelColorCounts_1[i]));
+    }
+    return totalErr;
+  }
+
+  inline double P4FLI_MultiColor::FLIBlock4x2::calculateErrorLine0() const
+  {
+    double  totalErr = 0.0;
+    for (int i = 0; i < nColors_0; i++) {
+      int     c = pixelColorCodes_0[i];
+      double  minErr = errorTable[(c << 7) | color0_0];
+      double  err = errorTable[(c << 7) | color1];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color2];
+      if (err < minErr)
+        minErr = err;
+      err = errorTable[(c << 7) | color3_0];
+      if (err < minErr)
+        minErr = err;
+      totalErr += (minErr * double(pixelColorCounts_0[i]));
+    }
+    return totalErr;
+  }
+
+  inline double P4FLI_MultiColor::FLIBlock4x2::calculateErrorLine1() const
+  {
+    double  totalErr = 0.0;
     for (int i = 0; i < nColors_1; i++) {
       int     c = pixelColorCodes_1[i];
       double  minErr = errorTable[(c << 7) | color0_1];
@@ -931,8 +973,10 @@ namespace Plus4FLIConv {
     bestColors[2] = color3_0;
     bestColors[3] = color3_1;
     std::vector< int >  colorCnts(128);
-    for (int l = 0; l < 6; l++) {
-      // set initial palette with six different methods, and choose the one
+    int     randomSeed = 0;
+    Plus4Emu::setRandomSeed(randomSeed, 1U);
+    for (int l = 0; l < conversionQuality; l++) {
+      // set initial palette with different methods, and choose the one
       // that results in the least error after optimization
       for (int i = 0; i < 128; i++)
         colorCnts[i] = 0;
@@ -945,18 +989,22 @@ namespace Plus4FLIConv {
         else {
           switch (l) {
           case 0:
-            attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
-            attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
-            break;
-          case 1:
+          case 6:
             attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[nColors - 1];
             attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 2];
             break;
+          case 1:
+          case 7:
+            attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
+            attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
+            break;
           case 2:
+          case 8:
             attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
             attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[nColors - 1];
             break;
           case 3:
+          case 9:
             {
               attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
               double  maxErr = 0.0;
@@ -971,12 +1019,22 @@ namespace Plus4FLIConv {
             }
             break;
           case 4:
+          case 10:
             attrBlocks[i].color1 = 0x00;
             attrBlocks[i].color2 = 0x00;
             break;
           case 5:
+          case 11:
             attrBlocks[i].color1 = 0x71;
             attrBlocks[i].color2 = 0x71;
+            break;
+          default:
+            attrBlocks[i].color1 =
+                colorTables[i][Plus4Emu::getRandomNumber(randomSeed)
+                               % int(colorTables[i].size())];
+            attrBlocks[i].color2 =
+                colorTables[i][Plus4Emu::getRandomNumber(randomSeed)
+                               % int(colorTables[i].size())];
             break;
           }
           for (int j = 0; j < nColors; j++) {
@@ -986,15 +1044,15 @@ namespace Plus4FLIConv {
           }
         }
       }
-      if (l == 4) {
+      if (l == 4 || l == 10) {
         color0_0 = 0x71;
         color3_0 = 0x71;
       }
-      else if (l == 5) {
+      else if (l == 5 || l == 11) {
         color0_0 = 0x00;
         color3_0 = 0x00;
       }
-      else {
+      else if (l < 12 || colorTable0.size() < 1) {
         int     maxCnt1 = 0;
         int     maxCnt2 = 0;
         for (int i = 0; i < 128; i++) {
@@ -1010,11 +1068,17 @@ namespace Plus4FLIConv {
           }
         }
       }
+      else {
+        color0_0 = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
+                               % int(colorTable0.size())];
+        color3_0 = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
+                               % int(colorTable0.size())];
+      }
       color0_1 = color0_0;
       color3_1 = color3_0;
       // optimize attributes and color registers
       double  prvErr = 1000000.0;
-      for (int i = 7; i >= 0; i--) {
+      for (int i = (l < 6 ? 7 : -1); i >= 0; i--) {
         // color #0 (FF15), line 0 and 1
         double  minErr = 1000000.0;
         int     bestColor = color0_0;
@@ -1080,7 +1144,10 @@ namespace Plus4FLIConv {
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            err += attrBlocks[k].calculateError();
+            if (color0ChangeEnabled)
+              err += attrBlocks[k].calculateErrorLine0();
+            else
+              err += attrBlocks[k].calculateError();
             if (err > (minErr * 1.000001))
               break;
           }
@@ -1102,7 +1169,7 @@ namespace Plus4FLIConv {
             for (int k = 0; k < 40; k++) {
               if (attrBlocks[k].nColors <= 2)
                 continue;
-              err += attrBlocks[k].calculateError();
+              err += attrBlocks[k].calculateErrorLine1();
               if (err > (minErr * 1.000001))
                 break;
             }
@@ -1122,7 +1189,7 @@ namespace Plus4FLIConv {
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            err += attrBlocks[k].calculateError();
+            err += attrBlocks[k].calculateErrorLine0();
             if (err > (minErr * 1.000001))
               break;
           }
@@ -1141,7 +1208,7 @@ namespace Plus4FLIConv {
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            err += attrBlocks[k].calculateError();
+            err += attrBlocks[k].calculateErrorLine1();
             if (err > (minErr * 1.000001))
               break;
           }
@@ -1254,6 +1321,7 @@ namespace Plus4FLIConv {
       nLines = config["verticalSize"];
       if (nLines >= 256)
         nLines = nLines >> 1;
+      conversionQuality = config["multiColorQuality"];
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
       createErrorTable();
@@ -1282,10 +1350,13 @@ namespace Plus4FLIConv {
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
       // initialize horizontal scroll table
+      int     randomSeed = 0;
+      Plus4Emu::setRandomSeed(randomSeed,
+                              Plus4Emu::Timer::getRandomSeedFromTime());
       for (int i = 0; i < (nLines << 1); i++) {
         int     xShift_ = (!(i & 1) ? xShift0 : xShift1);
         if (xShift_ == -2)
-          xShift_ = int(std::rand() & 0x7000) >> 12;
+          xShift_ = Plus4Emu::getRandomNumber(randomSeed) & 7;
         else if (xShift_ == -1)
           xShift_ = 0;
         xShiftTable[i] = (xShift_ & 6) | (i & 1);
@@ -1305,6 +1376,7 @@ namespace Plus4FLIConv {
         ditherLine(yc);
       }
       // generate FLI data
+      double  totalError = 0.0;
       for (int yc = 0; yc < nLines; yc += 2) {
         // field 0 (x = 0, 2, 4, ...)
         if (!setProgressPercentage((yc * 40 / nLines) + 20)) {
@@ -1336,7 +1408,7 @@ namespace Plus4FLIConv {
         }
         xShiftTable[(yc << 1) + 0] = bestXShift0;
         xShiftTable[(yc << 1) + 2] = bestXShift1;
-        convertTwoLines(prgData, yc, false);
+        totalError += convertTwoLines(prgData, yc, false);
       }
       for (int yc = 0; yc < nLines; yc += 2) {
         // field 1 (x = 1, 3, 5, ...)
@@ -1369,10 +1441,16 @@ namespace Plus4FLIConv {
         }
         xShiftTable[(yc << 1) + 1] = bestXShift0;
         xShiftTable[(yc << 1) + 3] = bestXShift1;
-        convertTwoLines(prgData, yc, true);
+        totalError += convertTwoLines(prgData, yc, true);
       }
       setProgressPercentage(100);
       progressMessage("");
+      {
+        char    tmpBuf[64];
+        totalError = std::sqrt(totalError / double(nLines * 304));
+        std::sprintf(&(tmpBuf[0]), "Done, RMS error = %.4f", totalError);
+        progressMessage(&(tmpBuf[0]));
+      }
       // write PRG output
       for (int yc = 0; yc < nLines; yc++) {
         int     xs0 = (xShiftTable[(yc << 1) + 0] & 0x06) | 0x10;

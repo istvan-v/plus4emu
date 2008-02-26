@@ -101,6 +101,7 @@ namespace Plus4FLIConv {
     double  ditherScale;
     int     ditherMode;
     int     borderColor;
+    int     conversionQuality;
     bool    luminance1BitMode;
    private:
     struct AttrBlock4x8 {
@@ -129,7 +130,7 @@ namespace Plus4FLIConv {
     void checkParameters();
     void createErrorTable();
     void ditherLine(long yc);
-    bool convertImage(PRGData& prgData);
+    bool convertImage(PRGData& prgData, double& totalError);
    public:
     P4FLI_MultiColorNoFLI();
     virtual ~P4FLI_MultiColorNoFLI();

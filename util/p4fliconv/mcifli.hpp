@@ -136,6 +136,7 @@ namespace Plus4FLIConv {
     int     xShift1;
     int     borderColor;
     int     nLines;
+    int     conversionQuality;
     bool    luminance1BitMode;
    private:
     struct FLIBlock4x2 {
@@ -164,6 +165,8 @@ namespace Plus4FLIConv {
       }
       void addPixel(int l, int c);
       inline double calculateError() const;
+      inline double calculateErrorLine0() const;
+      inline double calculateErrorLine1() const;
       double optimizeColors(const std::vector< int >& colorTable_);
     };
     YUVImage304x248 resizedImage;
