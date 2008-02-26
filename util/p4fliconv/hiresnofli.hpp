@@ -32,8 +32,6 @@ namespace Plus4FLIConv {
     class Line320 {
      private:
       float   *buf;
-      int     xShift;
-      bool    multiColorFlag;
      public:
       Line320();
       Line320(const Line320& r);
@@ -49,80 +47,50 @@ namespace Plus4FLIConv {
       {
         return buf[x + 16L];
       }
-      inline float& pixelShifted(long x)
-      {
-        return buf[x + 16L + xShift];
-      }
       inline float getPixel(long x) const
       {
         return buf[x + 16L];
-      }
-      inline float getPixelShifted(long x) const
-      {
-        return buf[x + 16L + xShift];
       }
       inline void setPixel(long x, float n)
       {
         if (x >= 0L && x < 320L)
           buf[x + 16L] = n;
       }
-      inline void setPixelShifted(long x, float n)
-      {
-        long    x_ = x + xShift;
-        if (x_ >= 0L && x_ < 320L)
-          buf[x_ + 16L] = n;
-      }
-      inline int getXShift() const
-      {
-        return xShift;
-      }
-      inline void setXShift(int n)
-      {
-        xShift = n & 7;
-      }
-      inline bool getMultiColorFlag() const
-      {
-        return multiColorFlag;
-      }
-      inline void setMultiColorFlag(bool n)
-      {
-        multiColorFlag = n;
-      }
     };
     // ------------------------
-    class Image320x496 {
+    class Image320x200 {
      private:
       Line320 *buf;
      public:
-      Image320x496();
-      Image320x496(const Image320x496& r);
-      virtual ~Image320x496();
-      Image320x496& operator=(const Image320x496& r);
+      Image320x200();
+      Image320x200(const Image320x200& r);
+      virtual ~Image320x200();
+      Image320x200& operator=(const Image320x200& r);
       inline Line320& operator[](long n)
       {
         return buf[n];
       }
     };
     // ------------------------
-    class YUVImage320x496 {
+    class YUVImage320x200 {
      private:
-      Image320x496  imageY;
-      Image320x496  imageU;
-      Image320x496  imageV;
+      Image320x200  imageY;
+      Image320x200  imageU;
+      Image320x200  imageV;
      public:
-      YUVImage320x496();
-      YUVImage320x496(const YUVImage320x496& r);
-      virtual ~YUVImage320x496();
-      YUVImage320x496& operator=(const YUVImage320x496& r);
-      inline Image320x496& y()
+      YUVImage320x200();
+      YUVImage320x200(const YUVImage320x200& r);
+      virtual ~YUVImage320x200();
+      YUVImage320x200& operator=(const YUVImage320x200& r);
+      inline Image320x200& y()
       {
         return imageY;
       }
-      inline Image320x496& u()
+      inline Image320x200& u()
       {
         return imageU;
       }
-      inline Image320x496& v()
+      inline Image320x200& v()
       {
         return imageV;
       }
@@ -134,33 +102,23 @@ namespace Plus4FLIConv {
     int     ditherMode;
     int     luminanceSearchMode;
     double  luminanceSearchModeParam;
-    int     xShift0;
-    int     xShift1;
     int     borderColor;
-    int     nLines;
-    int     colorInterlaceMode;
     bool    disablePAL;
-    bool    disableInterlace;
     bool    luminance1BitMode;
-    bool    noLuminanceInterlace;
    private:
     struct UVTableEntry {
-      int     c0;
-      int     c1;
+      int     c;
       float   u;
       float   v;
-      double  err;
     };
     float               yTable[9];
-    UVTableEntry        uvTable[43];
-    YUVImage320x496     resizedImage;
-    Image320x496        ditherErrorImage;
+    UVTableEntry        uvTable[15];
+    YUVImage320x200     resizedImage;
+    Image320x200        ditherErrorImage;
     Line320 prvLineU;
     Line320 prvLineV;
-    Line320 line0U;
-    Line320 line0V;
-    Line320 line1U;
-    Line320 line1V;
+    Line320 lineU[8];
+    Line320 lineV[8];
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void colorToUV(int c, float& u, float& v);
@@ -169,9 +127,9 @@ namespace Plus4FLIConv {
     void checkParameters();
     void ditherPixel(PRGData& prgData, long xc, long yc);
     inline double calculateLuminanceError(float n, int l0, int l1);
-    double findLuminanceCodes(PRGData& prgData, long xc, long yc);
+    void findLuminanceCodes(PRGData& prgData, long xc, long yc);
     void generateBitmaps(PRGData& prgData);
-    void findColorCodes(PRGData& prgData, long xc, long yc, int dir_);
+    void findColorCodes(PRGData& prgData, long xc, long yc);
    public:
     P4FLI_HiResNoFLI();
     virtual ~P4FLI_HiResNoFLI();
