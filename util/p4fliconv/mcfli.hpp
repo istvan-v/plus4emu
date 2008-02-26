@@ -29,16 +29,16 @@ namespace Plus4FLIConv {
 
   class P4FLI_MultiColorNoInterlace : public FLIConverter {
    public:
-    class Line320 {
+    class Line160 {
      private:
       float   *buf;
       int     xShift;
       bool    multiColorFlag;
      public:
-      Line320();
-      Line320(const Line320& r);
-      virtual ~Line320();
-      Line320& operator=(const Line320& r);
+      Line160();
+      Line160(const Line160& r);
+      virtual ~Line160();
+      Line160& operator=(const Line160& r);
       void clear();
       void setBorderColor(float c);
       inline float& operator[](long n)
@@ -63,13 +63,13 @@ namespace Plus4FLIConv {
       }
       inline void setPixel(long x, float n)
       {
-        if (x >= 0L && x < 320L)
+        if (x >= 0L && x < 160L)
           buf[x + 16L] = n;
       }
       inline void setPixelShifted(long x, float n)
       {
         long    x_ = x + xShift;
-        if (x_ >= 0L && x_ < 320L)
+        if (x_ >= 0L && x_ < 160L)
           buf[x_ + 16L] = n;
       }
       inline int getXShift() const
@@ -90,39 +90,39 @@ namespace Plus4FLIConv {
       }
     };
     // ------------------------
-    class Image320x248 {
+    class Image160x248 {
      private:
-      Line320 *buf;
+      Line160 *buf;
      public:
-      Image320x248();
-      Image320x248(const Image320x248& r);
-      virtual ~Image320x248();
-      Image320x248& operator=(const Image320x248& r);
-      inline Line320& operator[](long n)
+      Image160x248();
+      Image160x248(const Image160x248& r);
+      virtual ~Image160x248();
+      Image160x248& operator=(const Image160x248& r);
+      inline Line160& operator[](long n)
       {
         return buf[n];
       }
     };
     // ------------------------
-    class YUVImage320x248 {
+    class YUVImage160x248 {
      private:
-      Image320x248  imageY;
-      Image320x248  imageU;
-      Image320x248  imageV;
+      Image160x248  imageY;
+      Image160x248  imageU;
+      Image160x248  imageV;
      public:
-      YUVImage320x248();
-      YUVImage320x248(const YUVImage320x248& r);
-      virtual ~YUVImage320x248();
-      YUVImage320x248& operator=(const YUVImage320x248& r);
-      inline Image320x248& y()
+      YUVImage160x248();
+      YUVImage160x248(const YUVImage160x248& r);
+      virtual ~YUVImage160x248();
+      YUVImage160x248& operator=(const YUVImage160x248& r);
+      inline Image160x248& y()
       {
         return imageY;
       }
-      inline Image320x248& u()
+      inline Image160x248& u()
       {
         return imageU;
       }
-      inline Image320x248& v()
+      inline Image160x248& v()
       {
         return imageV;
       }
@@ -133,10 +133,11 @@ namespace Plus4FLIConv {
     double  ditherScale;
     int     ditherMode;
     int     xShift0;
-    int     xShift1;
     int     borderColor;
     int     nLines;
+    int     conversionQuality;
     bool    luminance1BitMode;
+    bool    enable40ColumnMode;
    private:
     struct FLIBlock4x2 {
       const double  *errorTable;
@@ -164,10 +165,12 @@ namespace Plus4FLIConv {
       }
       void addPixel(int l, int c);
       inline double calculateError() const;
+      inline double calculateErrorLine0() const;
+      inline double calculateErrorLine1() const;
       double optimizeColors(const std::vector< int >& colorTable_);
     };
-    YUVImage320x248 resizedImage;
-    YUVImage320x248 ditherErrorImage;
+    YUVImage160x248 resizedImage;
+    YUVImage160x248 ditherErrorImage;
     int     *ditheredImage;
     double  *errorTable;
     int     *xShiftTable;
@@ -176,7 +179,7 @@ namespace Plus4FLIConv {
     void checkParameters();
     void createErrorTable();
     void ditherLine(long yc);
-    double convertTwoLines(PRGData& prgData, long yc, bool oddField);
+    double convertTwoLines(PRGData& prgData, long yc);
    public:
     P4FLI_MultiColorNoInterlace();
     virtual ~P4FLI_MultiColorNoInterlace();
