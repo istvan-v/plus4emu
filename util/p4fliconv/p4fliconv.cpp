@@ -213,6 +213,7 @@ void Plus4FLIConvGUI::init_()
   fileChangedFlag = false;
   fileNotSavedFlag = false;
   confirmStatus = false;
+  c64PaletteChangedFlag = false;
   browseFileWindow = new Fl_File_Chooser("", "*", Fl_File_Chooser::SINGLE, "");
   imageFileDirectory = "";
   configDirectory = "";
@@ -324,6 +325,10 @@ bool Plus4FLIConvGUI::browseFile(std::string& fileName, std::string& dirName,
 void Plus4FLIConvGUI::applyConfigurationChanges()
 {
   if (!busyFlag) {
+    if (c64PaletteChangedFlag) {
+      updateImageDisplay();
+      c64PaletteChangedFlag = false;
+    }
     if (fileChangedFlag || config.isFLIConfigurationChanged()) {
       Plus4FLIConv::FLIConverter  *fliConv = (Plus4FLIConv::FLIConverter *) 0;
       bool    doneConversion = false;
@@ -363,6 +368,22 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           Plus4FLIConv::FLIConverter::convertPlus4Color(
               int(config["borderColor"]), borderY, borderU, borderV, 1.0);
           imgConv.setBorderColor(borderY, borderU, borderV);
+          imgConv.setC64Color(0, int(config["c64Color0"]));
+          imgConv.setC64Color(1, int(config["c64Color1"]));
+          imgConv.setC64Color(2, int(config["c64Color2"]));
+          imgConv.setC64Color(3, int(config["c64Color3"]));
+          imgConv.setC64Color(4, int(config["c64Color4"]));
+          imgConv.setC64Color(5, int(config["c64Color5"]));
+          imgConv.setC64Color(6, int(config["c64Color6"]));
+          imgConv.setC64Color(7, int(config["c64Color7"]));
+          imgConv.setC64Color(8, int(config["c64Color8"]));
+          imgConv.setC64Color(9, int(config["c64Color9"]));
+          imgConv.setC64Color(10, int(config["c64Color10"]));
+          imgConv.setC64Color(11, int(config["c64Color11"]));
+          imgConv.setC64Color(12, int(config["c64Color12"]));
+          imgConv.setC64Color(13, int(config["c64Color13"]));
+          imgConv.setC64Color(14, int(config["c64Color14"]));
+          imgConv.setC64Color(15, int(config["c64Color15"]));
           imgConv.setProgressMessageCallback(&progressMessageCallback,
                                              (void *) this);
           imgConv.setProgressPercentageCallback(&progressPercentageCallback,
@@ -440,11 +461,38 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
   }
 }
 
+void Plus4FLIConvGUI::setWidgetColorToPlus4Color(Fl_Widget *o, int c)
+{
+  float   y = 0.0f;
+  float   u = 0.0f;
+  float   v = 0.0f;
+  Plus4FLIConv::FLIConverter::convertPlus4Color(c & 0x7F, y, u, v, 1.0);
+  float   r = (v / 0.877f) + y;
+  float   b = (u / 0.492f) + y;
+  float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+  int     ri = int(r * 255.0f + 0.5f);
+  int     gi = int(g * 255.0f + 0.5f);
+  int     bi = int(b * 255.0f + 0.5f);
+  ri = (ri > 0 ? (ri < 255 ? ri : 255) : 0);
+  gi = (gi > 0 ? (gi < 255 ? gi : 255) : 0);
+  bi = (bi > 0 ? (bi < 255 ? bi : 255) : 0);
+  unsigned int  tmp = ((unsigned int) ri << 24)
+                      | ((unsigned int) gi << 16)
+                      | ((unsigned int) bi << 8);
+  if (tmp != 0U)
+    o->color(Fl_Color(tmp));
+  else
+    o->color(FL_BLACK);
+  o->redraw();
+}
+
 void Plus4FLIConvGUI::updateConfigWindow()
 {
   try {
     conversionTypeValuator->value(int(config["conversionType"]));
     verticalSizeValuator->value(int(config["verticalSize"]));
+    borderColorValuator->value(int(config["borderColor"]));
+    setWidgetColorToPlus4Color(borderColorDisplay, int(config["borderColor"]));
     scaleXValuator->value(double(config["scaleX"]));
     scaleYValuator->value(double(config["scaleY"]));
     offsetXValuator->value(double(config["offsetX"]));
@@ -455,15 +503,15 @@ void Plus4FLIConvGUI::updateConfigWindow()
     saturationPowValuator->value(double(config["saturationPow"]));
     gammaCorrectionValuator->value(double(config["gammaCorrection"]));
     monitorGammaValuator->value(double(config["monitorGamma"]));
-    borderColorValuator->value(int(config["borderColor"]));
-    rawPRGModeValuator->value(int(bool(config["rawPRGMode"])));
-    prgCompressionLevelValuator->value(
-        double(int(config["prgCompressionLevel"])));
     ditherModeValuator->value(int(config["ditherMode"]));
     ditherLimitValuator->value(double(config["ditherLimit"]));
     ditherDiffusionValuator->value(double(config["ditherDiffusion"]));
+    multiColorQualityValuator->value(double(int(config["multiColorQuality"])));
     xShift0Valuator->value(int(config["xShift0"]) + 2);
     xShift1Valuator->value(int(config["xShift1"]) + 2);
+    rawPRGModeValuator->value(int(bool(config["rawPRGMode"])));
+    prgCompressionLevelValuator->value(
+        double(int(config["prgCompressionLevel"])));
     luminance1BitModeValuator->value(int(bool(config["luminance1BitMode"])));
     enablePALValuator->value(int(bool(config["enablePAL"])));
     noLuminanceInterlaceValuator->value(
@@ -472,6 +520,38 @@ void Plus4FLIConvGUI::updateConfigWindow()
     luminanceSearchModeValuator->value(int(config["luminanceSearchMode"]));
     lumSearchModeParamValuator->value(
         double(config["luminanceSearchModeParam"]));
+    setWidgetColorToPlus4Color(c64Color0Display, int(config["c64Color0"]));
+    c64Color0Valuator->value(double(int(config["c64Color0"])));
+    setWidgetColorToPlus4Color(c64Color1Display, int(config["c64Color1"]));
+    c64Color1Valuator->value(double(int(config["c64Color1"])));
+    setWidgetColorToPlus4Color(c64Color2Display, int(config["c64Color2"]));
+    c64Color2Valuator->value(double(int(config["c64Color2"])));
+    setWidgetColorToPlus4Color(c64Color3Display, int(config["c64Color3"]));
+    c64Color3Valuator->value(double(int(config["c64Color3"])));
+    setWidgetColorToPlus4Color(c64Color4Display, int(config["c64Color4"]));
+    c64Color4Valuator->value(double(int(config["c64Color4"])));
+    setWidgetColorToPlus4Color(c64Color5Display, int(config["c64Color5"]));
+    c64Color5Valuator->value(double(int(config["c64Color5"])));
+    setWidgetColorToPlus4Color(c64Color6Display, int(config["c64Color6"]));
+    c64Color6Valuator->value(double(int(config["c64Color6"])));
+    setWidgetColorToPlus4Color(c64Color7Display, int(config["c64Color7"]));
+    c64Color7Valuator->value(double(int(config["c64Color7"])));
+    setWidgetColorToPlus4Color(c64Color8Display, int(config["c64Color8"]));
+    c64Color8Valuator->value(double(int(config["c64Color8"])));
+    setWidgetColorToPlus4Color(c64Color9Display, int(config["c64Color9"]));
+    c64Color9Valuator->value(double(int(config["c64Color9"])));
+    setWidgetColorToPlus4Color(c64Color10Display, int(config["c64Color10"]));
+    c64Color10Valuator->value(double(int(config["c64Color10"])));
+    setWidgetColorToPlus4Color(c64Color11Display, int(config["c64Color11"]));
+    c64Color11Valuator->value(double(int(config["c64Color11"])));
+    setWidgetColorToPlus4Color(c64Color12Display, int(config["c64Color12"]));
+    c64Color12Valuator->value(double(int(config["c64Color12"])));
+    setWidgetColorToPlus4Color(c64Color13Display, int(config["c64Color13"]));
+    c64Color13Valuator->value(double(int(config["c64Color13"])));
+    setWidgetColorToPlus4Color(c64Color14Display, int(config["c64Color14"]));
+    c64Color14Valuator->value(double(int(config["c64Color14"])));
+    setWidgetColorToPlus4Color(c64Color15Display, int(config["c64Color15"]));
+    c64Color15Valuator->value(double(int(config["c64Color15"])));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -495,6 +575,22 @@ void Plus4FLIConvGUI::openImageFile()
         return;
       imageFileName = tmp;
     }
+    fileChangedFlag = true;
+    updateImageDisplay();
+  }
+  catch (std::exception& e) {
+    setBusyFlag(false);
+    errorMessage(e.what());
+  }
+  if (fileChangedFlag && previewEnabled)
+    applyConfigurationChanges();
+}
+
+void Plus4FLIConvGUI::updateImageDisplay()
+{
+  try {
+    if (imageFileName.length() < 1)
+      return;
     Plus4FLIConv::YUVImageConverter imgConv;
     imgConv.setImageSize(768, 576);
     imgConv.setPixelAspectRatio(1.0f);
@@ -506,21 +602,38 @@ void Plus4FLIConvGUI::openImageFile()
     float   u = (float(b) - y) * 0.492f;
     float   v = (float(r) - y) * 0.877f;
     imgConv.setBorderColor(y / 255.0f, u / 255.0f, v / 255.0f);
+    imgConv.setC64Color(0, int(config["c64Color0"]));
+    imgConv.setC64Color(1, int(config["c64Color1"]));
+    imgConv.setC64Color(2, int(config["c64Color2"]));
+    imgConv.setC64Color(3, int(config["c64Color3"]));
+    imgConv.setC64Color(4, int(config["c64Color4"]));
+    imgConv.setC64Color(5, int(config["c64Color5"]));
+    imgConv.setC64Color(6, int(config["c64Color6"]));
+    imgConv.setC64Color(7, int(config["c64Color7"]));
+    imgConv.setC64Color(8, int(config["c64Color8"]));
+    imgConv.setC64Color(9, int(config["c64Color9"]));
+    imgConv.setC64Color(10, int(config["c64Color10"]));
+    imgConv.setC64Color(11, int(config["c64Color11"]));
+    imgConv.setC64Color(12, int(config["c64Color12"]));
+    imgConv.setC64Color(13, int(config["c64Color13"]));
+    imgConv.setC64Color(14, int(config["c64Color14"]));
+    imgConv.setC64Color(15, int(config["c64Color15"]));
     imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
     imgConv.setProgressMessageCallback(&progressMessageCallback,
                                        (void *) this);
     imgConv.setProgressPercentageCallback(&progressPercentageCallback,
                                           (void *) this);
     setBusyFlag(true);
-    fileChangedFlag = imgConv.convertImageFile(imageFileName.c_str());
+    if (!imgConv.convertImageFile(imageFileName.c_str())) {
+      fileChangedFlag = false;
+      imageFileName = "";
+    }
     setBusyFlag(false);
   }
   catch (std::exception& e) {
     setBusyFlag(false);
     errorMessage(e.what());
   }
-  if (fileChangedFlag && previewEnabled)
-    applyConfigurationChanges();
 }
 
 void Plus4FLIConvGUI::savePRGFile()
@@ -642,7 +755,6 @@ void Plus4FLIConvGUI::setBusyFlag(bool newState)
   if (newState != busyFlag) {
     busyFlag = newState;
     stopFlag = false;
-    progressMessageCallback((void *) this, "");
     if (busyFlag) {
       openImageButton->deactivate();
       savePRGButton->deactivate();
