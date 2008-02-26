@@ -81,6 +81,23 @@ int main(int argc, char **argv)
       optionTable["-ci"].push_back("i:colorInterlaceMode");
       optionTable["-searchmode"].push_back("i:luminanceSearchMode");
       optionTable["-searchmode"].push_back("f:luminanceSearchModeParam");
+      optionTable["-mcquality"].push_back("i:multiColorQuality");
+      optionTable["-c64color0"].push_back("i:c64Color0");
+      optionTable["-c64color1"].push_back("i:c64Color1");
+      optionTable["-c64color2"].push_back("i:c64Color2");
+      optionTable["-c64color3"].push_back("i:c64Color3");
+      optionTable["-c64color4"].push_back("i:c64Color4");
+      optionTable["-c64color5"].push_back("i:c64Color5");
+      optionTable["-c64color6"].push_back("i:c64Color6");
+      optionTable["-c64color7"].push_back("i:c64Color7");
+      optionTable["-c64color8"].push_back("i:c64Color8");
+      optionTable["-c64color9"].push_back("i:c64Color9");
+      optionTable["-c64color10"].push_back("i:c64Color10");
+      optionTable["-c64color11"].push_back("i:c64Color11");
+      optionTable["-c64color12"].push_back("i:c64Color12");
+      optionTable["-c64color13"].push_back("i:c64Color13");
+      optionTable["-c64color14"].push_back("i:c64Color14");
+      optionTable["-c64color15"].push_back("i:c64Color15");
       optionTable["-raw"].push_back("b:rawPRGMode");
       optionTable["-compress"].push_back("i:prgCompressionLevel");
       bool    endOfOptions = false;
@@ -202,6 +219,22 @@ int main(int argc, char **argv)
         Plus4FLIConv::FLIConverter::convertPlus4Color(
             int(config["borderColor"]), borderY, borderU, borderV, 1.0);
         imgConv.setBorderColor(borderY, borderU, borderV);
+        imgConv.setC64Color(0, int(config["c64Color0"]));
+        imgConv.setC64Color(1, int(config["c64Color1"]));
+        imgConv.setC64Color(2, int(config["c64Color2"]));
+        imgConv.setC64Color(3, int(config["c64Color3"]));
+        imgConv.setC64Color(4, int(config["c64Color4"]));
+        imgConv.setC64Color(5, int(config["c64Color5"]));
+        imgConv.setC64Color(6, int(config["c64Color6"]));
+        imgConv.setC64Color(7, int(config["c64Color7"]));
+        imgConv.setC64Color(8, int(config["c64Color8"]));
+        imgConv.setC64Color(9, int(config["c64Color9"]));
+        imgConv.setC64Color(10, int(config["c64Color10"]));
+        imgConv.setC64Color(11, int(config["c64Color11"]));
+        imgConv.setC64Color(12, int(config["c64Color12"]));
+        imgConv.setC64Color(13, int(config["c64Color13"]));
+        imgConv.setC64Color(14, int(config["c64Color14"]));
+        imgConv.setC64Color(15, int(config["c64Color15"]));
         fliConv->processImage(prgData, prgEndAddr,
                               infileName.c_str(), imgConv, config);
         delete fliConv;
@@ -346,6 +379,12 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    -searchmode <M> <P> (defaults: 2, 4.0)\n");
       std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
                            " and parameter for\n        modes 2, 4, and 5\n");
+      std::fprintf(stderr, "    -mcquality <N>      (1 to 20, default: 6)\n");
+      std::fprintf(stderr, "        multicolor conversion quality\n");
+      std::fprintf(stderr, "    -c64color<N> <C>    "
+                           "(N: 0 to 15, C: 0 to 255)\n");
+      std::fprintf(stderr, "        map C64 color N to Plus/4 color C when "
+                           "reading C64 image files\n");
       std::fprintf(stderr, "    -raw <N>            (0 or 1, default: 0)\n");
       std::fprintf(stderr, "        write the image data only\n");
       std::fprintf(stderr, "    -compress <N>       (0 to 9, default: 0)\n");

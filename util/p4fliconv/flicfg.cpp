@@ -168,6 +168,74 @@ namespace Plus4FLIConv {
     (*this)["luminanceSearchModeParam"].setRange(0.0, 16.0);
     (*this)["luminanceSearchModeParam"].setCallback(&configChangeCallbackFloat,
                                                     (void *) this, true);
+    createKey("multiColorQuality", multiColorQuality);
+    (*this)["multiColorQuality"].setRange(1.0, 20.0);
+    (*this)["multiColorQuality"].setCallback(&configChangeCallbackInteger,
+                                             (void *) this, true);
+    createKey("c64Color0", c64Color0);
+    (*this)["c64Color0"].setRange(0.0, 255.0);
+    (*this)["c64Color0"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color1", c64Color1);
+    (*this)["c64Color1"].setRange(0.0, 255.0);
+    (*this)["c64Color1"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color2", c64Color2);
+    (*this)["c64Color2"].setRange(0.0, 255.0);
+    (*this)["c64Color2"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color3", c64Color3);
+    (*this)["c64Color3"].setRange(0.0, 255.0);
+    (*this)["c64Color3"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color4", c64Color4);
+    (*this)["c64Color4"].setRange(0.0, 255.0);
+    (*this)["c64Color4"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color5", c64Color5);
+    (*this)["c64Color5"].setRange(0.0, 255.0);
+    (*this)["c64Color5"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color6", c64Color6);
+    (*this)["c64Color6"].setRange(0.0, 255.0);
+    (*this)["c64Color6"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color7", c64Color7);
+    (*this)["c64Color7"].setRange(0.0, 255.0);
+    (*this)["c64Color7"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color8", c64Color8);
+    (*this)["c64Color8"].setRange(0.0, 255.0);
+    (*this)["c64Color8"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color9", c64Color9);
+    (*this)["c64Color9"].setRange(0.0, 255.0);
+    (*this)["c64Color9"].setCallback(&configChangeCallbackInteger,
+                                     (void *) this, true);
+    createKey("c64Color10", c64Color10);
+    (*this)["c64Color10"].setRange(0.0, 255.0);
+    (*this)["c64Color10"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
+    createKey("c64Color11", c64Color11);
+    (*this)["c64Color11"].setRange(0.0, 255.0);
+    (*this)["c64Color11"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
+    createKey("c64Color12", c64Color12);
+    (*this)["c64Color12"].setRange(0.0, 255.0);
+    (*this)["c64Color12"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
+    createKey("c64Color13", c64Color13);
+    (*this)["c64Color13"].setRange(0.0, 255.0);
+    (*this)["c64Color13"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
+    createKey("c64Color14", c64Color14);
+    (*this)["c64Color14"].setRange(0.0, 255.0);
+    (*this)["c64Color14"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
+    createKey("c64Color15", c64Color15);
+    (*this)["c64Color15"].setRange(0.0, 255.0);
+    (*this)["c64Color15"].setCallback(&configChangeCallbackInteger,
+                                      (void *) this, true);
     createKey("prgCompressionLevel", prgCompressionLevel);
     (*this)["prgCompressionLevel"].setRange(0.0, 9.0);
     createKey("rawPRGMode", rawPRGMode);
@@ -203,6 +271,23 @@ namespace Plus4FLIConv {
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
     luminanceSearchModeParam = 4.0;
+    multiColorQuality = 6;
+    c64Color0 = 0x00;
+    c64Color1 = 0x71;
+    c64Color2 = 0x22;
+    c64Color3 = 0x53;
+    c64Color4 = 0x34;
+    c64Color5 = 0x4F;
+    c64Color6 = 0x1E;
+    c64Color7 = 0x67;
+    c64Color8 = 0x38;
+    c64Color9 = 0x19;
+    c64Color10 = 0x42;
+    c64Color11 = 0x21;
+    c64Color12 = 0x41;
+    c64Color13 = 0x6F;
+    c64Color14 = 0x4E;
+    c64Color15 = 0x51;
     prgCompressionLevel = 0;
     rawPRGMode = false;
     configChangeFlag = true;
