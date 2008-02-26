@@ -497,5 +497,25 @@ namespace Plus4Emu {
     return dirName;
   }
 
+  int getRandomNumber(int& seedValue)
+  {
+    int64_t   tmp = int32_t(seedValue) * int64_t(742938285);
+    uint32_t  tmp2 = uint32_t(tmp & int64_t(0x7FFFFFFF)) + uint32_t(tmp >> 31);
+    if (tmp2 >= 0x80000000U)
+      tmp2 = tmp2 - 0x7FFFFFFFU;
+    seedValue = int(tmp2);
+    return seedValue;
+  }
+
+  void setRandomSeed(int& seedValue, uint32_t n)
+  {
+    while (n >= 0x7FFFFFFFU)
+      n = n - 0x7FFFFFFEU;
+    if (n == 0U)
+      n = 0x7FFFFFFEU;
+    seedValue = int(n);
+    (void) getRandomNumber(seedValue);
+  }
+
 }       // namespace Plus4Emu
 

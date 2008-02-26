@@ -574,7 +574,7 @@ namespace Plus4 {
     TEDCallback *firstCallback0;
     TEDCallback *firstCallback1;
     uint64_t    ramPatternCode;
-    uint32_t    randomSeed;
+    int         randomSeed;
     // -----------------------------------------------------------------
     inline void updateInterruptFlag()
     {

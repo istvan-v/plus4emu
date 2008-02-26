@@ -45,7 +45,9 @@ namespace Plus4 {
     // create initial memory map
     ramSegments = 0;
     ramPatternCode = 0UL;
-    randomSeed = Plus4Emu::Timer::getRandomSeedFromTime() & 0x7FFFFFFFU;
+    randomSeed = 0;
+    Plus4Emu::setRandomSeed(randomSeed,
+                            Plus4Emu::Timer::getRandomSeedFromTime());
     for (int i = 0; i < 256; i++)
       segmentTable[i] = (uint8_t *) 0;
     try {

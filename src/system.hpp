@@ -150,6 +150,12 @@ namespace Plus4Emu {
   // if it does not exist yet
   std::string getPlus4EmuHomeDirectory();
 
+  // returns a pseudo-random number in the range 1 to 0x7FFFFFFE
+  int getRandomNumber(int& seedValue);
+
+  // initialize a pseudo-random generator to be used with getRandomNumber()
+  void setRandomSeed(int& seedValue, uint32_t n);
+
 }       // namespace Plus4Emu
 
 #endif  // PLUS4EMU_SYSTEM_HPP

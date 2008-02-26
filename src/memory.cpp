@@ -18,6 +18,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "plus4emu.hpp"
+#include "system.hpp"
 #include "cpu.hpp"
 #include "ted.hpp"
 
@@ -355,13 +356,14 @@ namespace Plus4 {
       ramPatternBase[i] = n;
     }
     ramPatternBase[0] ^= (uint8_t(tmp) & uint8_t(0xFF));
-    unsigned int  tmp2 = ((unsigned int) tmp >> 8) & 0xFFU;
+    unsigned int  tmp2 = (unsigned int) tmp & 0xFF00U;
     for (unsigned int i = 0U; i <= 0x3FFFU; i++) {
-      randomSeed = (randomSeed * 1103515245U + 12345U) & 0x7FFFFFFFU;
-      if (tmp2 <= ((randomSeed >> 15) & 0xFFU))
+      unsigned int  rndVal =
+          (unsigned int) Plus4Emu::getRandomNumber(randomSeed) & 0xFFFFU;
+      if (tmp2 <= rndVal)
         p[i] = ramPatternBase[i & 0xFFU];
       else
-        p[i] = uint8_t(randomSeed >> 23);
+        p[i] = uint8_t(rndVal & 0xFFU);
     }
   }
 
