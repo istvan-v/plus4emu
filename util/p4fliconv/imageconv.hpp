@@ -45,6 +45,7 @@ namespace Plus4FLIConv {
     float   borderColorY;
     float   borderColorU;
     float   borderColorV;
+    unsigned char c64ColorTable[16];
     void    (*storePixelFunc)(void *userData, int xc, int yc,
                               float y, float u, float v);
     void    *storePixelFuncUserData;
@@ -98,6 +99,10 @@ namespace Plus4FLIConv {
       borderColorY = y;
       borderColorU = u;
       borderColorV = v;
+    }
+    inline void setC64Color(int colorIndex, int plus4ColorCode)
+    {
+      c64ColorTable[colorIndex & 15] = (unsigned char) (plus4ColorCode & 0x7F);
     }
     inline void setPixelStoreCallback(void (*func)(void *userData,
                                                    int xc, int yc,

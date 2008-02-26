@@ -46,11 +46,6 @@ static bool defaultProgressPercentageCb(void *userData, int n)
   return true;
 }
 
-static const unsigned char c64ColorTable[16] = {
-  0x00, 0x71, 0x22, 0x53, 0x34, 0x4F, 0x1E, 0x67,
-  0x38, 0x19, 0x42, 0x21, 0x41, 0x6F, 0x4E, 0x51
-};
-
 namespace Plus4FLIConv {
 
   void YUVImageConverter::defaultStorePixelFunc(void *userData, int xc, int yc,
@@ -95,6 +90,22 @@ namespace Plus4FLIConv {
       progressPercentageUserData((void *) 0),
       prvProgressPercentage(-1)
   {
+    c64ColorTable[0] = 0x00;
+    c64ColorTable[1] = 0x71;
+    c64ColorTable[2] = 0x22;
+    c64ColorTable[3] = 0x53;
+    c64ColorTable[4] = 0x34;
+    c64ColorTable[5] = 0x4F;
+    c64ColorTable[6] = 0x1E;
+    c64ColorTable[7] = 0x67;
+    c64ColorTable[8] = 0x38;
+    c64ColorTable[9] = 0x19;
+    c64ColorTable[10] = 0x42;
+    c64ColorTable[11] = 0x21;
+    c64ColorTable[12] = 0x41;
+    c64ColorTable[13] = 0x6F;
+    c64ColorTable[14] = 0x4E;
+    c64ColorTable[15] = 0x51;
   }
 
   YUVImageConverter::~YUVImageConverter()
@@ -278,6 +289,7 @@ namespace Plus4FLIConv {
     }
     setProgressPercentage(100);
     progressMessage("");
+    progressMessage("Loaded 320x200 image");
     return true;
   }
 
@@ -526,6 +538,9 @@ namespace Plus4FLIConv {
       delete[] inputImage;
       setProgressPercentage(100);
       progressMessage("");
+      char    tmpBuf[64];
+      std::sprintf(&(tmpBuf[0]), "Loaded %dx%d image", int(w), int(h));
+      progressMessage(&(tmpBuf[0]));
     }
     catch (...) {
       if (windowX)
