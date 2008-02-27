@@ -235,6 +235,10 @@ int main(int argc, char **argv)
         imgConv.setC64Color(13, int(config["c64Color13"]));
         imgConv.setC64Color(14, int(config["c64Color14"]));
         imgConv.setC64Color(15, int(config["c64Color15"]));
+        prgData.clear();
+        prgData.lineBlankFXEnabled() = 0x01;    // TODO: make this configurable
+        prgData.borderColor() =
+            (unsigned char) ((int(config["borderColor"]) & 0x7F) | 0x80);
         fliConv->processImage(prgData, prgEndAddr,
                               infileName.c_str(), imgConv, config);
         delete fliConv;
@@ -264,27 +268,44 @@ int main(int argc, char **argv)
           compress_.getCompressionParameters(compressCfg);
           compressCfg.setCompressionLevel(compressionLevel);
           compress_.setCompressionParameters(compressCfg);
-          for (unsigned int i = prgStartAddr - 0x0FFFU;
-               i < (prgEndAddr - 0x0FFFU);
-               i++) {
-            compressInBuf.push_back(prgData[i]);
-          }
           if (!rawMode) {
             compress_.addDecompressCode(false);
-            compress_.addDecompressEndCode(-1L, false, true, true, false);
+            compress_.addDecompressEndCode(-1L, false, true, false, false);
             compress_.addZeroPageUpdate(prgEndAddr, false);
           }
           else {
             compress_.addDecompressEndCode(-2L, false, false, false, false);
           }
-          compress_.compressData(compressInBuf, prgStartAddr, true, true);
-          prgStartAddr = 0x1001U;
-          if (rawMode)
-            prgStartAddr = compress_.getCompressedDataStartAddress();
-          if (std::fputc(int(prgStartAddr & 0xFFU), f) == EOF ||
-              std::fputc(int(prgStartAddr >> 8), f) == EOF) {
-            throw Plus4Emu::Exception("error writing PRG file");
+          unsigned int  startAddr = prgStartAddr;
+          if (convType >= 4 && !rawMode) {
+            // compress non-FLI programs with the viewer and image data
+            // stored in separate chunks, to avoid having to compress a large
+            // empty memory area
+            for (unsigned int i = 0x0002U; i < 0x00C1U; i++)
+              compressInBuf.push_back(prgData[i]);
+            compress_.compressData(compressInBuf, startAddr, false, false);
+            startAddr = 0x7800U;
+            compressInBuf.clear();
           }
+          for (unsigned int i = (startAddr - 0x0FFFU);
+               i < (prgEndAddr - 0x0FFFU);
+               i++) {
+            compressInBuf.push_back(prgData[i]);
+          }
+          compress_.compressData(compressInBuf, startAddr, true, true);
+          if (rawMode) {
+            if (convType < 4) {
+              size_t  nBytes = compressOutBuf.size() & 0xFFFF;
+              compressOutBuf.insert(compressOutBuf.begin(),
+                                    (unsigned char) (nBytes & 0xFF));
+              compressOutBuf.insert(compressOutBuf.begin(),
+                                    (unsigned char) (nBytes >> 8));
+            }
+          }
+          compressOutBuf.insert(compressOutBuf.begin(),
+                                (unsigned char) (prgStartAddr >> 8));
+          compressOutBuf.insert(compressOutBuf.begin(),
+                                (unsigned char) (prgStartAddr & 0xFFU));
           for (size_t i = 0; i < compressOutBuf.size(); i++) {
             if (std::fputc(int(compressOutBuf[i]), f) == EOF)
               throw Plus4Emu::Exception("error writing PRG file");
