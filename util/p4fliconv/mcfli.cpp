@@ -972,11 +972,15 @@ namespace Plus4FLIConv {
       }
     }
     double  bestErr = 1000000.0;
-    int     bestColors[4];
-    bestColors[0] = color0_0;
-    bestColors[1] = color0_1;
-    bestColors[2] = color3_0;
-    bestColors[3] = color3_1;
+    std::vector< int >  bestColors(84);
+    for (int i = 0; i < 80; i += 2) {
+      bestColors[i + 0] = attrBlocks[i >> 1].color1;
+      bestColors[i + 1] = attrBlocks[i >> 1].color2;
+    }
+    bestColors[80] = color0_0;
+    bestColors[81] = color0_1;
+    bestColors[82] = color3_0;
+    bestColors[83] = color3_1;
     std::vector< int >  colorCnts(128);
     int     randomSeed = 0;
     Plus4Emu::setRandomSeed(randomSeed, 1U);
@@ -1235,19 +1239,25 @@ namespace Plus4FLIConv {
         prvErr = err;
       }
       if (prvErr < bestErr) {
-        bestColors[0] = color0_0;
-        bestColors[1] = color0_1;
-        bestColors[2] = color3_0;
-        bestColors[3] = color3_1;
+        for (int i = 0; i < 80; i += 2) {
+          bestColors[i + 0] = attrBlocks[i >> 1].color1;
+          bestColors[i + 1] = attrBlocks[i >> 1].color2;
+        }
+        bestColors[80] = color0_0;
+        bestColors[81] = color0_1;
+        bestColors[82] = color3_0;
+        bestColors[83] = color3_1;
         bestErr = prvErr;
       }
     }
-    color0_0 = bestColors[0];
-    color0_1 = bestColors[1];
-    color3_0 = bestColors[2];
-    color3_1 = bestColors[3];
-    for (int i = 0; i < 40; i++)
-      attrBlocks[i].optimizeColors(colorTables[i]);
+    for (int i = 0; i < 80; i += 2) {
+      attrBlocks[i >> 1].color1 = bestColors[i + 0];
+      attrBlocks[i >> 1].color2 = bestColors[i + 1];
+    }
+    color0_0 = bestColors[80];
+    color0_1 = bestColors[81];
+    color3_0 = bestColors[82];
+    color3_1 = bestColors[83];
     // store the attributes and color registers
     prgData.lineColor0(yc << 1) = (unsigned char) color0_0;
     prgData.lineColor0((yc << 1) | 2L) = (unsigned char) color0_1;
