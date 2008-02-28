@@ -1309,10 +1309,7 @@ namespace Plus4FLIConv {
       }
     }
     // return the total amount of error
-    double  err = 0.0;
-    for (int i = 0; i < 40; i++)
-      err += attrBlocks[i].calculateError();
-    return err;
+    return bestErr;
   }
 
   bool P4FLI_MultiColorNoInterlace::processImage(

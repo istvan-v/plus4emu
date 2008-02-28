@@ -667,16 +667,16 @@ namespace Plus4FLIConv {
       attrBlocks[i].color1 = attrBlocks[i].pixelColorCodes[0];
       attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
     }
-    if (conversionQuality < 20) {
+    std::vector< int >  colorCnts(128);
+    if (conversionQuality < 10) {
       double  bestErr = 1000000.0;
       int     bestColors[2];
       bestColors[0] = color0;
       bestColors[1] = color3;
-      std::vector< int >  colorCnts(128);
       int     randomSeed = 0;
       Plus4Emu::setRandomSeed(randomSeed, 1U);
-      for (int l = 0; l < conversionQuality; l++) {
-        if (!setProgressPercentage((l * 80 / conversionQuality) + 20))
+      for (int l = 0; l < (conversionQuality * 2); l++) {
+        if (!setProgressPercentage(((l * 80) / (conversionQuality * 2)) + 20))
           return false;
         // set initial palette with different methods, and choose the one
         // that results in the least error after optimization
@@ -856,6 +856,21 @@ namespace Plus4FLIConv {
     }
     else {
       // optimize attributes and color registers
+      for (int i = 0; i < 128; i++)
+        colorCnts[i] = 0;
+      for (int i = 0; i < 1000; i++) {
+        if (attrBlocks[i].nColors <= 2)
+          continue;
+        for (int j = 0; j < attrBlocks[i].nColors; j++)
+          colorCnts[attrBlocks[i].pixelColorCodes[j]]++;
+      }
+      int     maxCnt = 0;
+      for (int i = 0; i < 128; i++) {
+        if (colorCnts[i] > maxCnt) {
+          color3 = i;
+          maxCnt = colorCnts[i];
+        }
+      }
       int     progressCnt = int(colorTable0.size());
       int     progressMax = int(colorTable0.size()) * 5;
       if (!setProgressPercentage(20))
@@ -1027,7 +1042,6 @@ namespace Plus4FLIConv {
       ditherMode = config["ditherMode"];
       borderColor = config["borderColor"];
       conversionQuality = config["multiColorQuality"];
-      conversionQuality = conversionQuality * 2;
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
       createErrorTable();
