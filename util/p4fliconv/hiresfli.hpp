@@ -139,6 +139,7 @@ namespace Plus4FLIConv {
     int     nLines;
     bool    disablePAL;
     bool    luminance1BitMode;
+    bool    enable40ColumnMode;
    private:
     struct UVTableEntry {
       int     c;

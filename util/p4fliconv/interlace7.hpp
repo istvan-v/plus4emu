@@ -143,6 +143,7 @@ namespace Plus4FLIConv {
     bool    disableInterlace;
     bool    luminance1BitMode;
     bool    noLuminanceInterlace;
+    bool    enable40ColumnMode;
    private:
     struct UVTableEntry {
       int     c0;

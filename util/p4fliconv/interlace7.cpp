@@ -145,7 +145,8 @@ namespace Plus4FLIConv {
       disablePAL(false),
       disableInterlace(false),
       luminance1BitMode(false),
-      noLuminanceInterlace(false)
+      noLuminanceInterlace(false),
+      enable40ColumnMode(false)
   {
     createYTable();
     createUVTables();
@@ -160,6 +161,8 @@ namespace Plus4FLIConv {
   {
     P4FLI_Interlace7&  this_ =
         *(reinterpret_cast<P4FLI_Interlace7 *>(userData));
+    if (!this_.enable40ColumnMode)
+      xc = xc + 16;
     float   c = float(std::sqrt(double(u * u) + double(v * v)));
     if (c > FLIConverter::defaultColorSaturation) {
       u = u * FLIConverter::defaultColorSaturation / c;
@@ -698,6 +701,7 @@ namespace Plus4FLIConv {
       checkParameters();
       createYTable();
       createUVTables();
+      enable40ColumnMode = (xShift0 == 0 && xShift1 == 0);
       float   borderY = 0.0f;
       float   borderU = 0.0f;
       float   borderV = 0.0f;
@@ -722,7 +726,7 @@ namespace Plus4FLIConv {
       line0V.setBorderColor(borderV);
       line1U.setBorderColor(borderU);
       line1V.setBorderColor(borderV);
-      imgConv.setImageSize(640, nLines);
+      imgConv.setImageSize((enable40ColumnMode ? 640 : 608), nLines);
       imgConv.setPixelAspectRatio(1.0f);
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
@@ -759,7 +763,7 @@ namespace Plus4FLIConv {
         resizedImage.u()[yc].setXShift(xShift_);
         resizedImage.v()[yc].setXShift(xShift_);
       }
-      if (!(xShift0 == 0 && xShift1 == 0)) {
+      if (!enable40ColumnMode) {
         for (int yc = 0; yc < 496; yc++) {
           for (int i = 0; i < 8; i++) {
             resizedImage.y()[yc][i] = resizedImage.y()[yc][15 - i];
@@ -902,6 +906,33 @@ namespace Plus4FLIConv {
       }
       setProgressPercentage(100);
       progressMessage("");
+      if (!enable40ColumnMode) {
+        // bug fix for the case when all X shifts are zero after optimization:
+        int     tmp = 0;
+        for (int yc = 0; yc < nLines; yc++)
+          tmp = tmp | resizedImage.y()[yc].getXShift();
+        if (!(tmp & 7)) {
+          // clear the first and last character column to border color
+          int     l = (borderColor & 0x70) >> 4;
+          int     c = borderColor & 0x0F;
+          if (c != 0)
+            l++;
+          for (int yc = 0; yc < nLines; yc++) {
+            prgData.l0(0, yc) = l;
+            prgData.c0(0, yc) = c;
+            prgData.l1(0, yc) = l;
+            prgData.c1(0, yc) = c;
+            prgData.l0(312, yc) = l;
+            prgData.c0(312, yc) = c;
+            prgData.l1(312, yc) = l;
+            prgData.c1(312, yc) = c;
+            for (int i = 0; i < 8; i++) {
+              prgData.setPixel(i, yc, false);
+              prgData.setPixel(312 + i, yc, false);
+            }
+          }
+        }
+      }
       // write PRG output
       for (int yc = 0; yc < nLines; yc++) {
         prgData.lineXShift(yc) =

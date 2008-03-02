@@ -502,6 +502,11 @@ namespace Plus4FLIConv {
               ptr = ptr + ((int(w) - 16) * 3);
             }
           }
+          else if (xi < -1 || xi > int(w) || yi < -1 || yi > int(h)) {
+            y = borderY;
+            u = borderU;
+            v = borderV;
+          }
           else {
             for (int wy = -7; wy <= 8; wy++) {
               float   wsy = (windowY[wyi] * ys0) + (windowY[wyi + 1] * ys1);

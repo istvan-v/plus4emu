@@ -1426,6 +1426,33 @@ namespace Plus4FLIConv {
         std::sprintf(&(tmpBuf[0]), "Done, RMS error = %.4f", totalError);
         progressMessage(&(tmpBuf[0]));
       }
+      if (!enable40ColumnMode) {
+        // bug fix for the case when all X shifts are zero after optimization:
+        int     tmp = 0;
+        for (int yc = 0; yc < nLines; yc++)
+          tmp = tmp | xShiftTable[yc];
+        if (!(tmp & 6)) {
+          // clear the first and last character column to border color
+          int     l = (borderColor & 0x70) >> 4;
+          int     c = borderColor & 0x0F;
+          if (c != 0)
+            l++;
+          for (int yc = 0; yc < nLines; yc++) {
+            prgData.l0(0, yc << 1) = l;
+            prgData.c0(0, yc << 1) = c;
+            prgData.l1(0, yc << 1) = l;
+            prgData.c1(0, yc << 1) = c;
+            prgData.l0(312, yc << 1) = l;
+            prgData.c0(312, yc << 1) = c;
+            prgData.l1(312, yc << 1) = l;
+            prgData.c1(312, yc << 1) = c;
+            for (int i = 0; i < 8; i++) {
+              prgData.setPixel(i, yc << 1, bool(i & 1));
+              prgData.setPixel(312 + i, yc << 1, bool(i & 1));
+            }
+          }
+        }
+      }
       // write PRG output
       for (int yc = 0; yc < nLines; yc++) {
         int     xs0 = (xShiftTable[yc] & 0x06) | 0x10;
