@@ -81,6 +81,7 @@ int main(int argc, char **argv)
       optionTable["-ci"].push_back("i:colorInterlaceMode");
       optionTable["-searchmode"].push_back("i:luminanceSearchMode");
       optionTable["-searchmode"].push_back("f:luminanceSearchModeParam");
+      optionTable["-mcchromaerr"].push_back("f:mcColorErrorScale");
       optionTable["-mcquality"].push_back("i:multiColorQuality");
       optionTable["-c64color0"].push_back("i:c64Color0");
       optionTable["-c64color1"].push_back("i:c64Color1");
@@ -400,6 +401,10 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    -searchmode <M> <P> (defaults: 2, 4.0)\n");
       std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
                            " and parameter for\n        modes 2, 4, and 5\n");
+      std::fprintf(stderr, "    -mcchromaerr <N>    "
+                           "(0.05 to 1.0, default: 0.5)\n");
+      std::fprintf(stderr, "        scale factor applied to squared "
+                           "chrominance error in multicolor\n        modes\n");
       std::fprintf(stderr, "    -mcquality <N>      (1 to 20, default: 6)\n");
       std::fprintf(stderr, "        multicolor conversion quality\n");
       std::fprintf(stderr, "    -c64color<N> <C>    "

@@ -168,6 +168,10 @@ namespace Plus4FLIConv {
     (*this)["luminanceSearchModeParam"].setRange(0.0, 16.0);
     (*this)["luminanceSearchModeParam"].setCallback(&configChangeCallbackFloat,
                                                     (void *) this, true);
+    createKey("mcColorErrorScale", mcColorErrorScale);
+    (*this)["mcColorErrorScale"].setRange(0.05, 1.0);
+    (*this)["mcColorErrorScale"].setCallback(&configChangeCallbackFloat,
+                                             (void *) this, true);
     createKey("multiColorQuality", multiColorQuality);
     (*this)["multiColorQuality"].setRange(1.0, 20.0);
     (*this)["multiColorQuality"].setCallback(&configChangeCallbackInteger,
@@ -271,6 +275,7 @@ namespace Plus4FLIConv {
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
     luminanceSearchModeParam = 4.0;
+    mcColorErrorScale = 0.5;
     multiColorQuality = 6;
     c64Color0 = 0x00;
     c64Color1 = 0x71;

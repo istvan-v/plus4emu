@@ -177,7 +177,7 @@ namespace Plus4FLIConv {
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void checkParameters();
-    void createErrorTable();
+    void createErrorTable(double colorErrorScale);
     void ditherLine(long yc);
     double convertTwoLines(PRGData& prgData, long yc);
    public:

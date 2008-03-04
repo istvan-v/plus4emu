@@ -594,8 +594,9 @@ namespace Plus4FLIConv {
     return minErr;
   }
 
-  void P4FLI_MultiColorNoInterlace::createErrorTable()
+  void P4FLI_MultiColorNoInterlace::createErrorTable(double colorErrorScale)
   {
+    limitValue(colorErrorScale, 0.05, 1.0);
     for (int c0 = 0; c0 < 128; c0++) {
       float   c0y = 0.0f;
       float   c0u = 0.0f;
@@ -606,9 +607,10 @@ namespace Plus4FLIConv {
         float   c1u = 0.0f;
         float   c1v = 0.0f;
         FLIConverter::convertPlus4Color(c1, c1y, c1u, c1v, monitorGamma);
-        errorTable[(c0 << 7) | c1] = calculateErrorSqr(c0y, c1y)
-                                     + (calculateErrorSqr(c0u, c1u) * 0.5)
-                                     + (calculateErrorSqr(c0v, c1v) * 0.5);
+        errorTable[(c0 << 7) | c1] =
+            calculateErrorSqr(c0y, c1y)
+            + (calculateErrorSqr(c0u, c1u) * colorErrorScale)
+            + (calculateErrorSqr(c0v, c1v) * colorErrorScale);
       }
     }
   }
@@ -1330,7 +1332,7 @@ namespace Plus4FLIConv {
       conversionQuality = config["multiColorQuality"];
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
-      createErrorTable();
+      createErrorTable(double(config["mcColorErrorScale"]));
       enable40ColumnMode = (xShift0 == 0);
       float   borderY = 0.0f;
       float   borderU = 0.0f;

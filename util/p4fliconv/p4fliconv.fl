@@ -615,6 +615,19 @@ class Plus4FLIConvGUI {open
 }}
               tooltip {This parameter is used only by modes 2, 4, and 5, and the allowed ranges for each mode are 1.0 to 16.0, 0.0 to 0.5, and 0.0 to 0.25, respectively} xywh {225 190 60 25} when 4 maximum 16 step 0.001 value 4
             }
+            Fl_Value_Input mcColorErrorScaleValuator {
+              label {MC chrominance error scale}
+              callback {{
+  try {
+    config["mcColorErrorScale"] = double(o->value());
+    o->value(double(config["mcColorErrorScale"]));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+              tooltip {Scale factor applied to squared chrominance error in multicolor modes} xywh {515 190 60 25} when 4 minimum 0.05 step 0.005 value 0.5
+            }
           }
           Fl_Group {} {
             label {C64 palette} open
