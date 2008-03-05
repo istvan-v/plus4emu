@@ -525,6 +525,7 @@ void Plus4FLIConvGUI::updateConfigWindow()
     luminanceSearchModeValuator->value(int(config["luminanceSearchMode"]));
     lumSearchModeParamValuator->value(
         double(config["luminanceSearchModeParam"]));
+    mcColorErrorScaleValuator->value(double(config["mcColorErrorScale"]));
     setWidgetColorToPlus4Color(c64Color0Display, int(config["c64Color0"]));
     c64Color0Valuator->value(double(int(config["c64Color0"])));
     setWidgetColorToPlus4Color(c64Color1Display, int(config["c64Color1"]));

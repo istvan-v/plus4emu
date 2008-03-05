@@ -362,7 +362,7 @@ int main(int argc, char **argv)
                            "(no FLI))\n");
       std::fprintf(stderr, "    -ymin <MIN>         (default: -0.02)\n");
       std::fprintf(stderr, "    -ymax <MAX>         (default: 1.03)\n");
-      std::fprintf(stderr, "        scale luminance range from 0..1 to "
+      std::fprintf(stderr, "        scale RGB input range from 0..1 to "
                            "MIN..MAX\n");
       std::fprintf(stderr, "    -scale <X> <Y>      (defaults: 1.0, 1.0)\n");
       std::fprintf(stderr, "        scale image size\n");
