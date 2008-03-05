@@ -25,6 +25,7 @@
 #include "imageconv.hpp"
 #include "prgdata.hpp"
 #include "hiresnofli.hpp"
+#include "mcnofli.hpp"
 
 static const unsigned char prgHeader_320x200[0x00C1] = {
   0x01, 0x10, 0x0C, 0x10, 0x0A, 0x00, 0x9E, 0x20, 0x34, 0x31, 0x31, 0x32,
@@ -726,6 +727,9 @@ namespace Plus4FLIConv {
       for (int i = 0x0000; i < 0x00C1; i++)
         prgData[i] = prgHeader_320x200[i];
       prgData[0x7BF9 - 0x0FFF] = (unsigned char) borderColor;
+      // make the use of attribute values more consistent for easier
+      // editing of the output file
+      P4FLI_MultiColorNoFLI::optimizeAttributes(prgData);
       prgEndAddr = 0x9F40U;
     }
     catch (...) {
