@@ -73,7 +73,7 @@ namespace Plus4FLIConv {
     int         c64Color14;
     int         c64Color15;
     int         prgCompressionLevel;
-    bool        rawPRGMode;
+    int         outputFileFormat;
     bool        configChangeFlag;
    private:
     static void configChangeCallbackBoolean(void *userData_,

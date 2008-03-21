@@ -76,7 +76,7 @@ namespace Plus4FLIConv {
   {
     resetDefaultSettings();
     createKey("conversionType", conversionType);
-    (*this)["conversionType"].setRange(0.0, 5.0);
+    (*this)["conversionType"].setRange(0.0, 8.0);
     (*this)["conversionType"].setCallback(&configChangeCallbackInteger,
                                           (void *) this, true);
     createKey("yMin", yMin);
@@ -120,7 +120,7 @@ namespace Plus4FLIConv {
     (*this)["monitorGamma"].setCallback(&configChangeCallbackFloat,
                                         (void *) this, true);
     createKey("ditherMode", ditherMode);
-    (*this)["ditherMode"].setRange(0.0, 3.0);
+    (*this)["ditherMode"].setRange(0.0, 4.0);
     (*this)["ditherMode"].setCallback(&configChangeCallbackInteger,
                                       (void *) this, true);
     createKey("ditherLimit", ditherLimit);
@@ -173,7 +173,7 @@ namespace Plus4FLIConv {
     (*this)["mcColorErrorScale"].setCallback(&configChangeCallbackFloat,
                                              (void *) this, true);
     createKey("multiColorQuality", multiColorQuality);
-    (*this)["multiColorQuality"].setRange(1.0, 20.0);
+    (*this)["multiColorQuality"].setRange(1.0, 30.0);
     (*this)["multiColorQuality"].setCallback(&configChangeCallbackInteger,
                                              (void *) this, true);
     createKey("c64Color0", c64Color0);
@@ -242,7 +242,8 @@ namespace Plus4FLIConv {
                                       (void *) this, true);
     createKey("prgCompressionLevel", prgCompressionLevel);
     (*this)["prgCompressionLevel"].setRange(0.0, 9.0);
-    createKey("rawPRGMode", rawPRGMode);
+    createKey("outputFileFormat", outputFileFormat);
+    (*this)["outputFileFormat"].setRange(0.0, 3.0);
   }
 
   FLIConfiguration::~FLIConfiguration()
@@ -262,9 +263,9 @@ namespace Plus4FLIConv {
     saturationPow = 0.8;
     gammaCorrection = 1.0;
     monitorGamma = 1.33;
-    ditherMode = 0;
+    ditherMode = 1;
     ditherLimit = 0.125;
-    ditherDiffusion = 0.75;
+    ditherDiffusion = 0.9;
     enablePAL = true;
     xShift0 = -1;
     xShift1 = -1;
@@ -275,7 +276,7 @@ namespace Plus4FLIConv {
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
     luminanceSearchModeParam = 4.0;
-    mcColorErrorScale = 0.5;
+    mcColorErrorScale = 0.35;
     multiColorQuality = 6;
     c64Color0 = 0x00;
     c64Color1 = 0x71;
@@ -294,7 +295,7 @@ namespace Plus4FLIConv {
     c64Color14 = 0x4E;
     c64Color15 = 0x51;
     prgCompressionLevel = 0;
-    rawPRGMode = false;
+    outputFileFormat = 0;
     configChangeFlag = true;
   }
 
