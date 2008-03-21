@@ -27,7 +27,14 @@
 
 namespace Plus4FLIConv {
 
+  extern const int ditherTable_Bayer[4096];
   extern const int ditherTable[4096];
+
+  static inline bool ditherPixelValue_Bayer(long xc, long yc, double n)
+  {
+    return (n >= ((double(ditherTable_Bayer[((yc & 63L) << 6)
+                                            | (xc & 63L)]) + 0.5) / 4096.0));
+  }
 
   static inline bool ditherPixelValue(long xc, long yc, double n)
   {
