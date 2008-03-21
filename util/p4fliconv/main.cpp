@@ -23,12 +23,15 @@
 #include "p4fliconv.hpp"
 #include "hiresfli.hpp"
 #include "hiresnofli.hpp"
+#include "hrbmifli.hpp"
 #include "interlace7.hpp"
+#include "mcbmifli.hpp"
+#include "mcchar.hpp"
 #include "mcfli.hpp"
 #include "mcifli.hpp"
 #include "mcnofli.hpp"
-#include "compress.hpp"
 #include "guicolor.hpp"
+#include "imgwrite.hpp"
 
 #include <string>
 #include <vector>
@@ -99,7 +102,7 @@ int main(int argc, char **argv)
       optionTable["-c64color13"].push_back("i:c64Color13");
       optionTable["-c64color14"].push_back("i:c64Color14");
       optionTable["-c64color15"].push_back("i:c64Color15");
-      optionTable["-raw"].push_back("b:rawPRGMode");
+      optionTable["-outfmt"].push_back("i:outputFileFormat");
       optionTable["-compress"].push_back("i:prgCompressionLevel");
       bool    endOfOptions = false;
       size_t  skipCnt = 0;
@@ -194,13 +197,19 @@ int main(int argc, char **argv)
         else if (convType == 1)
           fliConv = new Plus4FLIConv::P4FLI_MultiColor();
         else if (convType == 2)
-          fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
+          fliConv = new Plus4FLIConv::P4FLI_HiResBitmapInterlace();
         else if (convType == 3)
-          fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+          fliConv = new Plus4FLIConv::P4FLI_MultiColorBitmapInterlace();
         else if (convType == 4)
-          fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+          fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
         else if (convType == 5)
+          fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+        else if (convType == 6)
+          fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+        else if (convType == 7)
           fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
+        else if (convType == 8)
+          fliConv = new Plus4FLIConv::P4FLI_MultiColorChar();
         else
           throw Plus4Emu::Exception("invalid conversion type");
         Plus4FLIConv::YUVImageConverter imgConv;
@@ -251,89 +260,10 @@ int main(int argc, char **argv)
         throw;
       }
       config.clearConfigurationChangeFlag();
-      std::FILE *f = (std::FILE *) 0;
-      try {
-        f = std::fopen(outfileName.c_str(), "wb");
-        if (!f)
-          throw Plus4Emu::Exception("error opening PRG file");
-        bool    rawMode = config["rawPRGMode"];
-        int     compressionLevel = config["prgCompressionLevel"];
-        unsigned int  prgStartAddr = 0x1001U;
-        if (rawMode)
-          prgStartAddr = (convType < 4 ? 0x17FEU : 0x7800U);
-        if (compressionLevel > 0) {
-          std::vector< unsigned char >  compressInBuf;
-          std::vector< unsigned char >  compressOutBuf;
-          Plus4FLIConv::PRGCompressor   compress_(compressOutBuf);
-          Plus4FLIConv::PRGCompressor::CompressionParameters  compressCfg;
-          compress_.getCompressionParameters(compressCfg);
-          compressCfg.setCompressionLevel(compressionLevel);
-          compress_.setCompressionParameters(compressCfg);
-          if (!rawMode) {
-            compress_.addDecompressCode(false);
-            compress_.addDecompressEndCode(-1L, false, true, false, false);
-            compress_.addZeroPageUpdate(prgEndAddr, false);
-          }
-          else {
-            compress_.addDecompressEndCode(-2L, false, false, false, false);
-          }
-          unsigned int  startAddr = prgStartAddr;
-          if (convType >= 4 && !rawMode) {
-            // compress non-FLI programs with the viewer and image data
-            // stored in separate chunks, to avoid having to compress a large
-            // empty memory area
-            for (unsigned int i = 0x0002U; i < 0x00C1U; i++)
-              compressInBuf.push_back(prgData[i]);
-            compress_.compressData(compressInBuf, startAddr, false, false);
-            startAddr = 0x7800U;
-            compressInBuf.clear();
-          }
-          for (unsigned int i = (startAddr - 0x0FFFU);
-               i < (prgEndAddr - 0x0FFFU);
-               i++) {
-            compressInBuf.push_back(prgData[i]);
-          }
-          compress_.compressData(compressInBuf, startAddr, true, true);
-          if (rawMode) {
-            if (convType < 4) {
-              size_t  nBytes = compressOutBuf.size() & 0xFFFF;
-              compressOutBuf.insert(compressOutBuf.begin(),
-                                    (unsigned char) (nBytes & 0xFF));
-              compressOutBuf.insert(compressOutBuf.begin(),
-                                    (unsigned char) (nBytes >> 8));
-            }
-          }
-          compressOutBuf.insert(compressOutBuf.begin(),
-                                (unsigned char) (prgStartAddr >> 8));
-          compressOutBuf.insert(compressOutBuf.begin(),
-                                (unsigned char) (prgStartAddr & 0xFFU));
-          for (size_t i = 0; i < compressOutBuf.size(); i++) {
-            if (std::fputc(int(compressOutBuf[i]), f) == EOF)
-              throw Plus4Emu::Exception("error writing PRG file");
-          }
-        }
-        else {
-          if (std::fputc(int(prgStartAddr & 0xFFU), f) == EOF ||
-              std::fputc(int(prgStartAddr >> 8), f) == EOF) {
-            throw Plus4Emu::Exception("error writing PRG file");
-          }
-          for (unsigned int i = prgStartAddr - 0x0FFFU;
-               i < (prgEndAddr - 0x0FFFU);
-               i++) {
-            if (std::fputc(int(prgData[i]), f) == EOF)
-              throw Plus4Emu::Exception("error writing PRG file");
-          }
-        }
-        if (std::fflush(f) != 0)
-          throw Plus4Emu::Exception("error writing PRG file");
-        std::fclose(f);
-        f = (std::FILE *) 0;
-      }
-      catch (...) {
-        if (f)
-          std::fclose(f);
-        throw;
-      }
+      Plus4FLIConv::writeConvertedImageFile(outfileName.c_str(), prgData,
+                                            prgEndAddr, convType,
+                                            int(config["outputFileFormat"]),
+                                            int(config["prgCompressionLevel"]));
       return 0;
     }
     config.clearConfigurationChangeFlag();
@@ -354,12 +284,14 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "Usage: %s [OPTIONS...] infile.jpg outfile.prg\n",
                            argv[0]);
       std::fprintf(stderr, "Options:\n");
-      std::fprintf(stderr, "    -mode <N>           (0 to 5, default: 0)\n");
+      std::fprintf(stderr, "    -mode <N>           (0 to 8, default: 0)\n");
       std::fprintf(stderr, "        select video mode (0: interlaced hires "
-                           "FLI,\n        1: interlaced multicolor FLI, 2: "
-                           "hires FLI, 3: multicolor FLI,\n        4: hires "
-                           "320x200 (no FLI), 5: multicolor 160x200 "
-                           "(no FLI))\n");
+                           "FLI, 1: interlaced\n        multicolor FLI, 2: "
+                           "hires FLI, bitmap interlace only,\n        3: "
+                           "multicolor FLI, bitmap interlace only, 4: hires "
+                           "FLI,\n        5: multicolor FLI, 6: hires 320x200 "
+                           "(no FLI), 7: multicolor\n        160x200 (no "
+                           "FLI), 8: Logo Editor 2.0 multicolor (128x64))\n");
       std::fprintf(stderr, "    -ymin <MIN>         (default: -0.02)\n");
       std::fprintf(stderr, "    -ymax <MAX>         (default: 1.03)\n");
       std::fprintf(stderr, "        scale RGB input range from 0..1 to "
@@ -373,11 +305,12 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 1.33)\n");
       std::fprintf(stderr, "        set gamma correction (G) and assumed "
                            "monitor gamma (M)\n");
-      std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 0, 0.125, "
-                           "0.75)\n");
-      std::fprintf(stderr, "        dither mode (0: ordered, 1: "
-                           "Floyd-Steinberg, 2: Jarvis,\n        3: Stucki), "
-                           "limit, and error diffusion factor\n");
+      std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 1, 0.125, "
+                           "0.9)\n");
+      std::fprintf(stderr, "        dither mode (0: ordered (Bayer), 1: "
+                           "ordered (randomized),\n        2: "
+                           "Floyd-Steinberg, 3: Jarvis, 4: Stucki), limit, "
+                           "and error\n        diffusion factor\n");
       std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
       std::fprintf(stderr, "        assume PAL chrominance filtering "
                            "if set to 1\n");
@@ -402,17 +335,19 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
                            " and parameter for\n        modes 2, 4, and 5\n");
       std::fprintf(stderr, "    -mcchromaerr <N>    "
-                           "(0.05 to 1.0, default: 0.5)\n");
+                           "(0.05 to 1.0, default: 0.35)\n");
       std::fprintf(stderr, "        scale factor applied to squared "
                            "chrominance error in multicolor\n        modes\n");
-      std::fprintf(stderr, "    -mcquality <N>      (1 to 20, default: 6)\n");
+      std::fprintf(stderr, "    -mcquality <N>      (1 to 30, default: 6)\n");
       std::fprintf(stderr, "        multicolor conversion quality\n");
       std::fprintf(stderr, "    -c64color<N> <C>    "
                            "(N: 0 to 15, C: 0 to 255)\n");
       std::fprintf(stderr, "        map C64 color N to Plus/4 color C when "
                            "reading C64 image files\n");
-      std::fprintf(stderr, "    -raw <N>            (0 or 1, default: 0)\n");
-      std::fprintf(stderr, "        write the image data only\n");
+      std::fprintf(stderr, "    -outfmt <N>         (0 to 3, default: 0)\n");
+      std::fprintf(stderr, "        output file format, 0: PRG with viewer, "
+                           "1: raw PRG,\n        2: PixelShop P4S, 3: FED "
+                           "160x200 multicolor FLI\n");
       std::fprintf(stderr, "    -compress <N>       (0 to 9, default: 0)\n");
       std::fprintf(stderr, "        compress output file if N is not zero\n");
     }

@@ -23,12 +23,15 @@
 #include "p4fliconv.hpp"
 #include "hiresfli.hpp"
 #include "hiresnofli.hpp"
+#include "hrbmifli.hpp"
 #include "interlace7.hpp"
+#include "mcbmifli.hpp"
+#include "mcchar.hpp"
 #include "mcfli.hpp"
 #include "mcifli.hpp"
 #include "mcnofli.hpp"
-#include "compress.hpp"
 #include "guicolor.hpp"
+#include "imgwrite.hpp"
 
 #include <string>
 #include <vector>
@@ -341,13 +344,19 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           else if (convType == 1)
             fliConv = new Plus4FLIConv::P4FLI_MultiColor();
           else if (convType == 2)
-            fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
+            fliConv = new Plus4FLIConv::P4FLI_HiResBitmapInterlace();
           else if (convType == 3)
-            fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+            fliConv = new Plus4FLIConv::P4FLI_MultiColorBitmapInterlace();
           else if (convType == 4)
-            fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+            fliConv = new Plus4FLIConv::P4FLI_HiResNoInterlace();
           else if (convType == 5)
+            fliConv = new Plus4FLIConv::P4FLI_MultiColorNoInterlace();
+          else if (convType == 6)
+            fliConv = new Plus4FLIConv::P4FLI_HiResNoFLI();
+          else if (convType == 7)
             fliConv = new Plus4FLIConv::P4FLI_MultiColorNoFLI();
+          else if (convType == 8)
+            fliConv = new Plus4FLIConv::P4FLI_MultiColorChar();
         }
         if (fliConv) {
           setBusyFlag(true);
@@ -435,7 +444,7 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
         ted->runOneCycle();
       for (unsigned int i = 0x1001U; i < prgEndAddress; i++)
         ted->writeMemoryCPU(uint16_t(i), uint8_t(prgData[i - 0x0FFFU]));
-      if (convType < 4)
+      if (convType < 6)
         ted->writeMemoryCPU(0x1FFB, 0x00);
       ted->writeMemoryCPU(0x0527, 0x52);        // 'R'
       ted->writeMemoryCPU(0x0528, 0x55);        // 'U'
@@ -447,8 +456,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
       try {
         Plus4Emu::VideoDisplay::DisplayParameters dp;
         dp = display->getDisplayParameters();
-        if (prgEndAddress <= 0x1003U ||
-            convType != 0 || int(config["verticalSize"]) < 256) {
+        if (prgEndAddress <= 0x1003U || (convType != 0 && convType != 2) ||
+            int(config["verticalSize"]) < 256) {
           dp.lineShade = 1.0f;
           dp.blendScale = 1.0f;
           dp.motionBlur = 0.333f;
@@ -514,7 +523,7 @@ void Plus4FLIConvGUI::updateConfigWindow()
     multiColorQualityValuator->value(double(int(config["multiColorQuality"])));
     xShift0Valuator->value(int(config["xShift0"]) + 2);
     xShift1Valuator->value(int(config["xShift1"]) + 2);
-    rawPRGModeValuator->value(int(bool(config["rawPRGMode"])));
+    outputFileFormatValuator->value(int(config["outputFileFormat"]));
     prgCompressionLevelValuator->value(
         double(int(config["prgCompressionLevel"])));
     luminance1BitModeValuator->value(int(bool(config["luminance1BitMode"])));
@@ -650,7 +659,6 @@ void Plus4FLIConvGUI::savePRGFile()
       fileNotSavedFlag = false;
       return;
     }
-    std::FILE *f = (std::FILE *) 0;
     try {
       std::string prgFileName = imageFileName;
       if (prgFileName.length() > 4) {
@@ -666,104 +674,47 @@ void Plus4FLIConvGUI::savePRGFile()
           prgFileName.resize(prgFileName.length() - 4);
         }
       }
-      prgFileName += ".prg";
-      if (!browseFile(prgFileName, prgFileDirectory,
-                      "Plus/4 program files (*.prg)", Fl_File_Chooser::CREATE,
-                      "Save PRG file")) {
-        prgFileName = "";
+      int     outputFormat = int(config["outputFileFormat"]);
+      if (outputFormat == 2) {
+        // save in PixelShop format
+        prgFileName += ".p4s";
+        if (!browseFile(prgFileName, prgFileDirectory,
+                        "PixelShop P4S files (*.p4s)", Fl_File_Chooser::CREATE,
+                        "Save PixelShop image file")) {
+          prgFileName = "";
+        }
+      }
+      else if (outputFormat == 3) {
+        // save in FED format
+        prgFileName += ".p4i";
+        if (!browseFile(prgFileName, prgFileDirectory,
+                        "FED FLI editor files (*.p4i)", Fl_File_Chooser::CREATE,
+                        "Save multicolor FLI data")) {
+          prgFileName = "";
+        }
+      }
+      else {
+        // save in PRG format
+        prgFileName += ".prg";
+        if (!browseFile(prgFileName, prgFileDirectory,
+                        "Plus/4 program files (*.prg)", Fl_File_Chooser::CREATE,
+                        "Save PRG file")) {
+          prgFileName = "";
+        }
       }
       if (prgFileName != "") {
-        f = std::fopen(prgFileName.c_str(), "wb");
-        if (!f)
-          throw Plus4Emu::Exception("error opening PRG file");
-        bool    rawMode = config["rawPRGMode"];
-        int     compressionLevel = config["prgCompressionLevel"];
-        int     convType = config["conversionType"];
-        unsigned int  prgStartAddress = 0x1001U;
-        if (rawMode)
-          prgStartAddress = (convType < 4 ? 0x17FEU : 0x7800U);
-        if (compressionLevel > 0) {
-          std::vector< unsigned char >  compressInBuf;
-          std::vector< unsigned char >  compressOutBuf;
-          Plus4FLIConv::PRGCompressor   compress_(compressOutBuf);
-          Plus4FLIConv::PRGCompressor::CompressionParameters  compressCfg;
-          compress_.getCompressionParameters(compressCfg);
-          compressCfg.setCompressionLevel(compressionLevel);
-          compress_.setCompressionParameters(compressCfg);
-          compress_.setProgressMessageCallback(&progressMessageCallback,
-                                               (void *) this);
-          compress_.setProgressPercentageCallback(&progressPercentageCallback,
-                                                  (void *) this);
-          if (!rawMode) {
-            compress_.addDecompressCode(false);
-            compress_.addDecompressEndCode(-1L, false, true, false, false);
-            compress_.addZeroPageUpdate(prgEndAddress, false);
-          }
-          else {
-            compress_.addDecompressEndCode(-2L, false, false, false, false);
-          }
-          unsigned int  startAddr = prgStartAddress;
-          if (convType >= 4 && !rawMode) {
-            // compress non-FLI programs with the viewer and image data
-            // stored in separate chunks, to avoid having to compress a large
-            // empty memory area
-            for (unsigned int i = 0x0002U; i < 0x00C1U; i++)
-              compressInBuf.push_back(prgData[i]);
-            compress_.compressData(compressInBuf, startAddr, false, false);
-            startAddr = 0x7800U;
-            compressInBuf.clear();
-          }
-          for (unsigned int i = (startAddr - 0x0FFFU);
-               i < (prgEndAddress - 0x0FFFU);
-               i++) {
-            compressInBuf.push_back(prgData[i]);
-          }
-          setBusyFlag(true);
-          if (!compress_.compressData(compressInBuf, startAddr, true, true))
-            compressionLevel = 0;
-          setBusyFlag(false);
-          if (compressionLevel > 0) {
-            if (rawMode) {
-              if (convType < 4) {
-                size_t  nBytes = compressOutBuf.size() & 0xFFFF;
-                compressOutBuf.insert(compressOutBuf.begin(),
-                                      (unsigned char) (nBytes & 0xFF));
-                compressOutBuf.insert(compressOutBuf.begin(),
-                                      (unsigned char) (nBytes >> 8));
-              }
-            }
-            compressOutBuf.insert(compressOutBuf.begin(),
-                                  (unsigned char) (prgStartAddress >> 8));
-            compressOutBuf.insert(compressOutBuf.begin(),
-                                  (unsigned char) (prgStartAddress & 0xFFU));
-            for (size_t i = 0; i < compressOutBuf.size(); i++) {
-              if (std::fputc(int(compressOutBuf[i]), f) == EOF)
-                throw Plus4Emu::Exception("error writing PRG file");
-            }
-          }
-        }
-        if (compressionLevel < 1) {
-          if (std::fputc(int(prgStartAddress & 0xFFU), f) == EOF ||
-              std::fputc(int(prgStartAddress >> 8), f) == EOF) {
-            throw Plus4Emu::Exception("error writing PRG file");
-          }
-          for (unsigned int i = prgStartAddress - 0x0FFFU;
-               i < (prgEndAddress - 0x0FFFU);
-               i++) {
-            if (std::fputc(int(prgData[i]), f) == EOF)
-              throw Plus4Emu::Exception("error writing PRG file");
-          }
-        }
-        if (std::fflush(f) != 0)
-          throw Plus4Emu::Exception("error writing PRG file");
-        std::fclose(f);
-        f = (std::FILE *) 0;
+        setBusyFlag(true);
+        Plus4FLIConv::writeConvertedImageFile(
+            prgFileName.c_str(), prgData, prgEndAddress,
+            int(config["conversionType"]),
+            int(config["outputFileFormat"]), int(config["prgCompressionLevel"]),
+            &progressMessageCallback, &progressPercentageCallback,
+            (void *) this);
+        setBusyFlag(false);
         fileNotSavedFlag = false;
       }
     }
     catch (std::exception& e) {
-      if (f)
-        std::fclose(f);
       setBusyFlag(false);
       errorMessage(e.what());
     }
