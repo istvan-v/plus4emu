@@ -135,8 +135,8 @@ namespace Plus4FLIConv {
   P4FLI_HiResNoInterlace::P4FLI_HiResNoInterlace()
     : monitorGamma(1.33),
       ditherLimit(0.125),
-      ditherScale(0.75),
-      ditherMode(0),
+      ditherScale(0.9),
+      ditherMode(1),
       luminanceSearchMode(2),
       luminanceSearchModeParam(4.0),
       xShift0(-1),
@@ -200,7 +200,7 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 0.25, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 3);
+    limitValue(ditherMode, 0, 4);
     limitValue(luminanceSearchMode, 0, 5);
     switch (luminanceSearchMode) {
     case 2:
@@ -237,7 +237,7 @@ namespace Plus4FLIConv {
     float   pixelValue0 = yTable[l0];
     float   pixelValue1 = yTable[l1];
     bool    bitValue = false;
-    if (ditherMode == 0 && pixelValue1 > pixelValue0) {
+    if (ditherMode < 2 && pixelValue1 > pixelValue0) {
       // ordered dithering
       float   tmp = pixelValueOriginal;
       if (tmp < pixelValue0)
@@ -245,10 +245,18 @@ namespace Plus4FLIConv {
       if (tmp > pixelValue1)
         tmp = pixelValue1;
       tmp = (tmp - pixelValue0) / (pixelValue1 - pixelValue0);
-      if (ditherPixelValue(xc, yc, tmp))
-        pixelValueDithered = pixelValue1;
-      else
-        pixelValueDithered = pixelValue0;
+      if (ditherMode == 0) {
+        if (ditherPixelValue_Bayer(xc, yc, tmp))
+          pixelValueDithered = pixelValue1;
+        else
+          pixelValueDithered = pixelValue0;
+      }
+      else {
+        if (ditherPixelValue(xc, yc, tmp))
+          pixelValueDithered = pixelValue1;
+        else
+          pixelValueDithered = pixelValue0;
+      }
     }
     bitValue = (calculateError(pixelValue1, pixelValueDithered)
                 < calculateError(pixelValue0, pixelValueDithered));
@@ -261,7 +269,7 @@ namespace Plus4FLIConv {
                   < calculateError(pixelValue0, pixelValueOriginal));
     }
     prgData.setPixel(xcShifted, yc << 1, bitValue);
-    if (ditherMode == 0)
+    if (ditherMode < 2)
       return;
     // diffuse error
     pixelValueDithered = pixelValueOriginal
@@ -272,7 +280,7 @@ namespace Plus4FLIConv {
     if (pixelValueDithered > pixelValue1)
       pixelValueDithered = pixelValue1;
     double  err = double(pixelValueDithered) - double(newPixelValue);
-    if (ditherMode == 1) {
+    if (ditherMode == 2) {
       // Floyd-Steinberg dithering
       static const int    xOffsTbl[4] = { 1, -1, 0, 1 };
       static const int    yOffsTbl[4] = { 0, 1, 1, 1 };
@@ -290,7 +298,7 @@ namespace Plus4FLIConv {
                                        + (float(err) * errMultTbl[i]));
       }
     }
-    else if (ditherMode == 2) {
+    else if (ditherMode == 3) {
       // Jarvis dithering
       for (int i = 0; i < 3; i++) {
         long    yc_ = yc + i;
@@ -664,10 +672,10 @@ namespace Plus4FLIConv {
       float   borderV = 0.0f;
       FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
                                       monitorGamma);
+      prgData.setConversionType(4);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
       prgData.setVerticalSize(nLines);
-      prgData.interlaceFlags() = 0x00;
       for (int yc = 0; yc < 248; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);
@@ -834,7 +842,7 @@ namespace Plus4FLIConv {
             (unsigned char) resizedImage.y()[yc].getXShift();
       }
       prgData.convertImageData();
-      prgEndAddr = (nLines <= 200 ? 0x6000U : 0xC000U);
+      prgEndAddr = prgData.getImageDataEndAddress();
     }
     catch (...) {
       prgData[0] = 0x01;

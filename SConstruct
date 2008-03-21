@@ -110,6 +110,7 @@ if not disableLua:
     haveLua = haveLua and configure.CheckCHeader('lualib.h')
 else:
     haveLua = 0
+haveZLib = configure.CheckCHeader('zlib.h')
 configure.Finish()
 
 if not havePortAudioV19:
@@ -274,6 +275,9 @@ if sys.platform[:6] == 'darwin':
 
 p4fliconvLibEnvironment = plus4emuGLGUIEnvironment.Copy()
 p4fliconvLibEnvironment.Append(CPPPATH = ['./util/p4fliconv'])
+if not haveZLib:
+    print 'WARNING: zlib is not found, building p4fliconv without P4S support'
+    p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
 
 p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
                        'util/p4fliconv/dither.cpp',
@@ -281,12 +285,17 @@ p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
                        'util/p4fliconv/flidisp.cpp',
                        'util/p4fliconv/hiresfli.cpp',
                        'util/p4fliconv/hiresnofli.cpp',
+                       'util/p4fliconv/hrbmifli.cpp',
                        'util/p4fliconv/imageconv.cpp',
+                       'util/p4fliconv/imgwrite.cpp',
                        'util/p4fliconv/interlace7.cpp',
+                       'util/p4fliconv/mcbmifli.cpp',
+                       'util/p4fliconv/mcchar.cpp',
                        'util/p4fliconv/mcfli.cpp',
                        'util/p4fliconv/mcifli.cpp',
                        'util/p4fliconv/mcnofli.cpp',
                        'util/p4fliconv/p4fliconv.cpp',
+                       'util/p4fliconv/p4slib.cpp',
                        'util/p4fliconv/prgdata.cpp']
 p4fliconvLibSources += fluidCompile(['util/p4fliconv/p4fliconv.fl'])
 p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
@@ -319,6 +328,20 @@ if win32CrossCompile:
 if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/p4fliconv', 'p4fliconv',
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
+
+p4sconvEnvironment = p4fliconvLibEnvironment.Copy()
+p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu', 'fltk_images'])
+if win32CrossCompile or buildRelease:
+    p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+if haveDotconf:
+    p4sconvEnvironment.Append(LIBS = ['dotconf'])
+if win32CrossCompile:
+    p4sconvEnvironment.Prepend(LINKFLAGS = ['-mconsole'])
+else:
+    p4sconvEnvironment.Append(LIBS = ['pthread'])
+p4sconv = p4sconvEnvironment.Program('p4sconv', ['util/p4fliconv/p4sconv.cpp'])
+Depends(p4sconv, p4fliconvLib)
+Depends(p4sconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 

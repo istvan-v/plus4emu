@@ -23,18 +23,23 @@
 #ifndef P4FLICONV_PRGDATA_HPP
 #define P4FLICONV_PRGDATA_HPP
 
-#include "p4fliconv.hpp"
+#include "plus4emu.hpp"
 
 namespace Plus4FLIConv {
 
   class PRGData {
-   private:
+   public:
     static const unsigned char prgHeader_FLI[0x0801];
+    static const unsigned char prgHeader_320x200[0x00C1];   // hires Botticelli
+    static const unsigned char prgHeader_160x200[0x00C1];   // Multi Botticelli
+    static const unsigned char prgHeader_128x64[0x012B];    // Logo Editor V2.0
+   private:
     unsigned char   *buf;
     int     *luminanceCodeTable;
     int     *colorCodeTable;
     bool    *bitmapTable;
     int     nLines;
+    int     conversionType;
     bool    interlaceEnabled;
    public:
     PRGData();
@@ -42,6 +47,24 @@ namespace Plus4FLIConv {
     void clear();
     void convertImageData();
     void setVerticalSize(int n);
+    int getVerticalSize() const;
+    /*!
+     * Set the conversion type. 'n' can be one of the following values:
+     *   0: interlaced high resolution FLI
+     *   1: interlaced multicolor FLI
+     *   2: high resolution FLI, bitmap interlace only
+     *   3: multicolor FLI, bitmap interlace only
+     *   4: non-interlaced high resolution FLI
+     *   5: non-interlaced multicolor FLI
+     *   6: simple 320x200 high resolution mode without FLI
+     *   7: simple 160x200 multicolor mode without FLI
+     *   8: Logo Editor V2.0 multicolor character bank (128x64)
+     */
+    void setConversionType(int n);
+    int getConversionType() const;
+    unsigned int getViewerCodeEndAddress() const;
+    unsigned int getImageDataStartAddress() const;
+    unsigned int getImageDataEndAddress() const;
     inline unsigned char& operator[](long n)
     {
       return buf[n];
@@ -52,7 +75,7 @@ namespace Plus4FLIConv {
     }
     inline unsigned char& borderColor()
     {
-      return buf[0x0FFDL];
+      return buf[(conversionType < 6 ? 0x0FFDL : 0x6BFAL)];
     }
     inline unsigned char& interlaceFlags()
     {

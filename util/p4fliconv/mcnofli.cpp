@@ -26,26 +26,6 @@
 #include "prgdata.hpp"
 #include "mcnofli.hpp"
 
-static const unsigned char prgHeader_160x200[0x00C1] = {
-  0x01, 0x10, 0x0C, 0x10, 0x0A, 0x00, 0x9E, 0x20, 0x34, 0x31, 0x31, 0x32,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x78, 0xD8, 0xA2, 0xFF, 0x9A, 0x8D, 0x3E,
-  0xFF, 0x8D, 0xD0, 0xFD, 0x20, 0x9D, 0x10, 0x20, 0x84, 0xFF, 0xAD, 0xF9,
-  0x7B, 0x8D, 0x19, 0xFF, 0xA9, 0x3B, 0x8D, 0x06, 0xFF, 0xAD, 0x07, 0xFF,
-  0x29, 0x40, 0x09, 0x18, 0x8D, 0x07, 0xFF, 0xA9, 0xE0, 0x8D, 0x12, 0xFF,
-  0xA9, 0x78, 0x8D, 0x14, 0xFF, 0xAD, 0xFF, 0x7B, 0x4A, 0x4A, 0x4A, 0x4A,
-  0x8D, 0x15, 0xFF, 0xAD, 0xFF, 0x7B, 0x0A, 0x0A, 0x0A, 0x0A, 0x0D, 0x15,
-  0xFF, 0x8D, 0x15, 0xFF, 0xAD, 0xFE, 0x7B, 0x4A, 0x4A, 0x4A, 0x4A, 0x8D,
-  0x16, 0xFF, 0xAD, 0xFE, 0x7B, 0x0A, 0x0A, 0x0A, 0x0A, 0x0D, 0x16, 0xFF,
-  0x8D, 0x16, 0xFF, 0x20, 0xB2, 0x10, 0x78, 0xA2, 0x00, 0x20, 0x9D, 0x10,
-  0x8A, 0x48, 0x20, 0xB5, 0x10, 0x68, 0xAA, 0xA9, 0x7F, 0x8D, 0x30, 0xFD,
-  0x8D, 0x08, 0xFF, 0xAD, 0x08, 0xFF, 0x29, 0x10, 0xF0, 0x03, 0xAA, 0xD0,
-  0xE4, 0x8A, 0xF0, 0xE1, 0x78, 0x8D, 0x3E, 0xFF, 0x8D, 0xD0, 0xFD, 0x6C,
-  0xBE, 0x10, 0x2C, 0x07, 0xFF, 0x70, 0x03, 0xA9, 0xFA, 0x2C, 0xA9, 0xE1,
-  0xCD, 0x1D, 0xFF, 0xD0, 0xFB, 0xCD, 0x1D, 0xFF, 0xF0, 0xFB, 0x60, 0x6C,
-  0xBA, 0x10, 0x6C, 0xBC, 0x10, 0x00, 0x00, 0xAC, 0x10, 0xAC, 0x10, 0x10,
-  0x10
-};
-
 namespace Plus4FLIConv {
 
   P4FLI_MultiColorNoFLI::Line160::Line160()
@@ -149,8 +129,8 @@ namespace Plus4FLIConv {
   P4FLI_MultiColorNoFLI::P4FLI_MultiColorNoFLI()
     : monitorGamma(1.33),
       ditherLimit(0.125),
-      ditherScale(0.75),
-      ditherMode(0),
+      ditherScale(0.9),
+      ditherMode(1),
       borderColor(0x00),
       conversionQuality(6),
       luminance1BitMode(false),
@@ -200,9 +180,9 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 0.25, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 3);
+    limitValue(ditherMode, 0, 4);
     borderColor = (borderColor & 0x7F) | 0x80;
-    limitValue(conversionQuality, 1, 20);
+    limitValue(conversionQuality, 1, 30);
   }
 
   P4FLI_MultiColorNoFLI::AttrBlock4x8::AttrBlock4x8(const double *errorTable_,
@@ -318,7 +298,7 @@ namespace Plus4FLIConv {
       FLIConverter::convertPlus4Color(i, paletteY[i], paletteU[i], paletteV[i],
                                       monitorGamma);
     }
-    if (ditherMode == 0) {
+    if (ditherMode < 2) {
       // ordered dithering
       float   luminanceTable[9];
       float   hueTable[15];
@@ -379,20 +359,42 @@ namespace Plus4FLIConv {
         else {
           float   f = (y - luminanceTable[li0])
                       / (luminanceTable[li1] - luminanceTable[li0]);
-          if (ditherPixelValue(xc, yc, f))
-            li0 = li1;
+          if (ditherMode == 0) {
+            if (ditherPixelValue_Bayer(xc, yc, f))
+              li0 = li1;
+          }
+          else {
+            if (ditherPixelValue(xc, yc, f))
+              li0 = li1;
+          }
         }
         int     si = 0;
-        if (ditherPixelValue(xc, yc, s / FLIConverter::defaultColorSaturation))
-          si++;
+        if (ditherMode == 0) {
+          if (ditherPixelValue_Bayer(
+                  xc, yc, s / FLIConverter::defaultColorSaturation)) {
+            si++;
+          }
+        }
+        else {
+          if (ditherPixelValue(
+                  xc, yc, s / FLIConverter::defaultColorSaturation)) {
+            si++;
+          }
+        }
         int     hi = 0;
         if (h < hueTable[0])    // special case for hue wrap-around
           h = h + 1.0f;
         while (h > hueTable[hi + 1] && hi < 13)
           hi++;
         float   f = (h - hueTable[hi]) / (hueTable[hi + 1] - hueTable[hi]);
-        if (ditherPixelValue(xc, yc, f))
-          hi++;
+        if (ditherMode == 0) {
+          if (ditherPixelValue_Bayer(xc, yc, f))
+            hi++;
+        }
+        else {
+          if (ditherPixelValue(xc, yc, f))
+            hi++;
+        }
         hi = hueIndexTable[hi];
         ditheredImage[yc * 160L + xc] =
             (li0 == 0 ? 0 : ((si == 0 ? 1 : (hi + 2)) + ((li0 - 1) << 4)));
@@ -459,7 +461,7 @@ namespace Plus4FLIConv {
       float   errY = y - paletteY[c];
       float   errU = u - paletteU[c];
       float   errV = v - paletteV[c];
-      if (ditherMode == 1) {
+      if (ditherMode == 2) {
         // Floyd-Steinberg dithering
         static const int    xOffsTbl[4] = { 1, -1, 0, 1 };
         static const int    yOffsTbl[4] = { 0, 1, 1, 1 };
@@ -484,7 +486,7 @@ namespace Plus4FLIConv {
           }
         }
       }
-      else if (ditherMode == 2) {
+      else if (ditherMode == 3) {
         // Jarvis dithering
         for (int i = 0; i < 3; i++) {
           for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
@@ -542,11 +544,6 @@ namespace Plus4FLIConv {
   bool P4FLI_MultiColorNoFLI::convertImage(PRGData& prgData, double& totalError)
   {
     totalError = 0.0;
-    // clear PRG data
-    for (size_t i = 0x0000; i < 0x00C1; i++)
-      prgData[i] = prgHeader_160x200[i];
-    for (size_t i = 0x00C1; i < 0x8F41; i++)
-      prgData[i] = 0x00;
     int     color0 = 0x00;
     int     color3 = 0x71;
     // find the color indexes used in each attribute block area
@@ -627,8 +624,8 @@ namespace Plus4FLIConv {
           float   u = paletteU[j];
           float   v = paletteV[j];
           if (y > minY && y < maxY &&
-              u > minU && u < maxU &&
-              v > minV && v < maxV) {
+              ((j & 15) == 1 ||
+               (u > minU && u < maxU && v > minV && v < maxV))) {
             colorTables[i].push_back(j);
           }
         }
@@ -658,8 +655,8 @@ namespace Plus4FLIConv {
         float   u = paletteU[j];
         float   v = paletteV[j];
         if (y > minY0 && y < maxY0 &&
-            u > minU0 && u < maxU0 &&
-            v > minV0 && v < maxV0) {
+            ((j & 15) == 1 ||
+             (u > minU0 && u < maxU0 && v > minV0 && v < maxV0))) {
           colorTable0.push_back(j);
         }
       }
@@ -670,7 +667,7 @@ namespace Plus4FLIConv {
       attrBlocks[i].color2 = attrBlocks[i].pixelColorCodes[1];
     }
     std::vector< int >  colorCnts(128);
-    if (conversionQuality < 10) {
+    if (conversionQuality < 16) {
       double  bestErr = 1000000.0;
       int     bestColors[2];
       bestColors[0] = color0;
@@ -777,7 +774,7 @@ namespace Plus4FLIConv {
         double  prvErr = 1000000.0;
         for (int i = 7; i >= 0; i--) {
           // color #0 (FF15)
-          double  minErr = 1000000.0;
+          double  minErr = prvErr;
           int     bestColor = color0;
           for (size_t j = 0; j < colorTable0.size(); j++) {
             color0 = colorTable0[j];
@@ -796,7 +793,6 @@ namespace Plus4FLIConv {
           }
           color0 = bestColor;
           // color #3 (FF16)
-          minErr = 1000000.0;
           bestColor = color3;
           for (size_t j = 0; j < colorTable0.size(); j++) {
             color3 = colorTable0[j];
@@ -983,11 +979,6 @@ namespace Plus4FLIConv {
       attrBlocks[k].color2 = bestColor2;
     }
     // store the attributes and color registers
-    prgData[0x7BF9 - 0x0FFF] = (unsigned char) borderColor;
-    prgData[0x7BFA - 0x0FFF] = 0x4D;    // 'M'
-    prgData[0x7BFB - 0x0FFF] = 0x55;    // 'U'
-    prgData[0x7BFC - 0x0FFF] = 0x4C;    // 'L'
-    prgData[0x7BFD - 0x0FFF] = 0x54;    // 'T'
     prgData[0x7BFE - 0x0FFF] =
         (unsigned char) (((color3 & 0x70) >> 4) | ((color3 & 0x0F) << 4));
     prgData[0x7BFF - 0x0FFF] =
@@ -997,8 +988,18 @@ namespace Plus4FLIConv {
       int     l1 = (attrBlocks[i].color1 >> 4) & 0x07;
       int     c0 = attrBlocks[i].color2 & 0x0F;
       int     c1 = attrBlocks[i].color1 & 0x0F;
-      prgData[(0x7800 | i) - 0x0FFF] = (unsigned char) ((l0 << 4) | l1);
-      prgData[(0x7C00 | i) - 0x0FFF] = (unsigned char) (c0 | (c1 << 4));
+      if (c0 != 0)
+        l0++;
+      else
+        l0 = 0;
+      if (c1 != 0)
+        l1++;
+      else
+        l1 = 0;
+      prgData.l0((i % 40) * 8, (i / 40) * 16) = l0;
+      prgData.c0((i % 40) * 8, (i / 40) * 16) = c0;
+      prgData.l1((i % 40) * 8, (i / 40) * 16) = l1;
+      prgData.c1((i % 40) * 8, (i / 40) * 16) = c1;
     }
     // generate bitmaps
     for (int yc = 0; yc < 200; yc++) {
@@ -1020,9 +1021,8 @@ namespace Plus4FLIConv {
         err = errorTable[(c << 7) | color3];
         if (err < minErr)
           ci = 3;
-        n = ((n << 3) | (yc & 7) | 0x8000) - 0x0FFF;
-        prgData[n] &= (unsigned char) ((3 << ((3 - (xc & 3)) << 1)) ^ 0xFF);
-        prgData[n] |= (unsigned char) (ci << ((3 - (xc & 3)) << 1));
+        prgData.setPixel((xc << 1) + 0, yc << 1, bool(ci & 2));
+        prgData.setPixel((xc << 1) + 1, yc << 1, bool(ci & 1));
       }
     }
     // return the total amount of error
@@ -1127,10 +1127,9 @@ namespace Plus4FLIConv {
       float   borderV = 0.0f;
       FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
                                       monitorGamma);
+      prgData.setConversionType(7);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
-      prgData.setVerticalSize(200);
-      prgData.interlaceFlags() = 0x00;
       for (int yc = 0; yc < 200; yc++) {
         resizedImage.y()[yc].clear();
         resizedImage.y()[yc].setBorderColor(borderY);
@@ -1180,8 +1179,9 @@ namespace Plus4FLIConv {
         progressMessage(&(tmpBuf[0]));
       }
       // write PRG output
+      prgData.convertImageData();
       optimizeAttributes(prgData);
-      prgEndAddr = 0x9F40U;
+      prgEndAddr = prgData.getImageDataEndAddress();
     }
     catch (...) {
       prgData[0] = 0x01;

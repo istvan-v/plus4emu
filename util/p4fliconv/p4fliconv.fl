@@ -178,7 +178,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
               xywh {225 50 350 25} down_box BORDER_BOX
-              code0 {o->add("Interlaced high resolution FLI|Interlaced multicolor FLI|High resolution FLI|Multicolor FLI|Hires 320x200 (no FLI)|Multicolor 160x200 (no FLI)");}
+              code0 {o->add("Interlaced high resolution FLI|Interlaced multicolor FLI|High resolution FLI, bitmap interlace only|Multicolor FLI, bitmap interlace only|High resolution FLI|Multicolor FLI|Hires 320x200 (no FLI)|Multicolor 160x200 (no FLI)|Logo Editor 2.0 multicolor (128x64)");}
             } {}
             Fl_Box {} {
               label {Vertical resolution}
@@ -198,7 +198,7 @@ class Plus4FLIConvGUI {open
             }
             Fl_Box {} {
               label {Border color}
-              xywh {335 85 130 25} align 20
+              xywh {305 85 120 25} align 20
             }
             Fl_Value_Input borderColorValuator {
               callback {{
@@ -210,10 +210,10 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {480 85 60 25} when 4 maximum 255 step 1
+              xywh {460 85 60 25} when 4 maximum 255 step 1
             }
             Fl_Box borderColorDisplay {
-              xywh {550 85 25 25} box BORDER_BOX
+              xywh {530 85 25 25} box BORDER_BOX
             }
             Fl_Box {} {
               label {Scale and offset}
@@ -360,7 +360,7 @@ class Plus4FLIConvGUI {open
             }
             Fl_Box {} {
               label {Monitor gamma}
-              xywh {335 225 130 25} align 20
+              xywh {305 225 120 25} align 20
             }
             Fl_Value_Input monitorGammaValuator {
               callback {{
@@ -372,7 +372,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {480 225 60 25} when 4 minimum 0.25 maximum 4 step 0.01 value 1.33
+              xywh {460 225 60 25} when 4 minimum 0.25 maximum 4 step 0.01 value 1.33
             }
             Fl_Box {} {
               label Dither
@@ -392,7 +392,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
               xywh {225 260 170 25} down_box BORDER_BOX
-              code0 {o->add("Ordered|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)");}
+              code0 {o->add("Ordered (Bayer)|Ordered (randomized)|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)");}
             } {}
             Fl_Value_Input ditherLimitValuator {
               label Limit
@@ -405,7 +405,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {480 260 60 25} when 4 step 0.001 value 0.125
+              xywh {460 260 60 25} when 4 step 0.005 value 0.125
             }
             Fl_Box {} {
               label {Dither diffusion parameter}
@@ -421,11 +421,11 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {225 295 60 25} when 4 step 0.001 value 0.75
+              xywh {225 295 60 25} when 4 step 0.001 value 0.9
             }
             Fl_Box {} {
               label {Multicolor quality}
-              xywh {295 295 130 25} align 20
+              xywh {305 295 120 25} align 20
             }
             Fl_Value_Slider multiColorQualityValuator {
               callback {{
@@ -437,7 +437,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {435 296 140 23} type Horizontal color 47 selection_color 52 align 4 minimum 1 maximum 20 step 1 value 6
+              xywh {435 296 140 23} type Horizontal color 47 selection_color 52 align 4 minimum 1 maximum 30 step 1 value 6
             }
             Fl_Box {} {
               label {X shift}
@@ -476,26 +476,26 @@ class Plus4FLIConvGUI {open
               code0 {o->add("Random|Optimized|0|1|2|3|4|5|6|7");}
             } {}
             Fl_Box {} {
-              label {Write the raw FLI data only}
-              xywh {25 365 190 25} align 20
+              label {Output file format}
+              xywh {25 365 150 25} align 20
             }
-            Fl_Check_Button rawPRGModeValuator {
+            Fl_Choice outputFileFormatValuator {
               callback {{
   try {
-    config["rawPRGMode"] = bool(o->value());
-    o->value(int(bool(config["rawPRGMode"])));
+    if (o->value() >= 0) {
+      config["outputFileFormat"] = int(o->value());
+      o->value(int(config["outputFileFormat"]));
+    }
   }
   catch (std::exception& e) {
     errorMessage(e.what());
   }
-}}
-              xywh {225 365 25 25} down_box DOWN_BOX
-            }
-            Fl_Box {} {
-              label {PRG compression}
-              xywh {295 365 130 25} align 20
-            }
+}} open
+              xywh {225 365 140 25} down_box BORDER_BOX
+              code0 {o->add("PRG with viewer|Raw PRG|PixelShop P4S|FED 1.5");}
+            } {}
             Fl_Value_Slider prgCompressionLevelValuator {
+              label {Comp.}
               callback {{
   try {
     config["prgCompressionLevel"] = int(o->value() + 0.5);
@@ -505,7 +505,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              xywh {435 366 140 23} type Horizontal color 47 selection_color 52 align 4 maximum 9 step 1
+              tooltip {Compression level (for PRG formats only); zero means no compression, higher values improve the compression ratio at the expense of longer processing time} xywh {435 366 140 23} type Horizontal color 47 selection_color 52 align 4 maximum 9 step 1
             }
           }
         }
@@ -626,7 +626,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              tooltip {Scale factor applied to squared chrominance error in multicolor modes} xywh {515 190 60 25} when 4 minimum 0.05 step 0.005 value 0.5
+              tooltip {Scale factor applied to squared chrominance error in multicolor modes} xywh {515 190 60 25} when 4 minimum 0.05 step 0.005 value 0.35
             }
           }
           Fl_Group {} {
