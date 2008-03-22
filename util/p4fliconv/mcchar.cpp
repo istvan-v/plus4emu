@@ -100,8 +100,8 @@ namespace Plus4FLIConv {
 
   P4FLI_MultiColorChar::P4FLI_MultiColorChar()
     : monitorGamma(1.33),
-      ditherLimit(0.125),
-      ditherScale(0.9),
+      ditherLimit(0.25),
+      ditherScale(0.95),
       ditherMode(1),
       luminance1BitMode(false),
       ditheredImage((int *) 0)

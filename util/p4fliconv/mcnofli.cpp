@@ -128,8 +128,8 @@ namespace Plus4FLIConv {
 
   P4FLI_MultiColorNoFLI::P4FLI_MultiColorNoFLI()
     : monitorGamma(1.33),
-      ditherLimit(0.125),
-      ditherScale(0.9),
+      ditherLimit(0.25),
+      ditherScale(0.95),
       ditherMode(1),
       borderColor(0x00),
       conversionQuality(6),
@@ -275,12 +275,12 @@ namespace Plus4FLIConv {
       float   c0y = 0.0f;
       float   c0u = 0.0f;
       float   c0v = 0.0f;
-      FLIConverter::convertPlus4Color(c0, c0y, c0u, c0v, monitorGamma);
+      FLIConverter::convertPlus4Color(c0, c0y, c0u, c0v, monitorGamma * 0.75);
       for (int c1 = 0; c1 < 128; c1++) {
         float   c1y = 0.0f;
         float   c1u = 0.0f;
         float   c1v = 0.0f;
-        FLIConverter::convertPlus4Color(c1, c1y, c1u, c1v, monitorGamma);
+        FLIConverter::convertPlus4Color(c1, c1y, c1u, c1v, monitorGamma * 0.75);
         errorTable[(c0 << 7) | c1] =
             calculateErrorSqr(c0y, c1y)
             + (calculateErrorSqr(c0u, c1u) * colorErrorScale)

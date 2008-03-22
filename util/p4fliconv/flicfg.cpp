@@ -264,8 +264,8 @@ namespace Plus4FLIConv {
     gammaCorrection = 1.0;
     monitorGamma = 1.33;
     ditherMode = 1;
-    ditherLimit = 0.125;
-    ditherDiffusion = 0.9;
+    ditherLimit = 0.25;
+    ditherDiffusion = 0.95;
     enablePAL = true;
     xShift0 = -1;
     xShift1 = -1;

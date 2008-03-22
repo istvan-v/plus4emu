@@ -134,8 +134,8 @@ namespace Plus4FLIConv {
 
   P4FLI_HiResNoInterlace::P4FLI_HiResNoInterlace()
     : monitorGamma(1.33),
-      ditherLimit(0.125),
-      ditherScale(0.9),
+      ditherLimit(0.25),
+      ditherScale(0.95),
       ditherMode(1),
       luminanceSearchMode(2),
       luminanceSearchModeParam(4.0),

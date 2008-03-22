@@ -305,8 +305,8 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 1.33)\n");
       std::fprintf(stderr, "        set gamma correction (G) and assumed "
                            "monitor gamma (M)\n");
-      std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 1, 0.125, "
-                           "0.9)\n");
+      std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 1, 0.25, "
+                           "0.95)\n");
       std::fprintf(stderr, "        dither mode (0: ordered (Bayer), 1: "
                            "ordered (randomized),\n        2: "
                            "Floyd-Steinberg, 3: Jarvis, 4: Stucki), limit, "
