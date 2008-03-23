@@ -206,53 +206,46 @@ namespace Plus4FLIConv {
   }
 
   P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::FLIBlock8x2(
-      const double *errorTable_,
-      int& color0_0_, int& color0_1_, int& color3_0_, int& color3_1_)
+      const double *errorTable_, int *color0_, int *color3_)
     : errorTable(errorTable_),
-      color0_0(color0_0_),
-      color0_1(color0_1_),
-      color3_0(color3_0_),
-      color3_1(color3_1_),
+      color0(color0_),
+      color3(color3_),
       color1(0x00),
       color2(0x00),
-      nColors(0),
-      nColors_0(0),
-      nColors_1(0)
+      nColors(0)
   {
     for (int i = 0; i < 16; i++) {
       pixelColorCodes[i] = 0x00;
       pixelColorCounts[i] = 0;
     }
-    for (int i = 0; i < 8; i++) {
-      pixelColorCodes_0[i] = 0x00;
-      pixelColorCounts_0[i] = 0;
-      pixelColorCodes_1[i] = 0x00;
-      pixelColorCounts_1[i] = 0;
+    for (int i = 0; i < 4; i++) {
+      lineColors[i] = 0;
+      for (int j = 0; j < 4; j++) {
+        linePixelColorCodes[i][j] = 0x00;
+        linePixelColorCounts[i][j] = 0;
+      }
     }
   }
 
   P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::FLIBlock8x2(
       const FLIBlock8x2& r)
     : errorTable(r.errorTable),
-      color0_0(r.color0_0),
-      color0_1(r.color0_1),
-      color3_0(r.color3_0),
-      color3_1(r.color3_1),
+      color0(r.color0),
+      color3(r.color3),
       color1(r.color1),
       color2(r.color2),
-      nColors(r.nColors),
-      nColors_0(r.nColors_0),
-      nColors_1(r.nColors_1)
+      nColors(r.nColors)
   {
     for (int i = 0; i < 16; i++) {
       pixelColorCodes[i] = r.pixelColorCodes[i];
       pixelColorCounts[i] = r.pixelColorCounts[i];
     }
-    for (int i = 0; i < 8; i++) {
-      pixelColorCodes_0[i] = r.pixelColorCodes_0[i];
-      pixelColorCounts_0[i] = r.pixelColorCounts_0[i];
-      pixelColorCodes_1[i] = r.pixelColorCodes_1[i];
-      pixelColorCounts_1[i] = r.pixelColorCounts_1[i];
+    for (int i = 0; i < 4; i++) {
+      lineColors[i] = r.lineColors[i];
+      for (int j = 0; j < 4; j++) {
+        linePixelColorCodes[i][j] = r.linePixelColorCodes[i][j];
+        linePixelColorCounts[i][j] = r.linePixelColorCounts[i][j];
+      }
     }
   }
 
@@ -295,89 +288,51 @@ namespace Plus4FLIConv {
   void P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::addPixel(int l, int c)
   {
     addPixel_(nColors, &(pixelColorCodes[0]), &(pixelColorCounts[0]), c);
-    if (l == 0) {
-      addPixel_(nColors_0, &(pixelColorCodes_0[0]), &(pixelColorCounts_0[0]),
-                c);
-    }
-    else {
-      addPixel_(nColors_1, &(pixelColorCodes_1[0]), &(pixelColorCounts_1[0]),
-                c);
-    }
+    addPixel_(lineColors[l],
+              &(linePixelColorCodes[l][0]), &(linePixelColorCounts[l][0]), c);
   }
 
   inline double
       P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::calculateError() const
   {
     double  totalErr = 0.0;
-    for (int i = 0; i < nColors_0; i++) {
-      int     c = pixelColorCodes_0[i];
-      double  minErr = errorTable[(c << 7) | color0_0];
-      double  err = errorTable[(c << 7) | color1];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color2];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color3_0];
-      if (err < minErr)
-        minErr = err;
-      totalErr += (minErr * double(pixelColorCounts_0[i]));
-    }
-    for (int i = 0; i < nColors_1; i++) {
-      int     c = pixelColorCodes_1[i];
-      double  minErr = errorTable[(c << 7) | color0_1];
-      double  err = errorTable[(c << 7) | color1];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color2];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color3_1];
-      if (err < minErr)
-        minErr = err;
-      totalErr += (minErr * double(pixelColorCounts_1[i]));
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < lineColors[i]; j++) {
+        int     c = linePixelColorCodes[i][j];
+        double  minErr = errorTable[(c << 7) | color0[i]];
+        double  err = errorTable[(c << 7) | color1];
+        if (err < minErr)
+          minErr = err;
+        err = errorTable[(c << 7) | color2];
+        if (err < minErr)
+          minErr = err;
+        err = errorTable[(c << 7) | color3[i]];
+        if (err < minErr)
+          minErr = err;
+        totalErr += (minErr * double(linePixelColorCounts[i][j]));
+      }
     }
     return totalErr;
   }
 
   inline double
-      P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::calculateErrorLine0() const
+      P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::calculateLineError(
+          int n) const
   {
     double  totalErr = 0.0;
-    for (int i = 0; i < nColors_0; i++) {
-      int     c = pixelColorCodes_0[i];
-      double  minErr = errorTable[(c << 7) | color0_0];
+    for (int i = 0; i < lineColors[n]; i++) {
+      int     c = linePixelColorCodes[n][i];
+      double  minErr = errorTable[(c << 7) | color0[n]];
       double  err = errorTable[(c << 7) | color1];
       if (err < minErr)
         minErr = err;
       err = errorTable[(c << 7) | color2];
       if (err < minErr)
         minErr = err;
-      err = errorTable[(c << 7) | color3_0];
+      err = errorTable[(c << 7) | color3[n]];
       if (err < minErr)
         minErr = err;
-      totalErr += (minErr * double(pixelColorCounts_0[i]));
-    }
-    return totalErr;
-  }
-
-  inline double
-      P4FLI_MultiColorBitmapInterlace::FLIBlock8x2::calculateErrorLine1() const
-  {
-    double  totalErr = 0.0;
-    for (int i = 0; i < nColors_1; i++) {
-      int     c = pixelColorCodes_1[i];
-      double  minErr = errorTable[(c << 7) | color0_1];
-      double  err = errorTable[(c << 7) | color1];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color2];
-      if (err < minErr)
-        minErr = err;
-      err = errorTable[(c << 7) | color3_1];
-      if (err < minErr)
-        minErr = err;
-      totalErr += (minErr * double(pixelColorCounts_1[i]));
+      totalErr += (minErr * double(linePixelColorCounts[n][i]));
     }
     return totalErr;
   }
@@ -391,62 +346,37 @@ namespace Plus4FLIConv {
       return 0.0;
     }
     int     nColors_ = 0;
-    int     nColors_0_ = 0;
-    int     nColors_1_ = 0;
+    int     lineColors_[4];
     int     pixelColorCodes_[16];
     int     pixelColorCounts_[16];
-    int     pixelColorCodes_0_[8];
-    int     pixelColorCounts_0_[8];
-    int     pixelColorCodes_1_[8];
-    int     pixelColorCounts_1_[8];
-    for (int i = 0; i < nColors_0; i++) {
-      int     c = pixelColorCodes_0[i];
-      if (c == color0_0 || c == color3_0)
-        continue;
-      pixelColorCodes_0_[nColors_0_] = c;
-      pixelColorCounts_0_[nColors_0_] = pixelColorCounts_0[i];
-      nColors_0_++;
-    }
-    for (int i = 0; i < nColors_1; i++) {
-      int     c = pixelColorCodes_1[i];
-      if (c == color0_1 || c == color3_1)
-        continue;
-      pixelColorCodes_1_[nColors_1_] = c;
-      pixelColorCounts_1_[nColors_1_] = pixelColorCounts_1[i];
-      nColors_1_++;
-    }
-    for (int i = 0; i < nColors_0_; i++) {
-      int     c = pixelColorCodes_0_[i];
-      int     n = pixelColorCounts_0_[i];
-      int     j = 0;
-      while (j < nColors_) {
-        if (pixelColorCodes_[j] == c) {
-          pixelColorCounts_[j] += n;
-          break;
+    int     linePixelColorCodes_[4][4];
+    int     linePixelColorCounts_[4][4];
+    for (int k = 0; k < 4; k++) {
+      lineColors_[k] = 0;
+      for (int i = 0; i < lineColors[k]; i++) {
+        int     c = linePixelColorCodes[k][i];
+        if (c == color0[k] || c == color3[k])
+          continue;
+        linePixelColorCodes_[k][lineColors_[k]] = c;
+        linePixelColorCounts_[k][lineColors_[k]] = linePixelColorCounts[k][i];
+        lineColors_[k]++;
+      }
+      for (int i = 0; i < lineColors_[k]; i++) {
+        int     c = linePixelColorCodes_[k][i];
+        int     n = linePixelColorCounts_[k][i];
+        int     j = 0;
+        while (j < nColors_) {
+          if (pixelColorCodes_[j] == c) {
+            pixelColorCounts_[j] += n;
+            break;
+          }
+          j++;
         }
-        j++;
-      }
-      if (j >= nColors_) {
-        pixelColorCodes_[nColors_] = c;
-        pixelColorCounts_[nColors_] = n;
-        nColors_++;
-      }
-    }
-    for (int i = 0; i < nColors_1_; i++) {
-      int     c = pixelColorCodes_1_[i];
-      int     n = pixelColorCounts_1_[i];
-      int     j = 0;
-      while (j < nColors_) {
-        if (pixelColorCodes_[j] == c) {
-          pixelColorCounts_[j] += n;
-          break;
+        if (j >= nColors_) {
+          pixelColorCodes_[nColors_] = c;
+          pixelColorCounts_[nColors_] = n;
+          nColors_++;
         }
-        j++;
-      }
-      if (j >= nColors_) {
-        pixelColorCodes_[nColors_] = c;
-        pixelColorCounts_[nColors_] = n;
-        nColors_++;
       }
     }
     if (nColors_ <= 2) {
@@ -470,33 +400,21 @@ namespace Plus4FLIConv {
           color1 = colorTable_[c1i];
           color2 = colorTable_[c2i];
           double  err = 0.0;
-          for (int i = 0; i < nColors_0_; i++) {
-            int     c = pixelColorCodes_0_[i];
-            double  minErr2 = errorTable[(c << 7) | color0_0];
-            double  err2 = errorTable[(c << 7) | color1];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err2 = errorTable[(c << 7) | color2];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err2 = errorTable[(c << 7) | color3_0];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err += (minErr2 * double(pixelColorCounts_0_[i]));
-          }
-          for (int i = 0; i < nColors_1_; i++) {
-            int     c = pixelColorCodes_1_[i];
-            double  minErr2 = errorTable[(c << 7) | color0_1];
-            double  err2 = errorTable[(c << 7) | color1];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err2 = errorTable[(c << 7) | color2];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err2 = errorTable[(c << 7) | color3_1];
-            if (err2 < minErr2)
-              minErr2 = err2;
-            err += (minErr2 * double(pixelColorCounts_1_[i]));
+          for (int k = 0; k < 4; k++) {
+            for (int i = 0; i < lineColors_[k]; i++) {
+              int     c = linePixelColorCodes_[k][i];
+              double  minErr2 = errorTable[(c << 7) | color0[k]];
+              double  err2 = errorTable[(c << 7) | color1];
+              if (err2 < minErr2)
+                minErr2 = err2;
+              err2 = errorTable[(c << 7) | color2];
+              if (err2 < minErr2)
+                minErr2 = err2;
+              err2 = errorTable[(c << 7) | color3[k]];
+              if (err2 < minErr2)
+                minErr2 = err2;
+              err += (minErr2 * double(linePixelColorCounts_[k][i]));
+            }
           }
           if (err < minErr) {
             bestColor1 = color1;
@@ -514,33 +432,21 @@ namespace Plus4FLIConv {
       for (size_t j = 0; j < colorTable_.size(); j++) {
         color1 = colorTable_[j];
         double  err = 0.0;
-        for (int i = 0; i < nColors_0_; i++) {
-          int     c = pixelColorCodes_0_[i];
-          double  minErr2 = errorTable[(c << 7) | color0_0];
-          double  err2 = errorTable[(c << 7) | color1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color2];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color3_0];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err += (minErr2 * double(pixelColorCounts_0_[i]));
-        }
-        for (int i = 0; i < nColors_1_; i++) {
-          int     c = pixelColorCodes_1_[i];
-          double  minErr2 = errorTable[(c << 7) | color0_1];
-          double  err2 = errorTable[(c << 7) | color1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color2];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color3_1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err += (minErr2 * double(pixelColorCounts_1_[i]));
+        for (int k = 0; k < 4; k++) {
+          for (int i = 0; i < lineColors_[k]; i++) {
+            int     c = linePixelColorCodes_[k][i];
+            double  minErr2 = errorTable[(c << 7) | color0[k]];
+            double  err2 = errorTable[(c << 7) | color1];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color2];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color3[k]];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err += (minErr2 * double(linePixelColorCounts_[k][i]));
+          }
         }
         if (err < minErr) {
           bestColor = color1;
@@ -554,33 +460,21 @@ namespace Plus4FLIConv {
       for (size_t j = 0; j < colorTable_.size(); j++) {
         color2 = colorTable_[j];
         double  err = 0.0;
-        for (int i = 0; i < nColors_0_; i++) {
-          int     c = pixelColorCodes_0_[i];
-          double  minErr2 = errorTable[(c << 7) | color0_0];
-          double  err2 = errorTable[(c << 7) | color1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color2];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color3_0];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err += (minErr2 * double(pixelColorCounts_0_[i]));
-        }
-        for (int i = 0; i < nColors_1_; i++) {
-          int     c = pixelColorCodes_1_[i];
-          double  minErr2 = errorTable[(c << 7) | color0_1];
-          double  err2 = errorTable[(c << 7) | color1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color2];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err2 = errorTable[(c << 7) | color3_1];
-          if (err2 < minErr2)
-            minErr2 = err2;
-          err += (minErr2 * double(pixelColorCounts_1_[i]));
+        for (int k = 0; k < 4; k++) {
+          for (int i = 0; i < lineColors_[k]; i++) {
+            int     c = linePixelColorCodes_[k][i];
+            double  minErr2 = errorTable[(c << 7) | color0[k]];
+            double  err2 = errorTable[(c << 7) | color1];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color2];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err2 = errorTable[(c << 7) | color3[k]];
+            if (err2 < minErr2)
+              minErr2 = err2;
+            err += (minErr2 * double(linePixelColorCounts_[k][i]));
+          }
         }
         if (err < minErr) {
           bestColor = color2;
@@ -868,14 +762,15 @@ namespace Plus4FLIConv {
   double P4FLI_MultiColorBitmapInterlace::convertTwoLines(
       PRGData& prgData, long yc)
   {
-    int     color0_0 = 0;
-    int     color0_1 = 0;
-    int     color3_0 = 0;
-    int     color3_1 = 0;
+    int     color0[4];
+    int     color3[4];
+    for (int i = 0; i < 4; i++) {
+      color0[i] = 0x00;
+      color3[i] = 0x00;
+    }
     // find the color indexes used in each attribute block area
     std::vector< FLIBlock8x2 >  attrBlocks(40, FLIBlock8x2(errorTable,
-                                                           color0_0, color0_1,
-                                                           color3_0, color3_1));
+                                                           color0, color3));
     int     xs[2];
     xs[0] = xShiftTable[yc + 0];
     xs[1] = xShiftTable[yc + 1];
@@ -1000,15 +895,15 @@ namespace Plus4FLIConv {
       }
     }
     double  bestErr = 1000000.0;
-    std::vector< int >  bestColors(84);
+    std::vector< int >  bestColors(88);
     for (int i = 0; i < 80; i += 2) {
       bestColors[i + 0] = attrBlocks[i >> 1].color1;
       bestColors[i + 1] = attrBlocks[i >> 1].color2;
     }
-    bestColors[80] = color0_0;
-    bestColors[81] = color0_1;
-    bestColors[82] = color3_0;
-    bestColors[83] = color3_1;
+    for (int i = 0; i < 4; i++) {
+      bestColors[i + 80] = color0[i];
+      bestColors[i + 84] = color3[i];
+    }
     std::vector< int >  colorCnts(128);
     int     randomSeed = 0;
     Plus4Emu::setRandomSeed(randomSeed, 1U);
@@ -1082,12 +977,12 @@ namespace Plus4FLIConv {
         }
       }
       if (l == 4 || l == 10) {
-        color0_0 = 0x71;
-        color3_0 = 0x71;
+        color0[0] = 0x71;
+        color3[0] = 0x71;
       }
       else if (l == 5 || l == 11) {
-        color0_0 = 0x00;
-        color3_0 = 0x00;
+        color0[0] = 0x00;
+        color3[0] = 0x00;
       }
       else if (l < 12 || colorTable0.size() < 1) {
         int     maxCnt1 = 0;
@@ -1095,68 +990,80 @@ namespace Plus4FLIConv {
         for (int i = 0; i < 128; i++) {
           if (colorCnts[i] > maxCnt1) {
             maxCnt2 = maxCnt1;
-            color3_0 = color0_0;
+            color3[0] = color0[0];
             maxCnt1 = colorCnts[i];
-            color0_0 = i;
+            color0[0] = i;
           }
           else if (colorCnts[i] > maxCnt2) {
             maxCnt2 = colorCnts[i];
-            color3_0 = i;
+            color3[0] = i;
           }
         }
       }
       else {
-        color0_0 = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
-                               % int(colorTable0.size())];
-        color3_0 = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
-                               % int(colorTable0.size())];
+        color0[0] = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
+                                % int(colorTable0.size())];
+        color3[0] = colorTable0[Plus4Emu::getRandomNumber(randomSeed)
+                                % int(colorTable0.size())];
       }
-      color0_1 = color0_0;
-      color3_1 = color3_0;
+      for (int i = 1; i < 4; i++) {
+        color0[i] = color0[0];
+        color3[i] = color3[0];
+      }
       // optimize attributes and color registers
       double  prvErr = 1000000.0;
       for (int i = (l < 6 ? 7 : -1); i >= 0; i--) {
-        // color #0 (FF15), line 0 and 1
-        double  minErr = prvErr;
-        int     bestColor = color0_0;
-        for (size_t j = 0; j < colorTable0.size(); j++) {
-          color0_0 = colorTable0[j];
-          color0_1 = color0_0;
-          double  err = 0.0;
+        for (int m = 0; m < 2; m++) {
+          // color #0 (FF15), line 0 and 1
+          double  minErr = 0.0;
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            err += attrBlocks[k].calculateError();
-            if (err > (minErr * 1.000001))
-              break;
+            minErr += attrBlocks[k].calculateLineError(m);
+            minErr += attrBlocks[k].calculateLineError(m + 2);
           }
-          if (err < minErr) {
-            bestColor = color0_0;
-            minErr = err;
+          int     bestColor = color0[m];
+          for (size_t j = 0; j < colorTable0.size(); j++) {
+            color0[m] = colorTable0[j];
+            color0[m + 2] = color0[m];
+            double  err = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              err += attrBlocks[k].calculateLineError(m);
+              err += attrBlocks[k].calculateLineError(m + 2);
+              if (err > (minErr * 1.000001))
+                break;
+            }
+            if (err < minErr) {
+              bestColor = color0[m];
+              minErr = err;
+            }
           }
+          color0[m] = bestColor;
+          color0[m + 2] = color0[m];
+          // color #3 (FF16), line 0 and 1
+          bestColor = color3[m];
+          for (size_t j = 0; j < colorTable0.size(); j++) {
+            color3[m] = colorTable0[j];
+            color3[m + 2] = color3[m];
+            double  err = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              err += attrBlocks[k].calculateLineError(m);
+              err += attrBlocks[k].calculateLineError(m + 2);
+              if (err > (minErr * 1.000001))
+                break;
+            }
+            if (err < minErr) {
+              bestColor = color3[m];
+              minErr = err;
+            }
+          }
+          color3[m] = bestColor;
+          color3[m + 2] = color3[m];
         }
-        color0_0 = bestColor;
-        color0_1 = color0_0;
-        // color #3 (FF16), line 0 and 1
-        bestColor = color3_0;
-        for (size_t j = 0; j < colorTable0.size(); j++) {
-          color3_0 = colorTable0[j];
-          color3_1 = color3_0;
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            err += attrBlocks[k].calculateError();
-            if (err > (minErr * 1.000001))
-              break;
-          }
-          if (err < minErr) {
-            bestColor = color3_0;
-            minErr = err;
-          }
-        }
-        color3_0 = bestColor;
-        color3_1 = color3_0;
         // color #1 and color #2
         double  err = 0.0;
         for (int k = 0; k < 40; k++)
@@ -1169,115 +1076,92 @@ namespace Plus4FLIConv {
         prvErr = err;
       }
       for (int i = 7; i >= 0; i--) {
-        // color #0 (FF15), line 0
-        double  minErr = 0.0;
-        if (color0ChangeEnabled) {
+        for (int m = 0; m < 2; m++) {
+          // color #0 (FF15), line 0
+          double  minErr = 0.0;
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            minErr += attrBlocks[k].calculateErrorLine0();
+            minErr += attrBlocks[k].calculateLineError(m);
+            if (!color0ChangeEnabled)
+              minErr += attrBlocks[k].calculateLineError(m + 2);
           }
-        }
-        else
-          minErr = prvErr;
-        int     bestColor = color0_0;
-        for (size_t j = 0; j < colorTable0.size(); j++) {
-          color0_0 = colorTable0[j];
-          if (!color0ChangeEnabled)
-            color0_1 = color0_0;
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            if (color0ChangeEnabled)
-              err += attrBlocks[k].calculateErrorLine0();
-            else
-              err += attrBlocks[k].calculateError();
-            if (err > (minErr * 1.000001))
-              break;
-          }
-          if (err < minErr) {
-            bestColor = color0_0;
-            minErr = err;
-          }
-        }
-        color0_0 = bestColor;
-        if (!color0ChangeEnabled)
-          color0_1 = color0_0;
-        // color #0 (FF15), line 1
-        if (color0ChangeEnabled) {
-          minErr = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            minErr += attrBlocks[k].calculateErrorLine1();
-          }
-          bestColor = color0_1;
+          int     bestColor = color0[m];
           for (size_t j = 0; j < colorTable0.size(); j++) {
-            color0_1 = colorTable0[j];
+            color0[m] = colorTable0[j];
+            if (!color0ChangeEnabled)
+              color0[m + 2] = color0[m];
             double  err = 0.0;
             for (int k = 0; k < 40; k++) {
               if (attrBlocks[k].nColors <= 2)
                 continue;
-              err += attrBlocks[k].calculateErrorLine1();
+              err += attrBlocks[k].calculateLineError(m);
+              if (!color0ChangeEnabled)
+                err += attrBlocks[k].calculateLineError(m + 2);
               if (err > (minErr * 1.000001))
                 break;
             }
             if (err < minErr) {
-              bestColor = color0_1;
+              bestColor = color0[m];
               minErr = err;
             }
           }
-          color0_1 = bestColor;
-        }
-        // color #3 (FF16), line 0
-        minErr = 0.0;
-        for (int k = 0; k < 40; k++) {
-          if (attrBlocks[k].nColors <= 2)
-            continue;
-          minErr += attrBlocks[k].calculateErrorLine0();
-        }
-        bestColor = color3_0;
-        for (size_t j = 0; j < colorTable0.size(); j++) {
-          color3_0 = colorTable0[j];
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            err += attrBlocks[k].calculateErrorLine0();
-            if (err > (minErr * 1.000001))
-              break;
+          color0[m] = bestColor;
+          if (!color0ChangeEnabled)
+            color0[m + 2] = color0[m];
+          // color #0 (FF15), line 1
+          if (color0ChangeEnabled) {
+            minErr = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              minErr += attrBlocks[k].calculateLineError(m + 2);
+            }
+            bestColor = color0[m + 2];
+            for (size_t j = 0; j < colorTable0.size(); j++) {
+              color0[m + 2] = colorTable0[j];
+              double  err = 0.0;
+              for (int k = 0; k < 40; k++) {
+                if (attrBlocks[k].nColors <= 2)
+                  continue;
+                err += attrBlocks[k].calculateLineError(m + 2);
+                if (err > (minErr * 1.000001))
+                  break;
+              }
+              if (err < minErr) {
+                bestColor = color0[m + 2];
+                minErr = err;
+              }
+            }
+            color0[m + 2] = bestColor;
           }
-          if (err < minErr) {
-            bestColor = color3_0;
-            minErr = err;
+          // color #3 (FF16)
+          for (int n = 0; n < 4; n += 2) {
+            minErr = 0.0;
+            for (int k = 0; k < 40; k++) {
+              if (attrBlocks[k].nColors <= 2)
+                continue;
+              minErr += attrBlocks[k].calculateLineError(n + m);
+            }
+            bestColor = color3[n + m];
+            for (size_t j = 0; j < colorTable0.size(); j++) {
+              color3[n + m] = colorTable0[j];
+              double  err = 0.0;
+              for (int k = 0; k < 40; k++) {
+                if (attrBlocks[k].nColors <= 2)
+                  continue;
+                err += attrBlocks[k].calculateLineError(n + m);
+                if (err > (minErr * 1.000001))
+                  break;
+              }
+              if (err < minErr) {
+                bestColor = color3[n + m];
+                minErr = err;
+              }
+            }
+            color3[n + m] = bestColor;
           }
         }
-        color3_0 = bestColor;
-        // color #3 (FF16), line 1
-        minErr = 0.0;
-        for (int k = 0; k < 40; k++) {
-          if (attrBlocks[k].nColors <= 2)
-            continue;
-          minErr += attrBlocks[k].calculateErrorLine1();
-        }
-        bestColor = color3_1;
-        for (size_t j = 0; j < colorTable0.size(); j++) {
-          color3_1 = colorTable0[j];
-          double  err = 0.0;
-          for (int k = 0; k < 40; k++) {
-            if (attrBlocks[k].nColors <= 2)
-              continue;
-            err += attrBlocks[k].calculateErrorLine1();
-            if (err > (minErr * 1.000001))
-              break;
-          }
-          if (err < minErr) {
-            bestColor = color3_1;
-            minErr = err;
-          }
-        }
-        color3_1 = bestColor;
         // color #1 and color #2
         double  err = 0.0;
         for (int k = 0; k < 40; k++)
@@ -1294,10 +1178,10 @@ namespace Plus4FLIConv {
           bestColors[i + 0] = attrBlocks[i >> 1].color1;
           bestColors[i + 1] = attrBlocks[i >> 1].color2;
         }
-        bestColors[80] = color0_0;
-        bestColors[81] = color0_1;
-        bestColors[82] = color3_0;
-        bestColors[83] = color3_1;
+        for (int i = 0; i < 4; i++) {
+          bestColors[i + 80] = color0[i];
+          bestColors[i + 84] = color3[i];
+        }
         bestErr = prvErr;
       }
     }
@@ -1305,19 +1189,15 @@ namespace Plus4FLIConv {
       attrBlocks[i >> 1].color1 = bestColors[i + 0];
       attrBlocks[i >> 1].color2 = bestColors[i + 1];
     }
-    color0_0 = bestColors[80];
-    color0_1 = bestColors[81];
-    color3_0 = bestColors[82];
-    color3_1 = bestColors[83];
+    for (int i = 0; i < 4; i++) {
+      color0[i] = bestColors[i + 80];
+      color3[i] = bestColors[i + 84];
+    }
     // store the attributes and color registers
-    prgData.lineColor0((yc << 1) | 0L) = (unsigned char) color0_0;
-    prgData.lineColor0((yc << 1) | 1L) = (unsigned char) color0_0;
-    prgData.lineColor0((yc << 1) | 2L) = (unsigned char) color0_1;
-    prgData.lineColor0((yc << 1) | 3L) = (unsigned char) color0_1;
-    prgData.lineColor3((yc << 1) | 0L) = (unsigned char) color3_0;
-    prgData.lineColor3((yc << 1) | 1L) = (unsigned char) color3_0;
-    prgData.lineColor3((yc << 1) | 2L) = (unsigned char) color3_1;
-    prgData.lineColor3((yc << 1) | 3L) = (unsigned char) color3_1;
+    for (int i = 0; i < 4; i++) {
+      prgData.lineColor0((yc << 1) | long(i)) = (unsigned char) color0[i];
+      prgData.lineColor3((yc << 1) | long(i)) = (unsigned char) color3[i];
+    }
     for (int i = 0; i < 40; i++) {
       int     l0 = (attrBlocks[i].color2 >> 4) & 0x07;
       int     l1 = (attrBlocks[i].color1 >> 4) & 0x07;
@@ -1343,7 +1223,7 @@ namespace Plus4FLIConv {
         int     n = xc >> 3;
         int     c = ditheredImage[(yc + i) * 304L + (j >= 0 ? j : 0)];
         int     ci = 0;
-        double  minErr = errorTable[(c << 7) | (i == 0 ? color0_0 : color0_1)];
+        double  minErr = errorTable[(c << 7) | color0[(i << 1) | (j & 1)]];
         double  err = errorTable[(c << 7) | attrBlocks[n].color1];
         if (err < minErr) {
           ci = 1;
@@ -1354,7 +1234,7 @@ namespace Plus4FLIConv {
           ci = 2;
           minErr = err;
         }
-        err = errorTable[(c << 7) | (i == 0 ? color3_0 : color3_1)];
+        err = errorTable[(c << 7) | color3[(i << 1) | (j & 1)]];
         if (err < minErr)
           ci = 3;
         prgData.setPixel(xc & (~(int(1))), ((yc + i) << 1) | long(j & 1),
