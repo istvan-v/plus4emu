@@ -778,13 +778,14 @@ namespace Plus4FLIConv {
       // even field
       for (int xc = 0; xc < 304; xc += 2) {
         int     n = (xc + 8 - xs[i]) >> 3;
-        attrBlocks[n].addPixel(i, ditheredImage[(yc + i) * 304L + xc]);
+        attrBlocks[n].addPixel(i << 1, ditheredImage[(yc + i) * 304L + xc]);
       }
       // odd field
       attrBlocks[(7 - xs[i]) >> 3].addPixel(i, ditheredImage[(yc + i) * 304L]);
       for (int xc = 1; xc < 304; xc += 2) {
         int     n = (xc + 8 - xs[i]) >> 3;
-        attrBlocks[n].addPixel(i, ditheredImage[(yc + i) * 304L + xc]);
+        attrBlocks[n].addPixel((i << 1) + 1,
+                               ditheredImage[(yc + i) * 304L + xc]);
       }
     }
     bool    color0ChangeEnabled = (nLines <= 200 || xs[1] == xs[0]);
@@ -1013,57 +1014,51 @@ namespace Plus4FLIConv {
       // optimize attributes and color registers
       double  prvErr = 1000000.0;
       for (int i = (l < 6 ? 7 : -1); i >= 0; i--) {
-        for (int m = 0; m < 2; m++) {
-          // color #0 (FF15), line 0 and 1
-          double  minErr = 0.0;
+        // color #0 (FF15), line 0 and 1
+        double  minErr = prvErr;
+        int     bestColor = color0[0];
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color0[0] = colorTable0[j];
+          for (int m = 1; m < 4; m++)
+            color0[m] = color0[0];
+          double  err = 0.0;
           for (int k = 0; k < 40; k++) {
             if (attrBlocks[k].nColors <= 2)
               continue;
-            minErr += attrBlocks[k].calculateLineError(m);
-            minErr += attrBlocks[k].calculateLineError(m + 2);
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
           }
-          int     bestColor = color0[m];
-          for (size_t j = 0; j < colorTable0.size(); j++) {
-            color0[m] = colorTable0[j];
-            color0[m + 2] = color0[m];
-            double  err = 0.0;
-            for (int k = 0; k < 40; k++) {
-              if (attrBlocks[k].nColors <= 2)
-                continue;
-              err += attrBlocks[k].calculateLineError(m);
-              err += attrBlocks[k].calculateLineError(m + 2);
-              if (err > (minErr * 1.000001))
-                break;
-            }
-            if (err < minErr) {
-              bestColor = color0[m];
-              minErr = err;
-            }
+          if (err < minErr) {
+            bestColor = color0[0];
+            minErr = err;
           }
-          color0[m] = bestColor;
-          color0[m + 2] = color0[m];
-          // color #3 (FF16), line 0 and 1
-          bestColor = color3[m];
-          for (size_t j = 0; j < colorTable0.size(); j++) {
-            color3[m] = colorTable0[j];
-            color3[m + 2] = color3[m];
-            double  err = 0.0;
-            for (int k = 0; k < 40; k++) {
-              if (attrBlocks[k].nColors <= 2)
-                continue;
-              err += attrBlocks[k].calculateLineError(m);
-              err += attrBlocks[k].calculateLineError(m + 2);
-              if (err > (minErr * 1.000001))
-                break;
-            }
-            if (err < minErr) {
-              bestColor = color3[m];
-              minErr = err;
-            }
-          }
-          color3[m] = bestColor;
-          color3[m + 2] = color3[m];
         }
+        color0[0] = bestColor;
+        for (int m = 1; m < 4; m++)
+          color0[m] = color0[0];
+        // color #3 (FF16), line 0 and 1
+        bestColor = color3[0];
+        for (size_t j = 0; j < colorTable0.size(); j++) {
+          color3[0] = colorTable0[j];
+          for (int m = 1; m < 4; m++)
+            color3[m] = color3[0];
+          double  err = 0.0;
+          for (int k = 0; k < 40; k++) {
+            if (attrBlocks[k].nColors <= 2)
+              continue;
+            err += attrBlocks[k].calculateError();
+            if (err > (minErr * 1.000001))
+              break;
+          }
+          if (err < minErr) {
+            bestColor = color3[0];
+            minErr = err;
+          }
+        }
+        color3[0] = bestColor;
+        for (int m = 1; m < 4; m++)
+          color3[m] = color3[0];
         // color #1 and color #2
         double  err = 0.0;
         for (int k = 0; k < 40; k++)
