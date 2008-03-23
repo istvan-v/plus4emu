@@ -276,7 +276,7 @@ namespace Plus4FLIConv {
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
     luminanceSearchModeParam = 4.0;
-    mcColorErrorScale = 0.45;
+    mcColorErrorScale = 0.5;
     multiColorQuality = 6;
     c64Color0 = 0x00;
     c64Color1 = 0x71;
