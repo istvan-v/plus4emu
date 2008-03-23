@@ -335,7 +335,7 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
                            " and parameter for\n        modes 2, 4, and 5\n");
       std::fprintf(stderr, "    -mcchromaerr <N>    "
-                           "(0.05 to 1.0, default: 0.35)\n");
+                           "(0.05 to 1.0, default: 0.45)\n");
       std::fprintf(stderr, "        scale factor applied to squared "
                            "chrominance error in multicolor\n        modes\n");
       std::fprintf(stderr, "    -mcquality <N>      (1 to 30, default: 6)\n");

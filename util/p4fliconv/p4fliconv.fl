@@ -626,7 +626,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              tooltip {Scale factor applied to squared chrominance error in multicolor modes} xywh {515 190 60 25} when 4 minimum 0.05 step 0.005 value 0.35
+              tooltip {Scale factor applied to squared chrominance error in multicolor modes} xywh {515 190 60 25} when 4 minimum 0.05 step 0.005 value 0.45
             }
           }
           Fl_Group {} {
