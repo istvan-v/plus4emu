@@ -191,7 +191,7 @@ int main(int argc, char **argv)
           std::string cmdLine = "\"";
           cmdLine += argv[0];
           size_t  i = cmdLine.length();
-          while (i > 0) {
+          while (i > 1) {
             i--;
             if (cmdLine[i] == '/' || cmdLine[i] == '\\') {
               i++;

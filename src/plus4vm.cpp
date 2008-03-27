@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cmath>
 #include <vector>
+#include <typeinfo>
 
 #include "resid/sid.hpp"
 #include "p4floppy.hpp"

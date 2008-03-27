@@ -664,6 +664,7 @@ namespace Plus4FLIConv {
         float   v = resizedImage.v()[yc].getPixel(xc);
         float   s = float(std::sqrt(double(u * u) + double(v * v)));
         float   h = float(std::atan2(double(v), double(u)));
+        s = s / FLIConverter::defaultColorSaturation;
         h = h / (2.0f * 3.14159265f);
         if (h < 0.0f)
           h = h + 1.0f;
@@ -696,16 +697,12 @@ namespace Plus4FLIConv {
         }
         int     si = 0;
         if (ditherMode == 0) {
-          if (ditherPixelValue_Bayer(
-                  xc, yc, s / FLIConverter::defaultColorSaturation)) {
+          if (ditherPixelValue_Bayer(xc, yc, s))
             si++;
-          }
         }
         else {
-          if (ditherPixelValue(
-                  xc, yc, s / FLIConverter::defaultColorSaturation)) {
+          if (ditherPixelValue(xc, yc, s))
             si++;
-          }
         }
         int     hi = 0;
         if (h < hueTable[0])    // special case for hue wrap-around
@@ -713,6 +710,7 @@ namespace Plus4FLIConv {
         while (h > hueTable[hi + 1] && hi < 13)
           hi++;
         float   f = (h - hueTable[hi]) / (hueTable[hi + 1] - hueTable[hi]);
+        f = f * s;              // adjust value for saturation dithering
         if (ditherMode == 0) {
           if (ditherPixelValue_Bayer(xc, yc, f))
             hi++;

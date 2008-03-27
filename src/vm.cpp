@@ -24,6 +24,7 @@
 #include "soundio.hpp"
 #include "tape.hpp"
 #include "vm.hpp"
+#include <typeinfo>
 
 #ifdef WIN32
 #  undef WIN32
