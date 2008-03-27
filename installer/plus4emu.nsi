@@ -214,6 +214,7 @@ Section "Source code" SecSrc
   File "..\util\p4fliconv\*.fl"
   File "..\util\p4fliconv\compress.cpp"
   File "..\util\p4fliconv\compress.hpp"
+  File "..\util\p4fliconv\decompress.s"
   File "..\util\p4fliconv\dither.cpp"
   File "..\util\p4fliconv\dither.hpp"
   File "..\util\p4fliconv\flicfg.cpp"
