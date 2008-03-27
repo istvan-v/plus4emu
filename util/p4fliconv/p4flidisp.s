@@ -386,8 +386,6 @@ initFLI:
         sta $ff07
         jsr vsyncWait
         jsr $ff84
-        lda borderColor
-        sta $ff19
         lda #$0b
         sta $ff06
         sta $ff3f
@@ -398,7 +396,9 @@ initFLI:
         lda #$00
         sta compressedDataSizeMSB
         sta compressedDataSizeLSB
-@l1:    ldx nLinesMSB
+@l1:    lda borderColor
+        sta $ff19
+        ldx nLinesMSB
         cpx #$01
         lda #$00
         ror

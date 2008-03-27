@@ -172,9 +172,6 @@ namespace Plus4FLIConv {
             compress_.addDecompressEndCode(-1L, false, true, false, false);
             compress_.addZeroPageUpdate(prgEndAddr, false);
           }
-          else {
-            compress_.addDecompressEndCode(-2L, false, false, false, false);
-          }
           unsigned int  startAddr = prgStartAddr;
           if (prgData.getImageDataStartAddress()
               > (prgData.getViewerCodeEndAddress() + 256U) &&
