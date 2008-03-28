@@ -1,5 +1,21 @@
 
-startAddr = $e500
+; NOTE: the start address should be chosen so that the routines from
+; huffmanDecode1 to readLZMatchByte are on the same 256-byte page
+
+startAddr = $e504
+
+; do not verify checksum if this is set to any non-zero value
+.define NO_CRC_CHECK            0
+; do not read ahead one byte of compressed data
+.define NO_READ_BUFFER          0
+; disable border effect and saving/restoring of the border color
+.define NO_BORDER_EFFECT        0
+; do not clear the color memory ($0800-$0B5F) after decompression
+.define NO_COLOR_MEMORY_CLEAR   0
+; do not restore RAM/ROM paging after decompression, return in RAM ($FF3F) mode
+.define NO_ROM_ENABLE_RESTORE   0
+; do not blank display, and do not save/restore $FF06
+.define NO_BLANK_DISPLAY        0
 
         .org startAddr - 2
         .byte <startAddr
@@ -11,6 +27,12 @@ startAddr = $e500
 
 shiftRegister = $20
 crcValue = $20
+tmpValue = $21
+readByteBuffer = $24
+huffmanInitTmp = $25
+huffTableWriteAddrLow = $26
+huffTableWriteAddrHigh = $27
+huffCodeSizesRemaining = $28
 prvDistanceLowTable = $26
 prvDistanceHighTable = $2a
 bytesRemainingLow = $2e
@@ -28,13 +50,45 @@ lzMatchReadAddrHigh = $35
 readAddrLow = $37
 readAddrHigh = $38
 prvDistanceTablePos = $39
+huffmanDecodedValueLow = $3a
+huffmanDecodedValueHigh = $3b
+huffSymbolsRemainingLow = $3c
+huffSymbolsRemainingHigh = $3d
 savedReadCharAddrLow = $3e
+gammaDecodedValueHigh = $3f
 huffmanLimitLowTable = $40
 huffmanLimitHighTable = $50
 huffmanOffsetLowTable = $60
 huffmanOffsetHighTable = $70
 
 borderColor = $ff19
+
+; -----------------------------------------------------------------------------
+
+compressedFLIDataSizeMSB = $17fe
+compressedFLIDataSizeLSB = $17ff
+compressedFLIDataStart = $1800
+compressedFLIDataEnd = $e504
+
+        .proc decompressFLI
+        lda #<compressedFLIDataStart
+        sta $e0
+        clc
+        adc compressedFLIDataSizeLSB
+        sta $e2
+        lda #>compressedFLIDataStart
+        sta $e1
+        adc compressedFLIDataSizeMSB
+        sta $e3
+        lda #<compressedFLIDataEnd
+        sta $e4
+        lda #>compressedFLIDataEnd
+        sta $e5
+        ldx #$e0
+        jmp decompressData
+        .endproc
+
+; -----------------------------------------------------------------------------
 
         .proc huffmanDecode1
         ldx #$ff
@@ -133,22 +187,29 @@ l2:     ldx savedReadCharAddrLow
         .endproc
 
         .proc readCompressedByte
-        sta $21
-        lda $24
+        sta tmpValue
+        inc readAddrLow
+        bne l1
+        inc readAddrHigh
+l1:
+        .if NO_READ_BUFFER = 0
+        lda readByteBuffer
         rol
         sta shiftRegister
-        inc $37
-        bne l1
-        inc $38
-l1:     lda ($37), y
-        sta $24
-        lda $21
+        lda (readAddrLow), y
+        sta readByteBuffer
+        .else
+        lda (readAddrLow), y
+        rol
+        sta shiftRegister
+        .endif
+        lda tmpValue
         rts
         .endproc
 
         .proc gammaDecode
         lda #$01
-        sty $3f
+        sty gammaDecodedValueHigh
 l1:     asl shiftRegister
         bne l2
         jsr readCompressedByte
@@ -157,7 +218,7 @@ l2:     bcc gammaDecode - 1
         bne l3
         jsr readCompressedByte
 l3:     rol
-        rol $3f
+        rol gammaDecodedValueHigh
         bcc l1
         .endproc
 
@@ -185,7 +246,7 @@ decompressDataBlock = decompressDataBlock_ + 6
         .proc decompressDataBlock_
 l1:     inc bytesRemainingHigh
         bne l5
-        plp                             ; return with carry set on last block
+        pla                             ; return with A=1, Z=0 on last block
         rts
         ldx #$03                        ; read address and 65536 - data length
 l2:     stx prvDistanceTablePos
@@ -195,14 +256,16 @@ l2:     stx prvDistanceTablePos
         dex
         bpl l2
         jsr read1Bit
-        lsr
-        php                             ; save last block flag
+        pha                             ; save last block flag
         lda #<read8Bits
         sta readCharAddrLow
         jsr read1Bit                    ; is compression enabled ?
         beq l3
         jsr huffmanInit
-l3:     inc borderColor                 ; border effect at LZ match
+l3:
+        .if NO_BORDER_EFFECT = 0
+        inc borderColor                 ; border effect at LZ match
+        .endif
 l4:     jsr huffmanDecode1              ; read next character
         bcs l6
         sta (decompressWriteAddrLow), y ; store decompressed data
@@ -272,10 +335,10 @@ readLengthAddrLow = decompressDataBlock_::l10 + 1
         .proc huffmanInit
         jsr l1
         iny
-l1:     sty $25
+l1:     sty huffmanInitTmp
         ldy #$00
         jsr read1Bit
-        ldy $25
+        ldy huffmanInitTmp
         lsr
         bcs l3
         lda addrTable + 2, y
@@ -288,65 +351,65 @@ l3:     tya
         adc #$09
         tay
         ldx #$05
-l4:     sta $24, x
+l4:     sta huffmanInitTmp - 1, x
         dey
         dey
         lda addrTable + 4, y
         dex
         bne l4
         jsr l2
-        ldx $25
+        ldx huffmanInitTmp
         lda #$01
 l5:     asl
         sta huffmanLimitLowTable, x
-        lda $28
+        lda huffCodeSizesRemaining
         eor #$09
         beq l6
         tya
         rol
 l6:     sta huffmanLimitHighTable, x
         ldy #$fe
-        sty $3b
+        sty huffmanDecodedValueHigh
         iny
-        sty $3a
+        sty huffmanDecodedValueLow
         iny
-        lda $26
+        lda huffTableWriteAddrLow
         sec
         sbc huffmanLimitLowTable, x
         sta huffmanOffsetLowTable, x
-        lda $27
+        lda huffTableWriteAddrHigh
         sbc huffmanLimitHighTable, x
         sta huffmanOffsetHighTable, x
         jsr gammaDecode
-        sta $3c
+        sta huffSymbolsRemainingLow
         cmp #$01
-        lda $3f
+        lda gammaDecodedValueHigh
         adc #$00
-        sta $3d
-l7:     dec $3c
+        sta huffSymbolsRemainingHigh
+l7:     dec huffSymbolsRemainingLow
         bne l8
-        dec $3d
+        dec huffSymbolsRemainingHigh
         beq l11
 l8:     inc huffmanLimitLowTable, x
         bne l9
         inc huffmanLimitHighTable, x
 l9:     jsr gammaDecode
-        adc $3a
-        sta $3a
-        lda $3f
-        adc $3b
-        sta $3b
-        sta ($26), y
-        inc $27
-        inc $27
-        lda $3a
-        sta ($26), y
-        inc $26
+        adc huffmanDecodedValueLow
+        sta huffmanDecodedValueLow
+        lda gammaDecodedValueHigh
+        adc huffmanDecodedValueHigh
+        sta huffmanDecodedValueHigh
+        sta (huffTableWriteAddrLow), y
+        inc huffTableWriteAddrHigh
+        inc huffTableWriteAddrHigh
+        lda huffmanDecodedValueLow
+        sta (huffTableWriteAddrLow), y
+        inc huffTableWriteAddrLow
         beq l10
-        dec $27
-l10:    dec $27
+        dec huffTableWriteAddrHigh
+l10:    dec huffTableWriteAddrHigh
         bne l7
-l11:    dec $28
+l11:    dec huffCodeSizesRemaining
         beq l12
         lda huffmanLimitLowTable, x
         ldy huffmanLimitHighTable, x
@@ -373,21 +436,29 @@ addrTable:
         php
         sei
         cld
-        ldy #$0b
+        ldy #$00
+        .if NO_BLANK_DISPLAY = 0
         lda $ff06                       ; save TED registers
         pha
         sty $ff06
+        .endif
+        .if NO_ROM_ENABLE_RESTORE = 0
         lda $ff13
         eor #$01
         and #$01
         pha
+        .endif
+        .if NO_BORDER_EFFECT = 0
         lda borderColor
         pha
+        .endif
 l1:     lda $0000, y
         sta $0940, y
         iny
         bne l1
+        .if NO_CRC_CHECK = 0
         sty crcValue
+        .endif
         sty $ff3f
 l2:     lda $0940, x
         sta inputDataStartAddrLow, y
@@ -414,10 +485,12 @@ l4:     cpx #<readAddrLow
 l5:     dey
         lda (inputDataEndAddrLow), y
         sta (readAddrLow), y
+        .if NO_CRC_CHECK = 0
         eor crcValue
         asl
         adc #$c4
         sta crcValue
+        .endif
         tya
         bne l5
 l6:     lda inputDataEndAddrHigh
@@ -427,58 +500,48 @@ l6:     lda inputDataEndAddrHigh
         dec readAddrHigh
         bne l5
 l7:     lda #$80                        ; NOTE: this also initializes the
+        .if NO_CRC_CHECK = 0
         cmp crcValue                    ; shift register (which is the same
         beq l8                          ; variable)
 ;       sty $ff3e                       ; reset machine on CRC error
         jmp ($fffc)
-l8:     jsr read8Bits                   ; skip CRC byte
+        .else
+        sta shiftRegister
+        .endif
+l8:
+        .if NO_READ_BUFFER = 0
+        jsr read8Bits                   ; skip CRC byte
+        .endif
 l9:     jsr decompressDataBlock         ; decompress all data blocks
-        bcc l9
+        beq l9
+        .if NO_BORDER_EFFECT = 0
         pla                             ; restore TED registers
         sta borderColor
+        .endif
+        .if NO_ROM_ENABLE_RESTORE = 0
         pla
         tax
         sta $ff3e, x
+        .endif
         ldy #$a0                        ; restore zeropage variables
 l10:    lda $095f, y
         sta $001f, y
         dey
         bne l10
-        lda $053b
-l11:    sta $0800, y                    ; clear color memory
+        .if NO_COLOR_MEMORY_CLEAR = 0
+        lda $053b                       ; clear color memory
+l11:    sta $0800, y
         sta $0900, y
         sta $0a00, y
-        sta $0b00, y
+        sta $0a60, y
         iny
         bne l11
+        .endif
+        .if NO_BLANK_DISPLAY = 0
         pla
         sta $ff06
+        .endif
         plp
         rts
-        .endproc
-
-; -----------------------------------------------------------------------------
-
-compressedFLIDataSizeMSB = $17fe
-compressedFLIDataSizeLSB = $17ff
-compressedFLIDataStart = $1800
-compressedFLIDataEnd = $e500
-
-        .proc decompressFLI
-        lda #<compressedFLIDataStart
-        sta $e0
-        clc
-        adc compressedFLIDataSizeLSB
-        sta $e2
-        lda #>compressedFLIDataStart
-        sta $e1
-        adc compressedFLIDataSizeMSB
-        sta $e3
-        lda #<compressedFLIDataEnd
-        sta $e4
-        lda #>compressedFLIDataEnd
-        sta $e5
-        ldx #$e0
-        jmp decompressData
         .endproc
 
