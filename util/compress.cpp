@@ -35,8 +35,10 @@ static bool   noCLI = false;
 static bool   noROM = false;
 // do not update zeropage variables after decompression if this is set to true
 static bool   noZPUpdate = false;
-// do not include decompressor code in the PRG output
-static bool   noDecompCode = false;
+// do not include decompressor code in the PRG output if non-zero
+static int    rawLoadAddr = 0;
+// override the load address of the first input file if greater than zero
+static int    loadAddr = 0;
 
 int main(int argc, char **argv)
 {
@@ -67,7 +69,28 @@ int main(int argc, char **argv)
       noZPUpdate = true;
     }
     else if (tmp == "-raw") {
-      noDecompCode = true;
+      rawLoadAddr = -1;
+      if ((i + 1) < argc) {
+        i++;
+        tmp = argv[i];
+        rawLoadAddr = int(std::atoi(tmp.c_str()));
+      }
+      if (rawLoadAddr >= 0)
+        rawLoadAddr = rawLoadAddr & 0xFFFF;
+      else
+        rawLoadAddr = 0x1003;
+    }
+    else if (tmp == "-loadaddr") {
+      loadAddr = 0;
+      if ((i + 1) < argc) {
+        i++;
+        tmp = argv[i];
+        loadAddr = int(std::atoi(tmp.c_str()));
+      }
+      if (loadAddr >= 0)
+        loadAddr = loadAddr & 0xFFFF;
+      else
+        loadAddr = 0;
     }
     else if (tmp == "-start") {
       runAddr = -1L;
@@ -101,8 +124,11 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "    -nozp\n");
     std::fprintf(stderr, "        do not update zeropage variables at $2D-$32 "
                          "and $9D-$9E\n");
-    std::fprintf(stderr, "    -raw\n");
+    std::fprintf(stderr, "    -raw <LOADADDR>\n");
     std::fprintf(stderr, "        write the compressed data only\n");
+    std::fprintf(stderr, "    -loadaddr <ADDR>\n");
+    std::fprintf(stderr, "        override the load address of the first "
+                         "input file\n");
     std::fprintf(stderr, "    -start <ADDR>\n");
     std::fprintf(stderr, "        start program at address ADDR (decimal), or "
                          "RUN if ADDR is -1,\n        return to basic if -2 "
@@ -114,9 +140,10 @@ int main(int argc, char **argv)
   Plus4FLIConv::PRGCompressor   compress(outBuf);
   Plus4FLIConv::PRGCompressor::CompressionParameters  cfg;
   compress.getCompressionParameters(cfg);
-  if (!noDecompCode)
+  if (rawLoadAddr == 0) {
     compress.addDecompressCode(c16Mode);
-  compress.addDecompressEndCode(runAddr, false, noCleanup, noCLI, noROM);
+    compress.addDecompressEndCode(runAddr, false, noCleanup, noCLI, noROM);
+  }
   for (int i = 0; i < int(fileNames.size() - 1); i++) {
     inBuf.resize(0);
     std::FILE *f = std::fopen(fileNames[i].c_str(), "rb");
@@ -139,6 +166,10 @@ int main(int argc, char **argv)
       return -1;
     }
     startAddr = startAddr | (((unsigned int) c & 0xFFU) << 8);
+    if (loadAddr > 0) {
+      startAddr = (unsigned int) loadAddr;
+      loadAddr = 0;
+    }
     while (true) {
       c = std::fgetc(f);
       if (c == EOF)
@@ -160,8 +191,8 @@ int main(int argc, char **argv)
   }
   // write output file
   unsigned int  startAddr = 0x1001U;
-  if (noDecompCode)
-    startAddr = compress.getCompressedDataStartAddress();
+  if (rawLoadAddr != 0)
+    startAddr = (unsigned int) rawLoadAddr;
   outBuf.insert(outBuf.begin(), (unsigned char) ((startAddr >> 8) & 0xFFU));
   outBuf.insert(outBuf.begin(), (unsigned char) (startAddr & 0xFFU));
   std::FILE *f = std::fopen(fileNames[fileNames.size() - 1].c_str(), "wb");
