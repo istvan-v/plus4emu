@@ -1,6 +1,10 @@
 Changes in version 1.2.6
 ------------------------
 
+  * the debugger window now displays the current state of TED registers
+  * various improvements have been made to the utilities
+  * some minor bugs have been fixed
+
 Changes in version 1.2.5.2
 --------------------------
 
