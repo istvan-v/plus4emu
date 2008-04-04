@@ -581,7 +581,7 @@ void Plus4FLIConvGUI::openImageFile()
     {
       std::string tmp = imageFileName;
       if (!browseFile(tmp, imageFileDirectory,
-                      "Image files (*.{bmp,jpg,png,koa,ocp})",
+                      "Image files (*.{bmp,jpg,png,koa,ocp,gif,xpm,ppm})",
                       Fl_File_Chooser::SINGLE,
                       "Open image file")) {
         tmp = "";
