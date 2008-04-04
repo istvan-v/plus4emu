@@ -16,6 +16,8 @@ startAddr = $e504
 .define NO_ROM_ENABLE_RESTORE   0
 ; do not blank display, and do not save/restore $FF06
 .define NO_BLANK_DISPLAY        0
+; use alternate code that can decompress faster, but is larger by a few bytes
+.define FAST_LZ_MATCH_EXPAND    0
 
         .org startAddr - 2
         .byte <startAddr
@@ -165,6 +167,8 @@ l2:     rol
         rts
         .endproc
 
+        .if FAST_LZ_MATCH_EXPAND = 0
+
         .proc readLZMatchByteWithDelta
         lda (lzMatchReadAddrLow), y
         adc #$00
@@ -185,6 +189,8 @@ l2:     ldx savedReadCharAddrLow
         stx readCharAddrLow
         rts
         .endproc
+
+        .endif          ; FAST_LZ_MATCH_EXPAND = 0
 
         .proc readCompressedByte
         sta tmpValue
@@ -289,8 +295,17 @@ l6:     cmp #$3c                        ; LZ match code
         bpl l7
         ldx #$03
 l7:     stx prvDistanceTablePos
-l8:     ldx #<readLZMatchByte
-l9:     stx readCharAddrLow             ; set character read routine address
+l8:
+        .if FAST_LZ_MATCH_EXPAND = 0
+        ldx #<readLZMatchByte
+        .else
+        ldx #$00
+        stx deltaValue
+        .endif
+l9:
+        .if FAST_LZ_MATCH_EXPAND = 0
+        stx readCharAddrLow             ; set character read routine address
+        .endif
         eor #$ff                        ; calculate match address
         adc decompressWriteAddrLow
         sta lzMatchReadAddrLow
@@ -304,11 +319,40 @@ l10:    jsr huffmanDecode2
         cmp #$08
         bcc l11
         jsr readLZMatchParameterBits    ; read extra bits if length >= 10 bytes
+        .if FAST_LZ_MATCH_EXPAND = 0
         clc
+        .endif
 l11:    tax
         inx                             ; adjust length to 2..256 range
         inx
+        .if FAST_LZ_MATCH_EXPAND = 0
         bcc l3
+        .else
+l14:    lda (lzMatchReadAddrLow), y
+        clc
+        adc #$00
+        sta (decompressWriteAddrLow), y
+        iny
+        dex
+        bne l14
+        dey
+        tya
+        sec
+        adc decompressWriteAddrLow
+        sta decompressWriteAddrLow
+        bcc l15
+        inc decompressWriteAddrHigh
+l15:    tya
+        ldy #$00
+        sec
+        adc bytesRemainingLow
+        sta bytesRemainingLow
+        bcc l3
+        inc bytesRemainingHigh
+        bne l3
+        pla                             ; return with A=1, Z=0 on last block
+        rts
+        .endif          ; FAST_LZ_MATCH_EXPAND
 l12:    cmp #$40                        ; check special match codes
         bcs l13
         and #$03                        ; LZ match with delta value
@@ -318,7 +362,9 @@ l12:    cmp #$40                        ; check special match codes
         sbc #$3f
         adc #$00
         sta deltaValue
+        .if FAST_LZ_MATCH_EXPAND = 0
         ldx #<readLZMatchByteWithDelta
+        .endif
         pla
         bcc l9
 l13:    adc prvDistanceTablePos         ; LZ match with recent offset
@@ -331,6 +377,9 @@ l13:    adc prvDistanceTablePos         ; LZ match with recent offset
 
 readCharAddrLow = decompressDataBlock_::l4 + 1
 readLengthAddrLow = decompressDataBlock_::l10 + 1
+        .if FAST_LZ_MATCH_EXPAND <> 0
+deltaValue = decompressDataBlock_::l14 + 4
+        .endif
 
         .proc huffmanInit
         jsr l1
@@ -343,7 +392,9 @@ l1:     sty huffmanInitTmp
         bcs l3
         lda addrTable + 2, y
 l2:     ldx addrTable, y
+        .if FAST_LZ_MATCH_EXPAND = 0
         sta savedReadCharAddrLow, y
+        .endif
         sta decompressDataBlock, x
         ldy #$00
         rts
