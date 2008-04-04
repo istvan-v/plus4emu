@@ -46,6 +46,143 @@ static bool defaultProgressPercentageCb(void *userData, int n)
   return true;
 }
 
+static void parseXPMHeader(std::vector< long >& buf, const char *s)
+{
+  buf.resize(0);
+  if (!s)
+    return;
+  while (true) {
+    while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+      s++;
+    if (*s == '\0')
+      break;
+    char    *endp = (char *) 0;
+    long    n = std::strtol(s, &endp, 0);
+    if (endp == (char *) 0 || endp == s ||
+        !(*endp == ' ' || *endp == '\t' || *endp == '\r' || *endp == '\n' ||
+          *endp == '\0')) {
+      throw Plus4Emu::Exception("invalid XPM header");
+    }
+    s = endp;
+    buf.push_back(n);
+    if (buf.size() > 4)
+      throw Plus4Emu::Exception("invalid XPM header");
+  }
+  if (buf.size() != 4)
+    throw Plus4Emu::Exception("invalid XPM header");
+}
+
+static void parseXPMColor(uint32_t& c, std::string& pattern,
+                          const char *s, size_t patternLen)
+{
+  c = 0U;
+  pattern = "";
+  if (!s)
+    throw Plus4Emu::Exception("invalid XPM colormap entry");
+  for (size_t i = 0; i < (patternLen + 10); i++) {
+    if (s[i] == '\0')
+      throw Plus4Emu::Exception("invalid XPM colormap entry");
+  }
+  if ((s[patternLen] != ' ' && s[patternLen] != '\t') ||
+      s[patternLen + 1] != 'c' ||
+      (s[patternLen + 2] != ' ' && s[patternLen + 2] != '\t') ||
+      s[patternLen + 3] != '#' ||
+      s[patternLen + 10] != '\0') {
+    throw Plus4Emu::Exception("invalid XPM colormap entry");
+  }
+  for (size_t i = 0; i < patternLen; i++)
+    pattern += s[i];
+  for (size_t i = (patternLen + 4); i < (patternLen + 10); i++) {
+    c = c << 4;
+    if (s[i] >= '0' && s[i] <= '9')
+      c = c | uint32_t(s[i] - '0');
+    else if (s[i] >= 'A' && s[i] <= 'F')
+      c = c | (uint32_t(s[i] - 'A') + 10U);
+    else if (s[i] >= 'a' && s[i] <= 'f')
+      c = c | (uint32_t(s[i] - 'a') + 10U);
+    else
+      throw Plus4Emu::Exception("invalid XPM colormap entry");
+  }
+}
+
+static void readColormapImage(std::vector< uint16_t >& pixelBuf,
+                              std::vector< uint32_t >& palette,
+                              Fl_Image& image_)
+{
+  int     w = image_.w();
+  int     h = image_.h();
+  int     cnt = image_.count();
+  const char * const  *imageData = image_.data();
+  if (image_.d() != 1 || cnt < 3 || imageData == (char **) 0)
+    throw Plus4Emu::Exception("image is not a pixmap");
+  std::vector< long > xpmParams;
+  parseXPMHeader(xpmParams, imageData[0]);
+  if (xpmParams[0] != w || xpmParams[1] != h)
+    throw Plus4Emu::Exception("invalid XPM header");
+  int     nColors = int(xpmParams[2]);
+  int     patternSize = int(xpmParams[3]);
+  if (nColors >= 1 && patternSize >= 1 && cnt == (nColors + h + 1)) {
+    // pixmap formats
+    if (nColors < 1 || nColors > 65536 || patternSize > 3)
+      throw Plus4Emu::Exception("invalid XPM header");
+    pixelBuf.resize(size_t(w) * size_t(h));
+    palette.resize(size_t(nColors));
+    std::map< std::string, uint16_t > colorMap;
+    for (int i = 0; i < nColors; i++) {
+      // read palette
+      uint32_t  c = 0U;
+      std::string pattern;
+      parseXPMColor(c, pattern, imageData[i + 1], size_t(patternSize));
+      palette[i] = c;
+      colorMap[pattern] = uint16_t(i);
+    }
+    std::string pattern;
+    for (int yc = 0; yc < h; yc++) {
+      // read and convert image data
+      const char  *s = imageData[yc + nColors + 1];
+      for (int xc = 0; xc < w; xc++) {
+        pattern.clear();
+        for (int i = 0; i < patternSize; i++) {
+          if (s[i] == '\0')
+            throw Plus4Emu::Exception("error in XPM image data");
+          pattern += s[i];
+        }
+        s = s + patternSize;
+        std::map< std::string, uint16_t >::iterator i_ = colorMap.find(pattern);
+        if (i_ == colorMap.end())
+          throw Plus4Emu::Exception("error in XPM image data");
+        pixelBuf[(yc * w) + xc] = (*i_).second;
+      }
+    }
+  }
+  else {
+    // GIF format
+    nColors = std::abs(nColors);
+    if (nColors < 1 || nColors > 256 || patternSize > 1 || cnt != (h + 2))
+      throw Plus4Emu::Exception("invalid image format information");
+    pixelBuf.resize(size_t(w) * size_t(h));
+    palette.resize(size_t(nColors));
+    std::vector< uint16_t > colorMap;
+    colorMap.resize(256);
+    for (int i = 0; i < nColors; i++) {
+      // read palette
+      uint32_t  c =
+          (uint32_t((unsigned char) imageData[1][(i << 2) + 1]) << 16)
+          | (uint32_t((unsigned char) imageData[1][(i << 2) + 2]) << 8)
+          | uint32_t((unsigned char) imageData[1][(i << 2) + 3]);
+      palette[i] = c;
+      colorMap[(unsigned char) imageData[1][i << 2] & 0xFF] = uint16_t(i);
+    }
+    for (int yc = 0; yc < h; yc++) {
+      // read and convert image data
+      for (int xc = 0; xc < w; xc++) {
+        pixelBuf[(yc * w) + xc] =
+            colorMap[(unsigned char) imageData[yc + 2][xc] & 0xFF];
+      }
+    }
+  }
+}
+
 namespace Plus4FLIConv {
 
   void YUVImageConverter::defaultStorePixelFunc(void *userData, int xc, int yc,
@@ -293,6 +430,108 @@ namespace Plus4FLIConv {
     return true;
   }
 
+  bool YUVImageConverter::isPlus4Colormap(
+      const std::vector< uint32_t >& colorMap)
+  {
+    if (colorMap.size() < 128 || colorMap.size() > 512)
+      return false;
+    double  totalError = 0.0;
+    for (size_t i = 0; i < colorMap.size(); i++) {
+      uint32_t  c = colorMap[i];
+      float   r = float(int((c >> 16) & 0xFFU)) * (1.0f / 255.0f);
+      float   g = float(int((c >> 8) & 0xFFU)) * (1.0f / 255.0f);
+      float   b = float(int(c & 0xFFU)) * (1.0f / 255.0f);
+      float   y = (0.299f * r) + (0.587f * g) + (0.114f * b);
+      float   u = 0.492f * (b - y);
+      float   v = 0.877f * (r - y);
+      float   tmp = float(std::sqrt(double(u * u) + double(v * v)));
+      if (tmp > 0.000001f) {
+        tmp = float(std::sqrt(double(FLIConverter::defaultColorSaturation
+                                     / tmp)));
+        u *= tmp;
+        v *= tmp;
+      }
+      float   y_ = 0.0f;
+      float   u_ = 0.0f;
+      float   v_ = 0.0f;
+      FLIConverter::convertPlus4Color(int(i), y_, u_, v_, 1.0);
+      totalError += (calculateErrorSqr(y, y_)
+                     + (0.5 * calculateErrorSqr(u, u_))
+                     + (0.5 * calculateErrorSqr(v, v_)));
+    }
+    totalError = totalError / double(int(colorMap.size()));
+    return (totalError < 0.015);
+  }
+
+  bool YUVImageConverter::convertPlus4ColormapImage(
+      const std::vector< uint16_t >& pixelBuf, int w, int h)
+  {
+    progressMessage("Resizing image");
+    setProgressPercentage(0);
+    // calculate scale and offset
+    float   aspectScale = (float(width) * pixelAspectRatio / float(height))
+                          / (float(w) / float(h));
+    float   xScale = float(w) / float(width);
+    float   yScale = float(h) / float(height);
+    if (aspectScale < 1.0f)
+      yScale = yScale / aspectScale;
+    else
+      xScale = xScale * aspectScale;
+    xScale = xScale / scaleX;
+    yScale = yScale / scaleY;
+    int     xScale_i = int((1.0f / xScale) + 0.5f);
+    int     yScale_i = int((1.0f / yScale) + 0.5f);
+    xScale_i = (xScale_i > 1 ? xScale_i : 1);
+    yScale_i = (yScale_i > 1 ? yScale_i : 1);
+    xScale = 1.0f / float(xScale_i);
+    yScale = 1.0f / float(yScale_i);
+    float   xOffs = (float(w) * 0.5f) - (float(width) * 0.5f * xScale);
+    float   yOffs = (float(h) * 0.5f) - (float(height) * 0.5f * yScale);
+    xOffs = xOffs - (offsetX * xScale);
+    yOffs = yOffs - (offsetY * yScale);
+    int     xOffs_i = int(xOffs + (xOffs >= 0.0f ? 0.5f : -0.5f));
+    int     yOffs_i = int(yOffs + (yOffs >= 0.0f ? 0.5f : -0.5f));
+    // scale image to the specified width and height
+    float   borderY = borderColorY;
+    borderY = (borderY > 0.0f ? (borderY < 1.0f ? borderY : 1.0f) : 0.0f);
+    borderY = float(std::pow(borderY, monitorGamma));
+    float   borderU = borderColorU;
+    float   borderV = borderColorV;
+    for (int yc = 0; yc < height; yc++) {
+      if (!setProgressPercentage(yc * 100 / height)) {
+        for (int tmpY = 0; tmpY < height; tmpY++) {
+          for (int tmpX = 0; tmpX < width; tmpX++) {
+            storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
+                           borderY, borderU, borderV);
+          }
+        }
+        progressMessage("");
+        return false;
+      }
+      int     yi = (yc / yScale_i) + yOffs_i;
+      for (int xc = 0; xc < width; xc++) {
+        int     xi = (xc / xScale_i) + xOffs_i;
+        float   y = borderY;
+        float   u = borderU;
+        float   v = borderV;
+        if (xi >= 0 && xi < w && yi >= 0 && yi < h) {
+          FLIConverter::convertPlus4Color(pixelBuf[(yi * w) + xi], y, u, v,
+                                          monitorGamma);
+        }
+        y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+        u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
+        v = (v > -0.615f ? (v < 0.615f ? v : 0.615f) : -0.615f);
+        storePixelFunc(storePixelFuncUserData, xc, yc, y, u, v);
+      }
+    }
+    setProgressPercentage(100);
+    progressMessage("");
+    char    tmpBuf[64];
+    std::sprintf(&(tmpBuf[0]), "Loaded %dx%d image", w, h);
+    progressMessage(&(tmpBuf[0]));
+    return true;
+  }
+
   bool YUVImageConverter::convertImageFile(const char *fileName)
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
@@ -311,13 +550,26 @@ namespace Plus4FLIConv {
       size_t  w = size_t(f->w());
       size_t  h = size_t(f->h());
       const char  *p = (char *) 0;
-      if (cnt == 1)
-        p = f->data()[0];
-      if ((d < 1 || d > 4) || (w < 32 || w > 8192) || (h < 32 || h > 6144) ||
-          p == (char *) 0) {
-        throw Plus4Emu::Exception("image format is not supported");
-      }
+      std::vector< uint16_t > pixelBuf;
+      std::vector< uint32_t > palette;
       // read input image, and convert it to YUV format
+      if (d == 1 && cnt > 2) {
+        // colormap format
+        readColormapImage(pixelBuf, palette, *f);
+        f->release();
+        f = (Fl_Shared_Image *) 0;
+        if (isPlus4Colormap(palette))
+          return convertPlus4ColormapImage(pixelBuf, int(w), int(h));
+      }
+      else {
+        // RGB or greyscale format
+        if (cnt == 1)
+          p = f->data()[0];
+        if ((d < 1 || d > 4) || p == (char *) 0)
+          throw Plus4Emu::Exception("image format is not supported");
+      }
+      if (w < 32 || w > 8192 || h < 32 || h > 6144)
+        throw Plus4Emu::Exception("image size is out of range");
       progressMessage("Resizing image");
       inputImage = new float[w * h * 3];
       bool    haveAlpha = !(d & 1);
@@ -343,16 +595,27 @@ namespace Plus4FLIConv {
           float   r = 0.0f;
           float   g = 0.0f;
           float   b = 0.0f;
-          const char  *pixelPtr = &(p[((yc * w) + xc) * size_t(d)]);
-          if (d < 3) {
-            r = float((unsigned char) pixelPtr[0]) * (1.0f / 255.0f);
-            g = r;
-            b = r;
+          const char  *pixelPtr = (char *) 0;
+          if (p) {
+            // RGB or greyscale format
+            pixelPtr = &(p[((yc * w) + xc) * size_t(d)]);
+            if (d < 3) {
+              r = float((unsigned char) pixelPtr[0]) * (1.0f / 255.0f);
+              g = r;
+              b = r;
+            }
+            else {
+              r = float((unsigned char) pixelPtr[0]) * (1.0f / 255.0f);
+              g = float((unsigned char) pixelPtr[1]) * (1.0f / 255.0f);
+              b = float((unsigned char) pixelPtr[2]) * (1.0f / 255.0f);
+            }
           }
           else {
-            r = float((unsigned char) pixelPtr[0]) * (1.0f / 255.0f);
-            g = float((unsigned char) pixelPtr[1]) * (1.0f / 255.0f);
-            b = float((unsigned char) pixelPtr[2]) * (1.0f / 255.0f);
+            // colormap format
+            uint32_t  tmp = palette[pixelBuf[(yc * w) + xc]];
+            r = float(int((tmp >> 16) & 0xFFU)) * (1.0f / 255.0f);
+            g = float(int((tmp >> 8) & 0xFFU)) * (1.0f / 255.0f);
+            b = float(int(tmp & 0xFFU)) * (1.0f / 255.0f);
           }
           r = (r * (yMax - yMin)) + yMin;
           g = (g * (yMax - yMin)) + yMin;
@@ -399,8 +662,10 @@ namespace Plus4FLIConv {
           ptr[2] = v;
         }
       }
-      f->release();
-      f = (Fl_Shared_Image *) 0;
+      if (f) {
+        f->release();
+        f = (Fl_Shared_Image *) 0;
+      }
       // initialize interpolation window
       float   aspectScale = (float(width) * pixelAspectRatio / float(height))
                             / (float(int(w)) / float(int(h)));
