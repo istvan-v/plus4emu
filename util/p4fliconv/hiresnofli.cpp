@@ -188,7 +188,7 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 0.25, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 4);
+    limitValue(ditherMode, 0, 5);
     limitValue(luminanceSearchMode, 0, 5);
     switch (luminanceSearchMode) {
     case 2:
@@ -262,59 +262,30 @@ namespace Plus4FLIConv {
     if (pixelValueDithered > pixelValue1)
       pixelValueDithered = pixelValue1;
     double  err = double(pixelValueDithered) - double(newPixelValue);
-    if (ditherMode == 2) {
-      // Floyd-Steinberg dithering
-      static const int    xOffsTbl[4] = { 1, -1, 0, 1 };
-      static const int    yOffsTbl[4] = { 0, 1, 1, 1 };
-      static const float  errMultTbl[4] = {
-        0.4375f, 0.1875f, 0.3125f, 0.0625f
-      };
-      for (int i = 0; i < 4; i++) {
-        long    yc_ = yc + yOffsTbl[i];
-        if (yc_ >= 200L)
-          break;
-        long    xc_ = xOffsTbl[i];
-        xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
-        ditherErrorImage[yc_].setPixel(xc_,
-                                       ditherErrorImage[yc_].getPixel(xc_)
-                                       + (float(err) * errMultTbl[i]));
-      }
+    const int *errMultTbl = &(ditherTable_FloydSteinberg[0]);
+    switch (ditherMode) {
+    case 3:
+      errMultTbl = &(ditherTable_Jarvis[0]);
+      break;
+    case 4:
+      errMultTbl = &(ditherTable_Stucki[0]);
+      break;
+    case 5:
+      errMultTbl = &(ditherTable_Sierra2[0]);
+      break;
     }
-    else if (ditherMode == 3) {
-      // Jarvis dithering
-      for (int i = 0; i < 3; i++) {
-        long    yc_ = yc + i;
-        if (yc_ >= 200L)
-          break;
-        for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
-          long    xc_ = j;
-          if (yc & 1L)
-            xc_ = -xc_;
-          xc_ += xc;
-          int     tmp = 9 - ((i + (j >= 0 ? j : (-j))) << 1);
-          ditherErrorImage[yc_].setPixel(xc_,
-                                         ditherErrorImage[yc_].getPixel(xc_)
-                                         + float(err * (double(tmp) / 48.0)));
-        }
-      }
-    }
-    else {
-      // Stucki dithering
-      for (int i = 0; i < 3; i++) {
-        long    yc_ = yc + i;
-        if (yc_ >= 200L)
-          break;
-        for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
-          long    xc_ = j;
-          if (yc & 1L)
-            xc_ = -xc_;
-          xc_ += xc;
-          int     tmp = 16 >> (i + (j >= 0 ? j : (-j)));
-          ditherErrorImage[yc_].setPixel(xc_,
-                                         ditherErrorImage[yc_].getPixel(xc_)
-                                         + float(err * (double(tmp) / 42.0)));
-        }
-      }
+    for (int i = 0; i < 12; i++) {
+      if (errMultTbl[i + 1] == 0)
+        continue;
+      long    yc_ = yc + ((i + 3) / 5);
+      if (yc_ >= 200L)
+        break;
+      long    xc_ = ((i + 3) % 5) - 2;
+      xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
+      float   tmp = float(errMultTbl[i + 1]) / float(errMultTbl[0]);
+      ditherErrorImage[yc_].setPixel(xc_,
+                                     ditherErrorImage[yc_].getPixel(xc_)
+                                     + (float(err) * tmp));
     }
   }
 

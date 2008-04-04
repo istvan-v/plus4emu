@@ -120,7 +120,7 @@ namespace Plus4FLIConv {
     (*this)["monitorGamma"].setCallback(&configChangeCallbackFloat,
                                         (void *) this, true);
     createKey("ditherMode", ditherMode);
-    (*this)["ditherMode"].setRange(0.0, 4.0);
+    (*this)["ditherMode"].setRange(0.0, 5.0);
     (*this)["ditherMode"].setCallback(&configChangeCallbackInteger,
                                       (void *) this, true);
     createKey("ditherLimit", ditherLimit);

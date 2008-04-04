@@ -392,7 +392,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
               xywh {225 260 170 25} down_box BORDER_BOX
-              code0 {o->add("Ordered (Bayer)|Ordered (randomized)|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)");}
+              code0 {o->add("Ordered (Bayer)|Ordered (randomized)|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)|Diffuse (Sierra2)");}
             } {}
             Fl_Value_Input ditherLimitValuator {
               label Limit

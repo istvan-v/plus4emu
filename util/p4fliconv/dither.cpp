@@ -25,6 +25,30 @@
 
 namespace Plus4FLIConv {
 
+  const int ditherTable_FloydSteinberg[13] = {
+    16,          7,  0,
+     0,  3,  5,  1,  0,
+     0,  0,  0,  0,  0
+  };
+
+  const int ditherTable_Jarvis[13] = {
+    48,          7,  5,
+     3,  5,  7,  5,  3,
+     1,  3,  5,  3,  1
+  };
+
+  const int ditherTable_Stucki[13] = {
+    42,          8,  4,
+     2,  4,  8,  4,  2,
+     1,  2,  4,  2,  1
+  };
+
+  const int ditherTable_Sierra2[13] = {
+    16,          4,  3,
+     1,  2,  3,  2,  1,
+     0,  0,  0,  0,  0
+  };
+
   const int ditherTable_Bayer[4096] = {
        1, 2048,  512, 2560,  128, 2176,  640, 2688,   32, 2080,  544, 2592,
      160, 2208,  672, 2720,    8, 2056,  520, 2568,  136, 2184,  648, 2696,

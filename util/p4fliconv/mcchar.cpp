@@ -138,7 +138,7 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 0.25, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 4);
+    limitValue(ditherMode, 0, 5);
   }
 
   void P4FLI_MultiColorChar::ditherLine(long yc)
@@ -151,6 +151,9 @@ namespace Plus4FLIConv {
     }
     if (ditherMode < 2) {
       // ordered dithering
+      const int *ditherTable_ = &(ditherTable[0]);
+      if (ditherMode == 0)
+        ditherTable_ = &(ditherTable_Bayer[0]);
       for (long xc = 0L; xc < 128L; xc++) {
         float   y = resizedImage[yc].getPixel(xc);
         int     li0 = 0;
@@ -167,14 +170,8 @@ namespace Plus4FLIConv {
           }
           else {
             float   f = (y - l0) / (l1 - l0);
-            if (ditherMode == 0) {
-              if (ditherPixelValue_Bayer(xc, yc, f))
-                li0 = li1;
-            }
-            else {
-              if (ditherPixelValue(xc, yc, f))
-                li0 = li1;
-            }
+            if (ditherPixelValue(xc, yc, f, ditherTable_))
+              li0 = li1;
           }
         }
         ditheredImage[yc * 128L + xc] = li0;
@@ -221,58 +218,28 @@ namespace Plus4FLIConv {
       }
       y = y0 + ((y - y0) * float(ditherScale));
       float   errY = y - paletteY[colorTable[c]];
-      if (ditherMode == 2) {
-        // Floyd-Steinberg dithering
-        static const int    xOffsTbl[4] = { 1, -1, 0, 1 };
-        static const int    yOffsTbl[4] = { 0, 1, 1, 1 };
-        static const float  errMultTbl[4] = {
-          0.4375f, 0.1875f, 0.3125f, 0.0625f
-        };
-        for (int i = 0; i < 4; i++) {
-          long    yc_ = yc + yOffsTbl[i];
-          long    xc_ = xOffsTbl[i];
-          xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
-          if (yc_ >= 0L && yc_ < 64L && xc_ >= 0L && xc_ < 128L) {
-            float   errMult = errMultTbl[i];
-            ditherErrorImage[yc_].setPixel(
-                xc_, ditherErrorImage[yc_].getPixel(xc_) + (errY * errMult));
-          }
-        }
+      const int *errMultTbl = &(ditherTable_FloydSteinberg[0]);
+      switch (ditherMode) {
+      case 3:
+        errMultTbl = &(ditherTable_Jarvis[0]);
+        break;
+      case 4:
+        errMultTbl = &(ditherTable_Stucki[0]);
+        break;
+      case 5:
+        errMultTbl = &(ditherTable_Sierra2[0]);
+        break;
       }
-      else if (ditherMode == 3) {
-        // Jarvis dithering
-        for (int i = 0; i < 3; i++) {
-          for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
-            if (yc & 1L)
-              j = (-j);
-            long    yc_ = yc + i;
-            long    xc_ = xc + j;
-            if (yc_ >= 0L && yc_ < 64L && xc_ >= 0L && xc_ < 128L) {
-              float   errMult = (4.5f - float(i + (j >= 0 ? j : (-j)))) / 24.0f;
-              ditherErrorImage[yc_].setPixel(
-                  xc_, ditherErrorImage[yc_].getPixel(xc_) + (errY * errMult));
-            }
-            if (yc & 1L)
-              j = (-j);
-          }
-        }
-      }
-      else {
-        // Stucki dithering
-        for (int i = 0; i < 3; i++) {
-          for (int j = (i == 0 ? 1 : -2); j < 3; j++) {
-            if (yc & 1L)
-              j = (-j);
-            long    yc_ = yc + i;
-            long    xc_ = xc + j;
-            if (yc_ >= 0L && yc_ < 64L && xc_ >= 0L && xc_ < 128L) {
-              float   errMult = float(16 >> (i + (j >= 0 ? j : (-j)))) / 42.0f;
-              ditherErrorImage[yc_].setPixel(
-                  xc_, ditherErrorImage[yc_].getPixel(xc_) + (errY * errMult));
-            }
-            if (yc & 1L)
-              j = (-j);
-          }
+      for (int i = 0; i < 12; i++) {
+        if (errMultTbl[i + 1] == 0)
+          continue;
+        long    yc_ = yc + ((i + 3) / 5);
+        long    xc_ = ((i + 3) % 5) - 2;
+        xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
+        if (yc_ >= 0L && yc_ < 64L && xc_ >= 0L && xc_ < 128L) {
+          float   errMult = float(errMultTbl[i + 1]) / float(errMultTbl[0]);
+          ditherErrorImage[yc_].setPixel(
+              xc_, ditherErrorImage[yc_].getPixel(xc_) + (errY * errMult));
         }
       }
       if (yc & 1L)

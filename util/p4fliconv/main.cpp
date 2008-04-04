@@ -309,8 +309,9 @@ int main(int argc, char **argv)
                            "0.95)\n");
       std::fprintf(stderr, "        dither mode (0: ordered (Bayer), 1: "
                            "ordered (randomized),\n        2: "
-                           "Floyd-Steinberg, 3: Jarvis, 4: Stucki), limit, "
-                           "and error\n        diffusion factor\n");
+                           "Floyd-Steinberg, 3: Jarvis, 4: Stucki, 5: "
+                           "Sierra2), limit,\n        and error diffusion "
+                           "factor\n");
       std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
       std::fprintf(stderr, "        assume PAL chrominance filtering "
                            "if set to 1\n");
