@@ -79,27 +79,78 @@ static void parseXPMColor(uint32_t& c, std::string& pattern,
   pattern = "";
   if (!s)
     throw Plus4Emu::Exception("invalid XPM colormap entry");
-  for (size_t i = 0; i < (patternLen + 10); i++) {
+  for (size_t i = 0; i < (patternLen + 4); i++) {
     if (s[i] == '\0')
       throw Plus4Emu::Exception("invalid XPM colormap entry");
   }
   if ((s[patternLen] != ' ' && s[patternLen] != '\t') ||
       s[patternLen + 1] != 'c' ||
-      (s[patternLen + 2] != ' ' && s[patternLen + 2] != '\t') ||
-      s[patternLen + 3] != '#' ||
-      s[patternLen + 10] != '\0') {
+      (s[patternLen + 2] != ' ' && s[patternLen + 2] != '\t')) {
     throw Plus4Emu::Exception("invalid XPM colormap entry");
   }
   for (size_t i = 0; i < patternLen; i++)
     pattern += s[i];
-  for (size_t i = (patternLen + 4); i < (patternLen + 10); i++) {
-    c = c << 4;
-    if (s[i] >= '0' && s[i] <= '9')
-      c = c | uint32_t(s[i] - '0');
-    else if (s[i] >= 'A' && s[i] <= 'F')
-      c = c | (uint32_t(s[i] - 'A') + 10U);
-    else if (s[i] >= 'a' && s[i] <= 'f')
-      c = c | (uint32_t(s[i] - 'a') + 10U);
+  s = s + (patternLen + 3);
+  if (s[0] == '#') {
+    // hexadecimal RGB color
+    for (size_t i = 1; i < 7; i++) {
+      c = c << 4;
+      if (s[i] >= '0' && s[i] <= '9')
+        c = c | uint32_t(s[i] - '0');
+      else if (s[i] >= 'A' && s[i] <= 'F')
+        c = c | (uint32_t(s[i] - 'A') + 10U);
+      else if (s[i] >= 'a' && s[i] <= 'f')
+        c = c | (uint32_t(s[i] - 'a') + 10U);
+      else
+        throw Plus4Emu::Exception("invalid XPM colormap entry");
+    }
+    if (s[7] != '\0')
+      throw Plus4Emu::Exception("invalid XPM colormap entry");
+  }
+  else {
+    // named color
+    char    tmpBuf[16];
+    for (size_t i = 0; true; i++) {
+      if (s[i] == '\0' || i == 15) {
+        tmpBuf[i] = '\0';
+        break;
+      }
+      tmpBuf[i] = s[i] | (char) 0x20;
+    }
+    if (std::strcmp(&(tmpBuf[0]), "none") == 0)
+      c = 0xFF000000U;          // transparent color
+    else if (std::strcmp(&(tmpBuf[0]), "black") == 0)
+      c = 0x00000000U;
+    else if (std::strcmp(&(tmpBuf[0]), "red") == 0)
+      c = 0x00FF0000U;
+    else if (std::strcmp(&(tmpBuf[0]), "yellow") == 0)
+      c = 0x00FFFF00U;
+    else if (std::strcmp(&(tmpBuf[0]), "green") == 0)
+      c = 0x0000FF00U;
+    else if (std::strcmp(&(tmpBuf[0]), "cyan") == 0)
+      c = 0x0000FFFFU;
+    else if (std::strcmp(&(tmpBuf[0]), "blue") == 0)
+      c = 0x000000FFU;
+    else if (std::strcmp(&(tmpBuf[0]), "magenta") == 0)
+      c = 0x00FF00FFU;
+    else if (std::strcmp(&(tmpBuf[0]), "white") == 0)
+      c = 0x00FFFFFFU;
+    else if (std::strncmp(&(tmpBuf[0]), "gray", 4) == 0 ||
+             std::strncmp(&(tmpBuf[0]), "grey", 4) == 0) {
+      s = s + 4;
+      if (*s != '\0') {
+        while (*s != '\0') {
+          if (*s >= '0' && *s <= '9')
+            c = (c * 10U) + uint32_t(*s - '0');
+          else
+            throw Plus4Emu::Exception("invalid XPM colormap entry");
+          s++;
+        }
+        c = ((((c * 255U) + 50U) / 100U) & 0xFFU) * 0x00010101U;
+      }
+      else
+        c = 0x00BEBEBEU;
+    }
     else
       throw Plus4Emu::Exception("invalid XPM colormap entry");
   }
@@ -170,8 +221,11 @@ static void readColormapImage(std::vector< uint16_t >& pixelBuf,
           (uint32_t((unsigned char) imageData[1][(i << 2) + 1]) << 16)
           | (uint32_t((unsigned char) imageData[1][(i << 2) + 2]) << 8)
           | uint32_t((unsigned char) imageData[1][(i << 2) + 3]);
+      unsigned char n = (unsigned char) imageData[1][i << 2] & 0xFF;
+      if (i == 0 && n == 0x20)
+        c = c | 0xFF000000U;    // transparent color
       palette[i] = c;
-      colorMap[(unsigned char) imageData[1][i << 2] & 0xFF] = uint16_t(i);
+      colorMap[n] = uint16_t(i);
     }
     for (int yc = 0; yc < h; yc++) {
       // read and convert image data
@@ -616,13 +670,12 @@ namespace Plus4FLIConv {
             r = float(int((tmp >> 16) & 0xFFU)) * (1.0f / 255.0f);
             g = float(int((tmp >> 8) & 0xFFU)) * (1.0f / 255.0f);
             b = float(int(tmp & 0xFFU)) * (1.0f / 255.0f);
+            haveAlpha = (tmp >= 0x80000000U);
           }
-          r = (r * (yMax - yMin)) + yMin;
-          g = (g * (yMax - yMin)) + yMin;
-          b = (b * (yMax - yMin)) + yMin;
           float   y = (r * 0.299f) + (g * 0.587f) + (b * 0.114f);
-          float   u = (b - y) * 0.492f * colorSaturationMult;
-          float   v = (r - y) * 0.877f * colorSaturationMult;
+          float   u = (b - y) * 0.492f * (colorSaturationMult * (yMax - yMin));
+          float   v = (r - y) * 0.877f * (colorSaturationMult * (yMax - yMin));
+          y = (y * (yMax - yMin)) + yMin;
           double  c = std::sqrt((u * u) + (v * v));
           if (double(y) < (c - 0.05) || double(y) > (1.05 - c)) {
             double  tmp = 0.5 / c;
@@ -650,8 +703,9 @@ namespace Plus4FLIConv {
             v = float(c * v);
           }
           if (haveAlpha) {
-            float   a =
-                float((unsigned char) pixelPtr[d - 1]) * (1.0f / 255.0f);
+            float   a = 0.0f;
+            if (pixelPtr)
+              a = float((unsigned char) pixelPtr[d - 1]) * (1.0f / 255.0f);
             y = (y * a) + (borderY * (1.0f - a));
             u = (u * a) + (borderU * (1.0f - a));
             v = (v * a) + (borderV * (1.0f - a));
