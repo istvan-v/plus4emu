@@ -40,6 +40,7 @@ int main(int argc, char **argv)
     {
       std::vector< std::string >    args;
       std::map< std::string, std::vector< std::string > >   optionTable;
+      optionTable["-border"].push_back("i:borderColor");
       optionTable["-outfmt"].push_back("i:outputFileFormat");
       optionTable["-compress"].push_back("i:prgCompressionLevel");
       bool    endOfOptions = false;
@@ -119,6 +120,10 @@ int main(int argc, char **argv)
                                    prgData, prgStartAddr, prgEndAddr)) {
       throw Plus4Emu::Exception("input file is not a PixelShop image");
     }
+    if (prgData.getConversionType() < 8) {
+      prgData.borderColor() =
+          (unsigned char) ((int(config["borderColor"]) & 0x7F) | 0x80);
+    }
     config.clearConfigurationChangeFlag();
     Plus4FLIConv::writeConvertedImageFile(outfileName.c_str(), prgData,
                                           prgEndAddr, -1,
@@ -131,6 +136,8 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "Usage: %s [OPTIONS...] infile.p4s outfile.prg\n",
                            argv[0]);
       std::fprintf(stderr, "Options:\n");
+      std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
+      std::fprintf(stderr, "        set border color\n");
       std::fprintf(stderr, "    -outfmt <N>         (0 to 3, default: 0)\n");
       std::fprintf(stderr, "        output file format, 0: PRG with viewer, "
                            "1: raw PRG,\n        2: PixelShop P4S, 3: FED "
