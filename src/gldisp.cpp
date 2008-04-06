@@ -376,6 +376,7 @@ namespace Plus4Emu {
       forceUpdateLineCnt(0),
       forceUpdateLineMask(0),
       redrawFlag(false),
+      yuvTextureMode(false),
       displayFrameRate(60.0),
       inputFrameRate(50.0),
       ringBufferReadPos(0.0),
@@ -746,9 +747,9 @@ namespace Plus4Emu {
   {
     if (shaderMode != (displayParameters.ntscMode ? 2 : 1))
       compileShader(displayParameters.ntscMode ? 2 : 1);
-    if (!enableShader()) {
-      drawFrame_quality2(lineBuffers_, x0, y0, x1, y1);
-      return;
+    if (enableShader() != yuvTextureMode) {
+      yuvTextureMode = !yuvTextureMode;
+      colormap32.setDisplayParameters(displayParameters, yuvTextureMode);
     }
     double  yOffs = (y1 - y0) * (-1.0 / 576.0);
     // interlace
@@ -1249,10 +1250,14 @@ namespace Plus4Emu {
           glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
         }
         displayParameters = msg->dp;
-        if (displayParameters.displayQuality < 3)
+        if (displayParameters.displayQuality < 3) {
+          yuvTextureMode = false;
           colormap16.setDisplayParameters(displayParameters, false);
-        else
+        }
+        else {
+          yuvTextureMode = true;
           colormap32.setDisplayParameters(displayParameters, true);
+        }
         for (size_t yc = 0; yc < 289; yc++)
           linesChanged[yc] = true;
       }

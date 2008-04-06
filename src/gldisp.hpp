@@ -63,6 +63,7 @@ namespace Plus4Emu {
     uint8_t       forceUpdateLineCnt;
     uint8_t       forceUpdateLineMask;
     bool          redrawFlag;
+    bool          yuvTextureMode;
     Timer         noInputTimer;
     Timer         forceUpdateTimer;
     Timer         displayFrameRateTimer;
