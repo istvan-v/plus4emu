@@ -33,7 +33,6 @@ namespace Plus4FLIConv {
      private:
       float   *buf;
       int     xShift;
-      bool    multiColorFlag;
      public:
       Line320();
       Line320(const Line320& r);
@@ -79,14 +78,6 @@ namespace Plus4FLIConv {
       inline void setXShift(int n)
       {
         xShift = n & 7;
-      }
-      inline bool getMultiColorFlag() const
-      {
-        return multiColorFlag;
-      }
-      inline void setMultiColorFlag(bool n)
-      {
-        multiColorFlag = n;
       }
     };
     // ------------------------
@@ -147,7 +138,8 @@ namespace Plus4FLIConv {
       float   u;
       float   v;
     };
-    float               yTable[9];
+    float   ditherYTable[9];
+    float   errorYTable[9];
     UVTableEntry        uvTable[15];
     YUVImage320x496     resizedImage;
     Image320x496        ditherErrorImage;

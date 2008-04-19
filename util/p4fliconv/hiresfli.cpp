@@ -29,8 +29,7 @@
 namespace Plus4FLIConv {
 
   P4FLI_HiResNoInterlace::Line320::Line320()
-    : xShift(0),
-      multiColorFlag(false)
+    : xShift(0)
   {
     buf = new float[352];
     for (size_t i = 0; i < 352; i++)
@@ -38,8 +37,7 @@ namespace Plus4FLIConv {
   }
 
   P4FLI_HiResNoInterlace::Line320::Line320(const Line320& r)
-    : xShift(r.xShift),
-      multiColorFlag(r.multiColorFlag)
+    : xShift(r.xShift)
   {
     buf = new float[352];
     for (size_t i = 0; i < 352; i++)
@@ -55,7 +53,6 @@ namespace Plus4FLIConv {
       P4FLI_HiResNoInterlace::Line320::operator=(const Line320& r)
   {
     xShift = r.xShift;
-    multiColorFlag = r.multiColorFlag;
     for (size_t i = 0; i < 352; i++)
       buf[i] = r.buf[i];
     return (*this);
@@ -133,7 +130,7 @@ namespace Plus4FLIConv {
   // --------------------------------------------------------------------------
 
   P4FLI_HiResNoInterlace::P4FLI_HiResNoInterlace()
-    : monitorGamma(1.33),
+    : monitorGamma(2.2),
       ditherLimit(0.25),
       ditherScale(0.95),
       ditherMode(1),
@@ -174,7 +171,7 @@ namespace Plus4FLIConv {
   void P4FLI_HiResNoInterlace::colorToUV(int c, float& u, float& v)
   {
     float   y = 0.0f;
-    FLIConverter::convertPlus4Color(c, y, u, v, monitorGamma);
+    FLIConverter::convertPlus4Color(c, y, u, v, monitorGamma * 0.44);
   }
 
   void P4FLI_HiResNoInterlace::createYTable()
@@ -183,7 +180,11 @@ namespace Plus4FLIConv {
       float   u = 0.0f;
       float   v = 0.0f;
       FLIConverter::convertPlus4Color((i == 0 ? 0 : (((i - 1) << 4) + 1)),
-                                      yTable[i], u, v, monitorGamma);
+                                      ditherYTable[i], u, v,
+                                      monitorGamma * 0.58666667);
+      FLIConverter::convertPlus4Color((i == 0 ? 0 : (((i - 1) << 4) + 1)),
+                                      errorYTable[i], u, v,
+                                      monitorGamma * 0.44);
     }
   }
 
@@ -197,7 +198,7 @@ namespace Plus4FLIConv {
 
   void P4FLI_HiResNoInterlace::checkParameters()
   {
-    limitValue(monitorGamma, 0.25, 4.0);
+    limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
     limitValue(ditherMode, 0, 5);
@@ -231,11 +232,15 @@ namespace Plus4FLIConv {
       return;
     int     l0 = prgData.l0(xcShifted, yc << 1);
     int     l1 = prgData.l1(xcShifted, yc << 1);
-    float   pixelValueOriginal = resizedImage.y()[yc].getPixel(xc);
+    float   pixelValueOriginal_ = resizedImage.y()[yc].getPixel(xc);
+    float   pixelValueOriginal =
+        float(std::pow(double(pixelValueOriginal_), 1.33333333));
     float   ditherError = ditherErrorImage[yc].getPixel(xc);
     float   pixelValueDithered = pixelValueOriginal + ditherError;
-    float   pixelValue0 = yTable[l0];
-    float   pixelValue1 = yTable[l1];
+    float   pixelValue0 = ditherYTable[l0];
+    float   pixelValue1 = ditherYTable[l1];
+    float   pixelValue0_ = errorYTable[l0];
+    float   pixelValue1_ = errorYTable[l1];
     bool    bitValue = false;
     if (ditherMode < 2 && pixelValue1 > pixelValue0) {
       // ordered dithering
@@ -262,11 +267,11 @@ namespace Plus4FLIConv {
                 < calculateError(pixelValue0, pixelValueDithered));
     // save quantized pixel value for error calculation
     float   newPixelValue = (bitValue ? pixelValue1 : pixelValue0);
-    if (calculateError(calculateError(pixelValue1, pixelValueOriginal),
-                       calculateError(pixelValue0, pixelValueOriginal))
+    if (calculateError(calculateError(pixelValue1_, pixelValueOriginal_),
+                       calculateError(pixelValue0_, pixelValueOriginal_))
         >= ditherLimit) {
-      bitValue = (calculateError(pixelValue1, pixelValueOriginal)
-                  < calculateError(pixelValue0, pixelValueOriginal));
+      bitValue = (calculateError(pixelValue1_, pixelValueOriginal_)
+                  < calculateError(pixelValue0_, pixelValueOriginal_));
     }
     prgData.setPixel(xcShifted, yc << 1, bitValue);
     if (ditherMode < 2)
@@ -310,8 +315,8 @@ namespace Plus4FLIConv {
   inline double P4FLI_HiResNoInterlace::calculateLuminanceError(float n,
                                                                 int l0, int l1)
   {
-    float   l_0 = yTable[l0];
-    float   l_1 = yTable[l1];
+    float   l_0 = errorYTable[l0];
+    float   l_1 = errorYTable[l1];
     double  err0 = calculateErrorSqr(l_0, n);
     double  err1 = calculateErrorSqr(l_1, n);
     double  err = (err0 < err1 ? err0 : err1);
@@ -349,9 +354,9 @@ namespace Plus4FLIConv {
       int     l1max = 0;
       if (luminanceSearchMode >= 2 && luminanceSearchMode <= 4) {
         for (int i = 0; i < nPixels; i++) {
-          while (l0min > 0 && tmpBuf[i] < yTable[l0min])
+          while (l0min > 0 && tmpBuf[i] < errorYTable[l0min])
             l0min--;
-          while (l1max < 8 && tmpBuf[i] > yTable[l1max])
+          while (l1max < 8 && tmpBuf[i] > errorYTable[l1max])
             l1max++;
         }
         if (l0min == l1max) {
@@ -373,12 +378,12 @@ namespace Plus4FLIConv {
         double  minErr0 = 1000000.0;
         double  minErr1 = 1000000.0;
         for (int i = 0; i < 9; i++) {
-          double  err = calculateError(yTable[i], minVal);
+          double  err = calculateError(errorYTable[i], minVal);
           if (err < minErr0) {
             l0min = i;
             minErr0 = err;
           }
-          err = calculateError(yTable[i], maxVal);
+          err = calculateError(errorYTable[i], maxVal);
           if (err < minErr1) {
             l1max = i;
             minErr1 = err;
@@ -407,8 +412,8 @@ namespace Plus4FLIConv {
         double  minErr = 1000000.0f;
         for (int l0tmp = l0min; l0tmp < l1max; l0tmp++) {
           for (int l1tmp = l0tmp + 1; l1tmp <= l1max; l1tmp++) {
-            float   minVal = yTable[l0tmp];
-            float   maxVal = yTable[l1tmp];
+            float   minVal = errorYTable[l0tmp];
+            float   maxVal = errorYTable[l1tmp];
             double  err = 0.0;
             for (int i = 0; i < nPixels; i++) {
               err += calculateLuminanceError(tmpBuf[i], l0tmp, l1tmp);
@@ -468,13 +473,13 @@ namespace Plus4FLIConv {
 
   void P4FLI_HiResNoInterlace::generateBitmaps(PRGData& prgData)
   {
-    for (int yc = 0; yc < 248; yc += 2) {
+    for (int yc = 0; yc < nLines; yc += 2) {
       for (int xc = 0; xc < 320; xc++)
         ditherPixel(prgData, xc, yc);
       for (int xc = 319; xc >= 0; xc--)
         ditherPixel(prgData, xc, yc + 1);
     }
-    for (int yc = 0; yc < 248; yc += 2) {
+    for (int yc = 0; yc < nLines; yc += 2) {
       for (int xc = 0; xc < 320; xc += 8) {
         // if all bits are 0 or 1, replace the bitmaps with
         // a dither pattern to improve color conversion
@@ -528,35 +533,33 @@ namespace Plus4FLIConv {
         int     c0tmp = 0;
         int     c1tmp = 0;
         double  err = 0.0;
-        {
-          float   u0 = 0.0f;
-          float   v0 = 0.0f;
-          float   u1 = 0.0f;
-          float   v1 = 0.0f;
-          if (l0 > 0) {
-            c0tmp = uvTable[i0].c;
-            u0 = uvTable[i0].u;
-            v0 = uvTable[i0].v;
-          }
-          if (l1 > 0) {
-            c1tmp = uvTable[i1].c;
-            u1 = uvTable[i1].u;
-            v1 = uvTable[i1].v;
-          }
-          for (int x = 0; x < 9; x++) {
-            bool    b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
-                                         yc << 1);
-            float   u_ = (b ? u1 : u0);
-            float   v_ = (b ? v1 : v0);
-            line0U.setPixelShifted(xc + (x * dir_), u_);
-            line0V.setPixelShifted(xc + (x * dir_), v_);
-            b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
-                                 (yc + 1L) << 1);
-            u_ = (b ? u1 : u0);
-            v_ = (b ? v1 : v0);
-            line1U.setPixelShifted(xc + (x * dir_), u_);
-            line1V.setPixelShifted(xc + (x * dir_), v_);
-          }
+        float   u0 = 0.0f;
+        float   v0 = 0.0f;
+        float   u1 = 0.0f;
+        float   v1 = 0.0f;
+        if (l0 > 0) {
+          c0tmp = uvTable[i0].c;
+          u0 = uvTable[i0].u;
+          v0 = uvTable[i0].v;
+        }
+        if (l1 > 0) {
+          c1tmp = uvTable[i1].c;
+          u1 = uvTable[i1].u;
+          v1 = uvTable[i1].v;
+        }
+        for (int x = 0; x < 9; x++) {
+          bool    b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
+                                       yc << 1);
+          float   u_ = (b ? u1 : u0);
+          float   v_ = (b ? v1 : v0);
+          line0U.setPixelShifted(xc + (x * dir_), u_);
+          line0V.setPixelShifted(xc + (x * dir_), v_);
+          b = prgData.getPixel(xc + ((x <= 7 ? x : 7) * dir_),
+                               (yc + 1L) << 1);
+          u_ = (b ? u1 : u0);
+          v_ = (b ? v1 : v0);
+          line1U.setPixelShifted(xc + (x * dir_), u_);
+          line1V.setPixelShifted(xc + (x * dir_), v_);
         }
         for (int j = 0; j < 16; j++) {
           int     x = j & 7;
@@ -583,15 +586,22 @@ namespace Plus4FLIConv {
             u_ *= 0.25f;
             v_ *= 0.25f;
           }
-          double  errU =
-              double(u_)
-              - double(resizedImage.u()[yc + ((j & 8) >> 3)].getPixelShifted(
-                           xc + (x * dir_)));
-          double  errV =
-              double(v_)
-              - double(resizedImage.v()[yc + ((j & 8) >> 3)].getPixelShifted(
-                           xc + (x * dir_)));
-          err = err + (errU * errU) + (errV * errV);
+          float   u = resizedImage.u()[yc + ((j & 8) >> 3)].getPixelShifted(
+                          xc + (x * dir_));
+          float   v = resizedImage.v()[yc + ((j & 8) >> 3)].getPixelShifted(
+                          xc + (x * dir_));
+          if (disablePAL && l0 == l1) {
+            if ((calculateErrorSqr(u1, u) + calculateErrorSqr(v1, v))
+                < (calculateErrorSqr(u0, u) + calculateErrorSqr(v0, v))) {
+              u_ = u1;
+              v_ = v1;
+            }
+            else {
+              u_ = u0;
+              v_ = v0;
+            }
+          }
+          err = err + calculateErrorSqr(u_, u) + calculateErrorSqr(v_, v);
           if (err > (minColorErr * 1.000001))
             break;
         }
@@ -599,6 +609,21 @@ namespace Plus4FLIConv {
           c0 = c0tmp;
           c1 = c1tmp;
           minColorErr = err;
+          if (disablePAL && l0 == l1) {
+            for (int l = 0; l < 2; l++) {
+              for (int x = 0; x < 8; x++) {
+                long    xc_ = xc + (x * dir_);
+                long    yc_ = yc + l;
+                float   u = resizedImage.u()[yc_].getPixelShifted(xc_);
+                float   v = resizedImage.v()[yc_].getPixelShifted(xc_);
+                prgData.setPixel(xc_, yc_ << 1,
+                                 ((calculateErrorSqr(u1, u)
+                                   + calculateErrorSqr(v1, v))
+                                  < (calculateErrorSqr(u0, u)
+                                     + calculateErrorSqr(v0, v))));
+              }
+            }
+          }
         }
         else {
           for (int i = 0; i < 9; i++) {
@@ -642,7 +667,7 @@ namespace Plus4FLIConv {
       float   borderU = 0.0f;
       float   borderV = 0.0f;
       FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
-                                      monitorGamma);
+                                      monitorGamma * 0.44);
       prgData.setConversionType(4);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
@@ -671,7 +696,7 @@ namespace Plus4FLIConv {
       int     randomSeed = 0;
       Plus4Emu::setRandomSeed(randomSeed,
                               Plus4Emu::Timer::getRandomSeedFromTime());
-      for (int yc = 0; yc < 248; yc++) {
+      for (int yc = 0; yc < nLines; yc++) {
         int     xShift_ = xShift0;
         if (xShift_ == -2)
           xShift_ = Plus4Emu::getRandomNumber(randomSeed) & 7;
@@ -682,7 +707,7 @@ namespace Plus4FLIConv {
         resizedImage.v()[yc].setXShift(xShift_);
       }
       if (!enable40ColumnMode) {
-        for (int yc = 0; yc < 248; yc++) {
+        for (int yc = 0; yc < nLines; yc++) {
           for (int i = 0; i < 8; i++) {
             resizedImage.y()[yc][i] = resizedImage.y()[yc][15 - i];
             resizedImage.y()[yc][312 + i] = resizedImage.y()[yc][311 - i];
@@ -691,6 +716,12 @@ namespace Plus4FLIConv {
             resizedImage.v()[yc][i] = resizedImage.v()[yc][15 - i];
             resizedImage.v()[yc][312 + i] = resizedImage.v()[yc][311 - i];
           }
+        }
+      }
+      for (int yc = 0; yc < nLines; yc++) {
+        for (int xc = 0; xc < 320; xc++) {
+          resizedImage.y()[yc][xc] =
+              float(std::pow(double(resizedImage.y()[yc][xc]), 0.704));
         }
       }
       for (int yc = 0; yc < nLines; yc += 2) {

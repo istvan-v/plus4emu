@@ -19,9 +19,11 @@ startAddr = $e504
 ; use alternate code that can decompress faster, but is larger by a few bytes
 .define FAST_LZ_MATCH_EXPAND    0
 
-        .org startAddr - 2
+        .setcpu "6502"
+        .code
         .byte <startAddr
         .byte >startAddr
+        .org startAddr
 
         .export decompressDataBlock
         .export decompressData

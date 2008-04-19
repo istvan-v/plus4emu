@@ -29,20 +29,16 @@
 namespace Plus4FLIConv {
 
   P4FLI_MultiColor::Line304::Line304()
-    : xShift(0),
-      multiColorFlag(false)
   {
-    buf = new float[336];
-    for (size_t i = 0; i < 336; i++)
+    buf = new float[304];
+    for (size_t i = 0; i < 304; i++)
       buf[i] = 0.0f;
   }
 
   P4FLI_MultiColor::Line304::Line304(const Line304& r)
-    : xShift(r.xShift),
-      multiColorFlag(r.multiColorFlag)
   {
-    buf = new float[336];
-    for (size_t i = 0; i < 336; i++)
+    buf = new float[304];
+    for (size_t i = 0; i < 304; i++)
       buf[i] = r.buf[i];
   }
 
@@ -54,25 +50,15 @@ namespace Plus4FLIConv {
   P4FLI_MultiColor::Line304&
       P4FLI_MultiColor::Line304::operator=(const Line304& r)
   {
-    xShift = r.xShift;
-    multiColorFlag = r.multiColorFlag;
-    for (size_t i = 0; i < 336; i++)
+    for (size_t i = 0; i < 304; i++)
       buf[i] = r.buf[i];
     return (*this);
   }
 
   void P4FLI_MultiColor::Line304::clear()
   {
-    for (size_t i = 16; i < 320; i++)
+    for (size_t i = 0; i < 304; i++)
       buf[i] = 0.0f;
-  }
-
-  void P4FLI_MultiColor::Line304::setBorderColor(float c)
-  {
-    for (size_t i = 0; i < 16; i++) {
-      buf[i] = c;
-      buf[i + 320] = c;
-    }
   }
 
   // --------------------------------------------------------------------------
@@ -131,7 +117,7 @@ namespace Plus4FLIConv {
   // --------------------------------------------------------------------------
 
   P4FLI_MultiColor::P4FLI_MultiColor()
-    : monitorGamma(1.33),
+    : monitorGamma(2.2),
       ditherLimit(0.25),
       ditherScale(0.95),
       ditherMode(1),
@@ -143,7 +129,13 @@ namespace Plus4FLIConv {
       luminance1BitMode(false),
       ditheredImage((int *) 0),
       errorTable((double *) 0),
-      xShiftTable((int *) 0)
+      xShiftTable((int *) 0),
+      ditherPaletteY((float *) 0),
+      ditherPaletteU((float *) 0),
+      ditherPaletteV((float *) 0),
+      errorPaletteY((float *) 0),
+      errorPaletteU((float *) 0),
+      errorPaletteV((float *) 0)
   {
     try {
       ditheredImage = new int[304 * 248];
@@ -172,6 +164,8 @@ namespace Plus4FLIConv {
     delete[] ditheredImage;
     delete[] errorTable;
     delete[] xShiftTable;
+    if (ditherPaletteY)         // NOTE: all palettes are allocated
+      delete[] ditherPaletteY;  // as a single block of memory
   }
 
   void P4FLI_MultiColor::pixelStoreCallback(void *userData, int xc, int yc,
@@ -191,7 +185,7 @@ namespace Plus4FLIConv {
 
   void P4FLI_MultiColor::checkParameters()
   {
-    limitValue(monitorGamma, 0.25, 4.0);
+    limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
     limitValue(ditherMode, 0, 5);
@@ -586,46 +580,87 @@ namespace Plus4FLIConv {
     return minErr;
   }
 
+  void P4FLI_MultiColor::initializePalettes()
+  {
+    if (!ditherPaletteY) {
+      ditherPaletteY = new float[768];
+      ditherPaletteU = &(ditherPaletteY[128]);
+      ditherPaletteV = &(ditherPaletteY[256]);
+      errorPaletteY = &(ditherPaletteY[384]);
+      errorPaletteU = &(ditherPaletteY[512]);
+      errorPaletteV = &(ditherPaletteY[640]);
+    }
+    for (int i = 0; i < 128; i++) {
+      FLIConverter::convertPlus4Color(i, ditherPaletteY[i], ditherPaletteU[i],
+                                      ditherPaletteV[i], monitorGamma / 1.65);
+      FLIConverter::convertPlus4Color(i, errorPaletteY[i], errorPaletteU[i],
+                                      errorPaletteV[i], monitorGamma * 0.44);
+    }
+  }
+
   void P4FLI_MultiColor::createErrorTable(double colorErrorScale)
   {
     limitValue(colorErrorScale, 0.05, 1.0);
     for (int c0 = 0; c0 < 128; c0++) {
-      float   c0y = 0.0f;
-      float   c0u = 0.0f;
-      float   c0v = 0.0f;
-      FLIConverter::convertPlus4Color(c0, c0y, c0u, c0v, monitorGamma * 0.75);
       for (int c1 = 0; c1 < 128; c1++) {
-        float   c1y = 0.0f;
-        float   c1u = 0.0f;
-        float   c1v = 0.0f;
-        FLIConverter::convertPlus4Color(c1, c1y, c1u, c1v, monitorGamma * 0.75);
         errorTable[(c0 << 7) | c1] =
-            calculateErrorSqr(c0y, c1y)
-            + (calculateErrorSqr(c0u, c1u) * colorErrorScale)
-            + (calculateErrorSqr(c0v, c1v) * colorErrorScale);
+            calculateErrorSqr(errorPaletteY[c0], errorPaletteY[c1])
+            + ((calculateErrorSqr(errorPaletteU[c0], errorPaletteU[c1])
+                + calculateErrorSqr(errorPaletteV[c0], errorPaletteV[c1]))
+               * colorErrorScale);
       }
     }
   }
 
+  int P4FLI_MultiColor::findNearestColor(
+      float y, float u, float v,
+      const float *paletteY, const float *paletteU, const float *paletteV)
+  {
+    int     l = 0;
+    int     c = 0;
+    if (!luminance1BitMode) {
+      double  minErr = 1000000.0;
+      for (int i = 0; i < 9; i++) {
+        float   y_ = paletteY[(i != 0 ? (((i - 1) << 4) + 1) : 0)];
+        double  err = calculateErrorSqr(y, y_);
+        if (err < minErr) {
+          l = i;
+          minErr = err;
+        }
+      }
+    }
+    else {
+      l = (y < 0.5f ? 0 : 8);
+    }
+    if (l != 0) {
+      double  minErr = 1000000.0;
+      for (int i = 1; i < 16; i++) {
+        double  err = calculateErrorSqr(u, paletteU[i + 64])
+                      + calculateErrorSqr(v, paletteV[i + 64]);
+        if (err < minErr) {
+          c = i;
+          minErr = err;
+        }
+      }
+    }
+    return ((l != 0 ? ((l - 1) << 4) : 0) + c);
+  }
+
   void P4FLI_MultiColor::ditherLine(long yc)
   {
-    float   paletteY[128];
-    float   paletteU[128];
-    float   paletteV[128];
-    for (int i = 0; i < 128; i++) {
-      FLIConverter::convertPlus4Color(i, paletteY[i], paletteU[i], paletteV[i],
-                                      monitorGamma);
-    }
     if (ditherMode < 2) {
       // ordered dithering
       float   luminanceTable[9];
+      float   luminanceTable_[9];
       float   hueTable[15];
       int     hueIndexTable[15];
-      for (int i = 0; i < 9; i++)
-        luminanceTable[i] = paletteY[(i == 0 ? 0 : (((i - 1) << 4) + 1))];
+      for (int i = 0; i < 9; i++) {
+        luminanceTable[i] = ditherPaletteY[(i == 0 ? 0 : (((i - 1) << 4) + 1))];
+        luminanceTable_[i] = errorPaletteY[(i == 0 ? 0 : (((i - 1) << 4) + 1))];
+      }
       for (int i = 0; i < 14; i++) {
-        float   u = paletteU[66 + i];
-        float   v = paletteV[66 + i];
+        float   u = ditherPaletteU[66 + i];
+        float   v = ditherPaletteV[66 + i];
         double  phs = std::atan2(double(v), double(u)) / (2.0 * 3.14159265);
         if (phs < 0.0)
           phs = phs + 1.0;
@@ -655,6 +690,7 @@ namespace Plus4FLIConv {
         ditherTable_ = &(ditherTable_Bayer[0]);
       for (long xc = 0L; xc < 304L; xc++) {
         float   y = resizedImage.y()[yc].getPixel(xc);
+        float   y_ = float(std::pow(double(y), 0.726));
         float   u = resizedImage.u()[yc].getPixel(xc);
         float   v = resizedImage.v()[yc].getPixel(xc);
         float   s = float(std::sqrt(double(u * u) + double(v * v)));
@@ -670,11 +706,11 @@ namespace Plus4FLIConv {
             li0++;
           li1 = li0 + 1;
         }
-        if (calculateError(calculateError(y, luminanceTable[li0]),
-                           calculateError(y, luminanceTable[li1]))
+        if (calculateError(calculateError(y_, luminanceTable_[li0]),
+                           calculateError(y_, luminanceTable_[li1]))
             >= ditherLimit) {
-          if (calculateError(y, luminanceTable[li0])
-              > calculateError(y, luminanceTable[li1])) {
+          if (calculateError(y_, luminanceTable_[li0])
+              > calculateError(y_, luminanceTable_[li1])) {
             li0 = li1;
           }
         }
@@ -708,19 +744,12 @@ namespace Plus4FLIConv {
         xc = 303L - xc;
       // find the palette color nearest the original pixel
       float   y0 = resizedImage.y()[yc].getPixel(xc);
+      float   y0_ = float(std::pow(double(y0), 0.726));
       float   u0 = resizedImage.u()[yc].getPixel(xc);
       float   v0 = resizedImage.v()[yc].getPixel(xc);
-      int     c0 = 0;
-      double  minErr0 = 1000000.0;
-      for (int i = (luminance1BitMode ? 112 : 0); i < 128; i++) {
-        double  err = calculateErrorSqr(paletteY[i], y0)
-                      + (calculateErrorSqr(paletteU[i], u0) * 0.0625)
-                      + (calculateErrorSqr(paletteV[i], v0) * 0.0625);
-        if (err < minErr0) {
-          c0 = i;
-          minErr0 = err;
-        }
-      }
+      int     c0 =
+          findNearestColor(y0_, u0, v0,
+                           errorPaletteY, errorPaletteU, errorPaletteV);
       // find the palette color nearest the original pixel with error added
       float   y = y0 + ditherErrorImage.y()[yc].getPixel(xc);
       float   u = u0 + ditherErrorImage.u()[yc].getPixel(xc);
@@ -734,34 +763,25 @@ namespace Plus4FLIConv {
           v = v * tmp;
         }
       }
-      int     c = 0;
-      double  minErr = 1000000.0;
-      for (int i = (luminance1BitMode ? 112 : 0); i < 128; i++) {
-        double  err = calculateErrorSqr(paletteY[i], y)
-                      + (calculateErrorSqr(paletteU[i], u) * 0.0625)
-                      + (calculateErrorSqr(paletteV[i], v) * 0.0625);
-        if (err < minErr) {
-          c = i;
-          minErr = err;
-        }
-      }
-      if (calculateError(
-              std::sqrt(minErr0),
-              std::sqrt(calculateErrorSqr(paletteY[c], y0)
-                        + (calculateErrorSqr(paletteU[c], u0) * 0.0625)
-                        + (calculateErrorSqr(paletteV[c], v0) * 0.0625)))
-          < ditherLimit) {
-        ditheredImage[yc * 304L + xc] = c;
-      }
-      else {
-        ditheredImage[yc * 304L + xc] = c0;
-      }
+      int     c =
+          findNearestColor(y, u, v,
+                           ditherPaletteY, ditherPaletteU, ditherPaletteV);
+      double  err0 = std::sqrt(calculateErrorSqr(errorPaletteY[c0], y0_)
+                               + ((calculateErrorSqr(errorPaletteU[c0], u0)
+                                   + calculateErrorSqr(errorPaletteV[c0], v0))
+                                  * 0.125));
+      double  err = std::sqrt(calculateErrorSqr(errorPaletteY[c], y0_)
+                              + ((calculateErrorSqr(errorPaletteU[c], u0)
+                                  + calculateErrorSqr(errorPaletteV[c], v0))
+                                 * 0.125));
+      ditheredImage[yc * 304L + xc] =
+          (calculateError(err, err0) < ditherLimit ? c : c0);
       y = y0 + ((y - y0) * float(ditherScale));
       u = u0 + ((u - u0) * float(ditherScale));
       v = v0 + ((v - v0) * float(ditherScale));
-      float   errY = y - paletteY[c];
-      float   errU = u - paletteU[c];
-      float   errV = v - paletteV[c];
+      float   errY = y - ditherPaletteY[c];
+      float   errU = u - ditherPaletteU[c];
+      float   errV = v - ditherPaletteV[c];
       const int *errMultTbl = &(ditherTable_FloydSteinberg[0]);
       switch (ditherMode) {
       case 3:
@@ -820,13 +840,6 @@ namespace Plus4FLIConv {
       }
     }
     bool    color0ChangeEnabled = (nLines <= 200 || xs[1] == xs[0]);
-    std::vector< float >  paletteY(128);
-    std::vector< float >  paletteU(128);
-    std::vector< float >  paletteV(128);
-    for (int i = 0; i < 128; i++) {
-      FLIConverter::convertPlus4Color(i, paletteY[i], paletteU[i], paletteV[i],
-                                      monitorGamma);
-    }
     // find the set of colors that needs to be searched for optimal conversion
     std::vector< int >  colorTable0;                    // for color #0 and #3
     std::vector< std::vector< int > >   colorTables;    // for color #1 and #2
@@ -846,9 +859,9 @@ namespace Plus4FLIConv {
         float   minV = 1.0f;
         float   maxV = -1.0f;
         for (int j = 0; j < attrBlocks[i].nColors; j++) {
-          float   y = paletteY[attrBlocks[i].pixelColorCodes[j]];
-          float   u = paletteU[attrBlocks[i].pixelColorCodes[j]];
-          float   v = paletteV[attrBlocks[i].pixelColorCodes[j]];
+          float   y = errorPaletteY[attrBlocks[i].pixelColorCodes[j]];
+          float   u = errorPaletteU[attrBlocks[i].pixelColorCodes[j]];
+          float   v = errorPaletteV[attrBlocks[i].pixelColorCodes[j]];
           minY = (y < minY ? y : minY);
           maxY = (y > maxY ? y : maxY);
           minU = (u < minU ? u : minU);
@@ -885,9 +898,9 @@ namespace Plus4FLIConv {
         for (int j = 0; j < 128; j++) {
           if (j > 0 && (j & 15) == 0)
             continue;
-          float   y = paletteY[j];
-          float   u = paletteU[j];
-          float   v = paletteV[j];
+          float   y = errorPaletteY[j];
+          float   u = errorPaletteU[j];
+          float   v = errorPaletteV[j];
           if (y > minY && y < maxY &&
               ((j & 15) == 1 ||
                (u > minU && u < maxU && v > minV && v < maxV))) {
@@ -916,9 +929,9 @@ namespace Plus4FLIConv {
       for (int j = 0; j < 128; j++) {
         if (j > 0 && (j & 15) == 0)
           continue;
-        float   y = paletteY[j];
-        float   u = paletteU[j];
-        float   v = paletteV[j];
+        float   y = errorPaletteY[j];
+        float   u = errorPaletteU[j];
+        float   v = errorPaletteV[j];
         if (y > minY0 && y < maxY0 &&
             ((j & 15) == 1 ||
              (u > minU0 && u < maxU0 && v > minV0 && v < maxV0))) {
@@ -1314,29 +1327,24 @@ namespace Plus4FLIConv {
       conversionQuality = config["multiColorQuality"];
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
+      initializePalettes();
       createErrorTable(double(config["mcColorErrorScale"]));
-      float   borderY = 0.0f;
-      float   borderU = 0.0f;
-      float   borderV = 0.0f;
-      FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
-                                      monitorGamma);
       prgData.setConversionType(1);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
       prgData.setVerticalSize(nLines);
       for (int yc = 0; yc < 248; yc++) {
         resizedImage.y()[yc].clear();
-        resizedImage.y()[yc].setBorderColor(borderY);
         resizedImage.u()[yc].clear();
-        resizedImage.u()[yc].setBorderColor(borderU);
         resizedImage.v()[yc].clear();
-        resizedImage.v()[yc].setBorderColor(borderV);
         ditherErrorImage.y()[yc].clear();
         ditherErrorImage.u()[yc].clear();
         ditherErrorImage.v()[yc].clear();
       }
       imgConv.setImageSize(608, nLines * 2);
       imgConv.setPixelAspectRatio(1.0f);
+      imgConv.setGammaCorrection(float(double(config["gammaCorrection"])),
+                                 float(double(config["monitorGamma"]) / 1.65));
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
       // initialize horizontal scroll table

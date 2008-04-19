@@ -111,7 +111,8 @@ namespace Plus4FLIConv {
       float   u;
       float   v;
     };
-    float               yTable[9];
+    float   ditherYTable[9];
+    float   errorYTable[9];
     UVTableEntry        uvTable[15];
     YUVImage320x200     resizedImage;
     Image320x200        ditherErrorImage;

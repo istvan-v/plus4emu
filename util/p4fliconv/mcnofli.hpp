@@ -38,23 +38,21 @@ namespace Plus4FLIConv {
       virtual ~Line160();
       Line160& operator=(const Line160& r);
       void clear();
-      void setBorderColor(float c);
       inline float& operator[](long n)
       {
-        return buf[n + 16L];
+        return buf[n];
       }
       inline float& pixel(long x)
       {
-        return buf[x + 16L];
+        return buf[x];
       }
       inline float getPixel(long x) const
       {
-        return buf[x + 16L];
+        return buf[x];
       }
       inline void setPixel(long x, float n)
       {
-        if (x >= 0L && x < 160L)
-          buf[x + 16L] = n;
+        buf[x] = n;
       }
     };
     // ------------------------
@@ -125,10 +123,21 @@ namespace Plus4FLIConv {
     YUVImage160x200 ditherErrorImage;
     int     *ditheredImage;
     double  *errorTable;
+    float   *ditherPaletteY;
+    float   *ditherPaletteU;
+    float   *ditherPaletteV;
+    float   *errorPaletteY;
+    float   *errorPaletteU;
+    float   *errorPaletteV;
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void checkParameters();
+    void initializePalettes();
     void createErrorTable(double colorErrorScale);
+    int findNearestColor(float y, float u, float v,
+                         const float *paletteY,
+                         const float *paletteU,
+                         const float *paletteV);
     void ditherLine(long yc);
     bool convertImage(PRGData& prgData, double& totalError);
    public:

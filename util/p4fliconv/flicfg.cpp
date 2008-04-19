@@ -116,7 +116,7 @@ namespace Plus4FLIConv {
     (*this)["gammaCorrection"].setCallback(&configChangeCallbackFloat,
                                            (void *) this, true);
     createKey("monitorGamma", monitorGamma);
-    (*this)["monitorGamma"].setRange(0.25, 4.0);
+    (*this)["monitorGamma"].setRange(1.0, 4.0);
     (*this)["monitorGamma"].setCallback(&configChangeCallbackFloat,
                                         (void *) this, true);
     createKey("ditherMode", ditherMode);
@@ -260,9 +260,9 @@ namespace Plus4FLIConv {
     offsetX = 0.0;
     offsetY = 0.0;
     saturationMult = 1.0;
-    saturationPow = 0.8;
+    saturationPow = 0.9;
     gammaCorrection = 1.0;
-    monitorGamma = 1.33;
+    monitorGamma = 2.2;
     ditherMode = 1;
     ditherLimit = 0.25;
     ditherDiffusion = 0.95;

@@ -32,61 +32,27 @@ namespace Plus4FLIConv {
     class Line304 {
      private:
       float   *buf;
-      int     xShift;
-      bool    multiColorFlag;
      public:
       Line304();
       Line304(const Line304& r);
       virtual ~Line304();
       Line304& operator=(const Line304& r);
       void clear();
-      void setBorderColor(float c);
       inline float& operator[](long n)
       {
-        return buf[n + 16L];
+        return buf[n];
       }
       inline float& pixel(long x)
       {
-        return buf[x + 16L];
-      }
-      inline float& pixelShifted(long x)
-      {
-        return buf[x + 16L + xShift];
+        return buf[x];
       }
       inline float getPixel(long x) const
       {
-        return buf[x + 16L];
-      }
-      inline float getPixelShifted(long x) const
-      {
-        return buf[x + 16L + xShift];
+        return buf[x];
       }
       inline void setPixel(long x, float n)
       {
-        if (x >= 0L && x < 304L)
-          buf[x + 16L] = n;
-      }
-      inline void setPixelShifted(long x, float n)
-      {
-        long    x_ = x + xShift;
-        if (x_ >= 0L && x_ < 304L)
-          buf[x_ + 16L] = n;
-      }
-      inline int getXShift() const
-      {
-        return xShift;
-      }
-      inline void setXShift(int n)
-      {
-        xShift = n & 7;
-      }
-      inline bool getMultiColorFlag() const
-      {
-        return multiColorFlag;
-      }
-      inline void setMultiColorFlag(bool n)
-      {
-        multiColorFlag = n;
+        buf[x] = n;
       }
     };
     // ------------------------
@@ -174,10 +140,21 @@ namespace Plus4FLIConv {
     int     *ditheredImage;
     double  *errorTable;
     int     *xShiftTable;
+    float   *ditherPaletteY;
+    float   *ditherPaletteU;
+    float   *ditherPaletteV;
+    float   *errorPaletteY;
+    float   *errorPaletteU;
+    float   *errorPaletteV;
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void checkParameters();
+    void initializePalettes();
     void createErrorTable(double colorErrorScale);
+    int findNearestColor(float y, float u, float v,
+                         const float *paletteY,
+                         const float *paletteU,
+                         const float *paletteV);
     void ditherLine(long yc);
     double convertTwoLines(PRGData& prgData, long yc, bool oddField);
    public:

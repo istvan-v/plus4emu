@@ -42,7 +42,7 @@
 #include <FL/Fl_Shared_Image.H>
 
 static const float brightnessToYTable[9] = {
-  2.00f,  2.40f,  2.55f,  2.70f,  2.90f,  3.30f,  3.60f,  4.10f,  4.80f
+  2.00f,  2.42f,  2.60f,  2.70f,  2.90f,  3.35f,  3.75f,  4.10f,  4.80f
 };
 
 static const float colorPhaseTablePAL[16] = {
@@ -365,8 +365,9 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
                                       float(double(config["scaleY"])),
                                       float(double(config["offsetX"])),
                                       float(double(config["offsetY"])));
-          imgConv.setGammaCorrection(float(double(config["gammaCorrection"])),
-                                     float(double(config["monitorGamma"])));
+          imgConv.setGammaCorrection(
+              float(double(config["gammaCorrection"])),
+              float(double(config["monitorGamma"]) * 0.625));
           imgConv.setLuminanceRange(float(double(config["yMin"])),
                                     float(double(config["yMax"])));
           imgConv.setColorSaturation(float(double(config["saturationMult"])),

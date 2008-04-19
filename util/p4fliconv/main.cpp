@@ -217,8 +217,9 @@ int main(int argc, char **argv)
                                     float(double(config["scaleY"])),
                                     float(double(config["offsetX"])),
                                     float(double(config["offsetY"])));
-        imgConv.setGammaCorrection(float(double(config["gammaCorrection"])),
-                                   float(double(config["monitorGamma"])));
+        imgConv.setGammaCorrection(
+            float(double(config["gammaCorrection"])),
+            float(double(config["monitorGamma"]) * 0.625));
         imgConv.setLuminanceRange(float(double(config["yMin"])),
                                   float(double(config["yMax"])));
         imgConv.setColorSaturation(float(double(config["saturationMult"])),
@@ -300,9 +301,9 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        scale image size\n");
       std::fprintf(stderr, "    -offset <X> <Y>     (defaults: 0.0, 0.0)\n");
       std::fprintf(stderr, "        set image position offset\n");
-      std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.8)\n");
+      std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.9)\n");
       std::fprintf(stderr, "        color saturation scale and power\n");
-      std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 1.33)\n");
+      std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 2.2)\n");
       std::fprintf(stderr, "        set gamma correction (G) and assumed "
                            "monitor gamma (M)\n");
       std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 1, 0.25, "

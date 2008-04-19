@@ -38,23 +38,21 @@ namespace Plus4FLIConv {
       virtual ~Line128();
       Line128& operator=(const Line128& r);
       void clear();
-      void setBorderColor(float c);
       inline float& operator[](long n)
       {
-        return buf[n + 16L];
+        return buf[n];
       }
       inline float& pixel(long x)
       {
-        return buf[x + 16L];
+        return buf[x];
       }
       inline float getPixel(long x) const
       {
-        return buf[x + 16L];
+        return buf[x];
       }
       inline void setPixel(long x, float n)
       {
-        if (x >= 0L && x < 128L)
-          buf[x + 16L] = n;
+        buf[x] = n;
       }
     };
     // ------------------------
@@ -82,7 +80,8 @@ namespace Plus4FLIConv {
     Image128x64 ditherErrorImage;
     int     *ditheredImage;
     int     colorTable[4];
-    float   yTable[9];
+    float   ditherYTable[9];
+    float   errorYTable[9];
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void checkParameters();

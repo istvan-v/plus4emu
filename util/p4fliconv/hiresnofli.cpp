@@ -126,7 +126,7 @@ namespace Plus4FLIConv {
   // --------------------------------------------------------------------------
 
   P4FLI_HiResNoFLI::P4FLI_HiResNoFLI()
-    : monitorGamma(1.33),
+    : monitorGamma(2.2),
       ditherLimit(0.25),
       ditherScale(0.95),
       ditherMode(1),
@@ -162,7 +162,7 @@ namespace Plus4FLIConv {
   void P4FLI_HiResNoFLI::colorToUV(int c, float& u, float& v)
   {
     float   y = 0.0f;
-    FLIConverter::convertPlus4Color(c, y, u, v, monitorGamma);
+    FLIConverter::convertPlus4Color(c, y, u, v, monitorGamma * 0.44);
   }
 
   void P4FLI_HiResNoFLI::createYTable()
@@ -171,7 +171,11 @@ namespace Plus4FLIConv {
       float   u = 0.0f;
       float   v = 0.0f;
       FLIConverter::convertPlus4Color((i == 0 ? 0 : (((i - 1) << 4) + 1)),
-                                      yTable[i], u, v, monitorGamma);
+                                      ditherYTable[i], u, v,
+                                      monitorGamma * 0.58666667);
+      FLIConverter::convertPlus4Color((i == 0 ? 0 : (((i - 1) << 4) + 1)),
+                                      errorYTable[i], u, v,
+                                      monitorGamma * 0.44);
     }
   }
 
@@ -185,7 +189,7 @@ namespace Plus4FLIConv {
 
   void P4FLI_HiResNoFLI::checkParameters()
   {
-    limitValue(monitorGamma, 0.25, 4.0);
+    limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
     limitValue(ditherMode, 0, 5);
@@ -213,11 +217,15 @@ namespace Plus4FLIConv {
       return;
     int     l0 = prgData.l0(xc, (yc & (~(long(7)))) << 1);
     int     l1 = prgData.l1(xc, (yc & (~(long(7)))) << 1);
-    float   pixelValueOriginal = resizedImage.y()[yc].getPixel(xc);
+    float   pixelValueOriginal_ = resizedImage.y()[yc].getPixel(xc);
+    float   pixelValueOriginal =
+        float(std::pow(double(pixelValueOriginal_), 1.33333333));
     float   ditherError = ditherErrorImage[yc].getPixel(xc);
     float   pixelValueDithered = pixelValueOriginal + ditherError;
-    float   pixelValue0 = yTable[l0];
-    float   pixelValue1 = yTable[l1];
+    float   pixelValue0 = ditherYTable[l0];
+    float   pixelValue1 = ditherYTable[l1];
+    float   pixelValue0_ = errorYTable[l0];
+    float   pixelValue1_ = errorYTable[l1];
     bool    bitValue = false;
     if (ditherMode < 2 && pixelValue1 > pixelValue0) {
       // ordered dithering
@@ -244,11 +252,11 @@ namespace Plus4FLIConv {
                 < calculateError(pixelValue0, pixelValueDithered));
     // save quantized pixel value for error calculation
     float   newPixelValue = (bitValue ? pixelValue1 : pixelValue0);
-    if (calculateError(calculateError(pixelValue1, pixelValueOriginal),
-                       calculateError(pixelValue0, pixelValueOriginal))
+    if (calculateError(calculateError(pixelValue1_, pixelValueOriginal_),
+                       calculateError(pixelValue0_, pixelValueOriginal_))
         >= ditherLimit) {
-      bitValue = (calculateError(pixelValue1, pixelValueOriginal)
-                  < calculateError(pixelValue0, pixelValueOriginal));
+      bitValue = (calculateError(pixelValue1_, pixelValueOriginal_)
+                  < calculateError(pixelValue0_, pixelValueOriginal_));
     }
     prgData.setPixel(xc, yc << 1, bitValue);
     if (ditherMode < 2)
@@ -292,8 +300,8 @@ namespace Plus4FLIConv {
   inline double P4FLI_HiResNoFLI::calculateLuminanceError(float n,
                                                           int l0, int l1)
   {
-    float   l_0 = yTable[l0];
-    float   l_1 = yTable[l1];
+    float   l_0 = errorYTable[l0];
+    float   l_1 = errorYTable[l1];
     double  err0 = calculateErrorSqr(l_0, n);
     double  err1 = calculateErrorSqr(l_1, n);
     double  err = (err0 < err1 ? err0 : err1);
@@ -330,9 +338,9 @@ namespace Plus4FLIConv {
       int     l1max = 0;
       if (luminanceSearchMode >= 2 && luminanceSearchMode <= 4) {
         for (int i = 0; i < nPixels; i++) {
-          while (l0min > 0 && tmpBuf[i] < yTable[l0min])
+          while (l0min > 0 && tmpBuf[i] < errorYTable[l0min])
             l0min--;
-          while (l1max < 8 && tmpBuf[i] > yTable[l1max])
+          while (l1max < 8 && tmpBuf[i] > errorYTable[l1max])
             l1max++;
         }
         if (l0min == l1max) {
@@ -354,12 +362,12 @@ namespace Plus4FLIConv {
         double  minErr0 = 1000000.0;
         double  minErr1 = 1000000.0;
         for (int i = 0; i < 9; i++) {
-          double  err = calculateError(yTable[i], minVal);
+          double  err = calculateError(errorYTable[i], minVal);
           if (err < minErr0) {
             l0min = i;
             minErr0 = err;
           }
-          err = calculateError(yTable[i], maxVal);
+          err = calculateError(errorYTable[i], maxVal);
           if (err < minErr1) {
             l1max = i;
             minErr1 = err;
@@ -388,8 +396,8 @@ namespace Plus4FLIConv {
         double  minErr = 1000000.0f;
         for (int l0tmp = l0min; l0tmp < l1max; l0tmp++) {
           for (int l1tmp = l0tmp + 1; l1tmp <= l1max; l1tmp++) {
-            float   minVal = yTable[l0tmp];
-            float   maxVal = yTable[l1tmp];
+            float   minVal = errorYTable[l0tmp];
+            float   maxVal = errorYTable[l1tmp];
             double  err = 0.0;
             for (int i = 0; i < nPixels; i++) {
               err += calculateLuminanceError(tmpBuf[i], l0tmp, l1tmp);
@@ -497,30 +505,28 @@ namespace Plus4FLIConv {
         int     c0tmp = 0;
         int     c1tmp = 0;
         double  err = 0.0;
-        {
-          float   u0 = 0.0f;
-          float   v0 = 0.0f;
-          float   u1 = 0.0f;
-          float   v1 = 0.0f;
-          if (l0 > 0) {
-            c0tmp = uvTable[i0].c;
-            u0 = uvTable[i0].u;
-            v0 = uvTable[i0].v;
-          }
-          if (l1 > 0) {
-            c1tmp = uvTable[i1].c;
-            u1 = uvTable[i1].u;
-            v1 = uvTable[i1].v;
-          }
-          for (int l = 0; l < 8; l++) {
-            for (int x = 0; x < 9; x++) {
-              bool    b =
-                  prgData.getPixel(xc + (x <= 7 ? x : 7), (yc + l) << 1);
-              float   u_ = (b ? u1 : u0);
-              float   v_ = (b ? v1 : v0);
-              lineU[l].setPixel(xc + x, u_);
-              lineV[l].setPixel(xc + x, v_);
-            }
+        float   u0 = 0.0f;
+        float   v0 = 0.0f;
+        float   u1 = 0.0f;
+        float   v1 = 0.0f;
+        if (l0 > 0) {
+          c0tmp = uvTable[i0].c;
+          u0 = uvTable[i0].u;
+          v0 = uvTable[i0].v;
+        }
+        if (l1 > 0) {
+          c1tmp = uvTable[i1].c;
+          u1 = uvTable[i1].u;
+          v1 = uvTable[i1].v;
+        }
+        for (int l = 0; l < 8; l++) {
+          for (int x = 0; x < 9; x++) {
+            bool    b =
+                prgData.getPixel(xc + (x <= 7 ? x : 7), (yc + l) << 1);
+            float   u_ = (b ? u1 : u0);
+            float   v_ = (b ? v1 : v0);
+            lineU[l].setPixel(xc + x, u_);
+            lineV[l].setPixel(xc + x, v_);
           }
         }
         for (int l = 0; l < 8; l++) {
@@ -552,11 +558,20 @@ namespace Plus4FLIConv {
               u_ *= 0.25f;
               v_ *= 0.25f;
             }
-            double  errU =
-                double(u_) - double(resizedImage.u()[yc + l].getPixel(xc + x));
-            double  errV =
-                double(v_) - double(resizedImage.v()[yc + l].getPixel(xc + x));
-            err = err + (errU * errU) + (errV * errV);
+            float   u = resizedImage.u()[yc + l].getPixel(xc + x);
+            float   v = resizedImage.v()[yc + l].getPixel(xc + x);
+            if (disablePAL && l0 == l1) {
+              if ((calculateErrorSqr(u1, u) + calculateErrorSqr(v1, v))
+                  < (calculateErrorSqr(u0, u) + calculateErrorSqr(v0, v))) {
+                u_ = u1;
+                v_ = v1;
+              }
+              else {
+                u_ = u0;
+                v_ = v0;
+              }
+            }
+            err = err + calculateErrorSqr(u_, u) + calculateErrorSqr(v_, v);
             if (err > (minColorErr * 1.000001))
               break;
           }
@@ -565,6 +580,19 @@ namespace Plus4FLIConv {
           c0 = c0tmp;
           c1 = c1tmp;
           minColorErr = err;
+          if (disablePAL && l0 == l1) {
+            for (int l = 0; l < 8; l++) {
+              for (int x = 0; x < 8; x++) {
+                float   u = resizedImage.u()[yc + l].getPixel(xc + x);
+                float   v = resizedImage.v()[yc + l].getPixel(xc + x);
+                prgData.setPixel(xc + x, (yc + l) << 1,
+                                 ((calculateErrorSqr(u1, u)
+                                   + calculateErrorSqr(v1, v))
+                                  < (calculateErrorSqr(u0, u)
+                                     + calculateErrorSqr(v0, v))));
+              }
+            }
+          }
         }
         else {
           for (int l = 0; l < 8; l++) {
@@ -604,7 +632,7 @@ namespace Plus4FLIConv {
       float   borderU = 0.0f;
       float   borderV = 0.0f;
       FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
-                                      monitorGamma);
+                                      monitorGamma * 0.44);
       prgData.setConversionType(6);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
@@ -628,6 +656,12 @@ namespace Plus4FLIConv {
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
       progressMessage("Calculating FLI data");
+      for (int yc = 0; yc < 200; yc++) {
+        for (int xc = 0; xc < 320; xc++) {
+          resizedImage.y()[yc][xc] =
+              float(std::pow(double(resizedImage.y()[yc][xc]), 0.704));
+        }
+      }
       for (int yc = 0; yc < 200; yc += 8) {
         if (!setProgressPercentage(yc * 33 / 200)) {
           prgData[0] = 0x01;
