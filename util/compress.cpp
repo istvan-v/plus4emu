@@ -39,6 +39,8 @@ static bool   noZPUpdate = false;
 static int    rawLoadAddr = 0;
 // override the load address of the first input file if greater than zero
 static int    loadAddr = 0;
+// write output file as p4fliconv raw compressed image
+static bool   fliImageFormat = false;
 
 int main(int argc, char **argv)
 {
@@ -68,6 +70,9 @@ int main(int argc, char **argv)
     else if (tmp == "-nozp") {
       noZPUpdate = true;
     }
+    else if (tmp == "-zp") {
+      noZPUpdate = false;
+    }
     else if (tmp == "-raw") {
       rawLoadAddr = -1;
       if ((i + 1) < argc) {
@@ -79,6 +84,12 @@ int main(int argc, char **argv)
         rawLoadAddr = rawLoadAddr & 0xFFFF;
       else
         rawLoadAddr = 0x1003;
+      noZPUpdate = true;
+    }
+    else if (tmp == "-fli") {
+      fliImageFormat = true;
+      rawLoadAddr = 0x17FE;
+      noZPUpdate = true;
     }
     else if (tmp == "-loadaddr") {
       loadAddr = 0;
@@ -124,8 +135,15 @@ int main(int argc, char **argv)
     std::fprintf(stderr, "    -nozp\n");
     std::fprintf(stderr, "        do not update zeropage variables at $2D-$32 "
                          "and $9D-$9E\n");
+    std::fprintf(stderr, "    -zp\n");
+    std::fprintf(stderr, "        update zeropage variables at $2D-$32 and "
+                         "$9D-$9E\n");
     std::fprintf(stderr, "    -raw <LOADADDR>\n");
-    std::fprintf(stderr, "        write the compressed data only\n");
+    std::fprintf(stderr, "        write the compressed data only "
+                         "(implies -nozp)\n");
+    std::fprintf(stderr, "    -fli\n");
+    std::fprintf(stderr, "        compress p4fliconv raw FLI image "
+                         "(implies -raw and -nozp)\n");
     std::fprintf(stderr, "    -loadaddr <ADDR>\n");
     std::fprintf(stderr, "        override the load address of the first "
                          "input file\n");
@@ -157,12 +175,14 @@ int main(int argc, char **argv)
     c = std::fgetc(f);
     if (c == EOF) {
       std::fclose(f);
+      std::fprintf(stderr, " *** %s: unexpected end of input file\n", argv[0]);
       return -1;
     }
     startAddr = (unsigned int) c & 0xFFU;
     c = std::fgetc(f);
     if (c == EOF) {
       std::fclose(f);
+      std::fprintf(stderr, " *** %s: unexpected end of input file\n", argv[0]);
       return -1;
     }
     startAddr = startAddr | (((unsigned int) c & 0xFFU) << 8);
@@ -179,6 +199,14 @@ int main(int argc, char **argv)
     std::fclose(f);
     f = (std::FILE *) 0;
     unsigned int  endAddr = startAddr + (unsigned int) inBuf.size();
+    if (fliImageFormat &&
+        (endAddr < 0x6000U || endAddr > 0xE500U ||
+         !(startAddr == 0x1800U ||
+           (startAddr == 0x17FEU && inBuf[0] == 0x00 && inBuf[1] == 0x00)))) {
+      std::fprintf(stderr, " *** %s: input file is not a p4fliconv image\n",
+                   argv[0]);
+      return -1;
+    }
     if (i == int(fileNames.size() - 2) && !noZPUpdate)
       compress.addZeroPageUpdate(endAddr, false);
     std::fprintf(stderr, "%s: ", fileNames[i].c_str());
@@ -193,6 +221,11 @@ int main(int argc, char **argv)
   unsigned int  startAddr = 0x1001U;
   if (rawLoadAddr != 0)
     startAddr = (unsigned int) rawLoadAddr;
+  if (fliImageFormat) {
+    size_t  nBytes = outBuf.size();
+    outBuf.insert(outBuf.begin(), (unsigned char) (nBytes & 0xFF));
+    outBuf.insert(outBuf.begin(), (unsigned char) ((nBytes >> 8) & 0xFF));
+  }
   outBuf.insert(outBuf.begin(), (unsigned char) ((startAddr >> 8) & 0xFFU));
   outBuf.insert(outBuf.begin(), (unsigned char) (startAddr & 0xFFU));
   std::FILE *f = std::fopen(fileNames[fileNames.size() - 1].c_str(), "wb");
