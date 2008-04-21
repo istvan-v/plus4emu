@@ -487,11 +487,11 @@ namespace Plus4FLIConv {
   bool YUVImageConverter::isPlus4Colormap(
       const std::vector< uint32_t >& colorMap)
   {
-    if (colorMap.size() < 128 || colorMap.size() > 512)
+    if (colorMap.size() < 98 || colorMap.size() > 512)
       return false;
     double  totalError = 0.0;
     for (size_t i = 0; i < colorMap.size(); i++) {
-      uint32_t  c = colorMap[i];
+      uint32_t  c = colorMap[i + (colorMap[0] < 0x80000000U ? 0 : 1)];
       float   r = float(int((c >> 16) & 0xFFU)) * (1.0f / 255.0f);
       float   g = float(int((c >> 8) & 0xFFU)) * (1.0f / 255.0f);
       float   b = float(int(c & 0xFFU)) * (1.0f / 255.0f);
@@ -518,7 +518,7 @@ namespace Plus4FLIConv {
   }
 
   bool YUVImageConverter::convertPlus4ColormapImage(
-      const std::vector< uint16_t >& pixelBuf, int w, int h)
+      const std::vector< uint16_t >& pixelBuf, int w, int h, bool haveAlpha)
   {
     progressMessage("Resizing image");
     setProgressPercentage(0);
@@ -569,8 +569,11 @@ namespace Plus4FLIConv {
         float   u = borderU;
         float   v = borderV;
         if (xi >= 0 && xi < w && yi >= 0 && yi < h) {
-          FLIConverter::convertPlus4Color(pixelBuf[(yi * w) + xi], y, u, v,
-                                          monitorGamma);
+          int     c = pixelBuf[(yi * w) + xi];
+          if (c > 0 || !haveAlpha) {
+            FLIConverter::convertPlus4Color(c - int(haveAlpha), y, u, v,
+                                            monitorGamma);
+          }
         }
         y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
         u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
@@ -612,8 +615,10 @@ namespace Plus4FLIConv {
         readColormapImage(pixelBuf, palette, *f);
         f->release();
         f = (Fl_Shared_Image *) 0;
-        if (isPlus4Colormap(palette))
-          return convertPlus4ColormapImage(pixelBuf, int(w), int(h));
+        if (isPlus4Colormap(palette)) {
+          return convertPlus4ColormapImage(pixelBuf, int(w), int(h),
+                                           (palette[0] >= 0x80000000U));
+        }
       }
       else {
         // RGB or greyscale format

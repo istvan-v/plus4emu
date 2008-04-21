@@ -671,7 +671,8 @@ void Plus4FLIConvGUI::savePRGFile()
         tmp = tmp & 0xFFDFDFDFU;
         if (tmp == 0x2E4A5047U || tmp == 0x2E504E47U ||     // ".JPG" || ".PNG"
             tmp == 0x2E424D50U || tmp == 0x2E4B4F41U ||     // ".BMP" || ".KOA"
-            tmp == 0x2E4F4350U) {                           // ".OCP"
+            tmp == 0x2E4F4350U || tmp == 0x2E474946U ||     // ".OCP" || ".GIF"
+            tmp == 0x2E58504DU || tmp == 0x2E50504DU) {     // ".XPM" || ".PPM"
           prgFileName.resize(prgFileName.length() - 4);
         }
       }
