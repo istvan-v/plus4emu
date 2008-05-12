@@ -1,8 +1,13 @@
-Changes in version 1.2.5.3
---------------------------
+Changes in version 1.2.6
+------------------------
 
   * the debugger window now displays the current state of TED registers
+  * on Windows and MacOS X the native file selection dialog is used
+    instead of the FLTK one; also, the last PRG and screenshot file
+    selected is remembered by the dialogs
   * various improvements have been made to the utilities
+  * changed the TED luminance table to (hopefully) match the colors of
+    the real machine more accurately
   * some minor bugs have been fixed
 
 Changes in version 1.2.5.2
