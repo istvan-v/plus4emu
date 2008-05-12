@@ -32,7 +32,9 @@ plus4emuLibEnvironment = Environment()
 if linux32CrossCompile:
     compilerFlags = ' -m32 ' + compilerFlags
 plus4emuLibEnvironment.Append(CCFLAGS = Split(compilerFlags))
-plus4emuLibEnvironment.Append(CPPPATH = ['.', './src', '/usr/local/include'])
+plus4emuLibEnvironment.Append(CPPPATH = ['.', './src'])
+plus4emuLibEnvironment.Append(CPPPATH = ['./Fl_Native_File_Chooser'])
+plus4emuLibEnvironment.Append(CPPPATH = ['/usr/local/include'])
 if sys.platform[:6] == 'darwin':
     plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
 if not linux32CrossCompile:
@@ -55,19 +57,31 @@ if win32CrossCompile:
 plus4emuGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
     plus4emuGUIEnvironment.Prepend(LIBS = ['fltk'])
-elif not plus4emuGUIEnvironment.ParseConfig(
-        '%s --cxxflags --ldflags' % fltkConfig):
-    print 'WARNING: could not run fltk-config'
-    plus4emuGUIEnvironment.Append(LIBS = ['fltk'])
+else:
+    try:
+        if not plus4emuGUIEnvironment.ParseConfig(
+            '%s --cxxflags --ldflags' % fltkConfig):
+            raise Exception()
+    except:
+        print 'WARNING: could not run fltk-config'
+        plus4emuGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk'])
+        plus4emuGUIEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png'])
+        plus4emuGUIEnvironment.Append(LIBS = ['fltk_z'])
 
 plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
     plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk_gl', 'fltk',
                                              'glu32', 'opengl32'])
-elif not plus4emuGLGUIEnvironment.ParseConfig(
-        '%s --use-gl --cxxflags --ldflags' % fltkConfig):
-    print 'WARNING: could not run fltk-config'
-    plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_gl', 'GL'])
+else:
+    try:
+        if not plus4emuGLGUIEnvironment.ParseConfig(
+            '%s --use-gl --cxxflags --ldflags' % fltkConfig):
+            raise Exception()
+    except:
+        print 'WARNING: could not run fltk-config'
+        plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk_gl'])
+        plus4emuGLGUIEnvironment.Append(LIBS = ['fltk', 'fltk_jpeg'])
+        plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_png', 'fltk_z', 'GL'])
 
 plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
 
@@ -123,6 +137,7 @@ if haveLua:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_LUA_H'])
 if enableGLShaders:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DENABLE_GL_SHADERS'])
+plus4emuLibEnvironment.Append(CCFLAGS = ['-DFLTK1'])
 
 plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
@@ -141,6 +156,7 @@ def fluidCompile(flNames):
     return cppNames
 
 plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
+    Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx
     src/acia6551.cpp
     src/bplist.cpp
     src/cfg_db.cpp
