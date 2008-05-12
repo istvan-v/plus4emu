@@ -247,7 +247,7 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "All files (*)", Fl_File_Chooser::SINGLE,
+                       "All files\\t*", Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load memory")) {
       f = std::fopen(tmp.c_str(), "rb");
       if (!f)
@@ -295,7 +295,8 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "All files (*)", Fl_File_Chooser::CREATE,
+                       "All files\\t*",
+                       Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save memory")) {
       if (memoryDumpASCIIFileFormat)
         f = std::fopen(tmp.c_str(), "w");
@@ -467,8 +468,7 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "All files (*)",
-                       Fl_File_Chooser::SINGLE,
+                       "All files\\t*", Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load watchpoint definitions from file")) {
       f = std::fopen(tmp.c_str(), "rb");
       if (!f)
@@ -517,8 +517,8 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "All files (*)",
-                       Fl_File_Chooser::CREATE,
+                       "All files\\t*",
+                       Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save watchpoint definitions to file")) {
       f = std::fopen(tmp.c_str(), "w");
       if (!f)
@@ -575,8 +575,8 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "Lua scripts (*.lua)",
-                       Fl_File_Chooser::SINGLE,
+                       "Lua scripts\\t*.lua",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load Lua script from file")) {
       f = std::fopen(tmp.c_str(), "rb");
       if (!f)
@@ -622,8 +622,8 @@ class Plus4EmuGUI_DebugWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.debuggerDirectory,
-                       "Lua scripts (*.lua)",
-                       Fl_File_Chooser::CREATE,
+                       "Lua scripts\\t*.lua",
+                       Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save Lua script to file")) {
       f = std::fopen(tmp.c_str(), "w");
       if (!f)

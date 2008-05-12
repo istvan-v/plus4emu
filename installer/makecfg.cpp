@@ -25,6 +25,7 @@
 #include "guicolor.hpp"
 
 #include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Native_File_Chooser.H>
 
 #ifdef WIN32
 #  undef WIN32
@@ -400,19 +401,15 @@ int main(int argc, char **argv)
 #ifndef WIN32
     tmp = Plus4Emu::getPlus4EmuHomeDirectory();
 #endif
-    Fl_File_Chooser *w =
-        new Fl_File_Chooser(tmp.c_str(), "*",
-                            Fl_File_Chooser::DIRECTORY
-                            | Fl_File_Chooser::CREATE,
-                            "Select installation directory "
-                            "for plus4emu data files");
-    w->show();
-    w->value(tmp.c_str());
-    do {
-      Fl::wait(0.05);
-    } while (w->shown());
-    if (w->value() != (char *) 0)
-      installDirectory = w->value();
+    Fl_Native_File_Chooser  *w = new Fl_Native_File_Chooser();
+    w->type(Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY);
+    w->title("Select installation directory for plus4emu data files");
+    w->filter("*");
+    w->directory(tmp.c_str());
+    if (w->show() == 0) {
+      if (w->filename() != (char *) 0)
+        installDirectory = w->filename();
+    }
     delete w;
   }
   Plus4Emu::stripString(installDirectory);

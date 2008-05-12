@@ -36,6 +36,7 @@
 
 #include <FL/Fl.H>
 #include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Native_File_Chooser.H>
 
 class Plus4FLIConvGUI;
 class Plus4FLIConvGUI_Display;

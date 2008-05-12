@@ -87,8 +87,8 @@ class Plus4EmuGUI_SoundConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.soundFileDirectory,
-                       "Sound files (*.wav)",
-                       Fl_File_Chooser::CREATE,
+                       "Sound files\\t*.wav",
+                       Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Select sound output file")) {
       gui.config["sound.file"] = tmp;
       soundOutputFileValuator->value(gui.config.sound.file.c_str());

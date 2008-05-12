@@ -779,8 +779,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files (*.{bin,rom})",
-                       Fl_File_Chooser::SINGLE,
+                       "ROM image files\\t*.{bin,rom}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select ROM image file")) {
       setROMImageFile(segment_, tmp);
       switch (segment_) {

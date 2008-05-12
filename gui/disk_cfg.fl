@@ -50,8 +50,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*.{d64,d81})",
-                       Fl_File_Chooser::SINGLE,
+                       "Disk image files\\t*.{d64,d81}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select disk image file")) {
       gui.config["floppy.a.imageFile"] = tmp;
       floppyAImageFileValuator->value(tmp.c_str());
@@ -108,8 +108,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*.{d64,d81})",
-                       Fl_File_Chooser::SINGLE,
+                       "Disk image files\\t*.{d64,d81}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select disk image file")) {
       gui.config["floppy.b.imageFile"] = tmp;
       floppyBImageFileValuator->value(tmp.c_str());
@@ -166,8 +166,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*.{d64,d81})",
-                       Fl_File_Chooser::SINGLE,
+                       "Disk image files\\t*.{d64,d81}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select disk image file")) {
       gui.config["floppy.c.imageFile"] = tmp;
       floppyCImageFileValuator->value(tmp.c_str());
@@ -206,8 +206,8 @@ class Plus4EmuGUI_DiskConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.diskImageDirectory,
-                       "Disk image files (*.{d64,d81})",
-                       Fl_File_Chooser::SINGLE,
+                       "Disk image files\\t*.{d64,d81}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select disk image file")) {
       gui.config["floppy.d.imageFile"] = tmp;
       floppyDImageFileValuator->value(tmp.c_str());

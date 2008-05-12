@@ -217,7 +217,7 @@ void Plus4FLIConvGUI::init_()
   fileNotSavedFlag = false;
   confirmStatus = false;
   c64PaletteChangedFlag = false;
-  browseFileWindow = new Fl_File_Chooser("", "*", Fl_File_Chooser::SINGLE, "");
+  browseFileWindow = new Fl_Native_File_Chooser();
   imageFileDirectory = "";
   configDirectory = "";
   prgFileDirectory = "";
@@ -275,54 +275,76 @@ bool Plus4FLIConvGUI::browseFile(std::string& fileName, std::string& dirName,
                                  const char *pattern, int type,
                                  const char *title)
 {
-  while (browseFileWindow->shown())
-    updateDisplay();
-  browseFileWindow->directory(dirName.c_str());
-  browseFileWindow->filter(pattern);
-  browseFileWindow->type(type);
-  browseFileWindow->label(title);
-  browseFileWindow->show();
+  bool    retval = false;
   try {
-    std::string tmp = dirName;
-    if (tmp.length() < 1 ||
-        (tmp[tmp.length() - 1] != '/' && tmp[tmp.length() - 1] != '\\')) {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-      tmp += '\\';
-#else
-      tmp += '/';
-#endif
+    browseFileWindow->type(type);
+    browseFileWindow->title(title);
+    browseFileWindow->filter(pattern);
+    if (type == Fl_Native_File_Chooser::BROWSE_FILE ||
+        type == Fl_Native_File_Chooser::BROWSE_MULTI_FILE) {
+      browseFileWindow->options(Fl_Native_File_Chooser::PREVIEW);
     }
-    size_t  n = fileName.length();
-    while (n > 0) {
-      if (fileName[n - 1] == '/' || fileName[n - 1] == '\\')
-        break;
-      n--;
+    else if (type == Fl_Native_File_Chooser::BROWSE_SAVE_FILE) {
+      browseFileWindow->options(Fl_Native_File_Chooser::SAVEAS_CONFIRM
+                                | Fl_Native_File_Chooser::NEW_FOLDER
+                                | Fl_Native_File_Chooser::PREVIEW);
     }
-    for (size_t i = n; i < fileName.length(); i++)
-      tmp += fileName[i];
-    browseFileWindow->value(tmp.c_str());
-  }
-  catch (...) {
-    browseFileWindow->value("");
-  }
-  do {
-    updateDisplay();
-  } while (browseFileWindow->shown());
-  try {
-    fileName.clear();
-    if (browseFileWindow->value() != (char *) 0) {
-      fileName = browseFileWindow->value();
-      Plus4Emu::stripString(fileName);
+    else if (type == Fl_Native_File_Chooser::BROWSE_DIRECTORY ||
+             type == Fl_Native_File_Chooser::BROWSE_MULTI_DIRECTORY) {
+      browseFileWindow->options(0);
+    }
+    else if (type == Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY) {
+      browseFileWindow->options(Fl_Native_File_Chooser::NEW_FOLDER);
+    }
+    browseFileWindow->directory(dirName.c_str());
+    if (type != Fl_Native_File_Chooser::BROWSE_DIRECTORY &&
+        type != Fl_Native_File_Chooser::BROWSE_MULTI_DIRECTORY &&
+        type != Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY) {
       std::string tmp;
-      Plus4Emu::splitPath(fileName, dirName, tmp);
-      return true;
+      std::string tmp2;
+      Plus4Emu::splitPath(fileName, tmp2, tmp);
+#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER) ||    \
+      defined(__APPLE__))
+      if (dirName.length() > 0) {
+        tmp2 = dirName;
+        if (dirName[dirName.length() - 1] != '/' &&
+            dirName[dirName.length() - 1] != '\\') {
+          tmp2 += '/';
+        }
+        tmp2 += tmp;
+        tmp = tmp2;
+      }
+#endif
+      browseFileWindow->preset_file(tmp.c_str());
+    }
+    else {
+      browseFileWindow->preset_file((char *) 0);
+    }
+    fileName.clear();
+    int     browseFileStatus = browseFileWindow->show();
+    if (browseFileStatus < 0) {
+      const char  *s = browseFileWindow->errmsg();
+      if (s == (char *) 0 || s[0] == '\0')
+        s = "error selecting file";
+      std::string tmp(s);
+      errorMessage(tmp.c_str());
+    }
+    else if (browseFileStatus == 0) {
+      const char  *s = browseFileWindow->filename();
+      if (s != (char *) 0) {
+        fileName = s;
+        Plus4Emu::stripString(fileName);
+        std::string tmp;
+        Plus4Emu::splitPath(fileName, dirName, tmp);
+        retval = true;
+      }
     }
   }
   catch (std::exception& e) {
     fileName.clear();
     errorMessage(e.what());
   }
-  return false;
+  return retval;
 }
 
 void Plus4FLIConvGUI::applyConfigurationChanges()
@@ -582,8 +604,8 @@ void Plus4FLIConvGUI::openImageFile()
     {
       std::string tmp = imageFileName;
       if (!browseFile(tmp, imageFileDirectory,
-                      "Image files (*.{bmp,jpg,png,koa,ocp,gif,xpm,ppm})",
-                      Fl_File_Chooser::SINGLE,
+                      "Image files\t*.{bmp,jpg,png,koa,ocp,gif,xpm,ppm}",
+                      Fl_Native_File_Chooser::BROWSE_FILE,
                       "Open image file")) {
         tmp = "";
       }
@@ -681,7 +703,8 @@ void Plus4FLIConvGUI::savePRGFile()
         // save in PixelShop format
         prgFileName += ".p4s";
         if (!browseFile(prgFileName, prgFileDirectory,
-                        "PixelShop P4S files (*.p4s)", Fl_File_Chooser::CREATE,
+                        "PixelShop P4S files\t*.p4s",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save PixelShop image file")) {
           prgFileName = "";
         }
@@ -690,7 +713,8 @@ void Plus4FLIConvGUI::savePRGFile()
         // save in FED format
         prgFileName += ".p4i";
         if (!browseFile(prgFileName, prgFileDirectory,
-                        "FED FLI editor files (*.p4i)", Fl_File_Chooser::CREATE,
+                        "FED FLI editor files\t*.p4i",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save multicolor FLI data")) {
           prgFileName = "";
         }
@@ -699,7 +723,8 @@ void Plus4FLIConvGUI::savePRGFile()
         // save in PRG format
         prgFileName += ".prg";
         if (!browseFile(prgFileName, prgFileDirectory,
-                        "Plus/4 program files (*.prg)", Fl_File_Chooser::CREATE,
+                        "Plus/4 program files\t*.prg",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save PRG file")) {
           prgFileName = "";
         }

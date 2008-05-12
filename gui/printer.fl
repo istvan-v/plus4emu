@@ -253,8 +253,9 @@ class Plus4EmuGUI_PrinterWindow {open
   try {
     std::string fName;
     std::FILE   *f = (std::FILE *) 0;
-    if (!gui.browseFile(fName, gui.screenshotDirectory, "TGA files (*.tga)",
-                        Fl_File_Chooser::CREATE, "Save printer output"))
+    if (!gui.browseFile(fName, gui.screenshotDirectory, "TGA files\\t*.tga",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                        "Save printer output"))
       return;
     if (gui.lockVMThread()) {
       try {
