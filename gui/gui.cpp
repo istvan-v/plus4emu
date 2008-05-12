@@ -67,10 +67,11 @@ void Plus4EmuGUI::init_()
   demoRecordFile = (Plus4Emu::File *) 0;
   quickSnapshotFileName = "";
   updateDisplayEntered = false;
-  browseFileWindowShowFlag = false;
   debugWindowShowFlag = false;
   debugWindowOpenFlag = false;
-  browseFileWindow = (Fl_File_Chooser *) 0;
+  browseFileWindowShowFlag = false;
+  browseFileStatus = 1;
+  browseFileWindow = (Fl_Native_File_Chooser *) 0;
   windowToShow = (Fl_Window *) 0;
   diskConfigWindow = (Plus4EmuGUI_DiskConfigWindow *) 0;
   displaySettingsWindow = (Plus4EmuGUI_DisplayConfigWindow *) 0;
@@ -91,8 +92,10 @@ void Plus4EmuGUI::init_()
   diskImageDirectory = defaultDir_;
   romImageDirectory = defaultDir_;
   prgFileDirectory = defaultDir_;
+  prgFileName = "";
   debuggerDirectory = defaultDir_;
   screenshotDirectory = defaultDir_;
+  screenshotFileName = "";
   guiConfig.createKey("gui.snapshotDirectory", snapshotDirectory);
   guiConfig.createKey("gui.demoDirectory", demoDirectory);
   guiConfig.createKey("gui.soundFileDirectory", soundFileDirectory);
@@ -104,17 +107,17 @@ void Plus4EmuGUI::init_()
   guiConfig.createKey("gui.prgFileDirectory", prgFileDirectory);
   guiConfig.createKey("gui.debuggerDirectory", debuggerDirectory);
   guiConfig.createKey("gui.screenshotDirectory", screenshotDirectory);
-  browseFileWindow = new Fl_File_Chooser("", "*", Fl_File_Chooser::SINGLE, "");
+  browseFileWindow = new Fl_Native_File_Chooser();
   Fl::add_check(&fltkCheckCallback, (void *) this);
 }
 
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5.3 beta (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.6 beta (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.5.3 beta (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.6 beta (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -280,7 +283,7 @@ void Plus4EmuGUI::updateDisplay(double t)
   }
   if (browseFileWindowShowFlag | debugWindowShowFlag) {
     if (browseFileWindowShowFlag) {
-      browseFileWindow->show();
+      browseFileStatus = browseFileWindow->show();
       browseFileWindowShowFlag = false;
     }
     if (debugWindowShowFlag) {
@@ -705,8 +708,6 @@ void Plus4EmuGUI::run()
   } while (mainWindow->shown() && !exitFlag);
   // close windows and stop emulation thread
   browseFileWindowShowFlag = false;
-  if (browseFileWindow->shown())
-    browseFileWindow->hide();
   windowToShow = (Fl_Window *) 0;
   if (errorMessageWindow->shown())
     errorMessageWindow->hide();
@@ -1005,9 +1006,8 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
                              const char *pattern, int type, const char *title)
 {
   bool    retval = false;
-  Fl_File_Chooser *w = (Fl_File_Chooser *) 0;
+  bool    lockFlag = false;
   try {
-    fileName.clear();
 #ifdef WIN32
     uintptr_t currentThreadID = uintptr_t(GetCurrentThreadId());
 #else
@@ -1015,63 +1015,84 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
 #endif
     if (currentThreadID != mainThreadID) {
       Fl::lock();
-      w = browseFileWindow;
-      while (w->shown()) {
-        Fl::unlock();
-        updateDisplay();
-        Fl::lock();
+      lockFlag = true;
+    }
+    browseFileWindow->type(type);
+    browseFileWindow->title(title);
+    browseFileWindow->filter(pattern);
+    browseFileWindow->directory(dirName.c_str());
+    if (type != Fl_Native_File_Chooser::BROWSE_DIRECTORY &&
+        type != Fl_Native_File_Chooser::BROWSE_MULTI_DIRECTORY &&
+        type != Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY) {
+      std::string tmp;
+      std::string tmp2;
+      Plus4Emu::splitPath(fileName, tmp2, tmp);
+#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER) ||    \
+      defined(__APPLE__))
+      if (dirName.length() > 0) {
+        tmp2 = dirName;
+        if (dirName[dirName.length() - 1] != '/' &&
+            dirName[dirName.length() - 1] != '\\') {
+          tmp2 += '/';
+        }
+        tmp2 += tmp;
+        tmp = tmp2;
       }
-      w->directory(dirName.c_str());
-      w->filter(pattern);
-      w->type(type);
-      w->label(title);
-      browseFileWindowShowFlag = true;
-      while (true) {
-        bool  tmp = browseFileWindowShowFlag;
-        Fl::unlock();
-        if (!tmp)
-          break;
-        updateDisplay();
-        Fl::lock();
-      }
+#endif
+      browseFileWindow->preset_file(tmp.c_str());
     }
     else {
-      w = new Fl_File_Chooser(dirName.c_str(), pattern, type, title);
-      w->show();
+      browseFileWindow->preset_file((char *) 0);
     }
-    Fl::lock();
-    while (true) {
-      Fl::unlock();
-      updateDisplay();
-      Fl::lock();
-      if (!w->shown()) {
-        try {
-          const char  *s = w->value();
-          if (s != (char *) 0) {
-            fileName = s;
-            Plus4Emu::stripString(fileName);
-            std::string tmp;
-            Plus4Emu::splitPath(fileName, dirName, tmp);
-            retval = true;
-          }
-        }
-        catch (...) {
-          Fl::unlock();
-          throw;
-        }
+    fileName.clear();
+    browseFileStatus = 1;
+    if (currentThreadID != mainThreadID) {
+      browseFileWindowShowFlag = true;
+      do {
         Fl::unlock();
-        break;
+        lockFlag = false;
+        updateDisplay();
+        Fl::lock();
+        lockFlag = true;
+      } while (browseFileWindowShowFlag);
+    }
+    else {
+      browseFileStatus = browseFileWindow->show();
+    }
+    if (browseFileStatus < 0) {
+      const char  *s = browseFileWindow->errmsg();
+      if (s == (char *) 0 || s[0] == '\0')
+        s = "error selecting file";
+      std::string tmp(s);
+      if (currentThreadID != mainThreadID) {
+        Fl::unlock();
+        lockFlag = false;
+      }
+      errorMessage(tmp.c_str());
+      if (currentThreadID != mainThreadID) {
+        Fl::lock();
+        lockFlag = true;
       }
     }
-    if (currentThreadID == mainThreadID)
-      delete w;
+    else if (browseFileStatus == 0) {
+      const char  *s = browseFileWindow->filename();
+      if (s != (char *) 0) {
+        fileName = s;
+        Plus4Emu::stripString(fileName);
+        std::string tmp;
+        Plus4Emu::splitPath(fileName, dirName, tmp);
+        retval = true;
+      }
+    }
+    if (currentThreadID != mainThreadID) {
+      Fl::unlock();
+      lockFlag = false;
+    }
   }
   catch (std::exception& e) {
-    if (w != (Fl_File_Chooser *) 0 && w != browseFileWindow) {
-      if (w->shown())
-        w->hide();
-      delete w;
-    }
+    if (lockFlag)
+      Fl::unlock();
+    fileName.clear();
     errorMessage(e.what());
   }
   return retval;
@@ -1140,8 +1161,13 @@ void Plus4EmuGUI::fileNameCallback(void *userData, std::string& fileName)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
   try {
     std::string tmp(gui_.config.fileio.workingDirectory);
-    gui_.browseFile(fileName, tmp, "All files (*)",
-                    Fl_File_Chooser::CREATE, "Open file");
+    gui_.browseFile(fileName, tmp, "All files\t*",
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+                    Fl_Native_File_Chooser::BROWSE_FILE,
+#else
+                    Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+#endif
+                    "Open file");
   }
   catch (std::exception& e) {
     gui_.errorMessage(e.what());
@@ -1166,9 +1192,12 @@ void Plus4EmuGUI::screenshotCallback(void *userData,
   std::string   fName;
   std::FILE     *f = (std::FILE *) 0;
   try {
-    if (!gui_.browseFile(fName, gui_.screenshotDirectory, "TGA files (*.tga)",
-                         Fl_File_Chooser::CREATE, "Save screenshot"))
+    fName = gui_.screenshotFileName;
+    if (!gui_.browseFile(fName, gui_.screenshotDirectory, "TGA files\t*.tga",
+                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                         "Save screenshot"))
       return;
+    gui_.screenshotFileName = fName;
     f = std::fopen(fName.c_str(), "wb");
     if (!f)
       throw Plus4Emu::Exception("error opening screenshot file");
@@ -1364,8 +1393,9 @@ void Plus4EmuGUI::menuCallback_File_LoadFile(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.loadFileDirectory, "All files (*)",
-                        Fl_File_Chooser::SINGLE, "Load plus4emu binary file")) {
+    if (gui_.browseFile(tmp, gui_.loadFileDirectory, "All files\t*",
+                        Fl_Native_File_Chooser::BROWSE_FILE,
+                        "Load plus4emu binary file")) {
       if (gui_.lockVMThread()) {
         try {
           Plus4Emu::File  f(tmp.c_str());
@@ -1394,8 +1424,8 @@ void Plus4EmuGUI::menuCallback_File_LoadConfig(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.configDirectory,
-                        "Configuration files (*.cfg)",
-                        Fl_File_Chooser::SINGLE,
+                        "Configuration files\t*.cfg",
+                        Fl_Native_File_Chooser::BROWSE_FILE,
                         "Load ASCII format configuration file")) {
       gui_.config.loadState(tmp.c_str());
       gui_.applyEmulatorConfiguration(true);
@@ -1413,8 +1443,8 @@ void Plus4EmuGUI::menuCallback_File_SaveConfig(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.configDirectory,
-                        "Configuration files (*.cfg)",
-                        Fl_File_Chooser::CREATE,
+                        "Configuration files\t*.cfg",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save configuration as ASCII text file")) {
       gui_.config.saveState(tmp.c_str());
     }
@@ -1459,8 +1489,13 @@ void Plus4EmuGUI::menuCallback_File_QSFileName(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.snapshotDirectory, "Snapshot files (*)",
-                        Fl_File_Chooser::CREATE, "Select quick snapshot file"))
+    if (gui_.browseFile(tmp, gui_.snapshotDirectory, "Snapshot files\t*",
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+                        Fl_Native_File_Chooser::BROWSE_FILE,
+#else
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+#endif
+                        "Select quick snapshot file"))
       gui_.quickSnapshotFileName = tmp;
   }
   catch (std::exception& e) {
@@ -1532,8 +1567,9 @@ void Plus4EmuGUI::menuCallback_File_SaveSnapshot(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.snapshotDirectory, "Snapshot files (*)",
-                        Fl_File_Chooser::CREATE, "Save snapshot")) {
+    if (gui_.browseFile(tmp, gui_.snapshotDirectory, "Snapshot files\t*",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                        "Save snapshot")) {
       gui_.loadFileDirectory = gui_.snapshotDirectory;
       if (gui_.lockVMThread()) {
         try {
@@ -1560,8 +1596,9 @@ void Plus4EmuGUI::menuCallback_File_RecordDemo(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.demoDirectory, "Demo files (*)",
-                        Fl_File_Chooser::CREATE, "Record demo")) {
+    if (gui_.browseFile(tmp, gui_.demoDirectory, "Demo files\t*",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                        "Record demo")) {
       gui_.loadFileDirectory = gui_.demoDirectory;
       if (gui_.lockVMThread()) {
         if (gui_.closeDemoFile(true)) {
@@ -1607,8 +1644,8 @@ void Plus4EmuGUI::menuCallback_File_RecordSound(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (gui_.browseFile(tmp, gui_.soundFileDirectory, "Sound files (*.wav)",
-                        Fl_File_Chooser::CREATE,
+    if (gui_.browseFile(tmp, gui_.soundFileDirectory, "Sound files\t*.wav",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Record sound output to WAV file")) {
       gui_.config["sound.file"] = tmp;
       gui_.applyEmulatorConfiguration(true);
@@ -1637,8 +1674,8 @@ void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
     std::string tmp;
-    if (!gui_.browseFile(tmp, gui_.soundFileDirectory, "AVI files (*.avi)",
-                         Fl_File_Chooser::CREATE,
+    if (!gui_.browseFile(tmp, gui_.soundFileDirectory, "AVI files\t*.avi",
+                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                          "Record video output to AVI file")) {
       return;
     }
@@ -1704,9 +1741,11 @@ void Plus4EmuGUI::menuCallback_File_LoadPRG(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
-    std::string tmp;
-    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files (*.{prg,p00})",
-                        Fl_File_Chooser::SINGLE, "Load program file")) {
+    std::string tmp(gui_.prgFileName);
+    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files\t*.{prg,p00}",
+                        Fl_Native_File_Chooser::BROWSE_FILE,
+                        "Load program file")) {
+      gui_.prgFileName = tmp;
       if (gui_.lockVMThread()) {
         try {
           Plus4::Plus4VM  *p4vm = dynamic_cast<Plus4::Plus4VM *>(&(gui_.vm));
@@ -1730,9 +1769,11 @@ void Plus4EmuGUI::menuCallback_File_SavePRG(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
-    std::string tmp;
-    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files (*.prg)",
-                        Fl_File_Chooser::CREATE, "Save program file")) {
+    std::string tmp(gui_.prgFileName);
+    if (gui_.browseFile(tmp, gui_.prgFileDirectory, "PRG files\t*.prg",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                        "Save program file")) {
+      gui_.prgFileName = tmp;
       if (gui_.lockVMThread()) {
         try {
           Plus4::Plus4VM  *p4vm = dynamic_cast<Plus4::Plus4VM *>(&(gui_.vm));
@@ -1880,8 +1921,13 @@ void Plus4EmuGUI::menuCallback_Machine_OpenTape(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.tapeImageDirectory,
-                        "Tape files (*.{tap,wav,aif,aiff,au,snd})",
-                        Fl_File_Chooser::CREATE, "Select tape image file")) {
+                        "Tape files\t*.{tap,wav,aif,aiff,au,snd}",
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+                        Fl_Native_File_Chooser::BROWSE_FILE,
+#else
+                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+#endif
+                        "Select tape image file")) {
       Plus4EmuGUI::menuCallback_Machine_TapeStop(o, v);
       gui_.config["tape.imageFile"] = tmp;
       gui_.applyEmulatorConfiguration();
@@ -2710,8 +2756,9 @@ void Plus4EmuGUI::menuCallback_Options_FileIODir(Fl_Widget *o, void *v)
         gui_.config["fileio.workingDirectory"];
     std::string tmp;
     std::string tmp2 = std::string(cv);
-    if (gui_.browseFile(tmp, tmp2, "*", Fl_File_Chooser::DIRECTORY,
-                        "Select working directory for emulated machine")) {
+    if (gui_.browseFile(tmp, tmp2, "*",
+                        Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY,
+                        "Select working directory for the emulated machine")) {
       cv = tmp;
       gui_.applyEmulatorConfiguration();
     }
