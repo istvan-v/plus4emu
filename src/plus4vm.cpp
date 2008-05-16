@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -35,6 +35,7 @@
 #include "vc1541.hpp"
 #include "vc1551.hpp"
 #include "vc1581.hpp"
+#include "iecdrive.hpp"
 
 static void writeDemoTimeCnt(Plus4Emu::File::Buffer& buf, uint64_t n)
 {
@@ -116,117 +117,6 @@ namespace Plus4 {
     vm.updateTimingParameters(isNTSC_);
   }
 
-  bool Plus4VM::TED7360_::systemCallback(uint8_t n)
-  {
-    if (getSegmentType(getMemoryPage(int(reg_PC >> 14))) != 1 ||
-        !(vm.fileIOEnabled && reg_PC >= 0x8004 && reg_PC < 0xFD00))
-      return false;
-    switch (n) {
-    case 0x01:                          // load file
-    case 0x02:                          // verify file
-      vm.stopDemoPlayback();
-      vm.stopDemoRecording(false);
-      {
-        std::string fileName;
-        uint8_t   nameLen = readMemoryCPU(0x00AB);
-        uint16_t  nameAddr = uint16_t(readMemoryCPU(0x00AF))
-                             | (uint16_t(readMemoryCPU(0x00B0)) << 8);
-        while (nameLen) {
-          char    c = char(readMemoryCPU(nameAddr, true));
-          if (c == '\0')
-            break;
-          fileName += c;
-          nameLen--;
-          nameAddr = (nameAddr + 1) & 0xFFFF;
-        }
-        std::FILE *f = (std::FILE *) 0;
-        int       err = vm.openFileInWorkingDirectory(f, fileName, "rb");
-        uint16_t  addr = 0x0000;
-        if (!err) {
-          try {
-            addr = TED7360::readPRGFileHeader(f, fileName.c_str());
-          }
-          catch (...) {
-            err = -7;
-          }
-        }
-        if (!err) {
-          reg_AC = 0x00;
-          if (readMemoryCPU(0x00AD) == 0x00)
-            addr = uint16_t(readMemoryCPU(0x00B4))
-                   | (uint16_t(readMemoryCPU(0x00B5)) << 8);
-          unsigned int  nBytes = 0U;
-          do {
-            int     c = std::fgetc(f);
-            if (c == EOF)
-              break;
-            if (n == 0x01)              // load
-              writeMemoryCPU(addr, uint8_t(c & 0xFF));
-            else if (uint8_t(c & 0xFF) != readMemoryCPU(addr, true)) {
-              reg_AC = 0xF8;            // verify error
-              break;
-            }
-            addr = (addr + 1) & 0xFFFF;
-          } while (++nBytes < 0xFFFFU);
-          writeMemoryCPU(0x009D, uint8_t(addr) & 0xFF);
-          writeMemoryCPU(0x009E, uint8_t(addr >> 8) & 0xFF);
-          std::fclose(f);
-        }
-        else
-          reg_AC = uint8_t(err + 256);
-        return true;
-      }
-      break;
-    case 0x03:                          // save file
-      vm.stopDemoPlayback();
-      vm.stopDemoRecording(false);
-      {
-        std::string fileName;
-        uint8_t   nameLen = readMemoryCPU(0x00AB);
-        uint16_t  nameAddr = uint16_t(readMemoryCPU(0x00AF))
-                             | (uint16_t(readMemoryCPU(0x00B0)) << 8);
-        while (nameLen) {
-          char    c = char(readMemoryCPU(nameAddr, true));
-          if (c == '\0')
-            break;
-          fileName += c;
-          nameLen--;
-          nameAddr = (nameAddr + 1) & 0xFFFF;
-        }
-        std::FILE *f = (std::FILE *) 0;
-        int       err = vm.openFileInWorkingDirectory(f, fileName, "wb");
-        if (!err) {
-          reg_AC = 0xFA;
-          uint8_t   c = readMemoryCPU(0x00B2);
-          uint16_t  addr = uint16_t(c);
-          if (std::fputc(c, f) != EOF) {
-            c = readMemoryCPU(0x00B3);
-            addr |= (uint16_t(c) << 8);
-            if (std::fputc(c, f) != EOF) {
-              uint16_t  endAddr = uint16_t(readMemoryCPU(0x009D))
-                                  | (uint16_t(readMemoryCPU(0x009E)) << 8);
-              endAddr = endAddr & 0xFFFF;
-              while (addr != endAddr) {
-                c = readMemoryCPU(addr, true);
-                if (std::fputc(c, f) == EOF)
-                  break;
-                addr = (addr + 1) & 0xFFFF;
-              }
-              if (addr == endAddr)
-                reg_AC = 0x00;
-            }
-          }
-          std::fclose(f);
-        }
-        else
-          reg_AC = uint8_t(err + 256);
-        return true;
-      }
-      break;
-    }
-    return false;
-  }
-
   void Plus4VM::TED7360_::breakPointCallback(int type,
                                              uint16_t addr, uint8_t value)
   {
@@ -297,14 +187,28 @@ namespace Plus4 {
     }
 #endif
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      for (int i = 8; i < 10; i++) {
-        SerialDevice  *p = ted.vm.serialDevices[i];
+      if (ted.vm.drive8Is1551) {
+        SerialDevice  *p = ted.vm.serialDevices[8];
         if (p != (SerialDevice *) 0) {
-          if (typeid(*p) == typeid(VC1551)) {
-            VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
-            if (vc1551.parallelIECRead(addr, ted.dataBusState))
-              break;
-          }
+          VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
+          if (vc1551.parallelIECRead(addr, ted.dataBusState))
+            return ted.dataBusState;
+        }
+        else if (addr >= 0xFEE0) {
+          (void) ted.vm.iecDrive8->parallelIECRead(addr, ted.dataBusState);
+          return ted.dataBusState;
+        }
+      }
+      if (ted.vm.drive9Is1551) {
+        SerialDevice  *p = ted.vm.serialDevices[9];
+        if (p != (SerialDevice *) 0) {
+          VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
+          if (vc1551.parallelIECRead(addr, ted.dataBusState))
+            return ted.dataBusState;
+        }
+        else if (addr < 0xFEE0) {
+          (void) ted.vm.iecDrive9->parallelIECRead(addr, ted.dataBusState);
+          return ted.dataBusState;
         }
       }
     }
@@ -317,14 +221,23 @@ namespace Plus4 {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
-      for (int i = 8; i < 10; i++) {
-        SerialDevice  *p = ted.vm.serialDevices[i];
+      if (ted.vm.drive8Is1551) {
+        SerialDevice  *p = ted.vm.serialDevices[8];
         if (p != (SerialDevice *) 0) {
-          if (typeid(*p) == typeid(VC1551)) {
-            VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
-            (void) vc1551.parallelIECWrite(addr, ted.dataBusState);
-          }
+          VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
+          (void) vc1551.parallelIECWrite(addr, ted.dataBusState);
         }
+        else if (addr >= 0xFEE0)
+          (void) ted.vm.iecDrive8->parallelIECWrite(addr, ted.dataBusState);
+      }
+      if (ted.vm.drive9Is1551) {
+        SerialDevice  *p = ted.vm.serialDevices[9];
+        if (p != (SerialDevice *) 0) {
+          VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(p));
+          (void) vc1551.parallelIECWrite(addr, ted.dataBusState);
+        }
+        else if (addr < 0xFEE0)
+          (void) ted.vm.iecDrive9->parallelIECWrite(addr, ted.dataBusState);
       }
     }
   }
@@ -712,7 +625,11 @@ namespace Plus4 {
       acia_(),
       aciaTimeRemaining(0),
       aciaEnabled(false),
-      aciaCallbackFlag(false)
+      aciaCallbackFlag(false),
+      drive8Is1551(false),
+      drive9Is1551(false),
+      iecDrive8((ParallelIECDrive *) 0),
+      iecDrive9((ParallelIECDrive *) 0)
   {
     for (int i = 0; i < 12; i++)
       serialDevices[i] = (SerialDevice *) 0;
@@ -721,6 +638,8 @@ namespace Plus4 {
       sid_->set_chip_model(MOS8580);
       sid_->enable_external_filter(false);
       sid_->reset();
+      iecDrive8 = new ParallelIECDrive(8);
+      iecDrive9 = new ParallelIECDrive(9);
       ted = new TED7360_(*this);
       updateTimingParameters(false);
       // reset
@@ -734,6 +653,10 @@ namespace Plus4 {
     catch (...) {
       if (ted)
         delete ted;
+      if (iecDrive8)
+        delete iecDrive8;
+      if (iecDrive9)
+        delete iecDrive9;
       delete sid_;
       throw;
     }
@@ -768,6 +691,8 @@ namespace Plus4 {
     if (printerROM_1526)
       delete[] printerROM_1526;
     delete ted;
+    delete iecDrive8;
+    delete iecDrive9;
     delete sid_;
     if (videoBreakPoints)
       delete[] videoBreakPoints;
@@ -1273,93 +1198,118 @@ namespace Plus4 {
     if (n < 0 || n > 3)
       throw Plus4Emu::Exception("invalid floppy drive number");
     n = n + 8;
-    if (fileName_.length() == 0) {
-      // remove disk
-      if (serialDevices[n] != (SerialDevice *) 0) {
+    try {
+      if (fileName_.length() == 0) {
+        // remove disk
+        if (serialDevices[n] != (SerialDevice *) 0) {
+          reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
+              fileName_);
+        }
+      }
+      else {
+        // insert or replace disk
+        bool    isD64 = false;
+        {
+          // find out file type
+          std::FILE *f = std::fopen(fileName_.c_str(), "rb");
+          if (f) {
+            if (std::fseek(f, 0L, SEEK_END) >= 0) {
+              long    fSize = std::ftell(f);
+              isD64 = (fSize == 174848L || fSize == 175531L ||
+                       fSize == 196608L || fSize == 197376L);
+            }
+            std::fclose(f);
+          }
+          else
+            throw Plus4Emu::Exception("error opening disk image file");
+        }
+        int     newDriveType = (isD64 ? driveType : 4);
+        if (newDriveType == 1) {
+          if (n >= 10) {
+            throw Plus4Emu::Exception("1551 emulation is only allowed "
+                                      "for unit 8 and unit 9");
+          }
+        }
+        else if (!(newDriveType == 0 || newDriveType == 4))
+          throw Plus4Emu::Exception("invalid floppy drive type");
+        if (serialDevices[n] != (SerialDevice *) 0) {
+          int     oldDriveType = -1;
+          if (typeid(*(serialDevices[n])) == typeid(VC1541))
+            oldDriveType = 0;
+          else if (typeid(*(serialDevices[n])) == typeid(VC1551))
+            oldDriveType = 1;
+          else if (typeid(*(serialDevices[n])) == typeid(VC1581))
+            oldDriveType = 4;
+          if (newDriveType != oldDriveType) {
+            // need to change drive type
+            removeFloppyCallback(n);
+            delete serialDevices[n];
+            serialDevices[n] = (SerialDevice *) 0;
+            ted->serialPort.removeDevice(n);
+          }
+        }
+        if (serialDevices[n] == (SerialDevice *) 0) {
+          if (n == 8)
+            iecDrive8->reset();
+          else if (n == 9)
+            iecDrive9->reset();
+          FloppyDrive *floppyDrive = (FloppyDrive *) 0;
+          switch (newDriveType) {
+          case 0:
+            {
+              VC1541  *floppyDrive_ = new VC1541(ted->serialPort, n);
+              serialDevices[n] = floppyDrive_;
+              floppyDrive_->setSerialBusDelayOffset(int(serialBusDelayOffset));
+              floppyDrive = floppyDrive_;
+              floppyDrive->setROMImage(2, floppyROM_1541);
+            }
+            break;
+          case 1:
+            floppyDrive = new VC1551(ted->serialPort, n);
+            serialDevices[n] = floppyDrive;
+            floppyDrive->setROMImage(3, floppyROM_1551);
+            break;
+          case 4:
+            floppyDrive = new VC1581(ted->serialPort, n);
+            serialDevices[n] = floppyDrive;
+            floppyDrive->setROMImage(0, floppyROM_1581_0);
+            floppyDrive->setROMImage(1, floppyROM_1581_1);
+            break;
+          }
+          addFloppyCallback(n);
+          floppyDrive->setBreakPointCallback(breakPointCallback,
+                                             breakPointCallbackUserData);
+          M7501   *p = floppyDrive->getCPU();
+          if (p) {
+            p->setBreakPointPriorityThreshold(
+                ted->getBreakPointPriorityThreshold());
+            p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
+          }
+          floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
+        }
         reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
             fileName_);
       }
     }
-    else {
-      // insert or replace disk
-      bool    isD64 = false;
-      {
-        // find out file type
-        std::FILE *f = std::fopen(fileName_.c_str(), "rb");
-        if (f) {
-          if (std::fseek(f, 0L, SEEK_END) >= 0) {
-            long    fSize = std::ftell(f);
-            isD64 = (fSize == 174848L || fSize == 175531L ||
-                     fSize == 196608L || fSize == 197376L);
-          }
-          std::fclose(f);
-        }
-        else
-          throw Plus4Emu::Exception("error opening disk image file");
-      }
-      int     newDriveType = (isD64 ? driveType : 4);
-      if (newDriveType == 1) {
-        if (n >= 10) {
-          throw Plus4Emu::Exception("1551 emulation is only allowed "
-                                    "for unit 8 and unit 9");
-        }
-      }
-      else if (!(newDriveType == 0 || newDriveType == 4))
-        throw Plus4Emu::Exception("invalid floppy drive type");
-      if (serialDevices[n] != (SerialDevice *) 0) {
-        int     oldDriveType = -1;
-        if (typeid(*(serialDevices[n])) == typeid(VC1541))
-          oldDriveType = 0;
-        else if (typeid(*(serialDevices[n])) == typeid(VC1551))
-          oldDriveType = 1;
-        else if (typeid(*(serialDevices[n])) == typeid(VC1581))
-          oldDriveType = 4;
-        if (newDriveType != oldDriveType) {
-          // need to change drive type
-          removeFloppyCallback(n);
-          delete serialDevices[n];
-          serialDevices[n] = (SerialDevice *) 0;
-          ted->serialPort.removeDevice(n);
-        }
-      }
-      if (serialDevices[n] == (SerialDevice *) 0) {
-        FloppyDrive *floppyDrive = (FloppyDrive *) 0;
-        switch (newDriveType) {
-        case 0:
-          {
-            VC1541  *floppyDrive_ = new VC1541(ted->serialPort, n);
-            serialDevices[n] = floppyDrive_;
-            floppyDrive_->setSerialBusDelayOffset(int(serialBusDelayOffset));
-            floppyDrive = floppyDrive_;
-            floppyDrive->setROMImage(2, floppyROM_1541);
-          }
-          break;
-        case 1:
-          floppyDrive = new VC1551(ted->serialPort, n);
-          serialDevices[n] = floppyDrive;
-          floppyDrive->setROMImage(3, floppyROM_1551);
-          break;
-        case 4:
-          floppyDrive = new VC1581(ted->serialPort, n);
-          serialDevices[n] = floppyDrive;
-          floppyDrive->setROMImage(0, floppyROM_1581_0);
-          floppyDrive->setROMImage(1, floppyROM_1581_1);
-          break;
-        }
-        addFloppyCallback(n);
-        floppyDrive->setBreakPointCallback(breakPointCallback,
-                                           breakPointCallbackUserData);
-        M7501   *p = floppyDrive->getCPU();
-        if (p) {
-          p->setBreakPointPriorityThreshold(
-              ted->getBreakPointPriorityThreshold());
-          p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
-        }
-        floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
-      }
-      reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
-          fileName_);
+    catch (...) {
+      if (serialDevices[8] != (SerialDevice *) 0)
+        drive8Is1551 = (typeid(*(serialDevices[8])) == typeid(VC1551));
+      else if (n == 8)
+        drive8Is1551 = (driveType == 1);
+      if (serialDevices[9] != (SerialDevice *) 0)
+        drive9Is1551 = (typeid(*(serialDevices[9])) == typeid(VC1551));
+      else if (n == 9)
+        drive9Is1551 = (driveType == 1);
+      throw;
     }
+    if (serialDevices[8] != (SerialDevice *) 0)
+      drive8Is1551 = (typeid(*(serialDevices[8])) == typeid(VC1551));
+    else if (n == 8)
+      drive8Is1551 = (driveType == 1);
+    if (serialDevices[9] != (SerialDevice *) 0)
+      drive9Is1551 = (typeid(*(serialDevices[9])) == typeid(VC1551));
+    else if (n == 9)
+      drive9Is1551 = (driveType == 1);
   }
 
   uint32_t Plus4VM::getFloppyDriveLEDState() const
@@ -1446,6 +1396,23 @@ namespace Plus4 {
     n = (n & 3) | 8;
     if (serialDevices[n] != (SerialDevice *) 0)
       serialDevices[n]->reset();
+    if (n == 8)
+      iecDrive8->reset();
+    else if (n == 9)
+      iecDrive9->reset();
+  }
+
+  void Plus4VM::setIECDriveReadOnlyMode(bool isReadOnly)
+  {
+    iecDrive8->setReadOnlyMode(isReadOnly);
+    iecDrive9->setReadOnlyMode(isReadOnly);
+  }
+
+  void Plus4VM::setWorkingDirectory(const std::string& dirName_)
+  {
+    iecDrive8->setWorkingDirectory(dirName_);
+    iecDrive9->setWorkingDirectory(dirName_);
+    VirtualMachine::setWorkingDirectory(dirName_);
   }
 
   void Plus4VM::setTapeFileName(const std::string& fileName)

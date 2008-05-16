@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -35,6 +35,7 @@ namespace Plus4Emu {
 namespace Plus4 {
 
   class SID;
+  class ParallelIECDrive;
 
   class Plus4VM : public Plus4Emu::VirtualMachine {
    private:
@@ -62,7 +63,6 @@ namespace Plus4 {
       virtual void playSample(int16_t sampleValue);
       virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes);
       virtual void ntscModeChangeCallback(bool isNTSC_);
-      virtual bool systemCallback(uint8_t n);
       virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);
     };
     // ----------------
@@ -131,6 +131,10 @@ namespace Plus4 {
     int64_t   aciaTimeRemaining;        // in 2^-32 microsecond units
     bool      aciaEnabled;
     bool      aciaCallbackFlag;
+    bool      drive8Is1551;
+    bool      drive9Is1551;
+    ParallelIECDrive  *iecDrive8;
+    ParallelIECDrive  *iecDrive9;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -359,6 +363,15 @@ namespace Plus4 {
      * Reset floppy drive 'n' (0 to 3), or all drives if 'n' is negative.
      */
     virtual void resetFloppyDrive(int n);
+    /*!
+     * Set if the IEC drive emulation should be allowed to write to the
+     * working directory.
+     */
+    virtual void setIECDriveReadOnlyMode(bool isReadOnly);
+    /*!
+     * Set working directory for IEC drive emulation.
+     */
+    virtual void setWorkingDirectory(const std::string& dirName_);
     // ---------------------------- TAPE EMULATION ----------------------------
     /*!
      * Set tape image file name (if the file name is NULL or empty, tape
