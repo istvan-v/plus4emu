@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -282,6 +282,7 @@ namespace Plus4 {
     for (int i = 0; i < 2048; i++)
       memory_ram[i] = 0x00;
     this->reset();
+    tpi2.reset();
     tpi2.writeRegister(2, 0x40);
     tpi2.writeRegister(3, 0xFF);
     tpi2.writeRegister(4, 0x00);
@@ -374,7 +375,6 @@ namespace Plus4 {
     memory_ram[0x0000] = 0x00;
     memory_ram[0x0001] &= uint8_t(0x90);
     tpi1.reset();
-    tpi2.reset();
     // set device number
     tpi1.setPortC(uint8_t(0xDF | ((deviceNumber & 0x01) << 5)));
     updateParallelInterface();
