@@ -170,6 +170,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/fldisp.cpp
     src/gldisp.cpp
     src/guicolor.cpp
+    src/iecdrive.cpp
     src/joystick.cpp
     src/memory.cpp
     src/plus4vm.cpp
