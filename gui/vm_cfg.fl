@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0109 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -112,13 +112,13 @@ class Plus4EmuGUI_MachineConfigWindow {open
 }}
               xywh {30 205 240 25} color 50 selection_color 3
             }
-            Fl_Light_Button vmEnableFileIOValuator {
-              label {Enable virtual file I/O}
+            Fl_Light_Button iecDriveReadOnlyModeValuator {
+              label {IEC drive read-only mode}
               callback {{
-  gui.config.vm.enableFileIO = (o->value() != 0);
-  gui.config.vmConfigurationChanged = true;
+  gui.config.fileio.iecDriveReadOnlyMode = (o->value() != 0);
+  gui.config.fileioSettingsChanged = true;
 }}
-              tooltip {If enabled, the emulated machine can directly access files in the working directory if the ROM module for this function is loaded (p4fileio.rom to segment 06)} xywh {30 245 240 25} color 50 selection_color 3
+              tooltip {IEC drive emulation is not allowed to write to the working directory if this option is set} xywh {30 245 240 25} value 1 color 50 selection_color 3
             }
           }
           Fl_Group {} {
@@ -685,7 +685,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   vmVideoFrequencyValuator->value(double(gui.config.vm.videoClockFrequency));
   vm1541SerialDelayValuator->value(double(gui.config.vm.serialBusDelayOffset));
   vmEnableACIAValuator->value(gui.config.vm.enableACIA ? 1 : 0);
-  vmEnableFileIOValuator->value(gui.config.vm.enableFileIO ? 1 : 0);
+  iecDriveReadOnlyModeValuator->value(gui.config.fileio.iecDriveReadOnlyMode ? 1 : 0);
   videoCaptureFrameRateValuator->value(double(gui.config.videoCapture.frameRate));
   videoCaptureYUVFormatValuator->value(gui.config.videoCapture.yuvFormat ? 1 : 0);
   memoryRAMSizeValuator->value(double(gui.config.memory.ram.size));

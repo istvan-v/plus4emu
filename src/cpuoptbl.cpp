@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -4137,11 +4137,11 @@ namespace Plus4 {
     CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,
-    // 0xF2: SYS
-    CPU_OP_RD_TMP,
-    CPU_OP_RD_L,
-    CPU_OP_RD_H,
-    CPU_OP_SYS,
+    // 0xF2: ???
+    CPU_OP_INVALID_OPCODE,
+    CPU_OP_RD_OPCODE,
+    CPU_OP_RD_OPCODE,
+    CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,
     CPU_OP_RD_OPCODE,

@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -132,14 +132,13 @@ namespace Plus4 {
     static const unsigned char  CPU_OP_STA                  = 83;
     static const unsigned char  CPU_OP_STX                  = 84;
     static const unsigned char  CPU_OP_STY                  = 85;
-    static const unsigned char  CPU_OP_SYS                  = 86;
-    static const unsigned char  CPU_OP_TAX                  = 87;
-    static const unsigned char  CPU_OP_TAY                  = 88;
-    static const unsigned char  CPU_OP_TSX                  = 89;
-    static const unsigned char  CPU_OP_TXA                  = 90;
-    static const unsigned char  CPU_OP_TXS                  = 91;
-    static const unsigned char  CPU_OP_TYA                  = 92;
-    static const unsigned char  CPU_OP_INVALID_OPCODE       = 93;
+    static const unsigned char  CPU_OP_TAX                  = 86;
+    static const unsigned char  CPU_OP_TAY                  = 87;
+    static const unsigned char  CPU_OP_TSX                  = 88;
+    static const unsigned char  CPU_OP_TXA                  = 89;
+    static const unsigned char  CPU_OP_TXS                  = 90;
+    static const unsigned char  CPU_OP_TYA                  = 91;
+    static const unsigned char  CPU_OP_INVALID_OPCODE       = 92;
     static const unsigned char  opcodeTable[4128];
     const unsigned char *currentOpcode;
     uint8_t     interruptDelayRegister;
@@ -271,7 +270,6 @@ namespace Plus4 {
     void loadState(Plus4Emu::File::Buffer&);
     void registerChunkType(Plus4Emu::File&);
    protected:
-    virtual bool systemCallback(uint8_t n);
     // type is 0 for opcode read at breakpoint, 1 for memory read,
     // 2 for memory write, and 3 for opcode read in single step mode
     virtual void breakPointCallback(int type, uint16_t addr, uint8_t value);

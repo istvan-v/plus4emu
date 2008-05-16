@@ -189,12 +189,6 @@ def generateOpcode(f, opNum, opName_):
             print >> f, '    CPU_OP_LD_H_MEMP1_L_TMP,'
             print >> f, '    CPU_OP_LD_PC_HL,'
             cnt = cnt + 7
-        elif opName == 'sys':
-            print >> f, '    CPU_OP_RD_TMP,'
-            print >> f, '    CPU_OP_RD_L,'
-            print >> f, '    CPU_OP_RD_H,'
-            print >> f, '    CPU_OP_SYS,'
-            cnt = cnt + 4
         elif opName[:2] == 'se' or opName[:2] == 'cl':
             print >> f, '    CPU_OP_%s,' % opName.upper()
             cnt = cnt + 1
@@ -514,7 +508,7 @@ generateOpcode(f, 0xEE, 'INC nnnn')
 generateOpcode(f, 0xEF, 'ISB nnnn')     # ???
 generateOpcode(f, 0xF0, 'BEQ nn')
 generateOpcode(f, 0xF1, 'SBC (nn), Y')
-generateOpcode(f, 0xF2, 'SYS')          # emulator system call / ???
+generateOpcode(f, 0xF2, '???')
 generateOpcode(f, 0xF3, 'ISB (nn), Y')  # ???
 generateOpcode(f, 0xF4, 'NOP nn, X')    # ???
 generateOpcode(f, 0xF5, 'SBC nn, X')

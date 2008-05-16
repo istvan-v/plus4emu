@@ -105,9 +105,6 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.sidDigiBlaster",
                                 vm.sidDigiBlaster, false,
                                 vmConfigurationChanged);
-    defineConfigurationVariable(*this, "vm.enableFileIO",
-                                vm.enableFileIO, false,
-                                vmConfigurationChanged);
     // ----------------
     defineConfigurationVariable(*this, "memory.ram.size",
                                 memory.ram.size, 64,
@@ -345,6 +342,9 @@ namespace Plus4Emu {
                                 tapeSoundFileSettingsChanged,
                                 1000.0, 20000.0);
     // ----------------
+    defineConfigurationVariable(*this, "fileio.iecDriveReadOnlyMode",
+                                fileio.iecDriveReadOnlyMode, true,
+                                fileioSettingsChanged);
     defineConfigurationVariable(*this, "fileio.workingDirectory",
                                 fileio.workingDirectory, std::string("."),
                                 fileioSettingsChanged);
@@ -381,7 +381,6 @@ namespace Plus4Emu {
       vm_.setSerialBusDelayOffset(vm.serialBusDelayOffset);
       vm_.setEnableACIAEmulation(vm.enableACIA);
       vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster);
-      vm_.setEnableFileIO(vm.enableFileIO);
       vmConfigurationChanged = false;
     }
     if (memoryConfigurationChanged) {
@@ -581,10 +580,12 @@ namespace Plus4Emu {
       tapeSoundFileSettingsChanged = false;
     }
     if (fileioSettingsChanged) {
+      vm_.setIECDriveReadOnlyMode(fileio.iecDriveReadOnlyMode);
       try {
         vm_.setWorkingDirectory(fileio.workingDirectory);
       }
       catch (Exception& e) {
+        vm_.setIECDriveReadOnlyMode(true);
         fileio.workingDirectory = ".";
         try {
           vm_.setWorkingDirectory(fileio.workingDirectory);

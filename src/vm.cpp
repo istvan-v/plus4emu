@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -126,7 +126,6 @@ namespace Plus4Emu {
       breakPointCallbackUserData((void *) 0),
       currentDebugContext(0),
       noBreakOnDataRead(false),
-      fileIOEnabled(false),
 #ifndef WIN32
       fileIOWorkingDirectory("./"),
 #else
@@ -463,9 +462,9 @@ namespace Plus4Emu {
     (void) n;
   }
 
-  void VirtualMachine::setEnableFileIO(bool isEnabled)
+  void VirtualMachine::setIECDriveReadOnlyMode(bool isReadOnly)
   {
-    fileIOEnabled = isEnabled;
+    (void) isReadOnly;
   }
 
   void VirtualMachine::setWorkingDirectory(const std::string& dirName_)

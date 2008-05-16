@@ -48,7 +48,6 @@ namespace Plus4Emu {
       bool          enableACIA;
       bool          sidModel6581;
       bool          sidDigiBlaster;
-      bool          enableFileIO;
     } vm;
     bool          vmConfigurationChanged;
     // --------
@@ -181,6 +180,7 @@ namespace Plus4Emu {
     // --------
     struct FileIOConfiguration_ {
       std::string workingDirectory;
+      bool        iecDriveReadOnlyMode;
     };
     FileIOConfiguration_  fileio;
     bool          fileioSettingsChanged;

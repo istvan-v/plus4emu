@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -1042,30 +1042,6 @@ namespace Plus4 {
           writeMemory(addr, reg_YR);
         }
         break;
-      case CPU_OP_SYS:
-        if (!haltFlag) {
-          uint32_t  nn = uint32_t(currentOpcode - &(opcodeTable[0])) >> 4;
-          uint16_t  addr = (reg_PC + 0xFFFC) & 0xFFFF;
-          nn = (nn << 8) | uint32_t(reg_TMP);
-          nn = (nn << 8) | uint32_t(addr >> 8);
-          nn = (nn << 8) | uint32_t(addr & 0xFF);
-          uint64_t  tmp = nn * uint64_t(0xC2B0C3CCU);
-          nn = (uint32_t(tmp) ^ uint32_t(tmp >> 32)) & 0xFFFFU;
-          nn ^= uint32_t(reg_L);
-          nn ^= (uint32_t(reg_H) << 8);
-          if (!nn) {
-            if (!this->systemCallback(reg_TMP))
-              nn++;
-          }
-          if (nn) {
-            reg_PC = (reg_PC - 3) & 0xFFFF;
-            currentOpcode = &(opcodeTable[size_t(0x02) << 4]);
-            continue;
-          }
-        }
-        else
-          currentOpcode--;
-        break;
       case CPU_OP_TAX:
         (void) readMemory(reg_PC);
         if (!haltFlag) {
@@ -1169,12 +1145,6 @@ namespace Plus4 {
       interruptFlag = false;
       haltFlag = false;
     }
-  }
-
-  bool M7501::systemCallback(uint8_t n)
-  {
-    (void) n;
-    return false;
   }
 
   // --------------------------------------------------------------------------
