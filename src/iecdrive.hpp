@@ -65,8 +65,12 @@ namespace Plus4 {
                                 // or '\0' if no file is opened
       char          openMode;   // 'A', 'M', 'R', 'W', or '\0' if not opened
       unsigned char recordSize; // record size for REL files, zero for others
+      unsigned char recordPos;  // REL file position within record (from zero)
+      int           recordNum;  // current REL file record number (from zero)
+      long          fileSize;   // file size - 26 (for REL files only)
       FileTableEntry();
       ~FileTableEntry();
+      void clear();             // close file and reset all struct members
     };
     TPI6523 tpi;
     int     deviceNumber;
@@ -86,6 +90,7 @@ namespace Plus4 {
                                 // 1: listen
                                 // 2: talk
     uint8_t secondaryAddress;
+    bool    listenByteFlag;     // true if any data was received in LISTEN mode
     bool    fileDBUpdateFlag;   // true if file database needs to be rebuilt
     bool    writeProtectFlag;   // do not allow any write operations if true
     std::map< Plus4FileName, FileDBEntry >  fileDB;
@@ -114,8 +119,13 @@ namespace Plus4 {
     void setErrorMessage(int n, int t = 0, int s = 0);
     void openFile();
     void dosCommand();
-    void dosCommand(const unsigned char *cmdBuf, size_t cmdLen);
     void closeFile();
+    void openRelativeFile(const Plus4FileName& fileName, int recordSize = 0);
+    bool createRelativeFileRecord(int channelNum);
+    void flushRelativeFileRecord(int channelNum);
+    int writeRelativeFile(uint8_t n);
+    int readRelativeFile(uint8_t& n);
+    int readDirectory(uint8_t& n);
     bool scratchFile(const Plus4FileName& fileName);
    public:
     ParallelIECDrive(int deviceNumber_ = 8);

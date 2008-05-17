@@ -267,6 +267,8 @@ namespace Plus4 {
       return (char(c - 0x41) + 'a');
     if (c >= 0x61 && c <= 0x7A)
       return (char(c - 0x61) + 'A');
+    if (c >= 0xC1 && c <= 0xDA)
+      return (char(c - 0xC1) + 'A');
     if ((c >= 0x30 && c <= 0x39) || c == 0x2B || c == 0x2D || c == 0x2E)
       return char(c);
     return '_';
@@ -279,12 +281,31 @@ namespace Plus4 {
       f((std::FILE *) 0),
       fileType('\0'),
       openMode('\0'),
-      recordSize(0)
+      recordSize(0),
+      recordPos(0),
+      recordNum(0),
+      fileSize(0L)
   {
   }
 
   ParallelIECDrive::FileTableEntry::~FileTableEntry()
   {
+    this->clear();
+  }
+
+  void ParallelIECDrive::FileTableEntry::clear()
+  {
+    fileName.clear();
+    if (f) {
+      std::fclose(f);
+      f = (std::FILE *) 0;
+    }
+    fileType = '\0';
+    openMode = '\0';
+    recordSize = 0;
+    recordPos = 0;
+    recordNum = 0;
+    fileSize = 0L;
   }
 
   // --------------------------------------------------------------------------
@@ -299,6 +320,7 @@ namespace Plus4 {
       currentBusMode(0),
       currentIOMode(0),
       secondaryAddress(0x00),
+      listenByteFlag(false),
       fileDBUpdateFlag(true),
       writeProtectFlag(false),
       currentWorkingDirectory(""),
@@ -315,12 +337,8 @@ namespace Plus4 {
 
   ParallelIECDrive::~ParallelIECDrive()
   {
-    for (int i = 0; i < 16; i++) {
-      if (filesOpened[i].f != (std::FILE *) 0) {
-        std::fclose(filesOpened[i].f);
-        filesOpened[i].f = (std::FILE *) 0;
-      }
-    }
+    for (int i = 0; i < 16; i++)
+      filesOpened[i].clear();
   }
 
   void ParallelIECDrive::reset()
@@ -337,21 +355,14 @@ namespace Plus4 {
     currentBusMode = 0;
     currentIOMode = 0;
     secondaryAddress = 0x00;
+    listenByteFlag = false;
     fileDBUpdateFlag = true;
     bufPos = 0;
     bufBytes = 0;
     setErrorMessage(73);
     directoryIterator = fileDB.end();
-    for (int i = 0; i < 16; i++) {
-      filesOpened[i].fileName.clear();
-      if (filesOpened[i].f != (std::FILE *) 0) {
-        std::fclose(filesOpened[i].f);
-        filesOpened[i].f = (std::FILE *) 0;
-      }
-      filesOpened[i].fileType = '\0';
-      filesOpened[i].openMode = '\0';
-      filesOpened[i].recordSize = 0;
-    }
+    for (int i = 0; i < 16; i++)
+      filesOpened[i].clear();
   }
 
   void ParallelIECDrive::setReadOnlyMode(bool isReadOnly)
@@ -412,7 +423,8 @@ namespace Plus4 {
       case 1:
         switch (dataRegisterIn & 0xF0) {
         case 0x20:                              // listen
-          currentIOMode = 1;
+          if (currentIOMode == 0)
+            currentIOMode = 1;
           break;
         case 0x30:                              // unlsn
           if (currentIOMode == 1) {
@@ -425,10 +437,22 @@ namespace Plus4 {
             }
             bufPos = 0;
             bufBytes = 0;
+            if ((secondaryAddress & 0xF0) == 0x60 && listenByteFlag) {
+              int     channelNum = int(secondaryAddress & 0x0F);
+              if (channelNum != 15 &&
+                  filesOpened[channelNum].f != (std::FILE *) 0 &&
+                  filesOpened[channelNum].fileType == 'R' &&
+                  filesOpened[channelNum].openMode != 'R' &&
+                  !writeProtectFlag) {
+                // pad relative file record with zero bytes
+                flushRelativeFileRecord(channelNum);
+              }
+            }
           }
           break;
         case 0x40:                              // talk
-          currentIOMode = 2;
+          if (currentIOMode == 0)
+            currentIOMode = 2;
           break;
         case 0x50:                              // untlk
           if (currentIOMode == 2)
@@ -436,10 +460,12 @@ namespace Plus4 {
           break;
         }
         secondaryAddress = 0x00;
+        listenByteFlag = false;
         iecBusStatus = 0;
         break;
       case 2:
-        secondaryAddress = dataRegisterIn & 0xFF;
+        if (secondaryAddress == 0x00 && currentIOMode != 0)
+          secondaryAddress = dataRegisterIn & 0xFF;
         iecBusStatus = 0;
         if ((secondaryAddress & 0xF0) == 0x60) {
           int     channelNum = int(secondaryAddress & 0x0F);
@@ -512,20 +538,28 @@ namespace Plus4 {
 
   int ParallelIECDrive::listenNextByte(uint8_t n)
   {
+    listenByteFlag = true;
     if ((secondaryAddress & 0xF0) == 0x60) {    // DOS command or write file
       int     channelNum = int(secondaryAddress & 0x0F);
       if (channelNum != 15) {           // write file
-        if (filesOpened[channelNum].f != (std::FILE *) 0 &&
-            (filesOpened[channelNum].openMode == 'A' ||
-             filesOpened[channelNum].openMode == 'W')) {
-          if (!writeProtectFlag) {
-            if (std::fputc(int(n), filesOpened[channelNum].f) == EOF) {
-              if (errorCode != 72)
+        std::FILE *f = filesOpened[channelNum].f;
+        if (f != (std::FILE *) 0) {
+          if (filesOpened[channelNum].fileType != 'R') {
+            if (filesOpened[channelNum].openMode == 'A' ||
+                filesOpened[channelNum].openMode == 'W') {
+              // write sequential file
+              if (writeProtectFlag) {
+                setErrorMessage(26);    // "write protect on"
+                return 0;
+              }
+              if (std::fputc(int(n), f) == EOF)
                 setErrorMessage(72);    // "disk full"
             }
           }
-          else
-            setErrorMessage(26);        // "write protect on"
+          else {
+            // write relative file
+            return writeRelativeFile(n);
+          }
         }
       }
       else {                            // DOS command
@@ -567,112 +601,33 @@ namespace Plus4 {
       }
       else if (filesOpened[channelNum].fileType == '$') {
         // read directory
-        if (bufPos >= bufBytes) {
-          // load next directory entry
-          bufPos = 0;
-          bufBytes = 0;
-          if (directoryIterator == fileDB.begin()) {
-            for (int i = 0; i < 32; i++)
-              buf[bufBytes++] = directoryStartLine[i];
-          }
-          if (directoryIterator != fileDB.end()) {
-            long          fSize = 0L;
-            const Plus4FileName&  fileName = (*directoryIterator).first;
-            FileDBEntry&  fileDBEntry = (*directoryIterator).second;
-            std::FILE     *f = std::fopen(fileDBEntry.fullName.c_str(), "rb");
-            if (f) {
-              // get file size
-              std::fseek(f, 0L, SEEK_END);
-              fSize = std::ftell(f);
-              std::fclose(f);
-              f = (std::FILE *) 0;
-            }
-            if (fileDBEntry.fileType != 'p')
-              fSize -= 26L;
-            if (fSize < 0L)
-              fSize = 0L;
-            if (fSize > (254L * 65535L))
-              fSize = 254L * 65535L;
-            fSize = (fSize + 253L) / 254L;
-            size_t  savedBufBytes = bufBytes;
-            buf[bufBytes++] = 0x01;
-            buf[bufBytes++] = 0x01;
-            buf[bufBytes++] = (unsigned char) (fSize & 255L);
-            buf[bufBytes++] = (unsigned char) (fSize >> 8);
-            if (fSize < 1000L)
-              buf[bufBytes++] = 0x20;
-            if (fSize < 100L)
-              buf[bufBytes++] = 0x20;
-            if (fSize < 10L)
-              buf[bufBytes++] = 0x20;
-            buf[bufBytes++] = 0x22;
-            for (int i = 0; i < fileName.fileNameLen; i++) {
-              unsigned char c = fileName.fileName[i];
-              if (c < 0x20)
-                c = 0x20;
-              buf[bufBytes++] = c;
-            }
-            buf[bufBytes++] = 0x22;
-            for (int i = fileName.fileNameLen; i < 17; i++)
-              buf[bufBytes++] = 0x20;
-            switch (fileDBEntry.fileType) {
-            case 'R':
-              buf[bufBytes++] = 0x52;   // 'R'
-              buf[bufBytes++] = 0x45;   // 'E'
-              buf[bufBytes++] = 0x4C;   // 'L'
-              break;
-            case 'S':
-              buf[bufBytes++] = 0x53;   // 'S'
-              buf[bufBytes++] = 0x45;   // 'E'
-              buf[bufBytes++] = 0x51;   // 'Q'
-              break;
-            case 'U':
-              buf[bufBytes++] = 0x55;   // 'U'
-              buf[bufBytes++] = 0x53;   // 'S'
-              buf[bufBytes++] = 0x52;   // 'R'
-              break;
-            default:
-              buf[bufBytes++] = 0x50;   // 'P'
-              buf[bufBytes++] = 0x52;   // 'R'
-              buf[bufBytes++] = 0x47;   // 'G'
-              break;
-            }
-            while (bufBytes < (savedBufBytes + 31))
-              buf[bufBytes++] = 0x20;
-            buf[bufBytes++] = 0x00;
-            directoryIterator++;
-          }
-          if (directoryIterator == fileDB.end()) {
-            for (int i = 0; i < 32; i++)
-              buf[bufBytes++] = directoryEndLine[i];
-          }
-        }
-        n = uint8_t(buf[bufPos++]);
-        if (bufPos >= bufBytes) {
-          bufPos = 0;
-          bufBytes = 0;
-          if (directoryIterator == fileDB.end())
-            return 3;
-        }
-        return 0;
+        return readDirectory(n);
       }
-      else if ((filesOpened[channelNum].openMode == 'M' ||
-                filesOpened[channelNum].openMode == 'R') &&
-               filesOpened[channelNum].f != (std::FILE *) 0) {
-        // read file
-        int     c = std::fgetc(filesOpened[channelNum].f);
-        if (c == EOF) {
-          n = 0x00;
-          return 3;
+      else if (filesOpened[channelNum].f != (std::FILE *) 0) {
+        if (filesOpened[channelNum].fileType != 'R') {
+          if (filesOpened[channelNum].openMode == 'M' ||
+              filesOpened[channelNum].openMode == 'R') {
+            // read sequential file
+            std::FILE *f = filesOpened[channelNum].f;
+            int     c = std::fgetc(f);
+            if (c == EOF) {
+              n = 0x0D;
+              return 3;
+            }
+            n = uint8_t(c & 0xFF);
+            long    savedPos = std::ftell(f);
+            c = std::fgetc(f);
+            if (c == EOF)
+              return 3;
+            if (savedPos >= 0L)
+              std::fseek(f, savedPos, SEEK_SET);
+            return 0;
+          }
         }
-        n = uint8_t(c & 0xFF);
-        long    savedPos = std::ftell(filesOpened[channelNum].f);
-        c = std::fgetc(filesOpened[channelNum].f);
-        if (c == EOF)
-          return 3;
-        if (savedPos >= 0L)
-          std::fseek(filesOpened[channelNum].f, savedPos, SEEK_SET);
-        return 0;
+        else {
+          // read relative file
+          return readRelativeFile(n);
+        }
       }
     }
     n = 0x00;
@@ -975,12 +930,16 @@ namespace Plus4 {
       setErrorMessage(70);              // "no channel"
       return;
     }
+    filesOpened[channelNum].clear();
     if (bufBytes < 1) {
       setErrorMessage(34);              // missing filename
       return;
     }
-    if (fileDBUpdateFlag)
+    bool    fileDBUpdated = false;
+    if (fileDBUpdateFlag) {
       updateFileDB();
+      fileDBUpdated = true;
+    }
     char            fileType = (channelNum < 2 ? 'P' : '\0');
     char            openMode = (channelNum == 1 ? 'W' : 'R');
     bool            allowOverwrite = false;
@@ -1090,18 +1049,18 @@ namespace Plus4 {
       filesOpened[channelNum].fileName = fileName;
       filesOpened[channelNum].fileType = '$';
       filesOpened[channelNum].openMode = 'R';
-      filesOpened[channelNum].recordSize = 0;
       bufPos = 0;
       bufBytes = 0;
       setErrorMessage(0);
-      updateFileDB();
+      if (!fileDBUpdated)
+        updateFileDB();
       directoryIterator = fileDB.begin();
       return;
     }
     std::FILE *f = (std::FILE *) 0;
-    if (openMode == 'R' || openMode == 'M') {   // ---- read mode ----
+    if (openMode != 'W') {              // ---- read or append mode ----
       fileName = findFile(fileName);
-      if (fileName.fileNameLen < 1) {
+      if (fileName.fileNameLen < 1 && !fileDBUpdated) {
         // if not found, try reloading the directory first
         updateFileDB();
         fileName = findFile(fileName);
@@ -1109,18 +1068,6 @@ namespace Plus4 {
       if (fileName.fileNameLen < 1) {
         setErrorMessage(62);            // "file not found"
         return;
-      }
-      // check if this file is currently open
-      if (openMode != 'M') {
-        for (int i = 0; i < 16; i++) {
-          if (filesOpened[i].f != (std::FILE *) 0 &&
-              filesOpened[i].fileName == fileName &&
-              (filesOpened[i].openMode == 'A' ||
-               filesOpened[i].openMode == 'W')) {
-            setErrorMessage(60);        // "write file open"
-            return;
-          }
-        }
       }
       if (fileType != '\0') {
         if (fileType != (fileDB[fileName].fileType & char(0xDF))) {
@@ -1130,26 +1077,55 @@ namespace Plus4 {
       }
       fileType = fileDB[fileName].fileType;
       if (fileType == 'R') {
-        if (recordSize == 0) {
-          recordSize = fileDB[fileName].recordSize;
+        openRelativeFile(fileName, recordSize);
+        return;
+      }
+      if (openMode != 'A') {            // -- read mode --
+        // check if this file is currently open
+        if (openMode != 'M') {
+          for (int i = 0; i < 16; i++) {
+            if (filesOpened[i].f != (std::FILE *) 0 &&
+                filesOpened[i].fileName == fileName &&
+                (filesOpened[i].openMode == 'A' ||
+                 filesOpened[i].openMode == 'W')) {
+              setErrorMessage(60);      // "write file open"
+              return;
+            }
+          }
         }
-        else if (recordSize != fileDB[fileName].recordSize) {
-          setErrorMessage(64);          // record size does not match file
+        f = std::fopen(fileDB[fileName].fullName.c_str(), "rb");
+        if (!f) {
+          fileDBUpdateFlag = true;
+          setErrorMessage(62);          // "file not found"
+          return;
+        }
+        if (filesOpened[channelNum].fileType != 'p') {
+          // skip header of .P00 etc. files
+          std::fseek(f, 26L, SEEK_SET);
+        }
+      }
+      else {                            // -- append mode --
+        if (writeProtectFlag) {
+          setErrorMessage(26);          // "write protect on"
+          return;
+        }
+        // check if this file is currently open
+        for (int i = 0; i < 16; i++) {
+          if (filesOpened[i].f != (std::FILE *) 0 &&
+              filesOpened[i].fileName == fileName) {
+            setErrorMessage(60);        // "write file open"
+            return;
+          }
+        }
+        f = std::fopen(fileDB[fileName].fullName.c_str(), "ab");
+        if (!f) {
+          fileDBUpdateFlag = true;
+          setErrorMessage(26);          // error opening file for write
           return;
         }
       }
-      f = std::fopen(fileDB[fileName].fullName.c_str(), "rb");
-      if (!f) {
-        fileDBUpdateFlag = true;
-        setErrorMessage(62);            // "file not found"
-        return;
-      }
-      if (filesOpened[channelNum].fileType != 'p') {
-        // skip header of .P00 etc. files
-        std::fseek(f, 26L, SEEK_SET);
-      }
     }
-    else if (openMode == 'W') {                 // ---- write mode ----
+    else {                              // ---- write mode ----
       if (writeProtectFlag) {
         setErrorMessage(26);            // "write protect on"
         return;
@@ -1162,9 +1138,23 @@ namespace Plus4 {
         }
       }
       bool    fileExists = (findFile(fileName).fileNameLen > 0);
-      if (fileExists && !allowOverwrite) {
-        setErrorMessage(63);            // "file exists"
-        return;
+      if (fileExists && !fileDBUpdated) {
+        updateFileDB();
+        fileExists = (findFile(fileName).fileNameLen > 0);
+      }
+      if (fileExists) {
+        if (fileDB[fileName].fileType == 'R') {
+          if (fileType != '\0' && fileType != 'R') {
+            setErrorMessage(64);        // "file type mismatch"
+            return;
+          }
+          openRelativeFile(fileName, recordSize);
+          return;
+        }
+        if (!allowOverwrite) {
+          setErrorMessage(63);          // "file exists"
+          return;
+        }
       }
       if (fileType == 'R' && (recordSize < 1 || recordSize > 254)) {
         setErrorMessage(30);            // invalid record size
@@ -1194,52 +1184,6 @@ namespace Plus4 {
         return;
       }
     }
-    else if (openMode == 'A') {                 // ---- append mode ----
-      if (writeProtectFlag) {
-        setErrorMessage(26);            // "write protect on"
-        return;
-      }
-      fileName = findFile(fileName);
-      if (fileName.fileNameLen < 1) {
-        // if not found, try reloading the directory first
-        updateFileDB();
-        fileName = findFile(fileName);
-      }
-      if (fileName.fileNameLen < 1) {
-        setErrorMessage(62);            // "file not found"
-        return;
-      }
-      // check if this file is currently open
-      for (int i = 0; i < 16; i++) {
-        if (filesOpened[i].f != (std::FILE *) 0 &&
-            filesOpened[i].fileName == fileName) {
-          setErrorMessage(60);          // "write file open"
-          return;
-        }
-      }
-      if (fileType != '\0') {
-        if (fileType != (fileDB[fileName].fileType & char(0xDF))) {
-          setErrorMessage(64);          // "file type mismatch"
-          return;
-        }
-      }
-      fileType = fileDB[fileName].fileType;
-      if (fileType == 'R') {
-        if (recordSize == 0) {
-          recordSize = fileDB[fileName].recordSize;
-        }
-        else if (recordSize != fileDB[fileName].recordSize) {
-          setErrorMessage(64);          // record size does not match file
-          return;
-        }
-      }
-      f = std::fopen(fileDB[fileName].fullName.c_str(), "ab");
-      if (!f) {
-        fileDBUpdateFlag = true;
-        setErrorMessage(26);            // error opening file for write
-        return;
-      }
-    }
     filesOpened[channelNum].fileName = fileName;
     filesOpened[channelNum].f = f;
     filesOpened[channelNum].fileType = fileType;
@@ -1250,31 +1194,19 @@ namespace Plus4 {
 
   void ParallelIECDrive::dosCommand()
   {
-    unsigned char   cmdBuf[256];        // size should match bufMaxBytes
-    size_t          cmdLen = 0;
-    setErrorMessage(0);
-    bufPos = 0;
-    while (true) {
-      if (bufPos >= bufBytes || buf[bufPos] == 0x00 || buf[bufPos] == 0x0D) {
-        cmdBuf[cmdLen] = 0x00;
-        // parse command
-        dosCommand(&(cmdBuf[0]), cmdLen);
-        if (bufPos >= bufBytes)
-          break;
-        bufPos++;
-      }
-      else {
-        cmdBuf[cmdLen++] = buf[bufPos++];
-      }
-    }
+    const unsigned char *cmdBuf = &(buf[0]);
+    size_t  cmdLen = bufBytes;
     bufPos = 0;
     bufBytes = 0;
-  }
-
-  void ParallelIECDrive::dosCommand(const unsigned char *cmdBuf, size_t cmdLen)
-  {
-    if (cmdLen < 1)
+    if (cmdLen < 1)                     // no command
       return;
+    setErrorMessage(0);
+    if (cmdBuf[cmdLen - 1] == 0x0D)     // ignore trailing CR character
+      cmdLen--;
+    if (cmdLen < 1) {                   // CR only: error (invalid command)
+      setErrorMessage(31);
+      return;
+    }
     size_t  nameOffset = 0;
     size_t  nameLen = 0;
     for (size_t i = 1; i < cmdLen; i++) {
@@ -1300,16 +1232,8 @@ namespace Plus4 {
 
       break;
     case 0x49:                          // INITIALIZE
-      for (int i = 0; i < 16; i++) {
-        filesOpened[i].fileName.clear();
-        if (filesOpened[i].f != (std::FILE *) 0) {
-          std::fclose(filesOpened[i].f);
-          filesOpened[i].f = (std::FILE *) 0;
-        }
-        filesOpened[i].fileType = '\0';
-        filesOpened[i].openMode = '\0';
-        filesOpened[i].recordSize = 0;
-      }
+      for (int i = 0; i < 16; i++)
+        filesOpened[i].clear();
       fileDBUpdateFlag = true;
       directoryIterator = fileDB.end();
       setErrorMessage(73);
@@ -1322,7 +1246,62 @@ namespace Plus4 {
       }
       break;
     case 0x50:                          // POSITION
-
+      while (cmdLen > 0 && cmdBuf[0] >= 0x41 && cmdBuf[0] <= 0x5A) {
+        // skip command name
+        cmdBuf++;
+        cmdLen--;
+      }
+      if (cmdLen < 3) {
+        setErrorMessage(30);
+        return;
+      }
+      else {
+        int     channelNum = int(cmdBuf[0]);
+        if (channelNum < 96 || channelNum > 111) {
+          setErrorMessage(70);          // "no channel"
+          return;
+        }
+        channelNum = channelNum & 15;
+        if (channelNum == 15) {
+          setErrorMessage(64);          // "file type mismatch"
+          return;
+        }
+        if (filesOpened[channelNum].fileType == '\0') {
+          setErrorMessage(70);          // "no channel"
+          return;
+        }
+        int     recordSize = filesOpened[channelNum].recordSize;
+        if (filesOpened[channelNum].f == (std::FILE *) 0 ||
+            filesOpened[channelNum].fileType != 'R' ||
+            recordSize < 1) {
+          setErrorMessage(64);          // "file type mismatch"
+          return;
+        }
+        int     recordNum = int(cmdBuf[1]) | (int(cmdBuf[2]) << 8);
+        recordNum = (recordNum > 0 ? (recordNum - 1) : 0);
+        int     recordPos = 0;
+        if (cmdLen > 3) {
+          recordPos = int(cmdBuf[3]);
+          recordPos = (recordPos > 0 ? (recordPos - 1) : 0);
+        }
+        if (recordPos >= recordSize) {
+          setErrorMessage(51);          // "overflow in record"
+          do {
+            recordPos -= recordSize;
+            recordNum++;
+          } while (recordPos >= recordSize);
+          if (recordNum >= 65535) {
+            setErrorMessage(52);        // "file too large"
+            return;
+          }
+        }
+        if (((long(recordNum) * recordSize) + recordPos)
+            >= filesOpened[channelNum].fileSize) {
+          setErrorMessage(50);          // "record not present"
+        }
+        filesOpened[channelNum].recordNum = recordNum;
+        filesOpened[channelNum].recordPos = (unsigned char) recordPos;
+      }
       break;
     case 0x52:                          // RENAME
 
@@ -1383,30 +1362,317 @@ namespace Plus4 {
   {
     int     channelNum = int(secondaryAddress & 0x0F);
     if (channelNum == 15) {
-      for (int i = 0; i < 16; i++) {
-        filesOpened[i].fileName.clear();
-        if (filesOpened[i].f != (std::FILE *) 0) {
-          std::fclose(filesOpened[i].f);
-          filesOpened[i].f = (std::FILE *) 0;
-        }
-        filesOpened[i].fileType = '\0';
-        filesOpened[i].openMode = '\0';
-        filesOpened[i].recordSize = 0;
-      }
+      for (int i = 0; i < 16; i++)
+        filesOpened[i].clear();
     }
     else if (filesOpened[channelNum].fileType == '\0') {
       if (errorCode == 0 || errorCode == 73)
         setErrorMessage(61);            // "file not open"
       return;
     }
-    filesOpened[channelNum].fileName.clear();
-    if (filesOpened[channelNum].f != (std::FILE *) 0) {
-      std::fclose(filesOpened[channelNum].f);
-      filesOpened[channelNum].f = (std::FILE *) 0;
+    filesOpened[channelNum].clear();
+  }
+
+  void ParallelIECDrive::openRelativeFile(const Plus4FileName& fileName,
+                                          int recordSize)
+  {
+    if (fileName.fileNameLen < 1) {
+      setErrorMessage(62);              // "file not found"
+      return;
     }
-    filesOpened[channelNum].fileType = '\0';
-    filesOpened[channelNum].openMode = '\0';
-    filesOpened[channelNum].recordSize = 0;
+    int     channelNum = int(secondaryAddress & 0x0F);
+    filesOpened[channelNum].clear();
+    if (recordSize == 0) {
+      recordSize = fileDB[fileName].recordSize;
+    }
+    else if (recordSize != int(fileDB[fileName].recordSize)) {
+      setErrorMessage(64);              // record size does not match file
+      return;
+    }
+    char    openMode = 'W';
+    std::FILE *f = (std::FILE *) 0;
+    if (!writeProtectFlag)
+      f = std::fopen(fileDB[fileName].fullName.c_str(), "r+b");
+    if (!f) {
+      openMode = 'R';
+      f = std::fopen(fileDB[fileName].fullName.c_str(), "rb");
+    }
+    if (!f) {
+      fileDBUpdateFlag = true;
+      setErrorMessage(62);              // "file not found"
+      return;
+    }
+    std::fseek(f, 0L, SEEK_END);
+    long    fileSize = std::ftell(f);
+    if (fileSize < 26L) {
+      std::fclose(f);
+      setErrorMessage(27);              // "read error"
+      return;
+    }
+    // skip .R00 header
+    std::fseek(f, 26L, SEEK_SET);
+    filesOpened[channelNum].fileName = fileName;
+    filesOpened[channelNum].f = f;
+    filesOpened[channelNum].fileType = 'R';
+    filesOpened[channelNum].openMode = openMode;
+    filesOpened[channelNum].recordSize = (unsigned char) recordSize;
+    filesOpened[channelNum].fileSize = fileSize - 26L;
+    setErrorMessage(0);
+  }
+
+  bool ParallelIECDrive::createRelativeFileRecord(int channelNum)
+  {
+    if (writeProtectFlag) {
+      setErrorMessage(26);              // "write protect on"
+      return false;
+    }
+    int     recordNum = filesOpened[channelNum].recordNum;
+    int     recordSize = filesOpened[channelNum].recordSize;
+    long&   fileSize = filesOpened[channelNum].fileSize;
+    std::FILE *f = filesOpened[channelNum].f;
+    std::fseek(f, fileSize + 26L, SEEK_SET);
+    if (std::ftell(f) != (fileSize + 26L)) {
+      setErrorMessage(28);              // "write error"
+      return false;
+    }
+    long    fileSizeRequired = (long(recordNum) + 1L) * recordSize;
+    while (fileSize < fileSizeRequired) {
+      // pad file to required length
+      int     c = 0x00;
+      if ((fileSize % long(recordSize)) == 0L) {
+        if (fileSize != (long(recordNum) * recordSize))
+          c = 0xFF;
+      }
+      if (std::fputc(c, f) == EOF) {
+        setErrorMessage(72);            // "disk full"
+        return false;
+      }
+      fileSize++;
+    }
+    return true;
+  }
+
+  void ParallelIECDrive::flushRelativeFileRecord(int channelNum)
+  {
+    if (writeProtectFlag) {
+      setErrorMessage(26);              // "write protect on"
+      return;
+    }
+    long    filePos = (long(filesOpened[channelNum].recordNum)
+                       * long(filesOpened[channelNum].recordSize))
+                      + long(filesOpened[channelNum].recordPos);
+    while (filesOpened[channelNum].recordPos != 0) {
+      if (std::fputc(0x00, filesOpened[channelNum].f) == EOF) {
+        setErrorMessage(72);            // "disk full"
+        break;
+      }
+      filePos++;
+      filesOpened[channelNum].recordPos++;
+      while (filesOpened[channelNum].recordPos
+             >= filesOpened[channelNum].recordSize) {
+        filesOpened[channelNum].recordPos -= filesOpened[channelNum].recordSize;
+        filesOpened[channelNum].recordNum++;
+      }
+    }
+    if (filePos > filesOpened[channelNum].fileSize)
+      filesOpened[channelNum].fileSize = filePos;
+  }
+
+  int ParallelIECDrive::writeRelativeFile(uint8_t n)
+  {
+    int     channelNum = int(secondaryAddress & 0x0F);
+    if (writeProtectFlag || filesOpened[channelNum].openMode == 'R') {
+      setErrorMessage(26);              // "write protect on"
+      return 0;
+    }
+    int     recordSize = filesOpened[channelNum].recordSize;
+    if (recordSize < 1) {
+      setErrorMessage(28);              // "write error"
+      return 0;
+    }
+    if (filesOpened[channelNum].recordNum >= 65535) {
+      setErrorMessage(52);              // "file too large"
+      return 0;
+    }
+    long    filePos = (long(filesOpened[channelNum].recordNum) * recordSize)
+                      + long(filesOpened[channelNum].recordPos);
+    if (filePos >= filesOpened[channelNum].fileSize) {
+      if (!createRelativeFileRecord(channelNum))
+        return 0;
+    }
+    std::FILE *f = filesOpened[channelNum].f;
+    std::fseek(f, filePos + 26L, SEEK_SET);
+    if (std::ftell(f) != (filePos + 26L)) {
+      setErrorMessage(28);              // "write error"
+      return 0;
+    }
+    if (int(filesOpened[channelNum].recordPos) >= recordSize)
+      setErrorMessage(51);              // "overflow in record"
+    if (std::fputc(int(n), f) != EOF)
+      filesOpened[channelNum].recordPos++;
+    else
+      setErrorMessage(72);              // "disk full"
+    while (filesOpened[channelNum].recordPos
+           >= filesOpened[channelNum].recordSize) {
+      filesOpened[channelNum].recordPos -= filesOpened[channelNum].recordSize;
+      filesOpened[channelNum].recordNum++;
+    }
+    return 0;
+  }
+
+  int ParallelIECDrive::readRelativeFile(uint8_t& n)
+  {
+    int     channelNum = int(secondaryAddress & 0x0F);
+    int     recordSize = filesOpened[channelNum].recordSize;
+    n = 0x0D;
+    if (recordSize < 1) {
+      setErrorMessage(27);              // "read error"
+      return 3;
+    }
+    if (filesOpened[channelNum].recordNum >= 65535) {
+      setErrorMessage(50);              // "record not present"
+      return 3;
+    }
+    long    filePos = (long(filesOpened[channelNum].recordNum) * recordSize)
+                      + long(filesOpened[channelNum].recordPos);
+    if (filePos >= filesOpened[channelNum].fileSize) {
+      setErrorMessage(50);              // "record not present"
+      return 3;
+    }
+    std::FILE *f = filesOpened[channelNum].f;
+    std::fseek(f, filePos + 26L, SEEK_SET);
+    if (std::ftell(f) != (filePos + 26L)) {
+      setErrorMessage(50);              // "record not present"
+      return 3;
+    }
+    while (true) {
+      int     c = std::fgetc(f);
+      if (c == EOF)
+        return 3;
+      n = uint8_t(c);
+      filePos++;
+      filesOpened[channelNum].recordPos++;
+      while (filesOpened[channelNum].recordPos
+             >= filesOpened[channelNum].recordSize) {
+        filesOpened[channelNum].recordPos -= filesOpened[channelNum].recordSize;
+        filesOpened[channelNum].recordNum++;
+      }
+      if ((filesOpened[channelNum].recordPos == 1 && c == 0xFF) ||
+          filesOpened[channelNum].recordPos == 0) {
+        return 3;
+      }
+      if (c != 0x00) {
+        c = std::fgetc(f);
+        std::fseek(f, filePos, SEEK_SET);
+        if (c == EOF || c == 0x00)
+          return 3;
+        return 0;
+      }
+    }
+    return 2;   // not reached
+  }
+
+  int ParallelIECDrive::readDirectory(uint8_t& n)
+  {
+    if (bufPos >= bufBytes) {
+      // load next directory entry
+      bufPos = 0;
+      bufBytes = 0;
+      if (directoryIterator == fileDB.begin()) {
+        for (int i = 0; i < 32; i++)
+          buf[bufBytes++] = directoryStartLine[i];
+      }
+      if (directoryIterator != fileDB.end()) {
+        long          fSize = 0L;
+        const Plus4FileName&  fileName = (*directoryIterator).first;
+        FileDBEntry&  fileDBEntry = (*directoryIterator).second;
+        std::FILE     *f = std::fopen(fileDBEntry.fullName.c_str(), "rb");
+        if (f) {
+          // get file size
+          std::fseek(f, 0L, SEEK_END);
+          fSize = std::ftell(f);
+          std::fclose(f);
+          f = (std::FILE *) 0;
+        }
+        if (fileDBEntry.fileType != 'p')
+          fSize -= 26L;
+        if (fSize < 0L)
+          fSize = 0L;
+        if (fSize > (254L * 65535L))
+          fSize = 254L * 65535L;
+        fSize = (fSize + 253L) / 254L;
+        size_t  savedBufBytes = bufBytes;
+        buf[bufBytes++] = 0x01;
+        buf[bufBytes++] = 0x01;
+        buf[bufBytes++] = (unsigned char) (fSize & 255L);
+        buf[bufBytes++] = (unsigned char) (fSize >> 8);
+        if (fSize < 1000L)
+          buf[bufBytes++] = 0x20;
+        if (fSize < 100L)
+          buf[bufBytes++] = 0x20;
+        if (fSize < 10L)
+          buf[bufBytes++] = 0x20;
+        buf[bufBytes++] = 0x22;
+        for (int i = 0; i < fileName.fileNameLen; i++) {
+          unsigned char c = fileName.fileName[i];
+          if (c < 0x20)
+            c = 0x20;
+          buf[bufBytes++] = c;
+        }
+        buf[bufBytes++] = 0x22;
+        for (int i = fileName.fileNameLen; i < 16; i++)
+          buf[bufBytes++] = 0x20;
+        buf[bufBytes] = 0x20;
+        for (int i = 0; i < 16; i++) {
+          if (filesOpened[i].f != (std::FILE *) 0 &&
+              (filesOpened[i].openMode == 'A' ||
+               filesOpened[i].openMode == 'W') &&
+              filesOpened[i].fileName == fileName) {
+            buf[bufBytes] = 0x2A;       // file is currently open for write
+            break;
+          }
+        }
+        bufBytes++;
+        switch (fileDBEntry.fileType) {
+        case 'R':
+          buf[bufBytes++] = 0x52;       // 'R'
+          buf[bufBytes++] = 0x45;       // 'E'
+          buf[bufBytes++] = 0x4C;       // 'L'
+          break;
+        case 'S':
+          buf[bufBytes++] = 0x53;       // 'S'
+          buf[bufBytes++] = 0x45;       // 'E'
+          buf[bufBytes++] = 0x51;       // 'Q'
+          break;
+        case 'U':
+          buf[bufBytes++] = 0x55;       // 'U'
+          buf[bufBytes++] = 0x53;       // 'S'
+          buf[bufBytes++] = 0x52;       // 'R'
+          break;
+        default:
+          buf[bufBytes++] = 0x50;       // 'P'
+          buf[bufBytes++] = 0x52;       // 'R'
+          buf[bufBytes++] = 0x47;       // 'G'
+          break;
+        }
+        while (bufBytes < (savedBufBytes + 31))
+          buf[bufBytes++] = 0x20;
+        buf[bufBytes++] = 0x00;
+        directoryIterator++;
+      }
+      if (directoryIterator == fileDB.end()) {
+        for (int i = 0; i < 32; i++)
+          buf[bufBytes++] = directoryEndLine[i];
+      }
+    }
+    n = uint8_t(buf[bufPos++]);
+    if (bufPos >= bufBytes) {
+      bufPos = 0;
+      bufBytes = 0;
+      if (directoryIterator == fileDB.end())
+        return 3;
+    }
+    return 0;
   }
 
   bool ParallelIECDrive::scratchFile(const Plus4FileName& fileName)
