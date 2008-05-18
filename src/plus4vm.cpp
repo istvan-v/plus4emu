@@ -1209,20 +1209,33 @@ namespace Plus4 {
       else {
         // insert or replace disk
         bool    isD64 = false;
+        bool    isD81 = false;
         {
           // find out file type
           std::FILE *f = std::fopen(fileName_.c_str(), "rb");
           if (f) {
             if (std::fseek(f, 0L, SEEK_END) >= 0) {
               long    fSize = std::ftell(f);
-              isD64 = (fSize == 174848L || fSize == 175531L ||
-                       fSize == 196608L || fSize == 197376L);
+              long    nSectors = fSize / 256L;
+              if ((nSectors * 256L) != fSize) {
+                // allow error info (one byte per sector at the end of the file)
+                nSectors = fSize / 257L;
+                if ((nSectors * 257L) != fSize)
+                  nSectors = 0L;
+              }
+              nSectors -= 683L;
+              // allow any number of D64 tracks from 35 to 42
+              isD64 = (nSectors >= 0L && nSectors <= 119L &&
+                       ((nSectors / 17L) * 17L) == nSectors);
+              isD81 = (fSize == (80L * 2L * 10L * 512L));
             }
             std::fclose(f);
           }
           else
             throw Plus4Emu::Exception("error opening disk image file");
         }
+        if (!isD64 && !isD81)
+          throw Plus4Emu::Exception("disk image is not a D64 or D81 file");
         int     newDriveType = (isD64 ? driveType : 4);
         if (newDriveType == 1) {
           if (n >= 10) {
