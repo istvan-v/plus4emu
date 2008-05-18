@@ -105,6 +105,8 @@ namespace Plus4 {
     size_t          errMsgBytes;
     std::map< Plus4FileName, FileDBEntry >::iterator  directoryIterator;
     int             errorCode;
+    Plus4FileName   diskName;
+    unsigned char   diskID[2];
     // --------
     void updateParallelInterface();
     int listenNextByte(uint8_t n);
@@ -127,6 +129,10 @@ namespace Plus4 {
     int readRelativeFile(uint8_t& n);
     int readDirectory(uint8_t& n);
     bool scratchFile(const Plus4FileName& fileName);
+    bool copyFile(const Plus4FileName& dstFileName,
+                  const Plus4FileName& srcFileName);
+    bool appendFile(const Plus4FileName& dstFileName,
+                    const Plus4FileName& srcFileName);
    public:
     ParallelIECDrive(int deviceNumber_ = 8);
     virtual ~ParallelIECDrive();

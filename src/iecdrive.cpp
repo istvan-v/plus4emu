@@ -30,9 +30,9 @@ static const size_t maxFileCnt = 4096;
 
 static const unsigned char  directoryStartLine[32] = {
   0x01, 0x04, 0x01, 0x01, 0x00, 0x00, 0x12, 0x22,       // '......."'
-  0x50, 0x4C, 0x55, 0x53, 0x34, 0x45, 0x4D, 0x55,       // 'PLUS4EMU'
-  0x20, 0x44, 0x49, 0x53, 0x4B, 0x20, 0x20, 0x20,       // ' DISK   '
-  0x22, 0x20, 0x30, 0x30, 0x20, 0x32, 0x41, 0x00        // '" 00 2A.'
+  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,       // '        '
+  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,       // '        '
+  0x22, 0x20, 0x20, 0x20, 0x20, 0x32, 0x41, 0x00        // '"    2A.'
 };
 
 static const unsigned char  directoryEndLine[32] = {
@@ -329,8 +329,11 @@ namespace Plus4 {
       bufMaxBytes(256),
       errMsgPos(0),
       errMsgBytes(0),
-      errorCode(0)
+      errorCode(0),
+      diskName("plus4emu disk")
   {
+    diskID[0] = 0x30;
+    diskID[1] = 0x30;
     directoryIterator = fileDB.end();
     this->reset();
   }
@@ -1217,6 +1220,7 @@ namespace Plus4 {
       else if (nameOffset != 0 &&
                (cmdBuf[i] == 0x2C || cmdBuf[i] == 0x3A || cmdBuf[i] == 0x3D)) {
         nameLen = i - nameOffset;
+        break;
       }
     }
     bool    haveWildcards = false;
@@ -1229,7 +1233,48 @@ namespace Plus4 {
       if (nameLen < 1) {
         setErrorMessage(34);            // missing filename
       }
-
+      else {
+        if ((nameOffset + nameLen) >= cmdLen ||
+            cmdBuf[nameOffset + nameLen] != 0x3D) {
+          setErrorMessage(30);          // invalid command parameters
+          return;
+        }
+        Plus4FileName dstFileName;
+        Plus4FileName srcFileName;
+        for (size_t i = nameOffset; i < (nameOffset + nameLen); i++)
+          dstFileName.appendPlus4Character(cmdBuf[i]);
+        size_t  nameEndPos = nameOffset + nameLen;
+        bool    appendFlag = false;
+        do {
+          size_t  srcNameOffset = nameEndPos + 1;
+          nameEndPos = cmdLen;
+          for (size_t i = 0; i < 2 && (srcNameOffset + i) < cmdLen; i++) {
+            if (cmdBuf[srcNameOffset + i] == 0x3A) {
+              // ignore drive number
+              srcNameOffset = srcNameOffset + i + 1;
+              break;
+            }
+          }
+          for (size_t i = srcNameOffset; i < cmdLen; i++) {
+            if (cmdBuf[i] == 0x2C) {
+              nameEndPos = i;
+              break;
+            }
+          }
+          srcFileName.clear();
+          for (size_t i = srcNameOffset; i < nameEndPos; i++)
+            srcFileName.appendPlus4Character(cmdBuf[i]);
+          if (!appendFlag) {
+            if (!copyFile(dstFileName, srcFileName))
+              return;
+          }
+          else {
+            if (!appendFile(dstFileName, srcFileName))
+              return;
+          }
+          appendFlag = true;
+        } while (nameEndPos < cmdLen);
+      }
       break;
     case 0x49:                          // INITIALIZE
       for (int i = 0; i < 16; i++)
@@ -1239,6 +1284,24 @@ namespace Plus4 {
       setErrorMessage(73);
       break;
     case 0x4E:                          // NEW
+      if (nameLen < 1) {
+        setErrorMessage(34);            // missing disk name
+        return;
+      }
+      if ((nameOffset + nameLen) < cmdLen) {
+        if (cmdBuf[nameOffset + nameLen] == 0x2C &&
+            (nameOffset + nameLen + 3) == cmdLen) {
+          diskID[0] = cmdBuf[nameOffset + nameLen + 1];
+          diskID[1] = cmdBuf[nameOffset + nameLen + 2];
+        }
+        else {
+          setErrorMessage(30);          // invalid command parameters
+          return;
+        }
+      }
+      diskName.clear();
+      for (size_t i = nameOffset; i < (nameOffset + nameLen); i++)
+        diskName.appendPlus4Character(cmdBuf[i]);
       while (errorCode == 0 && fileDB.begin() != fileDB.end()) {
         // delete all files
         Plus4FileName fileName = (*(fileDB.begin())).first;
@@ -1304,7 +1367,32 @@ namespace Plus4 {
       }
       break;
     case 0x52:                          // RENAME
-
+      if (nameLen < 1) {
+        setErrorMessage(34);            // missing filename
+      }
+      else {
+        if ((nameOffset + nameLen) >= cmdLen ||
+            cmdBuf[nameOffset + nameLen] != 0x3D) {
+          setErrorMessage(30);          // invalid command parameters
+          return;
+        }
+        Plus4FileName dstFileName;
+        Plus4FileName srcFileName;
+        for (size_t i = nameOffset; i < (nameOffset + nameLen); i++)
+          dstFileName.appendPlus4Character(cmdBuf[i]);
+        size_t  srcNameOffset = nameOffset + nameLen + 1;
+        for (size_t i = 0; i < 2 && (srcNameOffset + i) < cmdLen; i++) {
+          if (cmdBuf[srcNameOffset + i] == 0x3A) {
+            // ignore drive number
+            srcNameOffset = srcNameOffset + i + 1;
+            break;
+          }
+        }
+        for (size_t i = srcNameOffset; i < cmdLen; i++)
+          srcFileName.appendPlus4Character(cmdBuf[i]);
+        if (copyFile(dstFileName, srcFileName))
+          scratchFile(srcFileName);
+      }
       break;
     case 0x53:                          // SCRATCH
       if (nameLen < 1) {
@@ -1329,11 +1417,8 @@ namespace Plus4 {
           updateFileDB();
           nameFound = findFile(fileName);
         }
-        if (nameFound.fileNameLen < 1) {
-          setErrorMessage(62);          // "file not found"
-        }
-        else {
-          int     scratchCnt = 0;
+        int     scratchCnt = 0;
+        if (nameFound.fileNameLen > 0) {
           if (scratchFile(nameFound))
             scratchCnt++;
           if (haveWildcards) {
@@ -1345,9 +1430,9 @@ namespace Plus4 {
                 scratchCnt++;
             }
           }
-          if (errorCode == 0)
-            setErrorMessage(1, scratchCnt);
         }
+        if (errorCode == 0)
+          setErrorMessage(1, scratchCnt);
       }
       break;
     case 0x56:                          // VALIDATE
@@ -1442,6 +1527,8 @@ namespace Plus4 {
       if ((fileSize % long(recordSize)) == 0L) {
         if (fileSize != (long(recordNum) * recordSize))
           c = 0xFF;
+        else
+          filesOpened[channelNum].recordPos = 0;    // reset record position
       }
       if (std::fputc(c, f) == EOF) {
         setErrorMessage(72);            // "disk full"
@@ -1581,6 +1668,10 @@ namespace Plus4 {
       if (directoryIterator == fileDB.begin()) {
         for (int i = 0; i < 32; i++)
           buf[bufBytes++] = directoryStartLine[i];
+        for (int i = 0; i < diskName.fileNameLen; i++)
+          buf[i + 8] = diskName.fileName[i];
+        buf[0x1A] = diskID[0];
+        buf[0x1B] = diskID[1];
       }
       if (directoryIterator != fileDB.end()) {
         long          fSize = 0L;
@@ -1700,6 +1791,188 @@ namespace Plus4 {
     }
     fileDB.erase(fileName);
     directoryIterator = fileDB.end();
+    return true;
+  }
+
+  bool ParallelIECDrive::copyFile(const Plus4FileName& dstFileName,
+                                  const Plus4FileName& srcFileName)
+  {
+    if (writeProtectFlag) {
+      setErrorMessage(26);              // "write protect on"
+      return false;
+    }
+    if (dstFileName.fileNameLen < 1 || srcFileName.fileNameLen < 1) {
+      setErrorMessage(34);              // missing filename
+      return false;
+    }
+    for (int i = 0; i < dstFileName.fileNameLen; i++) {
+      if (dstFileName.fileName[i] == 0x2A || dstFileName.fileName[i] == 0x3F) {
+        setErrorMessage(30);            // wildcards are not allowed
+        return false;
+      }
+    }
+    for (int i = 0; i < srcFileName.fileNameLen; i++) {
+      if (srcFileName.fileName[i] == 0x2A || srcFileName.fileName[i] == 0x3F) {
+        setErrorMessage(30);            // wildcards are not allowed
+        return false;
+      }
+    }
+    bool    fileDBUpdated = false;
+    if (findFile(srcFileName).fileNameLen < 1) {
+      updateFileDB();
+      fileDBUpdated = true;
+    }
+    if (findFile(srcFileName).fileNameLen < 1) {
+      setErrorMessage(62);              // "file not found"
+      return false;
+    }
+    if (findFile(dstFileName).fileNameLen > 0 && !fileDBUpdated) {
+      updateFileDB();
+      fileDBUpdated = true;
+    }
+    if (findFile(dstFileName).fileNameLen > 0) {
+      setErrorMessage(63);              // "file exists"
+      return false;
+    }
+    for (int i = 0; i < 16; i++) {
+      // check for currently opened files:
+      if (filesOpened[i].f != (std::FILE *) 0 &&
+          (filesOpened[i].fileName == dstFileName ||
+           (filesOpened[i].fileName == srcFileName &&
+            (filesOpened[i].openMode == 'A' ||
+             filesOpened[i].openMode == 'W')))) {
+        setErrorMessage(60);            // "write file open"
+        return false;
+      }
+    }
+    if (dstFileName == srcFileName)     // nothing to do
+      return true;
+    FileTableEntry  dstFile;    // use FileTableEntry structures so that
+    FileTableEntry  srcFile;    // the files are automatically closed on return
+    srcFile.f = std::fopen(fileDB[srcFileName].fullName.c_str(), "rb");
+    if (srcFile.f == (std::FILE *) 0) {
+      fileDBUpdateFlag = !fileDBUpdated;
+      setErrorMessage(62);              // "file not found"
+      return false;
+    }
+    char    fileType = fileDB[srcFileName].fileType;
+    if (fileType != 'p') {
+      std::fseek(srcFile.f, 26L, SEEK_SET);
+      if (std::ftell(srcFile.f) != 26L) {
+        setErrorMessage(27);            // "read error"
+        return false;
+      }
+    }
+    else
+      fileType = 'P';
+    int     recordSize = fileDB[srcFileName].recordSize;
+    int     err = createFile(dstFile.f, dstFileName, fileType, recordSize);
+    if (err != 0) {
+      // "disk full" or "write protect on"
+      setErrorMessage(err == -2 ? 72 : 26);
+      return false;
+    }
+    while (true) {
+      int     c = std::fgetc(srcFile.f);
+      if (c == EOF)
+        break;
+      c = c & 0xFF;
+      if (std::fputc(c, dstFile.f) == EOF) {
+        setErrorMessage(72);            // "disk full"
+        return false;
+      }
+    }
+    if (std::fflush(dstFile.f) != 0) {
+      setErrorMessage(72);              // "disk full"
+      return false;
+    }
+    return true;
+  }
+
+  bool ParallelIECDrive::appendFile(const Plus4FileName& dstFileName,
+                                    const Plus4FileName& srcFileName)
+  {
+    if (writeProtectFlag) {
+      setErrorMessage(26);              // "write protect on"
+      return false;
+    }
+    if (dstFileName.fileNameLen < 1 || srcFileName.fileNameLen < 1) {
+      setErrorMessage(34);              // missing filename
+      return false;
+    }
+    for (int i = 0; i < dstFileName.fileNameLen; i++) {
+      if (dstFileName.fileName[i] == 0x2A || dstFileName.fileName[i] == 0x3F) {
+        setErrorMessage(30);            // wildcards are not allowed
+        return false;
+      }
+    }
+    for (int i = 0; i < srcFileName.fileNameLen; i++) {
+      if (srcFileName.fileName[i] == 0x2A || srcFileName.fileName[i] == 0x3F) {
+        setErrorMessage(30);            // wildcards are not allowed
+        return false;
+      }
+    }
+    bool    fileDBUpdated = false;
+    if (findFile(srcFileName).fileNameLen < 1 ||
+        findFile(dstFileName).fileNameLen < 1) {
+      updateFileDB();
+      fileDBUpdated = true;
+    }
+    if (findFile(srcFileName).fileNameLen < 1 ||
+        findFile(dstFileName).fileNameLen < 1) {
+      setErrorMessage(62);              // "file not found"
+      return false;
+    }
+    if (dstFileName == srcFileName) {
+      setErrorMessage(63);              // "file exists"
+      return false;
+    }
+    for (int i = 0; i < 16; i++) {
+      // check for currently opened files:
+      if (filesOpened[i].f != (std::FILE *) 0 &&
+          (filesOpened[i].fileName == dstFileName ||
+           (filesOpened[i].fileName == srcFileName &&
+            (filesOpened[i].openMode == 'A' ||
+             filesOpened[i].openMode == 'W')))) {
+        setErrorMessage(60);            // "write file open"
+        return false;
+      }
+    }
+    FileTableEntry  dstFile;    // use FileTableEntry structures so that
+    FileTableEntry  srcFile;    // the files are automatically closed on return
+    srcFile.f = std::fopen(fileDB[srcFileName].fullName.c_str(), "rb");
+    if (srcFile.f == (std::FILE *) 0) {
+      fileDBUpdateFlag = !fileDBUpdated;
+      setErrorMessage(62);              // "file not found"
+      return false;
+    }
+    if (fileDB[srcFileName].fileType != 'p') {
+      std::fseek(srcFile.f, 26L, SEEK_SET);
+      if (std::ftell(srcFile.f) != 26L) {
+        setErrorMessage(27);            // "read error"
+        return false;
+      }
+    }
+    dstFile.f = std::fopen(fileDB[dstFileName].fullName.c_str(), "ab");
+    if (dstFile.f == (std::FILE *) 0) {
+      fileDBUpdateFlag = !fileDBUpdated;
+      setErrorMessage(26);              // "write protect on"
+      return false;
+    }
+    while (true) {
+      int     c = std::fgetc(srcFile.f);
+      if (c == EOF)
+        break;
+      c = c & 0xFF;
+      if (std::fputc(c, dstFile.f) == EOF) {
+        setErrorMessage(72);            // "disk full"
+        return false;
+      }
+    }
+    if (std::fflush(dstFile.f) != 0) {
+      setErrorMessage(72);              // "disk full"
+      return false;
+    }
     return true;
   }
 
