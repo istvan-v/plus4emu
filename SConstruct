@@ -49,8 +49,9 @@ if win32CrossCompile:
     plus4emuLibEnvironment['CXX'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
     plus4emuLibEnvironment['LINK'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
     plus4emuLibEnvironment['RANLIB'] = 'wine C:/MinGW/bin/ranlib.exe'
-    plus4emuLibEnvironment.Append(LIBS = ['ole32', 'uuid', 'ws2_32',
-                                          'gdi32', 'user32', 'kernel32'])
+    plus4emuLibEnvironment.Append(LIBS = ['comdlg32', 'ole32', 'uuid',
+                                          'ws2_32', 'gdi32', 'user32',
+                                          'kernel32'])
     plus4emuLibEnvironment.Prepend(CCFLAGS = ['-mthreads'])
     plus4emuLibEnvironment.Prepend(LINKFLAGS = ['-mthreads'])
 
@@ -228,6 +229,10 @@ plus4emuEnvironment = plus4emuGLGUIEnvironment.Copy()
 plus4emuEnvironment.Append(CPPPATH = ['./gui'])
 plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 if haveDotconf:
+    if win32CrossCompile:
+        # hack to work around binary incompatible dirent functions in
+        # libdotconf.a
+        plus4emuEnvironment.Append(LIBS = ['mingwex'])
     plus4emuEnvironment.Append(LIBS = ['dotconf'])
 if haveLua:
     plus4emuEnvironment.Append(LIBS = ['lua'])
@@ -271,6 +276,10 @@ makecfgEnvironment = plus4emuGUIEnvironment.Copy()
 makecfgEnvironment.Append(CPPPATH = ['./installer'])
 makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
 if haveDotconf:
+    if win32CrossCompile:
+        # hack to work around binary incompatible dirent functions in
+        # libdotconf.a
+        makecfgEnvironment.Append(LIBS = ['mingwex'])
     makecfgEnvironment.Append(LIBS = ['dotconf'])
 if haveSDL:
     makecfgEnvironment.Append(LIBS = ['SDL'])
@@ -323,6 +332,10 @@ p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu', 'fltk_images'])
 if win32CrossCompile or buildRelease:
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 if haveDotconf:
+    if win32CrossCompile:
+        # hack to work around binary incompatible dirent functions in
+        # libdotconf.a
+        p4fliconvEnvironment.Append(LIBS = ['mingwex'])
     p4fliconvEnvironment.Append(LIBS = ['dotconf'])
 if not win32CrossCompile:
     p4fliconvEnvironment.Append(LIBS = ['pthread'])
@@ -351,6 +364,10 @@ p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu', 'fltk_images'])
 if win32CrossCompile or buildRelease:
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 if haveDotconf:
+    if win32CrossCompile:
+        # hack to work around binary incompatible dirent functions in
+        # libdotconf.a
+        p4sconvEnvironment.Append(LIBS = ['mingwex'])
     p4sconvEnvironment.Append(LIBS = ['dotconf'])
 if win32CrossCompile:
     p4sconvEnvironment.Prepend(LINKFLAGS = ['-mconsole'])

@@ -251,12 +251,13 @@ namespace Plus4 {
 
   unsigned char ParallelIECDrive::Plus4FileName::convertCharacterToPlus4(char c)
   {
-    if (c >= 'a' && c <= 'z')
+    if (c >= 'a' && c <= 'z') {
       c = (c - 'a') + 'A';
-    else if (c >= 'A' && c <= 'Z')
-      c = (c - 'A') + 'a';
-    else if (!((c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.'))
+    }
+    else if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+               c == '+' || c == '-' || c == '.' || c == ' ')) {
       c = char(0xA4);
+    }
     return (unsigned char) c;
   }
 
@@ -377,6 +378,21 @@ namespace Plus4 {
   {
     fileDBUpdateFlag = true;
     currentWorkingDirectory = dirName_;
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+    if (currentWorkingDirectory.length() > 0) {
+      size_t  len = currentWorkingDirectory.length();
+      // convert forward slashes to backslash characters
+      for (size_t i = 0; i < len; i++) {
+        if (currentWorkingDirectory[i] == '/')
+          currentWorkingDirectory[i] = '\\';
+      }
+      // remove trailing backslash
+      if (currentWorkingDirectory[len - 1] == '\\') {
+        if (len > 1 && currentWorkingDirectory[len - 2] != ':')
+          currentWorkingDirectory.resize(len - 1);
+      }
+    }
+#endif
   }
 
   bool ParallelIECDrive::parallelIECRead(uint16_t addr, uint8_t& value)
@@ -685,14 +701,8 @@ namespace Plus4 {
         if (fileType == '\0')
           continue;
         Plus4FileName plus4Name;
-        for (size_t i = 0; i < (nameLen - 4); i++) {
-          char    c = baseName[i];
-          if (fileType == 'p') {
-            if (c >= 'A' && c <= 'Z')
-              c = (c - 'A') + 'a';
-          }
-          plus4Name.appendCharacter(c);
-        }
+        for (size_t i = 0; i < (nameLen - 4); i++)
+          plus4Name.appendCharacter(baseName[i]);
         std::string   fullName = currentWorkingDirectory;
         if (fullName[fullName.length() - 1] != '/' &&
             fullName[fullName.length() - 1] != '\\') {
@@ -1208,6 +1218,11 @@ namespace Plus4 {
       cmdLen--;
     if (cmdLen < 1) {                   // CR only: error (invalid command)
       setErrorMessage(31);
+      return;
+    }
+    if (currentWorkingDirectory.length() < 1) {
+      updateFileDB();
+      setErrorMessage(74);              // "drive not ready"
       return;
     }
     size_t  nameOffset = 0;
