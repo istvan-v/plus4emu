@@ -37,41 +37,41 @@ static void defaultBreakPointCallback(void *userData,
 
 namespace Plus4 {
 
-  const int D64Image::d64TrackOffsetTable[42] = {
+  const int D64Image::d64TrackOffsetTable[44] = {
         -1,      0,   5376,  10752,  16128,  21504,  26880,  32256,
      37632,  43008,  48384,  53760,  59136,  64512,  69888,  75264,
      80640,  86016,  91392,  96256, 101120, 105984, 110848, 115712,
     120576, 125440, 130048, 134656, 139264, 143872, 148480, 153088,
     157440, 161792, 166144, 170496, 174848, 179200, 183552, 187904,
-    192256, 196608
+    192256, 196608, 200960, 205312
   };
 
-  const int D64Image::sectorsPerTrackTable[42] = {
+  const int D64Image::sectorsPerTrackTable[44] = {
      0, 21, 21, 21, 21, 21, 21, 21,
     21, 21, 21, 21, 21, 21, 21, 21,
     21, 21, 19, 19, 19, 19, 19, 19,
     19, 18, 18, 18, 18, 18, 18, 17,
     17, 17, 17, 17, 17, 17, 17, 17,
-    17, 17
+    17, 17, 17, 17
   };
 
-  const int D64Image::trackSizeTable[42] = {
+  const int D64Image::trackSizeTable[44] = {
     7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
     7692, 7692, 7692, 7692, 7692, 7692, 7692, 7692,
     7692, 7692, 7143, 7143, 7143, 7143, 7143, 7143,
     7143, 6667, 6667, 6667, 6667, 6667, 6667, 6250,
     6250, 6250, 6250, 6250, 6250, 6250, 6250, 6250,
-    6250, 6250
+    6250, 6250, 6250, 6250
   };
 
   // number of bits per 1 MHz cycle, multiplied by 65536
-  const int D64Image::trackSpeedTable[42] = {
+  const int D64Image::trackSpeedTable[44] = {
     0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
     0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5, 0x4EC5,
     0x4EC5, 0x4EC5, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925, 0x4925,
     0x4925, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x4000,
     0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000,
-    0x4000, 0x4000
+    0x4000, 0x4000, 0x4000, 0x4000
   };
 
   const uint8_t D64Image::gcrEncodeTable[16] = {
@@ -429,7 +429,7 @@ namespace Plus4 {
   bool D64Image::setCurrentTrack(int trackNum)
   {
     bool    retval = true;
-    trackNum = (trackNum >= 1 ? (trackNum <= 40 ? trackNum : 40) : 1);
+    trackNum = (trackNum >= 1 ? (trackNum <= 42 ? trackNum : 42) : 1);
     if (trackNum != currentTrack) {
       // write old track to disk if it has been changed
       if (!flushTrack(currentTrack))
@@ -446,7 +446,7 @@ namespace Plus4 {
 
   D64Image::D64Image()
     : trackDirtyFlag(false),
-      currentTrack(40),
+      currentTrack(42),
       nTracks(0),
       imageFile((std::FILE *) 0),
       writeProtectFlag(false),
@@ -483,6 +483,7 @@ namespace Plus4 {
       nTracks = 0;
     }
     writeProtectFlag = false;
+    haveBadSectorTable = false;
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
     if (fileName_.length() > 0) {
       bool    isReadOnly = false;
@@ -499,23 +500,31 @@ namespace Plus4 {
         throw Plus4Emu::Exception("error seeking to end of disk image file");
       }
       long    fSize = std::ftell(imageFile);
-      if (fSize != 174848L && fSize != 175531L &&
-          fSize != 196608L && fSize != 197376L) {
+      long    nSectors = fSize / 256L;
+      if ((nSectors * 256L) != fSize) {
+        nSectors = fSize / 257L;
+        if ((nSectors * 257L) != fSize)
+          nSectors = 0L;
+      }
+      nSectors -= 683L;
+      // allow any number of tracks from 35 to 42
+      if (nSectors < 0L || nSectors > 119L ||
+          ((nSectors / 17L) * 17L) != nSectors) {
         std::fclose(imageFile);
         imageFile = (std::FILE *) 0;
         throw Plus4Emu::Exception("D64 image file has invalid length");
       }
       std::fseek(imageFile, 0L, SEEK_SET);
       writeProtectFlag = isReadOnly;
-      nTracks = (fSize < 196608L ? 35 : 40);
-      haveBadSectorTable = (fSize == 175531L || fSize == 197376L);
+      nTracks = 35L + (nSectors / 17L);
+      haveBadSectorTable = (((nSectors + 683L) * 256L) < fSize);
       diskID = (diskID + 1) & 0xFF;
       if (((diskID >> 4) + 0x41) == idCharacter1 &&
           ((diskID & 0x0F) + 0x41) == idCharacter2)
         diskID = (diskID + 1) & 0xFF;   // make sure that the disk ID changes
       idCharacter1 = (diskID >> 4) + 0x41;
       idCharacter2 = (diskID & 0x0F) + 0x41;
-      currentTrack = 40;
+      currentTrack = 42;
       (void) setCurrentTrack(18);       // FIXME: should report errors ?
     }
   }

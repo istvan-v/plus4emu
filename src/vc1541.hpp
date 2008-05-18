@@ -30,18 +30,19 @@ namespace Plus4 {
 
   class D64Image {
    protected:
-    static const int      d64TrackOffsetTable[42];
-    static const int      sectorsPerTrackTable[42];
-    static const int      trackSizeTable[42];
-    static const int      trackSpeedTable[42];
+    static const int      d64TrackOffsetTable[44];
+    static const int      sectorsPerTrackTable[44];
+    static const int      trackSizeTable[44];
+    static const int      trackSpeedTable[44];
     static const uint8_t  gcrEncodeTable[16];
     static const uint8_t  gcrDecodeTable[32];
     uint8_t     trackBuffer_GCR[8192];
     uint8_t     trackBuffer_D64[5376];  // for 21 256-byte sectors
     uint8_t     badSectorTable[24];
     bool        trackDirtyFlag;
-    int         currentTrack;           // 0 to 40 (1 to 35 are valid tracks)
-    int         nTracks;                // number of tracks (35, 40, or zero
+    int         currentTrack;           // 0 to 42
+                                        // (1 to 'nTracks' are valid tracks)
+    int         nTracks;                // number of tracks (35 to 42, or zero
                                         // if there is no disk image file)
     std::FILE   *imageFile;
     bool        writeProtectFlag;
