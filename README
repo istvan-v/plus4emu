@@ -10,6 +10,47 @@ system requirements are higher than that of most other emulators.
 Features
 ========
 
+Plus/4 emulation
+----------------
+
+  * cycle exact emulation of the 7501/8501 CPU, with full support for
+    all documented and undocumented opcodes
+  * cycle exact TED 7360/8360 emulation with very high level of
+    compatibility, implements all documented video modes, PAL/NTSC mode
+    switching, accurate sound emulation, as well as all known display
+    artifacts; all registers can be read and written, and the internal
+    operation and timing is reproduced with very good accuracy
+  * RAM size can be 16, 32, 64, 256, or 1024 kilobytes (the latter two
+    using the Hannes memory expansion)
+  * up to 8 16 kilobyte banks of ROM can be loaded from external image
+    files; using custom ROM files for the emulated floppy drives and
+    printer is also possible
+  * limited emulation of the ACIA 6551 registers
+  * tape emulation with playback, recording, and setting tape position;
+    markers can be created for quick positioning to specific tape
+    locations (useful for tapes with multiple files); uses custom file
+    format which is PCM audio data with 1 to 8 bits of sample resolution
+    and variable sample rate, and header including the table of markers;
+    there is also limited (read only) support for the commonly used MTAP
+    file format, as well as read-write (although without markers)
+    support for sound files like WAV, AIFF, etc.
+  * hardware level emulation of the 1541, 1551, and 1581 floppy disk
+    drives, with support for D64 and D81 files; compatibility with 1541
+    and 1551 fast loaders is fairly good in recent versions of the
+    emulator
+  * IEC level 1551 floppy drive emulation for accessing .PRG, .P00,
+    .R00, .S00, and .U00 files on the PC filesystem; this also supports
+    the C, I, N, P, R, S, and V DOS commands
+  * light pen emulation (compatible with the Trojan Light Pen software)
+  * hardware level 1526/MPS-802 printer emulation
+  * load and automatically start .PRG, .P00, .D64, .D81, or .TAP file on
+    start-up
+  * .PRG, .P00, .D64, and .D81 files can be associated with plus4emu on
+    Windows
+  * SID chip (MOS 6581 and 8580) emulation using version 0.16 of the
+    reSID library written by Dag Lem; the Digi-Blaster expansion by
+    Solder is also supported
+
 General
 -------
 
@@ -20,7 +61,11 @@ General
     saturation control; additional features in OpenGL mode only: single
     or double buffered (with synchronization to vertical refresh) mode,
     linear texture filtering, and some display effects
-  * high quality television (PAL and NTSC) emulation
+  * high quality television (PAL and NTSC) emulation; implements full
+    horizontal and vertical synchronization, blanking, equalization,
+    sync, and burst signals, interlace, and (if OpenGL 2.0 shaders are
+    available) separate luma/chroma filtering to emulate the blurredness
+    of the TV picture
   * real time audio output uses the PortAudio library (v18 or v19), with
     support for many native audio APIs (MME/DirectSound/ASIO on Windows,
     OSS/ALSA/JACK on Linux, and CoreAudio on MacOS X); high quality
@@ -54,45 +99,20 @@ General
     possible to use external game controller devices like joysticks and
     gamepads
 
-Plus/4 emulation
-----------------
+The emulator package also includes some utilities:
 
-  * cycle exact emulation of the 7501/8501 CPU, with full support for
-    all documented and undocumented opcodes
-  * cycle exact TED 7360/8360 emulation with very high level of
-    compatibility, implements all documented video modes, PAL/NTSC mode
-    switching, accurate sound emulation, as well as all known display
-    artifacts; all registers can be read and written, and the internal
-    operation and timing is reproduced with very good accuracy
-  * RAM size can be 16, 32, 64, 256, or 1024 kilobytes (the latter two
-    using the Hannes memory expansion)
-  * up to 8 16 kilobyte banks of ROM can be loaded from external image
-    files; using custom ROM files for the emulated floppy drives and
-    printer is also possible
-  * limited emulation of the ACIA 6551 registers
-  * tape emulation with playback, recording, and setting tape position;
-    markers can be created for quick positioning to specific tape
-    locations (useful for tapes with multiple files); uses custom file
-    format which is PCM audio data with 1 to 8 bits of sample resolution
-    and variable sample rate, and header including the table of markers;
-    there is also limited (read only) support for the commonly used C16
-    tape files, as well as read-write (although without markers) support
-    for sound files like WAV, AIFF, etc.
-  * hardware level emulation of the 1541, 1551, and 1581 floppy disk
-    drives, with support for D64 and D81 files; compatibility with 1541
-    fast loaders is fairly good in recent versions of the emulator
-  * light pen emulation (compatible with the Trojan Light Pen software)
-  * hardware level 1526/MPS-802 printer emulation
-  * load and automatically start .PRG, .P00, .D64, .D81, or .TAP file on
-    start-up
-  * .PRG, .P00, .D64, and .D81 files can be associated with plus4emu on
-    Windows
-  * SID chip (MOS 6581 and 8580) emulation using version 0.16 of the
-    reSID library written by Dag Lem; the Digi-Blaster expansion by
-    Solder is also supported
-  * optional extension ROM (p4fileio.rom) for direct access to .PRG and
-    .P00 files by the load/save commands on the host system in a single
-    user selectable directory; this ROM also includes a tape turbo
+  * compress - compresses Plus/4 .PRG files with very good compression
+    ratio (CA65 assembler source code for the decompressor is available)
+  * makecfg - reinstalls the configuration files of the emulator
+  * p4fliconv - converts JPEG and other format images to various Plus/4
+    video modes (hires/multicolor, FLI, interlace, etc.); it can be used
+    both from the command line, and as a GUI program which uses the
+    emulator for accurate previews. CA65 assembler sources for the FLI
+    viewer are also available.
+  * p4sconv - converts PixelShop .P4S images to any of the output
+    formats supported by p4fliconv
+  * tapconv - converts MTAP format tape files to the native plus4emu
+    tape format
 
 Installation
 ============
@@ -111,7 +131,7 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
 
   * SCons (http://www.scons.org/)
   * Python interpreter for running SCons
-  * FLTK 1.1.x (http://www.fltk.org/software.php?VERSION=1.1.7)
+  * FLTK 1.1.x (http://www.fltk.org/software.php?VERSION=1.1.9)
     NOTES:
       * this library should be compiled with the --enable-threads
         'configure' option - many Linux distributions include binaries
@@ -306,14 +326,14 @@ Record video / Stop
   Stop video capture, and close any AVI file that is currently being
   written.
 
-Save screenshot
+Save screenshot (F6)
 
   Save a screenshot in 24 bit RLE compressed TGA format. The video
   output is captured immediately after activating this menu item, and
   is saved at a resolution of 768x576 without any processing (color
   correction, effects, etc.).
 
-Quit
+Quit (Shift + F12)
 
   Exit the emulator.
 
@@ -446,11 +466,12 @@ Sound / Decrease volume
 
 Floppy / Configure... (Alt + D)
 
-  Opens a dialog for setting up floppy emulation. For each drive, an
-  image file can be selected. If the file name is left empty, that means
-  having no disk in that particular drive. It may also be possible to
-  directly access a real disk by using the /dev/fd* devices (on Linux)
-  or \\.\A: (on Windows) as the image file.
+  Opens a dialog for setting up floppy drive emulation.
+  For each drive, an image file can be selected. If the file name is
+  left empty, that means having no disk in that particular drive.
+  It may also be possible to directly access a real 1581 800k disk by
+  using the /dev/fd* devices (on Linux) or \\.\A: (on Windows) as the
+  image file.
   The file format must be either D64 or D81; the type is determined from
   the file size. Opening a D64 file will enable 1541 or 1551 emulation
   for that particular drive, while the 1581 will be emulated for D81
@@ -460,6 +481,12 @@ Floppy / Configure... (Alt + D)
   active until a different type of image file is opened, or a snapshot
   is loaded or 'Force reset' (or anything that implies it) is used while
   there is no disk opened.
+  Setting the drive type of unit 8 or unit 9 to 1551, and leaving the
+  image file name empty enables IEC level 1551 drive emulation instead
+  of true (hardware level) drive emulation. This can be used to access
+  .PRG, .P00, .R00, .S00, and .U00 files in the currently selected
+  working directory, and also has the advantage of not increasing the
+  CPU usage.
 
 Floppy / Remove disk / Unit 8
 Floppy / Remove disk / Unit 9
@@ -494,35 +521,22 @@ Floppy / Disable unused drives
   Turn off the emulation of all floppy drives that are currently active,
   but have no disk image attached. This can be useful to reduce CPU
   usage when a drive is no longer needed, without having to reset the
-  emulated machine.
+  emulated machine. Using this option may also be needed to enable IEC
+  level drive emulation, which cannot be used while hardware level
+  emulation on the same unit is still active.
 
-Set working directory
+Set working directory (Alt + Q)
 
-  Set the directory to be accessed by the optional file I/O ROM
-  extension modules. This directory is also used by monitor commands
-  that take a file name argument.
-  To enable the file I/O extension, you need to load 'p4fileio.rom' to
-  the C2L bank in the ROM configuration, and also check the
-  'Enable virtual file I/O' button. It is then possible to load and save
-  PRG files in the selected working directory by using device 7 as a
-  parameter of the load/save commands. The module can be initialized by
-  running G 063A in the TEDMON - this may be necessary when the
-  load/save vectors are overwritten, for example after a Run/Stop+Reset.
-  Alternatively, p4fileio.rom can also be used as a tape turbo, with one
-  of these monitor commands:
-    >0647 17            (slowest speed)
-    >0647 27
-    >0647 37
-    >0647 47            (fastest speed)
-  Saving to device 7 will then use the tape turbo, but loading will
-  still access the filesystem. Loading files saved this way to tape does
-  not require the ROM. To restore the original mode of operation, use
-  the >0647 07 command.
+  Set the directory to be accessed by the IEC level drive emulation.
+  The filesystem access is read-only by default, but writing can be
+  enabled in the machine configuration.
+  This directory is also used by monitor commands that take a file name
+  argument.
 
 'Debug' menu
 ------------
 
-Start debugger (Alt+M)
+Start debugger (Alt + M)
 
   Shows the debugger window. Many functions in the debugger can be used
   either in CPU addressing mode where the 16 bit address space of the
@@ -536,7 +550,7 @@ Start debugger (Alt+M)
     01      004000-007FFF   Kernal ROM
     02, 03  008000-00FFFF   Function (3-plus-1) ROM
     04, 05  010000-017FFF   Cartridge 1
-    06, 07  018000-01FFFF   Cartridge 2 (used by the file I/O extension)
+    06, 07  018000-01FFFF   Cartridge 2 (used by p4fileio.rom)
     0C      030000-033FFF   Printer ROM
     10      040000-043FFF   1541 floppy drive ROM
     20      080000-083FFF   1551 floppy drive ROM
@@ -812,9 +826,10 @@ Start debugger (Alt+M)
 Copyright
 =========
 
-plus4emu is copyright (C) 2003-2007 by Istvan Varga
+plus4emu is copyright (C) 2003-2008 by Istvan Varga
 <istvanv@users.sourceforge.net>.
 reSID 0.16 copyright (C) 2004 by Dag Lem.
+Fl_Native_File_Chooser 0.84 copyright (C) 2004 by Greg Ercolano.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

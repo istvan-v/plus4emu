@@ -1,6 +1,10 @@
 Changes in version 1.2.6
 ------------------------
 
+  * implemented IEC level floppy drive emulation; this allows access to
+    a directory on the PC filesystem, and supports reading and writing
+    .prg, .p00, .s00, .u00, and .r00 files (relative files may not work
+    reliably yet, though), and some commonly used CBM DOS commands
   * the debugger window now displays the current state of TED registers
   * on Windows and MacOS X the native file selection dialog is used
     instead of the FLTK one; also, the last PRG and screenshot file
@@ -8,6 +12,10 @@ Changes in version 1.2.6
   * various improvements have been made to the utilities
   * changed the TED luminance table to (hopefully) match the colors of
     the real machine more accurately
+  * D64 files with any number of tracks from 35 to 42 are supported
+  * new/improved GUI keyboard shortcuts
+  * the old file I/O hack has been removed, since its functionality is
+    now replaced by the IEC level drive emulation
   * some minor bugs have been fixed
 
 Changes in version 1.2.5.2
