@@ -1,10 +1,12 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0109 
+version 1.0107 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
 decl {\#include "p4fliconv.hpp"} {selected
 } 
+
+decl {\#include <FL/Fl_File_Chooser.H>} {} 
 
 class Plus4FLIConvGUI {open
 } {
@@ -25,7 +27,7 @@ class Plus4FLIConvGUI {open
   decl {bool fileNotSavedFlag;} {}
   decl {bool confirmStatus;} {}
   decl {bool c64PaletteChangedFlag;} {}
-  decl {Fl_Native_File_Chooser *browseFileWindow;} {}
+  decl {Fl_File_Chooser *browseFileWindow;} {}
   decl {std::string imageFileDirectory;} {}
   decl {std::string configDirectory;} {}
   decl {std::string prgFileDirectory;} {}
@@ -992,8 +994,8 @@ class Plus4FLIConvGUI {open
   try {
     std::string fileName;
     if (!browseFile(fileName, configDirectory,
-                    "Configuration files\\t*.cfg",
-                    Fl_Native_File_Chooser::BROWSE_FILE,
+                    "Configuration files (*.cfg)",
+                    Fl_File_Chooser::SINGLE,
                     "Load configuration file")) {
       fileName = "";
     }
@@ -1015,8 +1017,8 @@ class Plus4FLIConvGUI {open
   try {
     std::string fileName;
     if (!browseFile(fileName, configDirectory,
-                    "Configuration files\\t*.cfg",
-                    Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                    "Configuration files (*.cfg)",
+                    Fl_File_Chooser::CREATE,
                     "Save configuration file")) {
       fileName = "";
     }
@@ -1125,6 +1127,7 @@ class Plus4FLIConvGUI {open
     code {{
   confirmMessageWindow->hide();
   errorMessageWindow->hide();
+  browseFileWindow->hide();
   configWindow->hide();
   aboutWindow->hide();
   mainWindow->hide();
