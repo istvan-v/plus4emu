@@ -518,13 +518,13 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_File_RecordVideo, (void *) this);
   mainMenuBar->add("File/Record video/Stop",
                    (char *) 0, &menuCallback_File_StopAVIRecord, (void *) this);
-  mainMenuBar->add("File/Save screenshot",
+  mainMenuBar->add("File/Save screenshot (F6)",
                    (char *) 0, &menuCallback_File_Screenshot, (void *) this);
   mainMenuBar->add("File/Load program (F8)",
                    (char *) 0, &menuCallback_File_LoadPRG, (void *) this);
-  mainMenuBar->add("File/Save program",
+  mainMenuBar->add("File/Save program (Shift+F8)",
                    (char *) 0, &menuCallback_File_SavePRG, (void *) this);
-  mainMenuBar->add("File/Quit",
+  mainMenuBar->add("File/Quit (Shift+F12)",
                    (char *) 0, &menuCallback_File_Quit, (void *) this);
   mainMenuBar->add("Machine/Speed/No limit (Alt+W)",
                    (char *) 0, &menuCallback_Machine_FullSpeed, (void *) this);
@@ -540,15 +540,15 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_Speed_200, (void *) this);
   mainMenuBar->add("Machine/Speed/400%",
                    (char *) 0, &menuCallback_Machine_Speed_400, (void *) this);
-  mainMenuBar->add("Machine/Tape/Select image file (F6)",
+  mainMenuBar->add("Machine/Tape/Select image file (Alt+T)",
                    (char *) 0, &menuCallback_Machine_OpenTape, (void *) this);
-  mainMenuBar->add("Machine/Tape/Play (Shift + F9)",
+  mainMenuBar->add("Machine/Tape/Play (F5)",
                    (char *) 0, &menuCallback_Machine_TapePlay, (void *) this);
-  mainMenuBar->add("Machine/Tape/Stop (Shift + F10)",
+  mainMenuBar->add("Machine/Tape/Stop (Shift+F5)",
                    (char *) 0, &menuCallback_Machine_TapeStop, (void *) this);
-  mainMenuBar->add("Machine/Tape/Record (Shift + F12)",
+  mainMenuBar->add("Machine/Tape/Record (Shift+F6)",
                    (char *) 0, &menuCallback_Machine_TapeRecord, (void *) this);
-  mainMenuBar->add("Machine/Tape/Rewind/To beginning of tape",
+  mainMenuBar->add("Machine/Tape/Rewind/To beginning of tape (Alt+R)",
                    (char *) 0, &menuCallback_Machine_TapeRewind, (void *) this);
   mainMenuBar->add("Machine/Tape/Rewind/To previous marker",
                    (char *) 0, &menuCallback_Machine_TapePrvCP, (void *) this);
@@ -600,9 +600,9 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Machine_DisableSID, (void *) this);
   mainMenuBar->add("Machine/Toggle pause (F10)",
                    (char *) 0, &menuCallback_Machine_Pause, (void *) this);
-  mainMenuBar->add("Machine/Configure...",
+  mainMenuBar->add("Machine/Configure... (Shift+F10)",
                    (char *) 0, &menuCallback_Machine_Configure, (void *) this);
-  mainMenuBar->add("Options/Display/Configure...",
+  mainMenuBar->add("Options/Display/Configure... (Shift+F9)",
                    (char *) 0, &menuCallback_Options_DpyConfig, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 384x288",
                    (char *) 0, &menuCallback_Options_DpySize1, (void *) this);
@@ -652,9 +652,9 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FloppyRst, (void *) this);
   mainMenuBar->add("Options/Floppy/Disable unused drives",
                    (char *) 0, &menuCallback_Options_FloppyGC, (void *) this);
-  mainMenuBar->add("Options/Keyboard map",
+  mainMenuBar->add("Options/Keyboard map (Alt+I)",
                    (char *) 0, &menuCallback_Options_KbdConfig, (void *) this);
-  mainMenuBar->add("Options/Set working directory",
+  mainMenuBar->add("Options/Set working directory (Alt+Q)",
                    (char *) 0, &menuCallback_Options_FileIODir, (void *) this);
   mainMenuBar->add("Debug/Start debugger (Alt+M)",
                    (char *) 0, &menuCallback_Debug_OpenDebugger, (void *) this);
@@ -847,12 +847,6 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
       }
       int   n = -1;
       switch (keyCode) {
-      case FL_Alt_L:
-        n = 28;
-        break;
-      case FL_Alt_R:
-        n = 29;
-        break;
       case (FL_F + 5):
       case (FL_F + 6):
       case (FL_F + 7):
@@ -862,25 +856,54 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
       case (FL_F + 11):
       case (FL_F + 12):
         n = keyCode - (FL_F + 5);
-        if (Fl::event_shift())
-          n += 8;
-        else if (Fl::event_ctrl())
-          n += 16;
+        if (isKeyPress) {
+          if (Fl::event_shift()) {
+            n += 8;
+          }
+          else if (Fl::event_ctrl()) {
+            if (n >= 4)
+              n += 12;
+            else
+              n = -1;
+          }
+        }
         break;
-      case 0x64:
+      case 0x64:                // Alt + D
+        if (Fl::event_alt() || !isKeyPress)
+          n = 20;
+        break;
+      case 0x69:                // Alt + I
+        if (Fl::event_alt() || !isKeyPress)
+          n = 21;
+        break;
+      case 0x6D:                // Alt + M
+        if (Fl::event_alt() || !isKeyPress)
+          n = 22;
+        break;
+      case 0x71:                // Alt + Q
+        if (Fl::event_alt() || !isKeyPress)
+          n = 23;
+        break;
+      case 0x72:                // Alt + R
         if (Fl::event_alt() || !isKeyPress)
           n = 24;
         break;
-      case 0x6D:
+      case 0x74:                // Alt + T
         if (Fl::event_alt() || !isKeyPress)
           n = 25;
         break;
-      case 0x77:
+      case 0x77:                // Alt + W
         if (Fl::event_alt() || !isKeyPress)
           n = 26;
         break;
       case FL_Pause:
         n = 27;
+        break;
+      case FL_Alt_L:
+        n = 28;
+        break;
+      case FL_Alt_R:
+        n = 29;
         break;
       case FL_Page_Down:
         n = 30;
@@ -891,8 +914,18 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
       }
       if (n >= 0) {
         uint32_t  bitMask = 1U << n;
-        bool      wasPressed = !!(gui_.functionKeyState & bitMask);
+        bool      wasPressed = bool(gui_.functionKeyState & bitMask);
         if (isKeyPress != wasPressed) {
+          if (n < 20) {
+            if (n >= 16)
+              bitMask = bitMask >> 12;
+            else if (n >= 8)
+              bitMask = bitMask >> 8;
+            if (bitMask < 0x00000010U)
+              bitMask = bitMask | (bitMask << 8);
+            else
+              bitMask = bitMask | (bitMask << 8) | (bitMask << 12);
+          }
           if (isKeyPress)
             gui_.functionKeyState |= bitMask;
           else
@@ -903,7 +936,7 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
               gui_.menuCallback_Machine_TapePlay((Fl_Widget *) 0, userData);
               break;
             case 1:                                     // F6:
-              gui_.menuCallback_Machine_OpenTape((Fl_Widget *) 0, userData);
+              gui_.menuCallback_File_Screenshot((Fl_Widget *) 0, userData);
               break;
             case 2:                                     // F7:
               gui_.menuCallback_File_LoadFile((Fl_Widget *) 0, userData);
@@ -936,34 +969,46 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
               gui_.menuCallback_File_SavePRG((Fl_Widget *) 0, userData);
               break;
             case 12:                                    // Shift + F9:
-              gui_.menuCallback_Machine_TapePlay((Fl_Widget *) 0, userData);
+              gui_.menuCallback_Options_DpyConfig((Fl_Widget *) 0, userData);
               break;
             case 13:                                    // Shift + F10:
-              gui_.menuCallback_Machine_TapeStop((Fl_Widget *) 0, userData);
+              gui_.menuCallback_Machine_Configure((Fl_Widget *) 0, userData);
               break;
             case 14:                                    // Shift + F11:
               gui_.menuCallback_Machine_ResetAll((Fl_Widget *) 0, userData);
               break;
             case 15:                                    // Shift + F12:
-              gui_.menuCallback_Machine_TapeRecord((Fl_Widget *) 0, userData);
+              gui_.menuCallback_File_Quit((Fl_Widget *) 0, userData);
               break;
-            case 20:                                    // Ctrl + F9:
+            case 16:                                    // Ctrl + F9:
               gui_.menuCallback_File_QSSave((Fl_Widget *) 0, userData);
               break;
-            case 21:                                    // Ctrl + F10:
+            case 17:                                    // Ctrl + F10:
               gui_.menuCallback_File_QSLoad((Fl_Widget *) 0, userData);
               break;
-            case 22:                                    // Ctrl + F11:
+            case 18:                                    // Ctrl + F11:
               gui_.menuCallback_Machine_ColdReset((Fl_Widget *) 0, userData);
               break;
-            case 23:                                    // Ctrl + F12:
+            case 19:                                    // Ctrl + F12:
               gui_.menuCallback_File_StopDemo((Fl_Widget *) 0, userData);
               break;
-            case 24:                                    // Alt + D:
+            case 20:                                    // Alt + D:
               gui_.menuCallback_Options_FloppyCfg((Fl_Widget *) 0, userData);
               break;
-            case 25:                                    // Alt + M:
+            case 21:                                    // Alt + I:
+              gui_.menuCallback_Options_KbdConfig((Fl_Widget *) 0, userData);
+              break;
+            case 22:                                    // Alt + M:
               gui_.menuCallback_Debug_OpenDebugger((Fl_Widget *) 0, userData);
+              break;
+            case 23:                                    // Alt + Q:
+              gui_.menuCallback_Options_FileIODir((Fl_Widget *) 0, userData);
+              break;
+            case 24:                                    // Alt + R:
+              gui_.menuCallback_Machine_TapeRewind((Fl_Widget *) 0, userData);
+              break;
+            case 25:                                    // Alt + T:
+              gui_.menuCallback_Machine_OpenTape((Fl_Widget *) 0, userData);
               break;
             case 26:                                    // Alt + W:
               gui_.menuCallback_Machine_FullSpeed((Fl_Widget *) 0, userData);
