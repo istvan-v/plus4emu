@@ -90,7 +90,7 @@ namespace Plus4 {
                                 // 1: listen
                                 // 2: talk
     uint8_t secondaryAddress;
-    bool    listenByteFlag;     // true if any data was received in LISTEN mode
+    bool    recordDirtyFlag;    // true if data was written to this REL record
     bool    fileDBUpdateFlag;   // true if file database needs to be rebuilt
     bool    writeProtectFlag;   // do not allow any write operations if true
     std::map< Plus4FileName, FileDBEntry >  fileDB;
@@ -105,6 +105,8 @@ namespace Plus4 {
     size_t          errMsgBytes;
     std::map< Plus4FileName, FileDBEntry >::iterator  directoryIterator;
     int             errorCode;
+    int             recordLength;
+    unsigned char   recordData[256];
     Plus4FileName   diskName;
     unsigned char   diskID[2];
     // --------
@@ -123,8 +125,9 @@ namespace Plus4 {
     void dosCommand();
     void closeFile();
     void openRelativeFile(const Plus4FileName& fileName, int recordSize = 0);
+    bool readRelativeFileRecord(int channelNum);
+    void flushRelativeFile();
     bool createRelativeFileRecord(int channelNum);
-    void flushRelativeFileRecord(int channelNum);
     int writeRelativeFile(uint8_t n);
     int readRelativeFile(uint8_t& n);
     int readDirectory(uint8_t& n);
