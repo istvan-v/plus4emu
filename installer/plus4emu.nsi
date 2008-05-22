@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.6-beta.exe"
+  OutFile "plus4emu-1.2.6.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -72,10 +72,6 @@ Section "plus4emu" SecMain
   File /nonfatal "..\LICENSE.libsndfile"
   File "/oname=news.txt" "..\NEWS"
   File "/oname=readme.txt" "..\README"
-  File "..\compress.exe"
-  File "..\p4fliconv.exe"
-  File "..\p4fliconv_gui.exe"
-  File "..\p4sconv.exe"
   File "..\plus4emu.exe"
   File "C:\MinGW\bin\libsndfile-1.dll"
   File "C:\MinGW\bin\lua51.dll"
@@ -111,12 +107,16 @@ Section "plus4emu" SecMain
 
     ;Create shortcuts
     CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
+    CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes"
     SetOutPath "$INSTDIR"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - OpenGL mode.lnk" "$INSTDIR\plus4emu.exe" '-opengl'
-    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 1'
-    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 2'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\plus4emu - software mode.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl'
-    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Image converter utility.lnk" "$INSTDIR\p4fliconv_gui.exe"
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - GL - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 1'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - GL - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 2'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - GL - Gtk+ theme.lnk" "$INSTDIR\plus4emu.exe" '-opengl -colorscheme 3'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - Software - Win2000 theme.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl -colorscheme 1'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - Software - plastic theme.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl -colorscheme 2'
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\GUI themes\plus4emu - Software - Gtk+ theme.lnk" "$INSTDIR\plus4emu.exe" '-no-opengl -colorscheme 3'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\README.lnk" "$INSTDIR\readme.txt"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Reinstall configuration files.lnk" "$INSTDIR\makecfg.exe" '"$INSTDIR"'
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
@@ -124,6 +124,25 @@ Section "plus4emu" SecMain
   !insertmacro MUI_STARTMENU_WRITE_END
 
   ExecWait '"$INSTDIR\makecfg.exe" "$INSTDIR"'
+
+SectionEnd
+
+Section "Utilities" SecUtils
+
+  SetOutPath "$INSTDIR"
+
+  File "..\compress.exe"
+  File "..\p4fliconv.exe"
+  File "..\p4fliconv_gui.exe"
+  File "..\p4sconv.exe"
+
+  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+
+    ;Create shortcuts
+    SetOutPath "$INSTDIR"
+    CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Image converter utility.lnk" "$INSTDIR\p4fliconv_gui.exe"
+
+  !insertmacro MUI_STARTMENU_WRITE_END
 
 SectionEnd
 
@@ -159,10 +178,8 @@ Section "Source code" SecSrc
   SetOutPath "$INSTDIR\src\gui"
 
   File "..\gui\*.fl"
-  File "..\gui\*.cpp"
-  File "..\gui\*.hpp"
-  File /x "..\gui\*_fl.cpp"
-  File /x "..\gui\*_fl.hpp"
+  File /x "*_fl.cpp" "..\gui\*.cpp"
+  File /x "*_fl.hpp" "..\gui\*.hpp"
 
   SetOutPath "$INSTDIR\src\installer"
 
@@ -219,11 +236,9 @@ Section "Source code" SecSrc
   SetOutPath "$INSTDIR\src\util\p4fliconv"
 
   File "..\util\p4fliconv\*.fl"
-  File "..\util\p4fliconv\*.cpp"
-  File "..\util\p4fliconv\*.hpp"
+  File /x "*_fl.cpp" "..\util\p4fliconv\*.cpp"
+  File /x "*_fl.hpp" "..\util\p4fliconv\*.hpp"
   File "..\util\p4fliconv\*.s"
-  File /x "..\util\p4fliconv\*_fl.cpp"
-  File /x "..\util\p4fliconv\*_fl.hpp"
 
 SectionEnd
 
@@ -324,6 +339,7 @@ SectionEnd
 
   ;Language strings
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
+  LangString DESC_SecUtils ${LANG_ENGLISH} "Install image converter and compressor utilities"
   LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
   LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg, .p00, .d64, and .d81 files with plus4emu"
   LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
@@ -331,6 +347,7 @@ SectionEnd
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_SecMain)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecUtils} $(DESC_SecUtils)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecSrc} $(DESC_SecSrc)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssoc} $(DESC_SecAssoc)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecDLRoms} $(DESC_SecDLRoms)
@@ -404,16 +421,22 @@ Section "Uninstall"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $MUI_TEMP
 
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - OpenGL mode.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - software mode.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - GL - Win2000 theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - GL - plastic theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - GL - Gtk+ theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - Software - Win2000 theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - Software - plastic theme.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\GUI themes\plus4emu - Software - Gtk+ theme.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - Win2000 theme.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - GL - plastic theme.lnk"
-  Delete "$SMPROGRAMS\$MUI_TEMP\plus4emu - software mode.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Image converter utility.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\README.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Reinstall configuration files.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
 
   ;Delete empty start menu parent diretories
-  StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
+  StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP\GUI themes"
 
   startMenuDeleteLoop:
     ClearErrors
