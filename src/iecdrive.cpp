@@ -976,11 +976,13 @@ namespace Plus4 {
       allowOverwrite = true;
       bufPos++;
     }
-    if ((bufPos + 2) <= bufBytes) {
-      if (buf[bufPos] >= 0x30 && buf[bufPos] <= 0x39 &&
-          buf[bufPos + 1] == 0x3A) {    // skip drive number
-        bufPos = bufPos + 2;
-      }
+    if ((bufPos + 1) <= bufBytes && buf[bufPos] == 0x3A) {
+      bufPos = bufPos + 1;
+    }
+    else if ((bufPos + 2) <= bufBytes &&
+             buf[bufPos] >= 0x30 && buf[bufPos] <= 0x39 &&
+             buf[bufPos + 1] == 0x3A) { // skip drive number
+      bufPos = bufPos + 2;
     }
     while (bufPos < bufBytes) {         // file name
       if (buf[bufPos] == 0x2C || buf[bufPos] == 0x00 || buf[bufPos] == 0x0D)
@@ -1057,17 +1059,21 @@ namespace Plus4 {
     }
     if (fileType == 'R')
       openMode = 'W';
-    if (fileName.fileNameLen == 1 && fileName.fileName[0] == 0x24) {
+    if (fileName.fileName[0] == 0x24 && (openMode == 'R' || openMode == 'M')) {
       // directory
-      if (openMode != 'R') {
-        setErrorMessage(30);
-        return;
-      }
       if (fileType != '\0' && fileType != 'P') {
         setErrorMessage(64);
         return;
       }
-      filesOpened[channelNum].fileName = fileName;
+      int     nameOffs = 1;
+      if (fileName.fileNameLen >= 2 && fileName.fileName[1] == 0x3A)
+        nameOffs = 2;
+      else if (fileName.fileNameLen >= 3 && fileName.fileName[2] == 0x3A)
+        nameOffs = 3;                   // skip drive number
+      for (int i = nameOffs; i < fileName.fileNameLen; i++) {
+        filesOpened[channelNum].fileName.appendPlus4Character(
+            fileName.fileName[i]);
+      }
       filesOpened[channelNum].fileType = '$';
       filesOpened[channelNum].openMode = 'R';
       bufPos = 0;
@@ -1713,9 +1719,38 @@ namespace Plus4 {
         buf[0x1A] = diskID[0];
         buf[0x1B] = diskID[1];
       }
-      if (directoryIterator != fileDB.end()) {
+      while (directoryIterator != fileDB.end()) {
         long          fSize = 0L;
         const Plus4FileName&  fileName = (*directoryIterator).first;
+        const Plus4FileName&  fName =
+            filesOpened[secondaryAddress & 0x0F].fileName;
+        if (fName.fileNameLen > 0) {
+          // check if the file matches the specified name/wildcards
+          bool    foundFile = false;
+          for (int i = 0; true; i++) {
+            if (i >= fName.fileNameLen) {
+              foundFile = (i >= fileName.fileNameLen);
+              break;
+            }
+            // '*': match zero or more characters,
+            // ignore the rest of the file name
+            if (fName.fileName[i] == 0x2A) {
+              foundFile = true;
+              break;
+            }
+            if (i >= fileName.fileNameLen)
+              break;
+            // '?': match exactly one character
+            if (fName.fileName[i] != 0x3F) {
+              if (fileName.fileName[i] != fName.fileName[i])
+                break;
+            }
+          }
+          if (!foundFile) {
+            directoryIterator++;
+            continue;
+          }
+        }
         FileDBEntry&  fileDBEntry = (*directoryIterator).second;
         std::FILE     *f = std::fopen(fileDBEntry.fullName.c_str(), "rb");
         if (f) {
@@ -1790,6 +1825,7 @@ namespace Plus4 {
           buf[bufBytes++] = 0x20;
         buf[bufBytes++] = 0x00;
         directoryIterator++;
+        break;
       }
       if (directoryIterator == fileDB.end()) {
         for (int i = 0; i < 32; i++)
