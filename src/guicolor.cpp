@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -33,6 +33,9 @@ namespace Plus4Emu {
 
   void setGUIColorScheme(int colorScheme)
   {
+    double  rgamma = 1.0;
+    double  ggamma = 1.0;
+    double  bgamma = 1.0;
     switch (colorScheme) {
     case 1:
       {
@@ -45,18 +48,9 @@ namespace Plus4Emu {
         Fl::set_color(Fl_Color(2), 0, 0, 0);
         Fl::set_color(Fl_Color(3), 0, 224, 0);
         Fl::set_color(Fl_Color(6), 191, 255, 255);
-        double  rgamma = std::log(212.0 / 255.0) / std::log(16.0 / 23.0);
-        double  ggamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
-        double  bgamma = std::log(200.0 / 255.0) / std::log(16.0 / 23.0);
-        for (int i = 0; i < 24; i++) {
-          int     r = int(std::pow(double(i) / 23.0, rgamma) * 255.0 + 0.5);
-          int     g = int(std::pow(double(i) / 23.0, ggamma) * 255.0 + 0.5);
-          int     b = int(std::pow(double(i) / 23.0, bgamma) * 255.0 + 0.5);
-          Fl::set_color(Fl_Color(int(FL_GRAY_RAMP) + i),
-                        (unsigned char) r,
-                        (unsigned char) g,
-                        (unsigned char) b);
-        }
+        rgamma = std::log(212.0 / 255.0) / std::log(16.0 / 23.0);
+        ggamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
+        bgamma = std::log(200.0 / 255.0) / std::log(16.0 / 23.0);
       }
       break;
     case 2:
@@ -70,18 +64,25 @@ namespace Plus4Emu {
         Fl::set_color(Fl_Color(2), 0, 0, 0);
         Fl::set_color(Fl_Color(3), 255, 0, 0);
         Fl::set_color(Fl_Color(6), 0, 0, 0);
-        double  rgamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
-        double  ggamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
-        double  bgamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
-        for (int i = 0; i < 24; i++) {
-          int     r = int(std::pow(double(i) / 23.0, rgamma) * 255.0 + 0.5);
-          int     g = int(std::pow(double(i) / 23.0, ggamma) * 255.0 + 0.5);
-          int     b = int(std::pow(double(i) / 23.0, bgamma) * 255.0 + 0.5);
-          Fl::set_color(Fl_Color(int(FL_GRAY_RAMP) + i),
-                        (unsigned char) r,
-                        (unsigned char) g,
-                        (unsigned char) b);
-        }
+        rgamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
+        ggamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
+        bgamma = std::log(208.0 / 255.0) / std::log(16.0 / 23.0);
+      }
+      break;
+    case 3:
+      {
+        Fl::scheme("gtk+");
+        Fl::set_color(FL_FOREGROUND_COLOR, 0, 0, 0);
+        Fl::set_color(FL_BACKGROUND2_COLOR, 255, 255, 255);
+        Fl::set_color(FL_INACTIVE_COLOR, 195, 194, 193);
+        Fl::set_color(FL_SELECTION_COLOR, 169, 209, 255);
+        Fl::set_color(Fl_Color(1), 255, 0, 0);
+        Fl::set_color(Fl_Color(2), 0, 0, 0);
+        Fl::set_color(Fl_Color(3), 0, 224, 255);
+        Fl::set_color(Fl_Color(6), 191, 255, 255);
+        rgamma = std::log(235.0 / 255.0) / std::log(17.0 / 23.0);
+        ggamma = std::log(233.0 / 255.0) / std::log(17.0 / 23.0);
+        bgamma = std::log(232.0 / 255.0) / std::log(17.0 / 23.0);
       }
       break;
     default:
@@ -98,7 +99,14 @@ namespace Plus4Emu {
         unsigned char c = colorTable[i];
         Fl::set_color(Fl_Color(int(FL_GRAY_RAMP) + i), c, c, c);
       }
-      break;
+      return;
+    }
+    for (int i = 0; i < 24; i++) {
+      int     r = int(std::pow(double(i) / 23.0, rgamma) * 255.0 + 0.5);
+      int     g = int(std::pow(double(i) / 23.0, ggamma) * 255.0 + 0.5);
+      int     b = int(std::pow(double(i) / 23.0, bgamma) * 255.0 + 0.5);
+      Fl::set_color(Fl_Color(int(FL_GRAY_RAMP) + i),
+                    (unsigned char) r, (unsigned char) g, (unsigned char) b);
     }
   }
 
