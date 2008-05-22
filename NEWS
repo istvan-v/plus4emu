@@ -3,8 +3,8 @@ Changes in version 1.2.6
 
   * implemented IEC level floppy drive emulation; this allows access to
     a directory on the PC filesystem, and supports reading and writing
-    .prg, .p00, .s00, .u00, and .r00 files (relative files may not work
-    reliably yet, though), and some commonly used CBM DOS commands
+    .prg, .p00, .s00, .u00, and .r00 files, and some commonly used CBM
+    DOS commands
   * the debugger window now displays the current state of TED registers
   * on Windows and MacOS X the native file selection dialog is used
     instead of the FLTK one; also, the last PRG and screenshot file
@@ -16,6 +16,8 @@ Changes in version 1.2.6
   * new/improved GUI keyboard shortcuts
   * the old file I/O hack has been removed, since its functionality is
     now replaced by the IEC level drive emulation
+  * added Gtk+ GUI theme (enabled with '-colorscheme 3' command line
+    option)
   * some minor bugs have been fixed
 
 Changes in version 1.2.5.2
