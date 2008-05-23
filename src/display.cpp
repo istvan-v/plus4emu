@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "display.hpp"
+#include "ted.hpp"
 
 #include <cmath>
 
@@ -208,6 +209,49 @@ namespace Plus4Emu {
   // --------------------------------------------------------------------------
 
   template <>
+  uint8_t VideoDisplayColormap<uint8_t>::pixelConv(float y, float u, float v)
+  {
+    double  bestError = 1000000.0;
+    int     l = 0;
+    for (int i = 0; i < 9; i++) {
+      float   y_ = 0.0f;
+      float   u_ = 0.0f;
+      float   v_ = 0.0f;
+      getPlus4PaletteColor((i > 0 ? (((i - 1) << 4) | 1) : 0), y_, u_, v_);
+      double  err = double(y_) - double(y);
+      err = err * err;
+      if (err < bestError) {
+        l = i;
+        bestError = err;
+      }
+    }
+    // FIXME: this is slow
+    bestError = 1000000.0;
+    int     bestColor = 0;
+    for (int c = 0; c < 256; c++) {
+      if (!((l == 0 && (c & 0x0F) == 0) ||
+            (l > 0 && (c & 0x0F) != 0 && (((c & 0x70) >> 4) + 1) == l))) {
+        continue;
+      }
+      float   y_ = 0.0f;
+      float   u_ = 0.0f;
+      float   v_ = 0.0f;
+      getPlus4PaletteColor(c, y_, u_, v_);
+      double  yErr = double(y_) - double(y);
+      double  uErr = double(u_) - double(u);
+      double  vErr = double(v_) - double(v);
+      double  err = (yErr * yErr) + (uErr * uErr) + (vErr * vErr);
+      if (err < bestError) {
+        bestColor = c;
+        bestError = err;
+        if (bestError < 0.000001)
+          break;
+      }
+    }
+    return uint8_t(bestColor);
+  }
+
+  template <>
   uint16_t VideoDisplayColormap<uint16_t>::pixelConv(float r, float g, float b)
   {
     int     ri = int(r *  992.0f + 16.0f);
@@ -314,32 +358,91 @@ namespace Plus4Emu {
       float   v = uTmp * im + vTmp * re;
       u = u * uScaleTable[k];
       v = v * vScaleTable[k];
-      if (!yuvFormat) {
-        float   r = 0.0f, g = 0.0f, b = 0.0f;
-        displayParameters.yuvToRGBWithColorCorrection(r, g, b, y, u, v);
-        r = r * yScaleTable[k];
-        g = g * yScaleTable[k];
-        b = b * yScaleTable[k];
-        colormapData[i] = pixelConv(r, g, b);
+      if (sizeof(T) != 1) {
+        if (!yuvFormat) {
+          float   r = 0.0f, g = 0.0f, b = 0.0f;
+          displayParameters.yuvToRGBWithColorCorrection(r, g, b, y, u, v);
+          r = r * yScaleTable[k];
+          g = g * yScaleTable[k];
+          b = b * yScaleTable[k];
+          colormapData[i] = pixelConv(r, g, b);
+        }
+        else {
+          float   r = 0.0f, g = 0.0f, b = 0.0f;
+          displayParameters.yuvToRGBWithColorCorrection(r, g, b, y, u, v);
+          y = (0.299f * r) + (0.587f * g) + (0.114f * b);
+          u = 0.492f * (b - y);
+          v = 0.877f * (r - y);
+          y = y * yScaleTable[k];
+          u = u * yScaleTable[k];
+          v = v * yScaleTable[k];
+          u = (u + 0.435912f) * 1.147020f;
+          v = (v + 0.614777f) * 0.813303f;
+          colormapData[i] = pixelConv(y, u, v);
+        }
       }
       else {
-        float   r = 0.0f, g = 0.0f, b = 0.0f;
-        displayParameters.yuvToRGBWithColorCorrection(r, g, b, y, u, v);
-        y = (0.299f * r) + (0.587f * g) + (0.114f * b);
-        u = 0.492f * (b - y);
-        v = 0.877f * (r - y);
+        // 8-bit colormap, no color correction
         y = y * yScaleTable[k];
         u = u * yScaleTable[k];
         v = v * yScaleTable[k];
-        u = (u + 0.435912f) * 1.147020f;
-        v = (v + 0.614777f) * 0.813303f;
         colormapData[i] = pixelConv(y, u, v);
       }
     }
   }
 
+  template class VideoDisplayColormap<uint8_t>;
   template class VideoDisplayColormap<uint16_t>;
   template class VideoDisplayColormap<uint32_t>;
+
+  void getPlus4PaletteColor(int c, float& y, float& u, float& v)
+  {
+    c = c & 0xFF;
+    double  p = 0.0;
+    double  s = 0.19;
+    if (c < 0x80) {
+      if ((c & 0x0F) != 0 || c == 0x10) {
+        Plus4::TED7360::convertPixelToYUV(uint8_t(c), false, y, u, v);
+        return;
+      }
+      else if (c == 0x00) {
+        y = 0.0f;                                       // sync
+        u = 0.0f;
+        v = 0.0f;
+        return;
+      }
+      else {
+        Plus4::TED7360::convertPixelToYUV(0x00, false, y, u, v);
+        p = (3.14159265 / 4.0) * double(c >> 4);        // burst
+        s = 0.1795;
+      }
+    }
+    else if ((c & 0x0F) == 0x0E) {                      // dark blue / NTSC
+      Plus4::TED7360::convertPixelToYUV(uint8_t(c), true, y, u, v);
+      return;
+    }
+    else {
+      Plus4::TED7360::convertPixelToYUV(uint8_t((c & 0x70) | 0x01), false,
+                                        y, u, v);
+      switch (c & 0x0F) {
+      case 12:                                          // additional hues
+        p = 181.0 * 3.14159265 / 180.0;
+        break;
+      case 13:
+        p = 303.0 * 3.14159265 / 180.0;
+        break;
+      case 15:
+        p = 68.0 * 3.14159265 / 180.0;
+        break;
+      default:
+        p = (3.14159265 / 6.0) * double(c & 0x0F);      // half saturation
+        s = s * 0.5;
+        break;
+      }
+    }
+    u = float(std::cos(p) * s);
+    v = float(std::sin(p) * s);
+  }
 
 }       // namespace Plus4Emu
 

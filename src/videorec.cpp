@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -486,7 +486,7 @@ namespace Plus4Emu {
       outputFrameBuf(videoWidth, videoHeight),
       frameSizes((uint32_t *) 0),
       cycleCnt(0),
-      colormap((uint8_t *) 0)
+      colormap()
   {
     try {
       aviHeaderSize = aviHeaderSize_RLE8;
@@ -494,30 +494,13 @@ namespace Plus4Emu {
       frameSizes = new uint32_t[maxFrames];
       std::memset(frameSizes, 0x00, maxFrames * sizeof(uint32_t));
       // initialize colormap
-      colormap = new uint8_t[512 * 4];
-      for (int i = 0; i < 512; i++) {
-        float   y = float(i & 255) / 255.0f;
-        float   u = 0.0f;
-        float   v = 0.0f;
-        if (indexToYUVFunc)
-          indexToYUVFunc(uint8_t(i & 255), bool(i & 256), y, u, v);
-        float   r = (v / 0.877f) + y;
-        float   b = (u / 0.492f) + y;
-        float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
-        int ri = int((r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f) * 255.0f + 0.5f);
-        int gi = int((g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f) * 255.0f + 0.5f);
-        int bi = int((b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f) * 255.0f + 0.5f);
-        colormap[(i * 4) + 0] = uint8_t(bi);
-        colormap[(i * 4) + 1] = uint8_t(gi);
-        colormap[(i * 4) + 2] = uint8_t(ri);
-        colormap[(i * 4) + 3] = 0x00;
-      }
+      if (indexToYUVFunc)
+        displayParameters.indexToYUVFunc = indexToYUVFunc;
+      colormap.setDisplayParameters(displayParameters);
     }
     catch (...) {
       if (frameSizes)
         delete[] frameSizes;
-      if (colormap)
-        delete[] colormap;
       throw;
     }
     setClockFrequency(1773448);
@@ -527,7 +510,6 @@ namespace Plus4Emu {
   {
     closeFile();
     delete[] frameSizes;
-    delete[] colormap;
   }
 
   void VideoCapture_RLE8::decodeLine(int lineNum)
@@ -536,25 +518,18 @@ namespace Plus4Emu {
     size_t    bufPos = 0;
     size_t    pixelSample2 = lineBufLength;
     uint8_t   *bufp = tmpFrameBuf[lineNum];
+    uint8_t   videoFlags = uint8_t(((lineNum & 1) << 1)
+                                   | ((lineBufFlags & 0x80) >> 2));
+    if (displayParameters.ntscMode)
+      videoFlags = videoFlags | 0x10;
     if (pixelSample2 == (displayParameters.ntscMode ? 392 : 490) &&
         !(lineBufFlags & 0x01)) {
       // faster code for the case when resampling is not needed
       do {
-        if (lineBuf[bufPos] & 0x02) {
-          bufp[xc + 0] = lineBuf[bufPos + 1];
-          bufp[xc + 1] = lineBuf[bufPos + 2];
-          bufp[xc + 2] = lineBuf[bufPos + 3];
-          bufp[xc + 3] = lineBuf[bufPos + 4];
-          bufPos = bufPos + 5;
-        }
-        else {
-          uint8_t c = lineBuf[bufPos + 1];
-          bufp[xc + 0] = c;
-          bufp[xc + 1] = c;
-          bufp[xc + 2] = c;
-          bufp[xc + 3] = c;
-          bufPos = bufPos + 2;
-        }
+        size_t  n = colormap.convertFourPixels(&(bufp[xc]),
+                                               &(lineBuf[bufPos]),
+                                               videoFlags);
+        bufPos = bufPos + n;
         xc = xc + 4;
       } while (xc < videoWidth);
     }
@@ -570,21 +545,10 @@ namespace Plus4Emu {
           if (bufPos >= lineBufBytes)
             break;
           pixelSample1 = ((lineBuf[bufPos] & 0x01) ? 392 : 490);
-          if (lineBuf[bufPos] & 0x02) {
-            tmpBuf[0] = lineBuf[bufPos + 1];
-            tmpBuf[1] = lineBuf[bufPos + 2];
-            tmpBuf[2] = lineBuf[bufPos + 3];
-            tmpBuf[3] = lineBuf[bufPos + 4];
-            bufPos = bufPos + 5;
-          }
-          else {
-            uint8_t c = lineBuf[bufPos + 1];
-            tmpBuf[0] = c;
-            tmpBuf[1] = c;
-            tmpBuf[2] = c;
-            tmpBuf[3] = c;
-            bufPos = bufPos + 2;
-          }
+          size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                 &(lineBuf[bufPos]),
+                                                 videoFlags);
+          bufPos = bufPos + n;
         }
         bufp[xc] = tmpBuf[readPos];
         pixelSampleCnt += pixelSample2;
@@ -899,9 +863,23 @@ namespace Plus4Emu {
       // color indexes required
       aviHeader_writeUInt32(bufp, 0x00000000U);
       // colormap (256 entries)
-      std::memcpy(bufp,
-                  &(colormap[displayParameters.ntscMode ? 1024 : 0]), 1024);
-      bufp = bufp + 1024;
+      for (int i = 0; i < 256; i++) {
+        float   y = 0.0f;
+        float   u = 0.0f;
+        float   v = 0.0f;
+        Plus4Emu::getPlus4PaletteColor(i, y, u, v);
+        float   r = (v / 0.877f) + y;
+        float   b = (u / 0.492f) + y;
+        float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+        int ri = int((r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        int gi = int((g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        int bi = int((b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f) * 255.0f + 0.5f);
+        bufp[0] = uint8_t(bi);
+        bufp[1] = uint8_t(gi);
+        bufp[2] = uint8_t(ri);
+        bufp[3] = 0x00;
+        bufp = bufp + 4;
+      }
       aviHeader_writeFourCC(bufp, "LIST");
       aviHeader_writeUInt32(bufp, 0x0000005EU);
       aviHeader_writeFourCC(bufp, "strl");

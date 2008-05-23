@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -227,6 +227,14 @@ namespace Plus4Emu {
       return (p + 1);
     }
   };
+
+  /*!
+   * Returns color 'c' from a 256 color palette that is suitable for displaying
+   * all standard PAL and NTSC Plus/4 colors, as well as additional colors for
+   * sync, burst, and PAL color effects.
+   * This is also the colormap used by 'VideoDisplayColormap<uint8_t>'.
+   */
+  void getPlus4PaletteColor(int c, float& y, float& u, float& v);
 
 }       // namespace Plus4Emu
 

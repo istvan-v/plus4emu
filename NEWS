@@ -12,6 +12,8 @@ Changes in version 1.2.6
   * various improvements have been made to the utilities
   * changed the TED luminance table to (hopefully) match the colors of
     the real machine more accurately
+  * when recording video to AVI files in RLE8 format, some TV emulation
+    color effects are now also captured using additional palette colors
   * D64 files with any number of tracks from 35 to 42 are supported
   * new/improved GUI keyboard shortcuts
   * the old file I/O hack has been removed, since its functionality is

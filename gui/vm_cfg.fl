@@ -140,7 +140,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.yuvFormat = (o->value() != 0);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are not recorded, and the frame rate is converted without interpolation)} xywh {30 355 240 25} value 1 color 50 selection_color 3
+              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are recorded less accurately, and the frame rate is converted without interpolation)} xywh {30 355 240 25} value 1 color 50 selection_color 3
             }
           }
         }
