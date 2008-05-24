@@ -1197,16 +1197,21 @@ namespace Plus4 {
   {
     if (n < 0 || n > 3)
       throw Plus4Emu::Exception("invalid floppy drive number");
+    if (driveType < 0 || driveType > 1)
+      throw Plus4Emu::Exception("invalid floppy drive type");
     n = n + 8;
     try {
-      if (fileName_.length() == 0) {
-        // remove disk
-        if (serialDevices[n] != (SerialDevice *) 0) {
-          reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
-              fileName_);
-        }
+      int     oldDriveType = -1;
+      if (serialDevices[n] != (SerialDevice *) 0) {
+        if (typeid(*(serialDevices[n])) == typeid(VC1541))
+          oldDriveType = 0;
+        else if (typeid(*(serialDevices[n])) == typeid(VC1551))
+          oldDriveType = 1;
+        else if (typeid(*(serialDevices[n])) == typeid(VC1581))
+          oldDriveType = 4;
       }
-      else {
+      int     newDriveType = driveType;
+      if (fileName_.length() > 0) {
         // insert or replace disk
         bool    isD64 = false;
         bool    isD81 = false;
@@ -1236,70 +1241,68 @@ namespace Plus4 {
         }
         if (!isD64 && !isD81)
           throw Plus4Emu::Exception("disk image is not a D64 or D81 file");
-        int     newDriveType = (isD64 ? driveType : 4);
+        newDriveType = (isD64 ? newDriveType : 4);
         if (newDriveType == 1) {
           if (n >= 10) {
             throw Plus4Emu::Exception("1551 emulation is only allowed "
                                       "for unit 8 and unit 9");
           }
         }
-        else if (!(newDriveType == 0 || newDriveType == 4))
-          throw Plus4Emu::Exception("invalid floppy drive type");
-        if (serialDevices[n] != (SerialDevice *) 0) {
-          int     oldDriveType = -1;
-          if (typeid(*(serialDevices[n])) == typeid(VC1541))
-            oldDriveType = 0;
-          else if (typeid(*(serialDevices[n])) == typeid(VC1551))
-            oldDriveType = 1;
-          else if (typeid(*(serialDevices[n])) == typeid(VC1581))
-            oldDriveType = 4;
-          if (newDriveType != oldDriveType) {
-            // need to change drive type
-            removeFloppyCallback(n);
-            delete serialDevices[n];
-            serialDevices[n] = (SerialDevice *) 0;
-            ted->serialPort.removeDevice(n);
+      }
+      else {
+        // remove disk
+        if (oldDriveType < 0 || (oldDriveType != 1 && newDriveType != 1))
+          newDriveType = oldDriveType;
+        else if (newDriveType != oldDriveType)
+          newDriveType = -1;
+      }
+      if (oldDriveType >= 0 && newDriveType != oldDriveType) {
+        // need to change drive type
+        removeFloppyCallback(n);
+        delete serialDevices[n];
+        serialDevices[n] = (SerialDevice *) 0;
+        ted->serialPort.removeDevice(n);
+      }
+      if (serialDevices[n] == (SerialDevice *) 0 && newDriveType >= 0) {
+        if (n == 8)
+          iecDrive8->reset();
+        else if (n == 9)
+          iecDrive9->reset();
+        FloppyDrive *floppyDrive = (FloppyDrive *) 0;
+        switch (newDriveType) {
+        case 0:
+          {
+            VC1541  *floppyDrive_ = new VC1541(ted->serialPort, n);
+            serialDevices[n] = floppyDrive_;
+            floppyDrive_->setSerialBusDelayOffset(int(serialBusDelayOffset));
+            floppyDrive = floppyDrive_;
+            floppyDrive->setROMImage(2, floppyROM_1541);
           }
+          break;
+        case 1:
+          floppyDrive = new VC1551(ted->serialPort, n);
+          serialDevices[n] = floppyDrive;
+          floppyDrive->setROMImage(3, floppyROM_1551);
+          break;
+        case 4:
+          floppyDrive = new VC1581(ted->serialPort, n);
+          serialDevices[n] = floppyDrive;
+          floppyDrive->setROMImage(0, floppyROM_1581_0);
+          floppyDrive->setROMImage(1, floppyROM_1581_1);
+          break;
         }
-        if (serialDevices[n] == (SerialDevice *) 0) {
-          if (n == 8)
-            iecDrive8->reset();
-          else if (n == 9)
-            iecDrive9->reset();
-          FloppyDrive *floppyDrive = (FloppyDrive *) 0;
-          switch (newDriveType) {
-          case 0:
-            {
-              VC1541  *floppyDrive_ = new VC1541(ted->serialPort, n);
-              serialDevices[n] = floppyDrive_;
-              floppyDrive_->setSerialBusDelayOffset(int(serialBusDelayOffset));
-              floppyDrive = floppyDrive_;
-              floppyDrive->setROMImage(2, floppyROM_1541);
-            }
-            break;
-          case 1:
-            floppyDrive = new VC1551(ted->serialPort, n);
-            serialDevices[n] = floppyDrive;
-            floppyDrive->setROMImage(3, floppyROM_1551);
-            break;
-          case 4:
-            floppyDrive = new VC1581(ted->serialPort, n);
-            serialDevices[n] = floppyDrive;
-            floppyDrive->setROMImage(0, floppyROM_1581_0);
-            floppyDrive->setROMImage(1, floppyROM_1581_1);
-            break;
-          }
-          addFloppyCallback(n);
-          floppyDrive->setBreakPointCallback(breakPointCallback,
-                                             breakPointCallbackUserData);
-          M7501   *p = floppyDrive->getCPU();
-          if (p) {
-            p->setBreakPointPriorityThreshold(
-                ted->getBreakPointPriorityThreshold());
-            p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
-          }
-          floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
+        addFloppyCallback(n);
+        floppyDrive->setBreakPointCallback(breakPointCallback,
+                                           breakPointCallbackUserData);
+        M7501   *p = floppyDrive->getCPU();
+        if (p) {
+          p->setBreakPointPriorityThreshold(
+              ted->getBreakPointPriorityThreshold());
+          p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
         }
+        floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
+      }
+      if (serialDevices[n] != (SerialDevice *) 0) {
         reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
             fileName_);
       }
