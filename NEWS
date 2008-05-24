@@ -1,3 +1,10 @@
+Changes in version 1.2.6.1
+--------------------------
+
+  * fixed bug in changing the type of a floppy drive with no image file
+    selected
+  * fixed link errors when building from source code on Linux
+
 Changes in version 1.2.6
 ------------------------
 
