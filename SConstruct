@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 0
-buildRelease = 1
+enableDebug = 1
+buildRelease = 0
 
 compilerFlags = ''
 if buildRelease:
@@ -61,13 +61,13 @@ if win32CrossCompile:
 else:
     try:
         if not plus4emuGUIEnvironment.ParseConfig(
-            '%s --cxxflags --ldflags' % fltkConfig):
+            '%s --use-images --cxxflags --ldflags' % fltkConfig):
             raise Exception()
     except:
         print 'WARNING: could not run fltk-config'
         plus4emuGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk'])
         plus4emuGUIEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png'])
-        plus4emuGUIEnvironment.Append(LIBS = ['fltk_z'])
+        plus4emuGUIEnvironment.Append(LIBS = ['fltk_z', 'X11'])
 
 plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Copy()
 if win32CrossCompile:
@@ -76,13 +76,14 @@ if win32CrossCompile:
 else:
     try:
         if not plus4emuGLGUIEnvironment.ParseConfig(
-            '%s --use-gl --cxxflags --ldflags' % fltkConfig):
+            '%s --use-gl --use-images --cxxflags --ldflags' % fltkConfig):
             raise Exception()
     except:
         print 'WARNING: could not run fltk-config'
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk_gl'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk', 'fltk_jpeg'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_png', 'fltk_z', 'GL'])
+        plus4emuGLGUIEnvironment.Append(LIBS = ['X11'])
 
 plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
 
