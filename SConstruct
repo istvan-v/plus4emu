@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 1
-buildRelease = 0
+enableDebug = 0
+buildRelease = 1
 
 compilerFlags = ''
 if buildRelease:
@@ -329,9 +329,10 @@ p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
                                                      p4fliconvLibSources)
 
 p4fliconvEnvironment = p4fliconvLibEnvironment.Copy()
-p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu', 'fltk_images'])
-if win32CrossCompile or buildRelease:
+if win32CrossCompile:
+    p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu'])
 if haveDotconf:
     if win32CrossCompile:
         # hack to work around binary incompatible dirent functions in
@@ -361,9 +362,10 @@ if sys.platform[:6] == 'darwin':
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
 p4sconvEnvironment = p4fliconvLibEnvironment.Copy()
-p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu', 'fltk_images'])
-if win32CrossCompile or buildRelease:
+if win32CrossCompile:
+    p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu'])
 if haveDotconf:
     if win32CrossCompile:
         # hack to work around binary incompatible dirent functions in
