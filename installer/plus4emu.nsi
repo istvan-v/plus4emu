@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.6.1-beta.exe"
+  OutFile "plus4emu-1.2.6.1.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
