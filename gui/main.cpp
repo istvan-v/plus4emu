@@ -22,9 +22,6 @@
 #include "guicolor.hpp"
 
 #include <iostream>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <cmath>
 
 static void cfgErrorFunc(void *userData, const char *msg)

@@ -23,7 +23,6 @@
 #include "plus4emu.hpp"
 #include "vc1551.hpp"
 
-#include <string>
 #include <map>
 
 namespace Plus4 {

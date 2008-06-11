@@ -22,8 +22,6 @@
 
 #include "plus4emu.hpp"
 
-#include <cstdio>
-#include <string>
 #include <vector>
 
 namespace Plus4Emu {

@@ -23,9 +23,6 @@
 #include "cfg_db.hpp"
 #include <vector>
 #include <map>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <cmath>
 #include <typeinfo>
 

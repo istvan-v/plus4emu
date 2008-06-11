@@ -21,8 +21,6 @@
 #include "fileio.hpp"
 #include "system.hpp"
 
-#include <cstdio>
-#include <cstdlib>
 #include <cmath>
 #include <map>
 

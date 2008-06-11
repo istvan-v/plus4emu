@@ -21,9 +21,6 @@
 #include "vm.hpp"
 #include "disasm.hpp"
 
-#include <cstdio>
-#include <string>
-
 namespace Plus4 {
 
   const char * M7501Disassembler::opcodeNames =

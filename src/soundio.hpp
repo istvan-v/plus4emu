@@ -25,7 +25,6 @@
 
 #include <sndfile.h>
 #include <portaudio.h>
-#include <cstring>
 #include <vector>
 
 namespace Plus4Emu {

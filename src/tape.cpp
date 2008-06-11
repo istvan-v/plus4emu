@@ -19,8 +19,6 @@
 
 #include "plus4emu.hpp"
 #include "tape.hpp"
-#include <cstdio>
-#include <cstdlib>
 #include <cmath>
 #include <sndfile.h>
 

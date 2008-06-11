@@ -21,9 +21,7 @@
 #define PLUS4EMU_TAPE_HPP
 
 #include "plus4emu.hpp"
-#include <cstdio>
 #include <vector>
-
 #include <sndfile.h>
 
 namespace Plus4Emu {

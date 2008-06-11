@@ -24,7 +24,6 @@
 #include "p4slib.hpp"
 #include "imgwrite.hpp"
 
-#include <string>
 #include <vector>
 #include <map>
 

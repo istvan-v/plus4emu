@@ -21,7 +21,6 @@
 #include "monitor.hpp"
 #include "ted.hpp"
 
-#include <cstdio>
 #include <vector>
 
 #define MONITOR_MAX_LINES   (120)

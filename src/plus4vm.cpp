@@ -24,7 +24,6 @@
 #include "disasm.hpp"
 #include "videorec.hpp"
 
-#include <cstdio>
 #include <cmath>
 #include <vector>
 #include <typeinfo>

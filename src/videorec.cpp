@@ -23,7 +23,6 @@
 #include "videorec.hpp"
 
 #include <cmath>
-#include <cstring>
 
 static const size_t aviHeaderSize_RLE8 = 0x0546;
 static const size_t aviHeaderSize_YV12 = 0x0146;

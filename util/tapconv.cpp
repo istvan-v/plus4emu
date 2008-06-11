@@ -20,9 +20,6 @@
 #include "plus4emu.hpp"
 #include "tape.hpp"
 
-#include <cstdio>
-#include <cstring>
-
 int main(int argc, char **argv)
 {
   std::FILE       *inFile = (std::FILE *) 0;

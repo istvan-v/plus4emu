@@ -19,7 +19,7 @@
 #include "plus4emu.hpp"
 #include "p4fliconv/compress.hpp"
 
-#include <string>
+#include <vector>
 
 // start address (0 - 0xFFFF), or -1 for run, -2 for basic, or -3 for monitor
 static long   runAddr = -2L;

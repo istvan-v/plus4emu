@@ -29,9 +29,6 @@
 #include "system.hpp"
 #include "ted.hpp"
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <cmath>
 
 #include <FL/Fl.H>

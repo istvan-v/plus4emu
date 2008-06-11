@@ -23,7 +23,9 @@
 #include <exception>
 #include <new>
 #include <string>
-#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #if defined(HAVE_STDINT_H) || defined(__GNUC__)
 #  include <stdint.h>

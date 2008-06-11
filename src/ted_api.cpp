@@ -22,7 +22,6 @@
 #include "cpu.hpp"
 #include "ted.hpp"
 
-#include <cstring>
 #include <cmath>
 
 static const float brightnessToYTable[9] = {

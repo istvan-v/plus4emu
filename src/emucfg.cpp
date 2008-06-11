@@ -21,8 +21,6 @@
 #include "cfg_db.hpp"
 #include "emucfg.hpp"
 
-#include <cstdio>
-
 template <typename T>
 static void configChangeCallback(void *userData,
                                  const std::string& name, T value)

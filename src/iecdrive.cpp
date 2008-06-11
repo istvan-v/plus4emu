@@ -21,7 +21,6 @@
 #include "vc1551.hpp"
 #include "iecdrive.hpp"
 
-#include <string>
 #include <map>
 #include <sys/types.h>
 #include <dirent.h>

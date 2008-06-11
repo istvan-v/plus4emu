@@ -23,8 +23,6 @@
 #include "plus4emu.hpp"
 #include "vm.hpp"
 
-#include <string>
-
 namespace Plus4 {
 
   class M7501Disassembler {

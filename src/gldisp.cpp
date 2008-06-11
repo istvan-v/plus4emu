@@ -20,7 +20,6 @@
 #include "plus4emu.hpp"
 #include "system.hpp"
 
-#include <cstring>
 #include <typeinfo>
 
 #define GL_GLEXT_PROTOTYPES 1
