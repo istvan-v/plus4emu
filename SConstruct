@@ -113,15 +113,21 @@ def imageLibTest(env):
         tmpConfig = tmpEnv.Configure()
         if tmpConfig.TryLink(imageLibTestProgram, '.cpp'):
             tmpConfig.Finish()
-            env['LIBS'].remove('jpeg')
-            env['LIBS'].remove('png')
-            env['LIBS'].remove('z')
-        else:
-            if not tmpConfig.CheckLib('jpeg', None, None, 'C++', 0):
+            if usingJPEGLib:
                 env['LIBS'].remove('jpeg')
-            if not tmpConfig.CheckLib('png', None, None, 'C++', 0):
+            if usingPNGLib:
                 env['LIBS'].remove('png')
-            if not tmpConfig.CheckLib('z', None, None, 'C++', 0):
+            if usingZLib:
+                env['LIBS'].remove('z')
+        else:
+            if (usingJPEGLib
+                and not tmpConfig.CheckLib('jpeg', None, None, 'C++', 0)):
+                env['LIBS'].remove('jpeg')
+            if (usingPNGLib
+                and not tmpConfig.CheckLib('png', None, None, 'C++', 0)):
+                env['LIBS'].remove('png')
+            if (usingZLib
+                and not tmpConfig.CheckLib('z', None, None, 'C++', 0)):
                 env['LIBS'].remove('z')
             tmpConfig.Finish()
             tmpConfig2 = env.Configure()
