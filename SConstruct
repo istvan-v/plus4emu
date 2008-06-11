@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 0
-buildRelease = 1
+enableDebug = 1
+buildRelease = 0
 
 compilerFlags = ''
 if buildRelease:
@@ -55,7 +55,7 @@ if win32CrossCompile:
     plus4emuLibEnvironment.Prepend(CCFLAGS = ['-mthreads'])
     plus4emuLibEnvironment.Prepend(LINKFLAGS = ['-mthreads'])
 
-plus4emuGUIEnvironment = plus4emuLibEnvironment.Copy()
+plus4emuGUIEnvironment = plus4emuLibEnvironment.Clone()
 if win32CrossCompile:
     plus4emuGUIEnvironment.Prepend(LIBS = ['fltk'])
 else:
@@ -69,7 +69,7 @@ else:
         plus4emuGUIEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png'])
         plus4emuGUIEnvironment.Append(LIBS = ['fltk_z', 'X11'])
 
-plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Copy()
+plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Clone()
 if win32CrossCompile:
     plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk_gl', 'fltk',
                                              'glu32', 'opengl32'])
@@ -86,6 +86,52 @@ else:
         plus4emuGLGUIEnvironment.Append(LIBS = ['X11'])
 
 plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
+
+imageLibTestProgram = '''
+    #include <FL/Fl.H>
+    #include <FL/Fl_Shared_Image.H>
+    int main()
+    {
+      Fl_Shared_Image *tmp = Fl_Shared_Image::get("foo");
+      tmp->release();
+      return 0;
+    }
+'''
+
+def imageLibTest(env):
+    usingJPEGLib = 'jpeg' in env['LIBS']
+    usingPNGLib = 'png' in env['LIBS']
+    usingZLib = 'z' in env['LIBS']
+    if usingJPEGLib or usingPNGLib or usingZLib:
+        tmpEnv = env.Clone()
+        if usingJPEGLib:
+            tmpEnv['LIBS'].remove('jpeg')
+        if usingPNGLib:
+            tmpEnv['LIBS'].remove('png')
+        if usingZLib:
+            tmpEnv['LIBS'].remove('z')
+        tmpConfig = tmpEnv.Configure()
+        if tmpConfig.TryLink(imageLibTestProgram, '.cpp'):
+            tmpConfig.Finish()
+            env['LIBS'].remove('jpeg')
+            env['LIBS'].remove('png')
+            env['LIBS'].remove('z')
+        else:
+            if not tmpConfig.CheckLib('jpeg', None, None, 'C++', 0):
+                env['LIBS'].remove('jpeg')
+            if not tmpConfig.CheckLib('png', None, None, 'C++', 0):
+                env['LIBS'].remove('png')
+            if not tmpConfig.CheckLib('z', None, None, 'C++', 0):
+                env['LIBS'].remove('z')
+            tmpConfig.Finish()
+            tmpConfig2 = env.Configure()
+            if not tmpConfig2.TryLink(imageLibTestProgram, '.cpp'):
+                print ' *** error: libjpeg, libpng, or zlib is not found'
+                Exit(-1)
+            tmpConfig2.Finish()
+
+imageLibTest(plus4emuGUIEnvironment)
+imageLibTest(plus4emuGLGUIEnvironment)
 
 configure = plus4emuLibEnvironment.Configure()
 if not configure.CheckCHeader('sndfile.h'):
@@ -202,7 +248,7 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
 
 # -----------------------------------------------------------------------------
 
-residLibEnvironment = plus4emuLibEnvironment.Copy()
+residLibEnvironment = plus4emuLibEnvironment.Clone()
 residLibEnvironment.Append(CPPPATH = ['./resid'])
 
 residLib = residLibEnvironment.StaticLibrary('resid', Split('''
@@ -226,7 +272,7 @@ residLib = residLibEnvironment.StaticLibrary('resid', Split('''
 
 # -----------------------------------------------------------------------------
 
-plus4emuEnvironment = plus4emuGLGUIEnvironment.Copy()
+plus4emuEnvironment = plus4emuGLGUIEnvironment.Clone()
 plus4emuEnvironment.Append(CPPPATH = ['./gui'])
 plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 if haveDotconf:
@@ -265,7 +311,7 @@ if sys.platform[:6] == 'darwin':
 
 # -----------------------------------------------------------------------------
 
-tapconvEnvironment = plus4emuLibEnvironment.Copy()
+tapconvEnvironment = plus4emuLibEnvironment.Clone()
 tapconvEnvironment.Prepend(LIBS = ['plus4emu'])
 tapconvEnvironment.Append(LIBS = ['sndfile'])
 tapconv = tapconvEnvironment.Program('tapconv', ['util/tapconv.cpp'])
@@ -273,7 +319,7 @@ Depends(tapconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 
-makecfgEnvironment = plus4emuGUIEnvironment.Copy()
+makecfgEnvironment = plus4emuGUIEnvironment.Clone()
 makecfgEnvironment.Append(CPPPATH = ['./installer'])
 makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
 if haveDotconf:
@@ -300,11 +346,14 @@ if sys.platform[:6] == 'darwin':
 
 # -----------------------------------------------------------------------------
 
-p4fliconvLibEnvironment = plus4emuGLGUIEnvironment.Copy()
+p4fliconvLibEnvironment = plus4emuGLGUIEnvironment.Clone()
 p4fliconvLibEnvironment.Append(CPPPATH = ['./util/p4fliconv'])
 if not haveZLib:
     print 'WARNING: zlib is not found, building p4fliconv without P4S support'
     p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
+elif not win32CrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
+    if not 'z' in p4fliconvLibEnvironment['LIBS']:
+        p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
 p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
                        'util/p4fliconv/dither.cpp',
@@ -328,7 +377,7 @@ p4fliconvLibSources += fluidCompile(['util/p4fliconv/p4fliconv.fl'])
 p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
                                                      p4fliconvLibSources)
 
-p4fliconvEnvironment = p4fliconvLibEnvironment.Copy()
+p4fliconvEnvironment = p4fliconvLibEnvironment.Clone()
 if win32CrossCompile:
     p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
@@ -348,7 +397,7 @@ Depends(p4fliconv, p4fliconvLib)
 Depends(p4fliconv, plus4emuLib)
 
 if win32CrossCompile:
-    p4fliconvGUIEnvironment = p4fliconvEnvironment.Copy()
+    p4fliconvGUIEnvironment = p4fliconvEnvironment.Clone()
     p4fliconvGUIEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
     p4fliconvGUIMain = p4fliconvGUIEnvironment.Object(
         'guimain', 'util/p4fliconv/main.cpp')
@@ -361,7 +410,7 @@ if sys.platform[:6] == 'darwin':
     Command('plus4emu.app/Contents/MacOS/p4fliconv', 'p4fliconv',
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
-p4sconvEnvironment = p4fliconvLibEnvironment.Copy()
+p4sconvEnvironment = p4fliconvLibEnvironment.Clone()
 if win32CrossCompile:
     p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
@@ -382,7 +431,7 @@ Depends(p4sconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 
-compressEnvironment = plus4emuLibEnvironment.Copy()
+compressEnvironment = plus4emuLibEnvironment.Clone()
 compressEnvironment.Prepend(LIBS = ['p4fliconv'])
 compress = compressEnvironment.Program('compress', ['util/compress.cpp'])
 Depends(compress, p4fliconvLib)
