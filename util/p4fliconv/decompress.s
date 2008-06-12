@@ -1,6 +1,7 @@
 
 ; NOTE: the start address should be chosen so that the routines from
-; huffmanDecode1 to readLZMatchByte are on the same 256-byte page
+; huffmanDecode1 to read5Bits are on the same 256-byte page
+; ((startAddr & $f8) = 0 is recommended)
 
 startAddr = $e504
 
@@ -16,8 +17,6 @@ startAddr = $e504
 .define NO_ROM_ENABLE_RESTORE   0
 ; do not blank display, and do not save/restore $FF06
 .define NO_BLANK_DISPLAY        0
-; use alternate code that can decompress faster, but is larger by a few bytes
-.define FAST_LZ_MATCH_EXPAND    0
 
         .setcpu "6502"
         .code
@@ -58,7 +57,6 @@ huffmanDecodedValueLow = $3a
 huffmanDecodedValueHigh = $3b
 huffSymbolsRemainingLow = $3c
 huffSymbolsRemainingHigh = $3d
-savedReadCharAddrLow = $3e
 gammaDecodedValueHigh = $3f
 huffmanLimitLowTable = $40
 huffmanLimitHighTable = $50
@@ -75,187 +73,26 @@ compressedFLIDataStart = $1800
 compressedFLIDataEnd = $e504
 
         .proc decompressFLI
+        ldx #$e0
         lda #<compressedFLIDataStart
-        sta $e0
+        sta $00, x
         clc
         adc compressedFLIDataSizeLSB
-        sta $e2
+        sta $02, x
         lda #>compressedFLIDataStart
-        sta $e1
+        sta $01, x
         adc compressedFLIDataSizeMSB
-        sta $e3
+        sta $03, x
         lda #<compressedFLIDataEnd
-        sta $e4
+        sta $04, x
         lda #>compressedFLIDataEnd
-        sta $e5
-        ldx #$e0
+        sta $05, x
         jmp decompressData
         .endproc
 
 ; -----------------------------------------------------------------------------
 
-        .proc huffmanDecode1
-        ldx #$ff
-        .endproc
-
-        .proc huffmanDecode2
-        lda #$01
-        sty tmpHigh
-l1:     inx
-        asl shiftRegister
-        beq l8
-l2:     rol
-        bcs l5
-        cmp huffmanLimitLowTable, x
-        bcs l1
-        bcc l7
-l3:     inx
-        asl shiftRegister
-        bne l4
-        ldy #$00
-        jsr readCompressedByte
-l4:     rol
-        rol tmpHigh
-        bmi l6
-l5:     cmp huffmanLimitLowTable, x
-        tay
-        lda tmpHigh
-        sbc huffmanLimitHighTable, x
-        tya
-        bcs l3
-l6:     ldy #$00
-l7:     adc huffmanOffsetLowTable, x
-        sta tmpLow
-        lda tmpHigh
-        adc huffmanOffsetHighTable, x
-        sta tmpHigh
-        eor #$02
-        cmp (tmpLow), y
-        sta tmpHigh
-        lda (tmpLow), y
-        rts
-l8:     jsr readCompressedByte
-        bne l2
-        .endproc
-
-        .proc read1Bit
-        ldx #$01
-        .byte $2c
-        .endproc
-
-        .proc read9Bits
-        ldx #$09
-        .byte $2c
-        .endproc
-
-        .proc read8Bits
-        ldx #$08
-        .byte $2c
-        .endproc
-
-        .proc read5Bits
-        ldx #$05
-        .endproc
-
-        .proc readXBits
-        tya
-l1:     asl shiftRegister
-        bne l2
-        jsr readCompressedByte
-l2:     rol
-        dex
-        bne l1
-        tax
-        rts
-        .endproc
-
-        .if FAST_LZ_MATCH_EXPAND = 0
-
-        .proc readLZMatchByteWithDelta
-        lda (lzMatchReadAddrLow), y
-        adc #$00
-        clc
-        .byte $2c
-        .endproc
-deltaValue = readLZMatchByteWithDelta + 3
-
-        .proc readLZMatchByte
-        lda (lzMatchReadAddrLow), y
-        dex
-        beq l2
-        inc lzMatchReadAddrLow
-        bne l1
-        inc lzMatchReadAddrHigh
-l1:     rts
-l2:     ldx savedReadCharAddrLow
-        stx readCharAddrLow
-        rts
-        .endproc
-
-        .endif          ; FAST_LZ_MATCH_EXPAND = 0
-
-        .proc readCompressedByte
-        sta tmpValue
-        inc readAddrLow
-        bne l1
-        inc readAddrHigh
-l1:
-        .if NO_READ_BUFFER = 0
-        lda readByteBuffer
-        rol
-        sta shiftRegister
-        lda (readAddrLow), y
-        sta readByteBuffer
-        .else
-        lda (readAddrLow), y
-        rol
-        sta shiftRegister
-        .endif
-        lda tmpValue
-        rts
-        .endproc
-
-        .proc gammaDecode
-        lda #$01
-        sty gammaDecodedValueHigh
-l1:     asl shiftRegister
-        bne l2
-        jsr readCompressedByte
-l2:     bcc gammaDecode - 1
-        asl shiftRegister
-        bne l3
-        jsr readCompressedByte
-l3:     rol
-        rol gammaDecodedValueHigh
-        bcc l1
-        .endproc
-
-        .proc readLZMatchParameterBits
-        pha
-        lsr
-        lsr
-        tax
-        dex
-        pla
-        and #$03
-        ora #$04
-l1:     asl shiftRegister
-        bne l2
-        jsr readCompressedByte
-l2:     rol
-        rol tmpHigh
-        dex
-        bne l1
-        rts
-        .endproc
-
-decompressDataBlock = decompressDataBlock_ + 6
-
-        .proc decompressDataBlock_
-l1:     inc bytesRemainingHigh
-        bne l5
-        pla                             ; return with A=1, Z=0 on last block
-        rts
+        .proc decompressDataBlock
         ldx #$03                        ; read address and 65536 - data length
 l2:     stx prvDistanceTablePos
         jsr read8Bits
@@ -263,12 +100,13 @@ l2:     stx prvDistanceTablePos
         sta bytesRemainingLow, x
         dex
         bpl l2
-        jsr read1Bit
+        ldx #$02
+        jsr readXBits
+        lsr
         pha                             ; save last block flag
         lda #<read8Bits
         sta readCharAddrLow
-        jsr read1Bit                    ; is compression enabled ?
-        beq l3
+        bcc l3                          ; is compression enabled ?
         jsr huffmanInit
 l3:
         .if NO_BORDER_EFFECT = 0
@@ -277,12 +115,16 @@ l3:
 l4:     jsr huffmanDecode1              ; read next character
         bcs l6
         sta (decompressWriteAddrLow), y ; store decompressed data
-        inc bytesRemainingLow
-        beq l1
-l5:     inc decompressWriteAddrLow
+        inc decompressWriteAddrLow
+        beq l17
+l5:     inc bytesRemainingLow
         bne l4
-        inc decompressWriteAddrHigh
-        bcc l3                          ; border effect at 256 byte blocks
+l16:    inc bytesRemainingHigh
+        bne l3                          ; border effect at 256 byte blocks
+        pla                             ; return with A=1, Z=0 on last block
+        rts
+l17:    inc decompressWriteAddrHigh
+        bcc l5
 l6:     cmp #$3c                        ; LZ match code
         bcs l12
         cmp #$08
@@ -297,17 +139,8 @@ l6:     cmp #$3c                        ; LZ match code
         bpl l7
         ldx #$03
 l7:     stx prvDistanceTablePos
-l8:
-        .if FAST_LZ_MATCH_EXPAND = 0
-        ldx #<readLZMatchByte
-        .else
-        ldx #$00
-        stx deltaValue
-        .endif
-l9:
-        .if FAST_LZ_MATCH_EXPAND = 0
-        stx readCharAddrLow             ; set character read routine address
-        .endif
+l8:     ldx #$00
+l9:     stx deltaValue
         eor #$ff                        ; calculate match address
         adc decompressWriteAddrLow
         sta lzMatchReadAddrLow
@@ -321,23 +154,17 @@ l10:    jsr huffmanDecode2
         cmp #$08
         bcc l11
         jsr readLZMatchParameterBits    ; read extra bits if length >= 10 bytes
-        .if FAST_LZ_MATCH_EXPAND = 0
-        clc
-        .endif
 l11:    tax
         inx                             ; adjust length to 2..256 range
         inx
-        .if FAST_LZ_MATCH_EXPAND = 0
-        bcc l3
-        .else
-l14:    lda (lzMatchReadAddrLow), y
+        .byte $a9
+l14:    iny
+        lda (lzMatchReadAddrLow), y
         clc
         adc #$00
         sta (decompressWriteAddrLow), y
-        iny
         dex
         bne l14
-        dey
         tya
         sec
         adc decompressWriteAddrLow
@@ -350,11 +177,7 @@ l15:    tya
         adc bytesRemainingLow
         sta bytesRemainingLow
         bcc l3
-        inc bytesRemainingHigh
-        bne l3
-        pla                             ; return with A=1, Z=0 on last block
-        rts
-        .endif          ; FAST_LZ_MATCH_EXPAND
+        bcs l16
 l12:    cmp #$40                        ; check special match codes
         bcs l13
         and #$03                        ; LZ match with delta value
@@ -363,10 +186,7 @@ l12:    cmp #$40                        ; check special match codes
         jsr readXBits
         sbc #$3f
         adc #$00
-        sta deltaValue
-        .if FAST_LZ_MATCH_EXPAND = 0
-        ldx #<readLZMatchByteWithDelta
-        .endif
+        tax
         pla
         bcc l9
 l13:    adc prvDistanceTablePos         ; LZ match with recent offset
@@ -377,26 +197,24 @@ l13:    adc prvDistanceTablePos         ; LZ match with recent offset
         bcc l8
         .endproc
 
-readCharAddrLow = decompressDataBlock_::l4 + 1
-readLengthAddrLow = decompressDataBlock_::l10 + 1
-        .if FAST_LZ_MATCH_EXPAND <> 0
-deltaValue = decompressDataBlock_::l14 + 4
-        .endif
+readCharAddrLow = decompressDataBlock::l4 + 1
+readLengthAddrLow = decompressDataBlock::l10 + 1
+deltaValue = decompressDataBlock::l14 + 5
+
+; -----------------------------------------------------------------------------
 
         .proc huffmanInit
         jsr l1
         iny
 l1:     sty huffmanInitTmp
         ldy #$00
-        jsr read1Bit
+        ldx #$01
+        jsr readXBits
         ldy huffmanInitTmp
         lsr
         bcs l3
         lda addrTable + 2, y
 l2:     ldx addrTable, y
-        .if FAST_LZ_MATCH_EXPAND = 0
-        sta savedReadCharAddrLow, y
-        .endif
         sta decompressDataBlock, x
         ldy #$00
         rts
@@ -469,6 +287,133 @@ l11:    dec huffCodeSizesRemaining
         inx
         bne l5
 l12:    rts
+        .endproc
+
+; -----------------------------------------------------------------------------
+
+        .proc huffmanDecode1
+        ldx #$ff
+        .endproc
+
+        .proc huffmanDecode2
+        lda #$01
+        sty tmpHigh
+l1:     inx
+        asl shiftRegister
+        beq l8
+l2:     rol
+        bcs l5
+        cmp huffmanLimitLowTable, x
+        bcs l1
+        bcc l7
+l3:     inx
+        asl shiftRegister
+        bne l4
+        ldy #$00
+        jsr readCompressedByte
+l4:     rol
+        rol tmpHigh
+        bmi l6
+l5:     cmp huffmanLimitLowTable, x
+        tay
+        lda tmpHigh
+        sbc huffmanLimitHighTable, x
+        tya
+        bcs l3
+l6:     ldy #$00
+l7:     adc huffmanOffsetLowTable, x
+        sta tmpLow
+        lda tmpHigh
+        adc huffmanOffsetHighTable, x
+        sta tmpHigh
+        eor #$02
+        cmp (tmpLow), y
+        sta tmpHigh
+        lda (tmpLow), y
+        rts
+l8:     jsr readCompressedByte
+        bne l2
+        .endproc
+
+        .proc read9Bits
+        ldx #$09
+        .byte $2c
+        .endproc
+
+        .proc read8Bits
+        ldx #$08
+        .byte $2c
+        .endproc
+
+        .proc read5Bits
+        ldx #$05
+        .endproc
+
+        .proc readXBits
+        tya
+l1:     asl shiftRegister
+        bne l2
+        jsr readCompressedByte
+l2:     rol
+        dex
+        bne l1
+        tax
+        rts
+        .endproc
+
+        .proc readLZMatchParameterBits
+        pha
+        lsr
+        lsr
+        tax
+        dex
+        pla
+        and #$03
+        ora #$04
+l1:     asl shiftRegister
+        bne l2
+        jsr readCompressedByte
+l2:     rol
+        rol tmpHigh
+        dex
+        bne l1
+        rts
+        .endproc
+
+        .proc readCompressedByte
+        sta tmpValue
+        inc readAddrLow
+        bne l1
+        inc readAddrHigh
+l1:
+        .if NO_READ_BUFFER = 0
+        lda readByteBuffer
+        rol
+        sta shiftRegister
+        lda (readAddrLow), y
+        sta readByteBuffer
+        .else
+        lda (readAddrLow), y
+        rol
+        sta shiftRegister
+        .endif
+        lda tmpValue
+        rts
+        .endproc
+
+        .proc gammaDecode
+        lda #$01
+        sty gammaDecodedValueHigh
+l1:     asl shiftRegister
+        bne l2
+        jsr readCompressedByte
+l2:     bcc gammaDecode - 1
+        asl shiftRegister
+        bne l3
+        jsr readCompressedByte
+l3:     rol
+        rol gammaDecodedValueHigh
+        bcc l1
         .endproc
 
 addrTable:
