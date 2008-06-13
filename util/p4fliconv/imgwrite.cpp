@@ -23,6 +23,7 @@
 #include "p4fliconv.hpp"
 #include "prgdata.hpp"
 #include "compress.hpp"
+#include "decompress.hpp"
 #include "p4slib.hpp"
 #include "imgwrite.hpp"
 
@@ -167,11 +168,8 @@ namespace Plus4FLIConv {
                                                progressCallbackUserData);
           compress_.setProgressPercentageCallback(progressPercentageCallback,
                                                   progressCallbackUserData);
-          if (!rawMode) {
-            compress_.addDecompressCode(false);
-            compress_.addDecompressEndCode(-1L, false, true, false, false);
+          if (!rawMode)
             compress_.addZeroPageUpdate(prgEndAddr, false);
-          }
           unsigned int  startAddr = prgStartAddr;
           if (prgData.getImageDataStartAddress()
               > (prgData.getViewerCodeEndAddress() + 256U) &&
@@ -204,11 +202,21 @@ namespace Plus4FLIConv {
                 compressOutBuf.insert(compressOutBuf.begin(),
                                       (unsigned char) (nBytes >> 8));
               }
+              compressOutBuf.insert(compressOutBuf.begin(),
+                                    (unsigned char) (prgStartAddr >> 8));
+              compressOutBuf.insert(compressOutBuf.begin(),
+                                    (unsigned char) (prgStartAddr & 0xFFU));
             }
-            compressOutBuf.insert(compressOutBuf.begin(),
-                                  (unsigned char) (prgStartAddr >> 8));
-            compressOutBuf.insert(compressOutBuf.begin(),
-                                  (unsigned char) (prgStartAddr & 0xFFU));
+            else {
+              // add SFX module
+              std::vector< unsigned char >  tmpBuf;
+              PRGDecompressor::getSFXModule(tmpBuf, -1,
+                                            false, true, true, false, false);
+              for (size_t i = 0; i < tmpBuf.size(); i++) {
+                if (std::fputc(int(tmpBuf[i]), f) == EOF)
+                  throw Plus4Emu::Exception("error writing PRG file");
+              }
+            }
             for (size_t i = 0; i < compressOutBuf.size(); i++) {
               if (std::fputc(int(compressOutBuf[i]), f) == EOF)
                 throw Plus4Emu::Exception("error writing PRG file");

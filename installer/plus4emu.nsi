@@ -238,6 +238,7 @@ Section "Source code" SecSrc
   File "..\util\p4fliconv\*.fl"
   File /x "*_fl.cpp" "..\util\p4fliconv\*.cpp"
   File /x "*_fl.hpp" "..\util\p4fliconv\*.hpp"
+  File "..\util\p4fliconv\*.py"
   File "..\util\p4fliconv\*.s"
 
 SectionEnd

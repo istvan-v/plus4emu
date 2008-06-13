@@ -362,6 +362,7 @@ elif not win32CrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
         p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
 p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
+                       'util/p4fliconv/decompress.cpp',
                        'util/p4fliconv/dither.cpp',
                        'util/p4fliconv/flicfg.cpp',
                        'util/p4fliconv/flidisp.cpp',

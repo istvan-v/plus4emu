@@ -195,9 +195,6 @@ namespace Plus4FLIConv {
       }
     };
     // --------
-    static const unsigned char decomp_code[0x02A9];
-    static const unsigned char decomp_code_c16[0x0014];
-    static const unsigned char decomp_code_2[0x0021];
     CompressionParameters config;
     std::vector< unsigned char >& outBuf;
     unsigned short  *lengthCodeTable;
@@ -213,7 +210,6 @@ namespace Plus4FLIConv {
     size_t  progressCnt;
     size_t  progressMax;
     bool    progressDisplayEnabled;
-    bool    haveDecompressCode;
     unsigned char outputShiftReg;
     int     outputBitCnt;
     void    (*progressMessageCallback)(void *userData, const char *msg);
@@ -247,9 +243,6 @@ namespace Plus4FLIConv {
     virtual ~PRGCompressor();
     void getCompressionParameters(CompressionParameters& cfg) const;
     void setCompressionParameters(const CompressionParameters& cfg);
-    void addDecompressCode(bool c16Mode);
-    void addDecompressEndCode(long runAddr, bool isLastBlock,
-                              bool noCleanup, bool noCLI, bool noROM);
     void addZeroPageUpdate(unsigned int endAddr, bool isLastBlock);
     bool compressData(const std::vector< unsigned char >& inBuf,
                       unsigned int startAddr, bool isLastBlock,
@@ -259,10 +252,6 @@ namespace Plus4FLIConv {
                                     void *userData_);
     void setProgressPercentageCallback(bool (*func)(void *userData, int n),
                                        void *userData_);
-    static inline unsigned int getCompressedDataStartAddress()
-    {
-      return 0x12AAU;
-    }
   };
 
 }       // namespace Plus4FLIConv
