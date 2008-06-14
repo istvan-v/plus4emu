@@ -101,6 +101,58 @@ namespace Plus4FLIConv {
   {
   }
 
+  void PRGCompressor::HuffmanCompressor::sortNodes(HuffmanNode*& startNode)
+  {
+    size_t  nodeCnt = 0;
+    HuffmanNode *p = startNode;
+    while (p != (HuffmanNode *) 0) {
+      nodeCnt++;
+      p = p->nextNode;
+    }
+    if (nodeCnt < 2)
+      return;
+    size_t  m = nodeCnt >> 1;
+    p = startNode;
+    for (size_t i = 0; i < m; i++) {
+      HuffmanNode *nxt = p->nextNode;
+      if ((i + 1) == m)
+        p->nextNode = (HuffmanNode *) 0;
+      p = nxt;
+    }
+    HuffmanNode *splitNode = p;
+    sortNodes(startNode);
+    sortNodes(splitNode);
+    HuffmanNode *p1 = startNode;
+    HuffmanNode *p2 = splitNode;
+    HuffmanNode *prvNode = (HuffmanNode *) 0;
+    while (true) {
+      if (p1 == (HuffmanNode *) 0) {
+        if (p2 == (HuffmanNode *) 0)
+          break;
+        p = p2;
+        p2 = p2->nextNode;
+      }
+      else if (p2 == (HuffmanNode *) 0) {
+        p = p1;
+        p1 = p1->nextNode;
+      }
+      else if (p2->weight < p1->weight) {
+        p = p2;
+        p2 = p2->nextNode;
+      }
+      else {
+        p = p1;
+        p1 = p1->nextNode;
+      }
+      if (prvNode != (HuffmanNode *) 0)
+        prvNode->nextNode = p;
+      else
+        startNode = p;
+      prvNode = p;
+    }
+    p->nextNode = (HuffmanNode *) 0;
+  }
+
   void PRGCompressor::HuffmanCompressor::buildEncodeTable(
       std::vector< unsigned int >& encodeTable,
       const HuffmanNode *p, unsigned int n = 0U, unsigned int nBits = 0U)
@@ -162,9 +214,12 @@ namespace Plus4FLIConv {
     }
     else {
       // build Huffman tree
-      std::list< HuffmanNode * >  nodeList;
       std::vector< HuffmanNode >  buf;
       buf.resize(nCharValues * 2);
+      HuffmanNode *nodeList1 = (HuffmanNode *) 0;
+      HuffmanNode *nodeList1End = (HuffmanNode *) 0;
+      HuffmanNode *nodeList2 = (HuffmanNode *) 0;
+      HuffmanNode *nodeList2End = (HuffmanNode *) 0;
       size_t  n = 0;
       for (size_t i = 0; i < nCharValues; i++) {
         if (charCounts[i] > 0) {
@@ -175,25 +230,78 @@ namespace Plus4FLIConv {
           p->parent = (HuffmanNode *) 0;
           p->child0 = (HuffmanNode *) 0;
           p->child1 = (HuffmanNode *) 0;
-          std::list< HuffmanNode * >::iterator  i_ = nodeList.begin();
-          while (i_ != nodeList.end()) {
-            if ((*i_)->weight > p->weight)
-              break;
-            i_++;
-          }
-          nodeList.insert(i_, p);
+          p->nextNode = (HuffmanNode *) 0;
+          if (nodeList1End != (HuffmanNode *) 0)
+            nodeList1End->nextNode = p;
+          else
+            nodeList1 = p;
+          nodeList1End = p;
         }
       }
+      sortNodes(nodeList1);
+      nodeList1End = nodeList1;
+      if (nodeList1 != (HuffmanNode *) 0) {
+        while (nodeList1End->nextNode != (HuffmanNode *) 0)
+          nodeList1End = nodeList1End->nextNode;
+      }
       HuffmanNode *rootNode = (HuffmanNode *) 0;
-      while (nodeList.begin() != nodeList.end()) {
-        HuffmanNode *p0 = nodeList.front();
-        nodeList.pop_front();
-        if (nodeList.begin() == nodeList.end()) {
-          rootNode = p0;
-          break;
+      while (true) {
+        HuffmanNode *p1 = (HuffmanNode *) 0;
+        if (nodeList1 == (HuffmanNode *) 0) {
+          if (nodeList2 == (HuffmanNode *) 0)
+            break;
+          p1 = nodeList2;
+          nodeList2 = nodeList2->nextNode;
+          if (nodeList2 == (HuffmanNode *) 0)
+            nodeList2End = (HuffmanNode *) 0;
         }
-        HuffmanNode *p1 = nodeList.front();
-        nodeList.pop_front();
+        else if (nodeList2 == (HuffmanNode *) 0) {
+          p1 = nodeList1;
+          nodeList1 = nodeList1->nextNode;
+          if (nodeList1 == (HuffmanNode *) 0)
+            nodeList1End = (HuffmanNode *) 0;
+        }
+        else if (nodeList2->weight < nodeList1->weight) {
+          p1 = nodeList2;
+          nodeList2 = nodeList2->nextNode;
+          if (nodeList2 == (HuffmanNode *) 0)
+            nodeList2End = (HuffmanNode *) 0;
+        }
+        else {
+          p1 = nodeList1;
+          nodeList1 = nodeList1->nextNode;
+          if (nodeList1 == (HuffmanNode *) 0)
+            nodeList1End = (HuffmanNode *) 0;
+        }
+        HuffmanNode *p0 = (HuffmanNode *) 0;
+        if (nodeList1 == (HuffmanNode *) 0) {
+          if (nodeList2 == (HuffmanNode *) 0) {
+            rootNode = p1;
+            break;
+          }
+          p0 = nodeList2;
+          nodeList2 = nodeList2->nextNode;
+          if (nodeList2 == (HuffmanNode *) 0)
+            nodeList2End = (HuffmanNode *) 0;
+        }
+        else if (nodeList2 == (HuffmanNode *) 0) {
+          p0 = nodeList1;
+          nodeList1 = nodeList1->nextNode;
+          if (nodeList1 == (HuffmanNode *) 0)
+            nodeList1End = (HuffmanNode *) 0;
+        }
+        else if (nodeList2->weight < nodeList1->weight) {
+          p0 = nodeList2;
+          nodeList2 = nodeList2->nextNode;
+          if (nodeList2 == (HuffmanNode *) 0)
+            nodeList2End = (HuffmanNode *) 0;
+        }
+        else {
+          p0 = nodeList1;
+          nodeList1 = nodeList1->nextNode;
+          if (nodeList1 == (HuffmanNode *) 0)
+            nodeList1End = (HuffmanNode *) 0;
+        }
         rootNode = &(buf[n]);
         n++;
         rootNode->weight = p0->weight + p1->weight;
@@ -203,16 +311,14 @@ namespace Plus4FLIConv {
         p0->parent = rootNode;
         rootNode->child1 = p1;
         p1->parent = rootNode;
-        std::list< HuffmanNode * >::iterator  i_ = nodeList.begin();
-        while (i_ != nodeList.end()) {
-          if ((*i_)->weight > rootNode->weight)
-            break;
-          i_++;
-        }
-        nodeList.insert(i_, rootNode);
+        rootNode->nextNode = (HuffmanNode *) 0;
+        if (nodeList2End != (HuffmanNode *) 0)
+          nodeList2End->nextNode = rootNode;
+        else
+          nodeList2 = rootNode;
+        nodeList2End = rootNode;
       }
       buildEncodeTable(encodeTable, rootNode);
-      nodeList.clear();
       buf.clear();
     }
     // convert encode table to canonical Huffman codes
@@ -265,25 +371,28 @@ namespace Plus4FLIConv {
       return outBufPos;
     }
     // add decode table to the output buffer
-    outBufPos = outBuf.insert(outBufPos, 0x01000001U);
-    outBufPos++;
+    std::vector< unsigned int > tmpBuf;
+    tmpBuf.push_back(0x01000001U);
     for (size_t i = 1; i <= 16; i++) {
       size_t  sizeCnt = 0;
       for (size_t j = 0; j < nCharValues; j++) {
         if (size_t(encodeTable[j] >> 24) == i)
           sizeCnt++;
       }
-      outBufPos = writeGammaCode(outBuf, outBufPos, sizeCnt + 1);
+      writeGammaCode(tmpBuf, tmpBuf.end(), sizeCnt + 1);
       unsigned int  prvChar = 0U - 1U;
       for (size_t j = 0; j < nCharValues; j++) {
         if (size_t(encodeTable[j] >> 24) == i) {
           unsigned int  newChar = (unsigned int) j;
           unsigned int  d = newChar - prvChar;
           prvChar = newChar;
-          outBufPos = writeGammaCode(outBuf, outBufPos, d);
+          writeGammaCode(tmpBuf, tmpBuf.end(), d);
         }
       }
     }
+    size_t  offs = size_t(outBufPos - outBuf.begin());
+    outBuf.insert(outBufPos, tmpBuf.begin(), tmpBuf.end());
+    outBufPos = outBuf.begin() + (offs + tmpBuf.size());
     return outBufPos;
   }
 
@@ -703,7 +812,6 @@ namespace Plus4FLIConv {
   struct BitCountTableEntry {
     long    totalBits;
     unsigned short  prvDistances[4];
-    long    prvDistanceCounts[4];
   };
 
   void PRGCompressor::compressData_(std::vector< unsigned int >& tmpOutBuf,
@@ -739,10 +847,8 @@ namespace Plus4FLIConv {
         std::vector< BitCountTableEntry >   bitCountTable;
         bitCountTable.resize(nBytes + 1);
         bitCountTable[nBytes].totalBits = 0L;
-        for (size_t i = 0; i < 4; i++) {
+        for (size_t i = 0; i < 4; i++)
           bitCountTable[nBytes].prvDistances[i] = 0;
-          bitCountTable[nBytes].prvDistanceCounts[i] = 0L;
-        }
         for (size_t i = endPos; i > offs; ) {
           i--;
           size_t  maxLen = matchTable[i - offs].len;
@@ -754,42 +860,23 @@ namespace Plus4FLIConv {
             BitCountTableEntry  curMatch = nxtMatch;
             curMatch.totalBits += long(tmp.nBits);
             if (tmp.d > 8) {
-              int     distNdx = -1;
-              for (int nn = 0; nn < 4; nn++) {
+              for (int nn = 0; true; nn++) {
                 if (curMatch.prvDistances[nn] == tmp.d) {
-                  distNdx = nn;
+                  curMatch.totalBits +=
+                      (long(tmpCharBitsTable[0x0140 | nn])
+                       - (long(tmpCharBitsTable[distanceCodeTable[tmp.d]])
+                          + long(distanceBitsTable[tmp.d])));
+                  break;
+                }
+                if (nn >= 3) {
+                  while (--nn >= 0)
+                    curMatch.prvDistances[nn + 1] = curMatch.prvDistances[nn];
+                  curMatch.prvDistances[0] = tmp.d;
                   break;
                 }
               }
-              if (distNdx < 0) {
-                unsigned short  d = curMatch.prvDistances[0];
-                curMatch.totalBits +=
-                    ((long(tmpCharBitsTable[0x0140])
-                      - (long(tmpCharBitsTable[distanceCodeTable[d]])
-                         + long(distanceBitsTable[d])))
-                     * curMatch.prvDistanceCounts[0]);
-                for (int nn = 0; nn < 3; nn++) {
-                  curMatch.prvDistances[nn] = curMatch.prvDistances[nn + 1];
-                  curMatch.prvDistanceCounts[nn] =
-                      curMatch.prvDistanceCounts[nn + 1];
-                }
-                curMatch.prvDistances[3] = tmp.d;
-                curMatch.prvDistanceCounts[3] = 0L;
-              }
-              else {
-                curMatch.prvDistanceCounts[distNdx]++;
-              }
             }
             long    nBits = curMatch.totalBits;
-            for (int nn = 0; nn < 4; nn++) {
-              if (curMatch.prvDistanceCounts[nn] > 0L) {
-                unsigned short  d = curMatch.prvDistances[nn];
-                nBits += ((long(tmpCharBitsTable[0x0140 | nn])
-                           - (long(tmpCharBitsTable[distanceCodeTable[d]])
-                              + long(distanceBitsTable[d])))
-                          * curMatch.prvDistanceCounts[nn]);
-              }
-            }
             if (nBits < bestSize) {
               bestSize = nBits;
               matchTable[i - offs] = tmp;
@@ -803,15 +890,6 @@ namespace Plus4FLIConv {
             tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
             curMatch.totalBits += long(tmp.nBits);
             long    nBits = curMatch.totalBits;
-            for (int nn = 0; nn < 4; nn++) {
-              if (curMatch.prvDistanceCounts[nn] > 0L) {
-                unsigned short  d = curMatch.prvDistances[nn];
-                nBits += ((long(tmpCharBitsTable[0x0140 | nn])
-                           - (long(tmpCharBitsTable[distanceCodeTable[d]])
-                              + long(distanceBitsTable[d])))
-                          * curMatch.prvDistanceCounts[nn]);
-              }
-            }
             if (nBits < bestSize) {
               bestSize = nBits;
               matchTable[i - offs] = tmp;
@@ -883,7 +961,9 @@ namespace Plus4FLIConv {
       tmpCharCountTable[i] = 1;
       tmpCharBitsTable[i] = (i < 0x0180 ? 9 : 5);
     }
-    std::vector< unsigned int >   tmpBuf;
+    std::vector< unsigned int > bestBuf;
+    std::vector< unsigned int > tmpBuf;
+    size_t  bestSize = 0x7FFFFFFF;
     for (size_t i = 0; i < config.optimizeIterations; i++) {
       if (progressDisplayEnabled) {
         if (!setProgressPercentage(int(progressCnt * 100 / progressMax)))
@@ -891,9 +971,18 @@ namespace Plus4FLIConv {
         progressCnt += nBytes;
       }
       tmpBuf.resize(0);
-      compressData_(tmpBuf, inBuf, startAddr,
-                    (isLastBlock && (i + 1) == config.optimizeIterations),
-                    offs, nBytes);
+      compressData_(tmpBuf, inBuf, startAddr, false, offs, nBytes);
+      // apply statistical compression
+      huffmanCompressBlock(tmpBuf);
+      size_t  compressedSize = 0;
+      for (size_t j = 0; j < tmpBuf.size(); j++)
+        compressedSize += size_t(tmpBuf[j] >> 24);
+      if (compressedSize < bestSize) {
+        bestBuf.resize(tmpBuf.size());
+        for (size_t j = 0; j < tmpBuf.size(); j++)
+          bestBuf[j] = tmpBuf[j];
+        bestSize = compressedSize;
+      }
       // update estimated character sizes
       size_t  totalCount = 0;
       for (size_t j = 0x0000; j < 0x0144; j++)
@@ -901,7 +990,7 @@ namespace Plus4FLIConv {
       for (size_t j = 0x0000; j < 0x0144; j++) {
         tmpCharBitsTable[j] =
             estimateSymbolLength(tmpCharCountTable[j], totalCount);
-        tmpCharCountTable[j] = (tmpCharCountTable[j] + 1) >> 1;
+        tmpCharCountTable[j] = (tmpCharCountTable[j] + 3) >> 2;
       }
       totalCount = 0;
       for (size_t j = 0x0180; j < 0x019C; j++)
@@ -909,28 +998,26 @@ namespace Plus4FLIConv {
       for (size_t j = 0x0180; j < 0x019C; j++) {
         tmpCharBitsTable[j] =
             estimateSymbolLength(tmpCharCountTable[j], totalCount);
-        tmpCharCountTable[j] = (tmpCharCountTable[j] + 1) >> 1;
+        tmpCharCountTable[j] = (tmpCharCountTable[j] + 3) >> 2;
       }
     }
-    // apply statistical compression
-    huffmanCompressBlock(tmpBuf);
     size_t  uncompressedSize = ((nBytes + 4) * 8) + 2;
-    size_t  compressedSize = 0;
-    for (size_t i = 0; i < tmpBuf.size(); i++)
-      compressedSize += size_t(tmpBuf[i] >> 24);
-    if (compressedSize >= uncompressedSize) {
+    size_t  outBufOffset = tmpOutBuf.size();
+    if (bestSize >= uncompressedSize) {
       // if cannot reduce the data size, store without compression
       for (size_t i = 0; i < 3; i++)
-        tmpOutBuf.push_back(tmpBuf[i]);
+        tmpOutBuf.push_back(bestBuf[i]);
       tmpOutBuf.push_back(0x01000000U);
       for (size_t i = offs; i < endPos; i++)
         tmpOutBuf.push_back(0x08000000U | (unsigned int) inBuf[i]);
     }
     else {
       // append compressed data to output buffer
-      for (size_t i = 0; i < tmpBuf.size(); i++)
-        tmpOutBuf.push_back(tmpBuf[i]);
+      for (size_t i = 0; i < bestBuf.size(); i++)
+        tmpOutBuf.push_back(bestBuf[i]);
     }
+    // store last block flag
+    tmpOutBuf[outBufOffset + 2] = (isLastBlock ? 0x01000001U : 0x01000000U);
     return true;
   }
 

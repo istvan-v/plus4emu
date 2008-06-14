@@ -59,24 +59,28 @@ namespace Plus4FLIConv {
         HuffmanNode   *parent;
         HuffmanNode   *child0;
         HuffmanNode   *child1;
+        HuffmanNode   *nextNode;
         // --------
         HuffmanNode()
           : weight(0),
             value(0),
             parent((HuffmanNode *) 0),
             child0((HuffmanNode *) 0),
-            child1((HuffmanNode *) 0)
+            child1((HuffmanNode *) 0),
+            nextNode((HuffmanNode *) 0)
         {
         }
         HuffmanNode(size_t weight_, unsigned int value_,
                     HuffmanNode *parent_ = (HuffmanNode *) 0,
                     HuffmanNode *child0_ = (HuffmanNode *) 0,
-                    HuffmanNode *child1_ = (HuffmanNode *) 0)
+                    HuffmanNode *child1_ = (HuffmanNode *) 0,
+                    HuffmanNode *nextNode_ = (HuffmanNode *) 0)
           : weight(weight_),
             value(value_),
             parent(parent_),
             child0(child0_),
-            child1(child1_)
+            child1(child1_),
+            nextNode(nextNode_)
         {
         }
         ~HuffmanNode()
@@ -89,6 +93,7 @@ namespace Plus4FLIConv {
       };
       size_t  nCharValues;
       std::vector< size_t >   charCounts;
+      static void sortNodes(HuffmanNode*& startNode);
       void buildEncodeTable(std::vector< unsigned int >& encodeTable,
                             const HuffmanNode *p,
                             unsigned int n, unsigned int nBits);
