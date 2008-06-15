@@ -431,10 +431,6 @@ int main(int argc, char **argv)
     }
     // compress file(s)
     if (noPRGMode) {
-      if (fileNames.size() > 2) {
-        throw Plus4Emu::Exception("-noprg mode does not support "
-                                  "multiple input files");
-      }
       if (fliImageFormat) {
         throw Plus4Emu::Exception("cannot use -noprg and -fli "
                                   "at the same time");
