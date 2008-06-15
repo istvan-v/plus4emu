@@ -655,11 +655,17 @@ namespace Plus4FLIConv {
     encodeTable1.resize(324);
     std::vector< unsigned int > encodeTable2;
     encodeTable2.resize(28);
+    size_t  charCnt1 = 0;
+    size_t  charCnt2 = 0;
     for (size_t i = 0; i < ioBuf.size(); i++) {
-      if (ioBuf[i] <= 0x17FU)
+      if (ioBuf[i] <= 0x17FU) {
+        charCnt1++;
         huff1.addChar(ioBuf[i]);
-      else if (ioBuf[i] <= 0x1FFU)
+      }
+      else if (ioBuf[i] <= 0x1FFU) {
+        charCnt2++;
         huff2.addChar(ioBuf[i] - 0x180U);
+      }
     }
     // insert the decode table after the block header
     std::vector< unsigned int >::iterator   i_ = ioBuf.begin();
@@ -672,6 +678,27 @@ namespace Plus4FLIConv {
         ioBuf[i] = encodeTable1[ioBuf[i]];
       else if (ioBuf[i] <= 0x1FFU)
         ioBuf[i] = encodeTable2[ioBuf[i] - 0x180U];
+    }
+    // update estimated symbol sizes
+    for (size_t i = 0x0000; i < 0x0144; i++) {
+      if (encodeTable1[i] < 0x01000000U)
+        charCnt1++;             // assume a count of 1 for unused symbols
+    }
+    for (size_t i = 0x0180; i < 0x019C; i++) {
+      if (encodeTable2[i - 0x0180] < 0x01000000U)
+        charCnt2++;
+    }
+    for (size_t i = 0x0000; i < 0x0144; i++) {
+      size_t  nBits = size_t(encodeTable1[i] >> 24);
+      if (nBits == 0)
+        nBits = estimateSymbolLength(1, charCnt1);
+      tmpCharBitsTable[i] = nBits;
+    }
+    for (size_t i = 0x0180; i < 0x019C; i++) {
+      size_t  nBits = size_t(encodeTable2[i - 0x0180] >> 24);
+      if (nBits == 0)
+        nBits = estimateSymbolLength(1, charCnt2);
+      tmpCharBitsTable[i] = nBits;
     }
   }
 
@@ -711,10 +738,8 @@ namespace Plus4FLIConv {
       for (size_t i = 0; i < 4; i++) {
         if (d == prvDistances[i]) {
           unsigned int  c = 0x0140U | (unsigned int) i;
-          tmpCharCountTable[c]++;
           buf.push_back(c);
           c = (unsigned int) lengthCodeTable[n];
-          tmpCharCountTable[c]++;
           buf.push_back(c);
           if (lengthBitsTable[n] > 0)
             buf.push_back(lengthValueTable[n]);
@@ -726,12 +751,10 @@ namespace Plus4FLIConv {
       prvDistances[0] = d;
     }
     unsigned int  c = (unsigned int) distanceCodeTable[d];
-    tmpCharCountTable[c]++;
     buf.push_back(c);
     if (distanceBitsTable[d] > 0)
       buf.push_back(distanceValueTable[d]);
     c = (unsigned int) lengthCodeTable[n];
-    tmpCharCountTable[c]++;
     buf.push_back(c);
     if (lengthBitsTable[n] > 0)
       buf.push_back(lengthValueTable[n]);
@@ -750,14 +773,12 @@ namespace Plus4FLIConv {
                                         size_t d, size_t n)
   {
     unsigned int  c = (unsigned int) distanceCodeTable[d] | 0x003CU;
-    tmpCharCountTable[c]++;
     buf.push_back(c);
     seqDiff = (seqDiff + 0x40) & 0xFF;
     if (seqDiff > 0x40)
       seqDiff--;
     buf.push_back(0x07000000U | (unsigned int) seqDiff);
     c = (unsigned int) lengthCodeTable[n];
-    tmpCharCountTable[c]++;
     buf.push_back(c);
     if (lengthBitsTable[n] > 0)
       buf.push_back(lengthValueTable[n]);
@@ -939,7 +960,6 @@ namespace Plus4FLIConv {
       else {
         unsigned int  c = (unsigned int) inBuf[i];
         i++;
-        tmpCharCountTable[c]++;
         tmpOutBuf.push_back(c);
       }
     }
@@ -957,10 +977,8 @@ namespace Plus4FLIConv {
     if (nBytes > (inBuf.size() - offs))
       nBytes = inBuf.size() - offs;
     size_t  endPos = offs + nBytes;
-    for (size_t i = 0; i < 512; i++) {
-      tmpCharCountTable[i] = 1;
+    for (size_t i = 0; i < 512; i++)
       tmpCharBitsTable[i] = (i < 0x0180 ? 9 : 5);
-    }
     std::vector< unsigned int > bestBuf;
     std::vector< unsigned int > tmpBuf;
     size_t  bestSize = 0x7FFFFFFF;
@@ -982,23 +1000,6 @@ namespace Plus4FLIConv {
         for (size_t j = 0; j < tmpBuf.size(); j++)
           bestBuf[j] = tmpBuf[j];
         bestSize = compressedSize;
-      }
-      // update estimated character sizes
-      size_t  totalCount = 0;
-      for (size_t j = 0x0000; j < 0x0144; j++)
-        totalCount += tmpCharCountTable[j];
-      for (size_t j = 0x0000; j < 0x0144; j++) {
-        tmpCharBitsTable[j] =
-            estimateSymbolLength(tmpCharCountTable[j], totalCount);
-        tmpCharCountTable[j] = (tmpCharCountTable[j] + 3) >> 2;
-      }
-      totalCount = 0;
-      for (size_t j = 0x0180; j < 0x019C; j++)
-        totalCount += tmpCharCountTable[j];
-      for (size_t j = 0x0180; j < 0x019C; j++) {
-        tmpCharBitsTable[j] =
-            estimateSymbolLength(tmpCharCountTable[j], totalCount);
-        tmpCharCountTable[j] = (tmpCharCountTable[j] + 3) >> 2;
       }
     }
     size_t  uncompressedSize = ((nBytes + 4) * 8) + 2;
@@ -1049,7 +1050,6 @@ namespace Plus4FLIConv {
       distanceCodeTable((unsigned short *) 0),
       distanceBitsTable((unsigned char *) 0),
       distanceValueTable((unsigned int *) 0),
-      tmpCharCountTable((size_t *) 0),
       tmpCharBitsTable((size_t *) 0),
       searchTable((SearchTable *) 0),
       progressCnt(0),
@@ -1071,13 +1071,10 @@ namespace Plus4FLIConv {
       distanceCodeTable = new unsigned short[maxRepeatDist + 1];
       distanceBitsTable = new unsigned char[maxRepeatDist + 1];
       distanceValueTable = new unsigned int[maxRepeatDist + 1];
-      tmpCharCountTable = new size_t[512];
       tmpCharBitsTable = new size_t[512];
       initializeLengthCodeTables();
-      for (size_t i = 0; i < 512; i++) {
-        tmpCharCountTable[i] = 1;
+      for (size_t i = 0; i < 512; i++)
         tmpCharBitsTable[i] = (i < 0x0180 ? 9 : 5);
-      }
       for (size_t i = 0; i < 4; i++)
         prvDistances[i] = 0;
     }
@@ -1094,8 +1091,6 @@ namespace Plus4FLIConv {
         delete[] distanceBitsTable;
       if (distanceValueTable)
         delete[] distanceValueTable;
-      if (tmpCharCountTable)
-        delete[] tmpCharCountTable;
       if (tmpCharBitsTable)
         delete[] tmpCharBitsTable;
       throw;
@@ -1110,7 +1105,6 @@ namespace Plus4FLIConv {
     delete[] distanceCodeTable;
     delete[] distanceBitsTable;
     delete[] distanceValueTable;
-    delete[] tmpCharCountTable;
     delete[] tmpCharBitsTable;
     if (searchTable)
       delete searchTable;
@@ -1151,7 +1145,7 @@ namespace Plus4FLIConv {
     try {
       progressDisplayEnabled = enableProgressDisplay;
       if (enableProgressDisplay) {
-        progressMessage("Compressing PRG data");
+        progressMessage("Compressing data");
         setProgressPercentage(0);
       }
       if (searchTable) {

@@ -208,8 +208,7 @@ namespace Plus4FLIConv {
     unsigned short  *distanceCodeTable;
     unsigned char   *distanceBitsTable;
     unsigned int    *distanceValueTable;
-    size_t  *tmpCharCountTable;
-    size_t  *tmpCharBitsTable;
+    size_t          *tmpCharBitsTable;
     SearchTable     *searchTable;
     size_t  prvDistances[4];
     size_t  progressCnt;

@@ -196,13 +196,11 @@ namespace Plus4FLIConv {
     if (!compressionEnabled) {
       // copy uncompressed data
       for (unsigned int i = 0U; i < nBytes; i++) {
-        if (bytesUsed[startAddr])
+        if (startAddr > 0xFFFFU || bytesUsed[startAddr])
           throw Plus4Emu::Exception("error in compressed data");
         buf[startAddr] = (unsigned char) readBits(8);
         bytesUsed[startAddr] = true;
-        startAddr = (startAddr + 1U) & 0xFFFFU;
-        if (startAddr == 0U)
-          throw Plus4Emu::Exception("error in compressed data");
+        startAddr++;
       }
       return isLastBlock;
     }
@@ -221,13 +219,11 @@ namespace Plus4FLIConv {
         throw Plus4Emu::Exception("error in compressed data");
       if (tmp <= 0xFFU) {
         // literal character
-        if (bytesUsed[startAddr])
+        if (startAddr > 0xFFFFU || bytesUsed[startAddr])
           throw Plus4Emu::Exception("error in compressed data");
         buf[startAddr] = (unsigned char) tmp;
         bytesUsed[startAddr] = true;
-        startAddr = (startAddr + 1U) & 0xFFFFU;
-        if (startAddr == 0U)
-          throw Plus4Emu::Exception("error in compressed data");
+        startAddr++;
         i++;
         continue;
       }
@@ -265,13 +261,11 @@ namespace Plus4FLIConv {
           throw Plus4Emu::Exception("error in compressed data");
         if (!bytesUsed[lzMatchReadAddr])    // byte does not exist yet
           throw Plus4Emu::Exception("error in compressed data");
-        if (bytesUsed[startAddr])
+        if (startAddr > 0xFFFFU || bytesUsed[startAddr])
           throw Plus4Emu::Exception("error in compressed data");
         buf[startAddr] = (buf[lzMatchReadAddr] + deltaValue) & 0xFF;
         bytesUsed[startAddr] = true;
-        startAddr = (startAddr + 1U) & 0xFFFFU;
-        if (startAddr == 0U)
-          throw Plus4Emu::Exception("error in compressed data");
+        startAddr++;
         lzMatchReadAddr = (lzMatchReadAddr + 1U) & 0xFFFFU;
         i++;
       }

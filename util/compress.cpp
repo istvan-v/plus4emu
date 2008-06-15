@@ -40,20 +40,77 @@ static bool   noCLI = false;
 static bool   noROM = false;
 // do not update zeropage variables after decompression if this is set to true
 static bool   noZPUpdate = false;
-// do not include decompressor code in the PRG output if non-zero
-static int    rawLoadAddr = 0;
+// do not include decompressor code in the PRG output if non-negative
+static int    rawLoadAddr = -1;
 // do not read or write PRG/P00 header
 static bool   noPRGMode = false;
 // write output file as p4fliconv raw compressed image
 static bool   fliImageFormat = false;
-// override the load address of the first input file if greater than zero
-static int    loadAddr = 0;
 // start address (0 - 0xFFFF), or -1 for run, -2 for basic, or -3 for monitor
 static long   runAddr = -2L;
 
+static long convertStringToInteger(const char *s, bool isRunAddr = false)
+{
+  if (s == (char *) 0 || s[0] == '\0')
+    throw Plus4Emu::Exception("invalid integer argument format");
+  if (isRunAddr) {
+    if (std::strcmp(s, "RUN") == 0 || std::strcmp(s, "Run") == 0 ||
+        std::strcmp(s, "run") == 0) {
+      return -1L;
+    }
+    if (std::strcmp(s, "BASIC") == 0 || std::strcmp(s, "Basic") == 0 ||
+        std::strcmp(s, "basic") == 0) {
+      return -2L;
+    }
+    if (std::strcmp(s, "MONITOR") == 0 || std::strcmp(s, "Monitor") == 0 ||
+        std::strcmp(s, "monitor") == 0) {
+      return -3L;
+    }
+  }
+  bool    negativeFlag = false;
+  bool    hexMode = false;
+  if (s[0] == '+') {
+    s++;
+  }
+  else if (s[0] == '-') {
+    negativeFlag = true;
+    s++;
+  }
+  if (s[0] == '$' || s[0] == 'X' || s[0] == 'x') {
+    hexMode = true;
+    s++;
+  }
+  else if (s[0] == '0') {
+    if (s[1] == 'X' || s[1] == 'x') {
+      hexMode = true;
+      s = s + 2;
+    }
+  }
+  if (s[0] == '\0')
+    throw Plus4Emu::Exception("invalid integer argument format");
+  long    n = 0L;
+  for (size_t i = 0; s[i] != '\0'; i++) {
+    n = n * (hexMode ? 16L : 10L);
+    if (s[i] >= '0' && s[i] <= '9')
+      n = n + long(s[i] - '0');
+    else if (hexMode && (s[i] >= 'A' && s[i] <= 'F'))
+      n = n + long(s[i] - 'A') + 10L;
+    else if (hexMode && (s[i] >= 'a' && s[i] <= 'f'))
+      n = n + long(s[i] - 'a') + 10L;
+    else
+      throw Plus4Emu::Exception("invalid integer argument format");
+    if (n > 0xFFFFL)
+      throw Plus4Emu::Exception("integer argument is out of range");
+  }
+  if (negativeFlag)
+    n = (-n);
+  return n;
+}
+
 static void readInputFile(std::vector< unsigned char >& buf,
                           unsigned int& startAddress,
-                          const char *fileName)
+                          const char *fileName,
+                          size_t skipBytes = 0, size_t lengthLimit = 65536)
 {
   startAddress = 0U;
   buf.clear();
@@ -116,148 +173,168 @@ static void readInputFile(std::vector< unsigned char >& buf,
       std::fclose(f);
     throw;
   }
+  if (skipBytes > buf.size())
+    skipBytes = buf.size();
+  if (skipBytes > 0)
+    buf.erase(buf.begin(), buf.begin() + skipBytes);
+  if (buf.size() > lengthLimit)
+    buf.resize(lengthLimit);
 }
 
 int main(int argc, char **argv)
 {
+  const char  *programName = argv[0];
+  if (programName == (char *) 0)
+    programName = "";
+  for (size_t i = std::strlen(programName); i > 0; ) {
+    i--;
+    if (programName[i] == '/' || programName[i] == '\\' ||
+        programName[i] == ':') {
+      programName = programName + (i + 1);
+      break;
+    }
+  }
+  if (programName[0] == '\0')
+    programName = "compress";
   std::vector< std::string >  fileNames;
+  std::vector< int >  fileOffsets;
+  std::vector< int >  fileLengths;
+  std::vector< int >  loadAddresses;
+  fileOffsets.push_back(0);
+  fileLengths.push_back(65536);
+  loadAddresses.push_back(-1);
   bool    printUsageFlag = false;
-  for (int i = 1; i < argc; i++) {
-    std::string tmp = argv[i];
-    if (tmp == "-h" || tmp == "-help" || tmp == "--help") {
-      printUsageFlag = true;
-    }
-    else if (tmp == "-x") {
-      extractMode = true;
-      testMode = false;
-    }
-    else if (tmp == "-t") {
-      testMode = true;
-      extractMode = false;
-    }
-    else if (tmp.length() == 2 &&
-             (tmp[0] == '-' && tmp[1] >= '1' && tmp[1] <= '9')) {
-      compressionLevel = int(tmp[1] - '0');
-    }
-    else if (tmp == "-c16") {
-      c16Mode = true;
-    }
-    else if (tmp == "-fastsfx") {
-      useFastSFXModule = true;
-    }
-    else if (tmp == "-nocleanup") {
-      noCleanup = true;
-    }
-    else if (tmp == "-nocli") {
-      noCLI = true;
-    }
-    else if (tmp == "-norom") {
-      noROM = true;
-    }
-    else if (tmp == "-nozp") {
-      noZPUpdate = true;
-    }
-    else if (tmp == "-zp") {
-      noZPUpdate = false;
-    }
-    else if (tmp == "-raw") {
-      rawLoadAddr = -1;
-      if ((i + 1) < argc) {
-        i++;
-        tmp = argv[i];
-        rawLoadAddr = int(std::atoi(tmp.c_str()));
-      }
-      if (rawLoadAddr >= 0)
-        rawLoadAddr = rawLoadAddr & 0xFFFF;
-      else
-        rawLoadAddr = 0x1003;
-      noZPUpdate = true;
-    }
-    else if (tmp == "-noprg") {
-      noPRGMode = true;
-    }
-    else if (tmp == "-fli") {
-      fliImageFormat = true;
-      rawLoadAddr = 0x17FE;
-      noZPUpdate = true;
-    }
-    else if (tmp == "-loadaddr") {
-      loadAddr = 0;
-      if ((i + 1) < argc) {
-        i++;
-        tmp = argv[i];
-        loadAddr = int(std::atoi(tmp.c_str()));
-      }
-      if (loadAddr >= 0)
-        loadAddr = loadAddr & 0xFFFF;
-      else
-        loadAddr = 0;
-    }
-    else if (tmp == "-start") {
-      runAddr = -1L;
-      if ((i + 1) < argc) {
-        i++;
-        tmp = argv[i];
-        runAddr = long(std::atoi(tmp.c_str()));
-      }
-    }
-    else {
-      fileNames.push_back(tmp);
-    }
-  }
-  if (printUsageFlag || fileNames.size() < (testMode ? 1 : 2)) {
-    std::fprintf(stderr, "Usage:\n");
-    std::fprintf(stderr, "%s [OPTIONS...] <infile...> <outfile>\n", argv[0]);
-    std::fprintf(stderr, "    compress file(s)\n");
-    std::fprintf(stderr, "%s -x [OPTIONS...] <infile> <outfile...>\n", argv[0]);
-    std::fprintf(stderr, "    extract compressed file (experimental)\n");
-    std::fprintf(stderr, "%s -t <infile...>\n", argv[0]);
-    std::fprintf(stderr, "    test compressed file(s)\n");
-    std::fprintf(stderr, "Options:\n");
-    std::fprintf(stderr, "    -1 ... -9\n");
-    std::fprintf(stderr, "        set compression level vs. speed (default: "
-                         "5)\n");
-    std::fprintf(stderr, "    -c16\n");
-    std::fprintf(stderr, "        generate decompression code for the C16\n");
-    std::fprintf(stderr, "    -fastsfx\n");
-    std::fprintf(stderr, "        use faster decompression code (does not "
-                         "verify checksum, no read\n");
-    std::fprintf(stderr, "        buffer (unsafe if end address is $FD00))\n");
-    std::fprintf(stderr, "    -nocleanup\n");
-    std::fprintf(stderr, "        do not clean up after decompression "
-                         "(slightly reduces size)\n");
-    std::fprintf(stderr, "    -nocli\n");
-    std::fprintf(stderr, "        do not enable interrupts after "
-                         "decompression\n");
-    std::fprintf(stderr, "    -norom\n");
-    std::fprintf(stderr, "        do not enable ROM after decompression\n");
-    std::fprintf(stderr, "    -nozp\n");
-    std::fprintf(stderr, "        do not update zeropage variables at $2D-$32 "
-                         "and $9D-$9E\n");
-    std::fprintf(stderr, "    -zp\n");
-    std::fprintf(stderr, "        update zeropage variables at $2D-$32 and "
-                         "$9D-$9E\n");
-    std::fprintf(stderr, "    -raw <LOADADDR>\n");
-    std::fprintf(stderr, "        write the compressed data only "
-                         "(implies -nozp)\n");
-    std::fprintf(stderr, "    -noprg\n");
-    std::fprintf(stderr, "        read and write raw files without PRG or P00 "
-                         "header\n");
-    std::fprintf(stderr, "        (implies -raw and -nozp)\n");
-    std::fprintf(stderr, "    -fli\n");
-    std::fprintf(stderr, "        compress p4fliconv raw FLI image "
-                         "(implies -raw and -nozp)\n");
-    std::fprintf(stderr, "    -loadaddr <ADDR>\n");
-    std::fprintf(stderr, "        override the load address of the first "
-                         "input file\n");
-    std::fprintf(stderr, "    -start <ADDR>\n");
-    std::fprintf(stderr, "        start program at address ADDR (decimal), or "
-                         "RUN if ADDR is -1,\n        return to basic if -2 "
-                         "(default), or monitor if ADDR is -3\n");
-    return (printUsageFlag ? 0 : -1);
-  }
+  bool    helpFlag = false;
+  bool    endOfOptions = false;
   std::FILE *f = (std::FILE *) 0;
   try {
+    for (int i = 1; i < argc; i++) {
+      std::string tmp = argv[i];
+      if (tmp.length() < 1)
+        continue;
+      if (endOfOptions || tmp[0] != '-') {
+        fileNames.push_back(tmp);
+        fileOffsets.push_back(0);
+        fileLengths.push_back(65536);
+        loadAddresses.push_back(-1);
+        continue;
+      }
+      if (tmp == "--") {
+        endOfOptions = true;
+        continue;
+      }
+      if (tmp.length() >= 4) {
+        // allow GNU-style long options
+        if (tmp[1] == '-')
+          tmp.erase(0, 1);
+      }
+      if (tmp == "-h" || tmp == "-help") {
+        printUsageFlag = true;
+        helpFlag = true;
+        throw Plus4Emu::Exception("");
+      }
+      else if (tmp == "-x") {
+        extractMode = true;
+        testMode = false;
+      }
+      else if (tmp == "-t") {
+        testMode = true;
+        extractMode = false;
+      }
+      else if (tmp.length() == 2 &&
+               (tmp[0] == '-' && tmp[1] >= '1' && tmp[1] <= '9')) {
+        compressionLevel = int(tmp[1] - '0');
+      }
+      else if (tmp == "-c16") {
+        c16Mode = true;
+      }
+      else if (tmp == "-fastsfx") {
+        useFastSFXModule = true;
+      }
+      else if (tmp == "-nocleanup") {
+        noCleanup = true;
+      }
+      else if (tmp == "-nocli") {
+        noCLI = true;
+      }
+      else if (tmp == "-norom") {
+        noROM = true;
+      }
+      else if (tmp == "-nozp") {
+        noZPUpdate = true;
+      }
+      else if (tmp == "-zp") {
+        noZPUpdate = false;
+      }
+      else if (tmp == "-raw") {
+        if (++i >= argc) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("missing argument for '-raw'");
+        }
+        int     n = int(convertStringToInteger(argv[i]));
+        n = (n >= 0 ? (n & 0xFFFF) : -1);
+        rawLoadAddr = n;
+        noZPUpdate = true;
+      }
+      else if (tmp == "-noprg") {
+        noPRGMode = true;
+      }
+      else if (tmp == "-fli") {
+        fliImageFormat = true;
+        rawLoadAddr = 0x17FE;
+        noZPUpdate = true;
+      }
+      else if (tmp == "-skip") {
+        if (++i >= argc) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("missing argument for '-skip'");
+        }
+        int     n = int(convertStringToInteger(argv[i]));
+        n = (n >= 0 ? (n & 0xFFFF) : 0);
+        fileOffsets[fileNames.size()] = n;
+      }
+      else if (tmp == "-length") {
+        if (++i >= argc) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("missing argument for '-length'");
+        }
+        int     n = int(convertStringToInteger(argv[i]));
+        n = (n >= 0 ? (n & 0xFFFF) : 65536);
+        fileLengths[fileNames.size()] = n;
+      }
+      else if (tmp == "-loadaddr") {
+        if (++i >= argc) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("missing argument for '-loadaddr'");
+        }
+        int     n = int(convertStringToInteger(argv[i]));
+        n = (n >= 0 ? (n & 0xFFFF) : -1);
+        loadAddresses[fileNames.size()] = n;
+      }
+      else if (tmp == "-start") {
+        if (++i >= argc) {
+          printUsageFlag = true;
+          throw Plus4Emu::Exception("missing argument for '-start'");
+        }
+        runAddr = convertStringToInteger(argv[i], true);
+      }
+      else {
+        printUsageFlag = true;
+        throw Plus4Emu::Exception("invalid command line option");
+      }
+    }
+    if (fileNames.size() < (testMode ? 1 : 2)) {
+      printUsageFlag = true;
+      throw Plus4Emu::Exception("missing file name");
+    }
+    // if offset, length, or load address is specified after the last file name,
+    // apply it to the last file
+    if (fileOffsets[fileNames.size()] > 0)
+      fileOffsets[fileNames.size() - 1] = fileOffsets[fileNames.size()];
+    if (fileLengths[fileNames.size()] < 65536)
+      fileLengths[fileNames.size() - 1] = fileLengths[fileNames.size()];
+    if (loadAddresses[fileNames.size()] >= 0)
+      loadAddresses[fileNames.size() - 1] = loadAddresses[fileNames.size()];
     if (testMode) {
       // test compressed file(s)
       noPRGMode = true;
@@ -267,7 +344,8 @@ int main(int argc, char **argv)
         std::printf("%s: ", fileNames[i].c_str());
         inBuf.clear();
         unsigned int  startAddr = 0U;
-        readInputFile(inBuf, startAddr, fileNames[i].c_str());
+        readInputFile(inBuf, startAddr, fileNames[i].c_str(),
+                      size_t(fileOffsets[i]), size_t(fileLengths[i]));
         if (inBuf.size() < 1) {
           errorFlag = true;
           std::printf("FAILED (empty file)\n");
@@ -293,7 +371,8 @@ int main(int argc, char **argv)
       noPRGMode = true;
       std::vector< unsigned char >  inBuf;
       unsigned int  startAddr = 0U;
-      readInputFile(inBuf, startAddr, fileNames[0].c_str());
+      readInputFile(inBuf, startAddr, fileNames[0].c_str(),
+                    size_t(fileOffsets[0]), size_t(fileLengths[0]));
       if (inBuf.size() < 1)
         throw Plus4Emu::Exception("empty input file");
       noPRGMode = savedNoPRGMode;
@@ -310,10 +389,8 @@ int main(int argc, char **argv)
             startAddr == 0x03E7U) {
           continue;
         }
-        if (loadAddr > 0) {
-          startAddr = (unsigned int) loadAddr;
-          loadAddr = 0;
-        }
+        if (loadAddresses[n] >= 0)
+          startAddr = (unsigned int) loadAddresses[n];
         if (n >= fileNames.size())
           throw Plus4Emu::Exception("too few output file names");
         try {
@@ -362,48 +439,97 @@ int main(int argc, char **argv)
         throw Plus4Emu::Exception("cannot use -noprg and -fli "
                                   "at the same time");
       }
-      rawLoadAddr = 1;                  // not used, but must be > 0
+      rawLoadAddr = 0;                  // not used, but must be >= 0
       noZPUpdate = true;
     }
     std::vector< unsigned char >  outBuf;
     std::vector< unsigned char >  inBuf;
+    std::vector< bool >           bytesUsed;
+    std::vector< unsigned char >  tmpBuf;
     Plus4FLIConv::PRGCompressor   compress(outBuf);
-    Plus4FLIConv::PRGCompressor::CompressionParameters  cfg;
-    compress.getCompressionParameters(cfg);
+    inBuf.resize(65536);
+    bytesUsed.resize(65536);
+    for (size_t i = 0; i < 65536; i++) {
+      inBuf[i] = 0x00;
+      bytesUsed[i] = false;
+    }
+    // read all input files
     for (int i = 0; i < int(fileNames.size() - 1); i++) {
-      inBuf.resize(0);
+      tmpBuf.resize(0);
       unsigned int  startAddr = 0U;
-      readInputFile(inBuf, startAddr, fileNames[i].c_str());
-      if (inBuf.size() < 1)
-        throw Plus4Emu::Exception("empty input file");
-      if (loadAddr > 0 && !noPRGMode) {
-        startAddr = (unsigned int) loadAddr;
-        loadAddr = 0;
-      }
-      unsigned int  endAddr = startAddr + (unsigned int) inBuf.size();
+      readInputFile(tmpBuf, startAddr, fileNames[i].c_str(),
+                    size_t(fileOffsets[i]), size_t(fileLengths[i]));
+      if (loadAddresses[i] >= 0)
+        startAddr = (unsigned int) loadAddresses[i];
+      unsigned int  endAddr = startAddr + (unsigned int) tmpBuf.size();
       if (fliImageFormat &&
           (endAddr < 0x6000U || endAddr > 0xE500U ||
            !(startAddr == 0x1800U ||
-             (startAddr == 0x17FEU && inBuf[0] == 0x00 && inBuf[1] == 0x00)))) {
+             (startAddr == 0x17FEU &&
+              tmpBuf[0] == 0x00 && tmpBuf[1] == 0x00)))) {
         throw Plus4Emu::Exception("input file is not a p4fliconv image");
       }
-      if (i == int(fileNames.size() - 2) && !noZPUpdate)
-        compress.addZeroPageUpdate(endAddr, false);
-      std::fprintf(stderr, "%s: ", fileNames[i].c_str());
-      cfg.setCompressionLevel(compressionLevel);
-      compress.setCompressionParameters(cfg);
-      compress.compressData(inBuf, startAddr,
-                            (i == int(fileNames.size() - 2)), true);
+      for (size_t j = 0; j < tmpBuf.size(); j++) {
+        unsigned int  addr = (startAddr + (unsigned int) j) & 0xFFFFU;
+        inBuf[addr] = tmpBuf[j];
+        bytesUsed[addr] = true;
+      }
+    }
+    unsigned int  firstAddr = 0xFD00U;
+    while (firstAddr != 0U && bytesUsed[firstAddr])
+      firstAddr = (firstAddr + 1U) & 0xFFFFU;
+    // find last address used
+    unsigned int  endAddr = (firstAddr - 1U) & 0xFFFFU;
+    while (!bytesUsed[endAddr]) {
+      if (endAddr == firstAddr)
+        throw Plus4Emu::Exception("no input data to compress");
+      endAddr = (endAddr - 1U) & 0xFFFFU;
+    }
+    endAddr = (endAddr + 1U) & 0xFFFFU;
+    Plus4FLIConv::PRGCompressor::CompressionParameters  cfg;
+    if (!noZPUpdate) {
       cfg.setCompressionLevel(1);
       compress.setCompressionParameters(cfg);
+      compress.addZeroPageUpdate(endAddr, false);
     }
+    // find and compress all continuous data blocks
+    unsigned int  blockNum = 0U;
+    unsigned int  startAddr = firstAddr;
+    unsigned int  curPos = firstAddr;
+    do {
+      if (bytesUsed[curPos]) {
+        curPos = (curPos + 1U) & 0xFFFFU;
+        if (curPos != 0U && curPos != firstAddr)
+          continue;
+      }
+      else if (curPos == startAddr) {
+        curPos = (curPos + 1U) & 0xFFFFU;
+        startAddr = curPos;
+        continue;
+      }
+      blockNum++;
+      std::fprintf(stderr, "Block #%u ($%04X-$%04X): ",
+                   blockNum, startAddr, curPos);
+      tmpBuf.resize(0);
+      unsigned int  i = startAddr;
+      do {
+        tmpBuf.push_back(inBuf[i]);
+        i = (i + 1U) & 0xFFFFU;
+      } while (i != curPos);
+      cfg.setCompressionLevel(compressionLevel);
+      compress.setCompressionParameters(cfg);
+      compress.compressData(tmpBuf, startAddr, (curPos == endAddr), true);
+      if (curPos != 0U && curPos != firstAddr)
+        curPos = (curPos + 1U) & 0xFFFFU;
+      startAddr = curPos;
+    } while (curPos != firstAddr);
     // write output file
     f = std::fopen(fileNames[fileNames.size() - 1].c_str(), "wb");
     if (!f)
       throw Plus4Emu::Exception("cannot open output file");
-    if (rawLoadAddr <= 0) {
+    if (rawLoadAddr < 0) {
       std::vector< unsigned char >  sfxBuf;
-      Plus4FLIConv::PRGDecompressor::getSFXModule(sfxBuf, runAddr, c16Mode,
+      Plus4FLIConv::PRGDecompressor::getSFXModule(sfxBuf, int(runAddr), c16Mode,
                                                   useFastSFXModule, noCleanup,
                                                   noROM, noCLI);
       for (size_t i = 0; i < sfxBuf.size(); i++) {
@@ -438,7 +564,82 @@ int main(int argc, char **argv)
       std::fclose(f);
       std::remove(fileNames[fileNames.size() - 1].c_str());
     }
-    std::fprintf(stderr, " *** %s: %s\n", argv[0], e.what());
+    if (printUsageFlag || helpFlag) {
+      std::fprintf(stderr, "Usage:\n");
+      std::fprintf(stderr, "    %s [OPTIONS...] <infile...> [OPTIONS...] "
+                           "<outfile>\n", programName);
+      std::fprintf(stderr, "        compress file(s)\n");
+      std::fprintf(stderr, "    %s -x [OPTIONS...] <infile> [OPTIONS...] "
+                           "<outfile...>\n", programName);
+      std::fprintf(stderr, "        extract compressed file (experimental)\n");
+      std::fprintf(stderr, "    %s -t [OPTIONS...] <infile...>\n", programName);
+      std::fprintf(stderr, "        test compressed file(s)\n");
+    }
+    if (printUsageFlag && !helpFlag) {
+      std::fprintf(stderr, "    %s --help\n", programName);
+      std::fprintf(stderr, "        print detailed usage information\n");
+    }
+    if (helpFlag) {
+      std::fprintf(stderr, "Options:\n");
+      std::fprintf(stderr, "    --\n");
+      std::fprintf(stderr, "        interpret all remaining arguments as file "
+                           "names\n");
+      std::fprintf(stderr, "    -1 ... -9\n");
+      std::fprintf(stderr, "        set compression level vs. speed (default: "
+                           "5)\n");
+      std::fprintf(stderr, "    -c16\n");
+      std::fprintf(stderr, "        generate decompression code for the C16\n");
+      std::fprintf(stderr, "    -fastsfx\n");
+      std::fprintf(stderr, "        use faster decompression code (does not "
+                           "verify checksum, no read\n");
+      std::fprintf(stderr, "        buffer (unsafe if end address is "
+                           "$FD00))\n");
+      std::fprintf(stderr, "    -nocleanup\n");
+      std::fprintf(stderr, "        do not clean up after decompression "
+                           "(slightly reduces size)\n");
+      std::fprintf(stderr, "    -nocli\n");
+      std::fprintf(stderr, "        do not enable interrupts after "
+                           "decompression\n");
+      std::fprintf(stderr, "    -norom\n");
+      std::fprintf(stderr, "        do not enable ROM after decompression\n");
+      std::fprintf(stderr, "    -nozp\n");
+      std::fprintf(stderr, "        do not update zeropage variables at "
+                           "$2D-$32 and $9D-$9E\n");
+      std::fprintf(stderr, "    -zp\n");
+      std::fprintf(stderr, "        update zeropage variables at $2D-$32 and "
+                           "$9D-$9E\n");
+      std::fprintf(stderr, "    -raw <LOADADDR>\n");
+      std::fprintf(stderr, "        write the compressed data only as a PRG "
+                           "file (implies -nozp)\n");
+      std::fprintf(stderr, "    -noprg\n");
+      std::fprintf(stderr, "        read and write raw files without PRG or "
+                           "P00 header (implies\n");
+      std::fprintf(stderr, "        -raw and -nozp)\n");
+      std::fprintf(stderr, "    -fli\n");
+      std::fprintf(stderr, "        compress p4fliconv raw FLI image "
+                           "(implies -raw and -nozp)\n");
+      std::fprintf(stderr, "    -skip <N>\n");
+      std::fprintf(stderr, "        skip N bytes at the beginning of the next "
+                           "input file\n");
+      std::fprintf(stderr, "    -length <N>\n");
+      std::fprintf(stderr, "        read at most N bytes (default: 65536) from "
+                           "the next input file\n");
+      std::fprintf(stderr, "    -loadaddr <ADDR>\n");
+      std::fprintf(stderr, "        override the load address of the next "
+                           "input (when compressing)\n"
+                           "        or output (when extracting) file\n");
+      std::fprintf(stderr, "    -start <ADDR>\n");
+      std::fprintf(stderr, "        start program at address ADDR, or RUN if "
+                           "ADDR is -1 or 'run',\n"
+                           "        return to basic if -2 or 'basic' "
+                           "(default), or monitor if ADDR\n"
+                           "        is -3 or 'monitor'\n");
+      std::fprintf(stderr, "Addresses can be specified in decimal format, or "
+                           "hexadecimal with '$',\n"
+                           "'x', or '0x' prefix.\n");
+      return 0;
+    }
+    std::fprintf(stderr, " *** %s: %s\n", programName, e.what());
     return -1;
   }
   return 0;
