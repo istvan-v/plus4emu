@@ -1,6 +1,10 @@
 Changes in version 1.2.6.2
 --------------------------
 
+  * increased TED sound output level relative to SID output level, for
+    better accuracy in programs that use both types of sound at the same
+    time
+  * some utility improvements
   * a few Linux compile and link errors have been fixed
 
 Changes in version 1.2.6.1
