@@ -357,7 +357,6 @@ l1:     asl shiftRegister
 l2:     rol
         dex
         bne l1
-        tax
         rts
         .endproc
 
@@ -469,17 +468,18 @@ l2:     lda $0940, x
         sbc inputDataStartAddrLow
         tay
         beq l6
-        ldx #<inputDataEndAddrLow
-l3:     tya
-        eor #$ff
+        ldx inputDataStartAddrLow
+        stx inputDataEndAddrLow
+        bcs l3
+        dec inputDataEndAddrHigh
+l3:     eor #$ff
         sec
-        adc $00, x
-        sta $00, x
-        bcs l4
-        dec $01, x
-l4:     cpx #<readAddrLow
-        ldx #<readAddrLow
-        bcc l3
+        adc readAddrLow
+        sta readAddrLow
+        bcs l5
+        .byte $2c
+l4:     dec inputDataEndAddrHigh
+        dec readAddrHigh
 l5:     dey
         lda (inputDataEndAddrLow), y
         sta (readAddrLow), y
@@ -493,10 +493,7 @@ l5:     dey
         bne l5
 l6:     lda inputDataEndAddrHigh
         cmp inputDataStartAddrHigh
-        beq l7
-        dec inputDataEndAddrHigh
-        dec readAddrHigh
-        bne l5
+        bne l4
 l7:     lda #$80                        ; NOTE: this also initializes the
         .if NO_CRC_CHECK = 0
         cmp crcValue                    ; shift register (which is the same
@@ -521,10 +518,10 @@ l9:     jsr decompressDataBlock         ; decompress all data blocks
         tax
         sta $ff3e, x
         .endif
-        ldy #$a0                        ; restore zeropage variables
-l10:    lda $095f, y
-        sta $001f, y
-        dey
+        ldx #$a0                        ; restore zeropage variables
+l10:    lda $095f, x
+        sta $1f, x
+        dex
         bne l10
         .if NO_COLOR_MEMORY_CLEAR = 0
         lda $053b                       ; clear color memory

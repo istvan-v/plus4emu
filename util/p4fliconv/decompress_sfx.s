@@ -123,17 +123,18 @@ l1:     lda decompressCode1Start_ - 1, x
         sbc #<decompressCode3End_
         tay
         beq l5
-        ldx #loadEndAddrLow
-l2:     tya
-        eor #$ff
-        sec
-        adc $00, x
-        sta $00, x
-        bcs l3
-        dec $01, x
-l3:     cpx #loadEndAddrLow
-        ldx #readAddrLow
+        ldx #<decompressCode3End_
+        stx loadEndAddrLow
         bcs l2
+        dec loadEndAddrHigh
+l2:     eor #$ff
+        sec
+        adc readAddrLow
+        sta readAddrLow
+        bcs l4
+        .byte $2c
+l3:     dec loadEndAddrHigh
+        dec readAddrHigh
 l4:     dey
         lda (loadEndAddrLow), y
         sta (readAddrLow), y
@@ -147,10 +148,7 @@ l4:     dey
         bne l4
 l5:     lda loadEndAddrHigh
         cmp #>decompressCode3End_
-        beq l6
-        dec loadEndAddrHigh
-        dec readAddrHigh
-        bne l4
+        bne l3
 l6:     lda #$80                        ; NOTE: this also initializes the
         .if NO_CRC_CHECK = 0
         cmp crcValue                    ; shift register (which is the same
@@ -469,7 +467,6 @@ l1:     asl shiftRegister
 l2:     rol
         dex
         bne l1
-        tax
         rts
         .endproc
 
