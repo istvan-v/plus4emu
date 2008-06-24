@@ -1,6 +1,6 @@
 /*
    plus4emu -- portable Commodore Plus/4 emulator
-   Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+   Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
    http://sourceforge.net/projects/plus4emu/
 
    This program is free software; you can redistribute it and/or modify
@@ -52,7 +52,7 @@ static int calcDistortion(int x, double gamma0, double gamma1)
   xf = (xf > 0.0 ? (xf < 1.0 ? xf : 1.0) : 0.0);
   gamma = gamma0 * pow((gamma1 / gamma0), xf);
   yf = pow(xf, gamma);
-  return (int) ((yf * 16384.0) + 0.5);
+  return (int) ((yf * 24576.0) + 0.5);
 }
 
 static int calcTEDSound(int x)
