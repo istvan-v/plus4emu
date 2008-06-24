@@ -98,6 +98,18 @@ imageLibTestProgram = '''
     }
 '''
 
+portAudioLibTestProgram = '''
+    #include <stdio.h>
+    #include <portaudio.h>
+    int main()
+    {
+      (void) Pa_Initialize();
+      (void) Pa_GetDeviceInfo(0);
+      (void) Pa_Terminate();
+      return 0;
+    }
+'''
+
 def imageLibTest(env):
     usingJPEGLib = 'jpeg' in env['LIBS']
     usingPNGLib = 'png' in env['LIBS']
@@ -135,6 +147,37 @@ def imageLibTest(env):
                 print ' *** error: libjpeg, libpng, or zlib is not found'
                 Exit(-1)
             tmpConfig2.Finish()
+
+def portAudioLibTest(env, libNames):
+    tmpEnv = env.Clone()
+    if libNames.__len__() > 0:
+        tmpEnv.Append(LIBS = libNames)
+    tmpEnv.Append(LIBS = ['pthread'])
+    if sys.platform[:5] == 'linux':
+        tmpEnv.Append(LIBS = ['rt'])
+    tmpConfig = tmpEnv.Configure()
+    retval = tmpConfig.TryLink(portAudioLibTestProgram, '.c')
+    tmpConfig.Finish()
+    return retval
+
+def checkPortAudioLib(env):
+    alsaLibNeeded = 0
+    jackLibNeeded = 0
+    if not portAudioLibTest(env, []):
+        if portAudioLibTest(env, ['asound']):
+            alsaLibNeeded = 1
+        elif portAudioLibTest(env, ['jack']):
+            jackLibNeeded = 1
+        elif portAudioLibTest(env, ['jack', 'asound']):
+            alsaLibNeeded = 1
+            jackLibNeeded = 1
+        else:
+            print ' *** error: PortAudio library is not found'
+            Exit(-1)
+    if jackLibNeeded:
+        env.Append(LIBS = ['jack'])
+    if alsaLibNeeded:
+        env.Append(LIBS = ['asound'])
 
 imageLibTest(plus4emuGUIEnvironment)
 imageLibTest(plus4emuGLGUIEnvironment)
@@ -280,7 +323,6 @@ residLib = residLibEnvironment.StaticLibrary('resid', Split('''
 
 plus4emuEnvironment = plus4emuGLGUIEnvironment.Clone()
 plus4emuEnvironment.Append(CPPPATH = ['./gui'])
-plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 if haveDotconf:
     if win32CrossCompile:
         # hack to work around binary incompatible dirent functions in
@@ -293,14 +335,13 @@ if haveSDL:
     plus4emuEnvironment.Append(LIBS = ['SDL'])
 plus4emuEnvironment.Append(LIBS = ['portaudio', 'sndfile'])
 if not win32CrossCompile:
+    checkPortAudioLib(plus4emuEnvironment)
+    plus4emuEnvironment.Append(LIBS = ['pthread'])
     if sys.platform[:5] == 'linux':
-        if not buildRelease:
-            plus4emuEnvironment.Append(LIBS = ['jack'])
-        plus4emuEnvironment.Append(LIBS = ['asound', 'pthread', 'rt'])
-    else:
-        plus4emuEnvironment.Append(LIBS = ['pthread'])
+        plus4emuEnvironment.Append(LIBS = ['rt'])
 else:
     plus4emuEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
+plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 
 plus4emu = plus4emuEnvironment.Program('plus4emu',
     ['gui/gui.cpp']
