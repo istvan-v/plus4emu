@@ -88,9 +88,40 @@ namespace Plus4FLIConv {
     return ((a - b) * (a - b));
   }
 
+  static inline double calculateYUVErrorSqr(double y1, double u1, double v1,
+                                            double y2, double u2, double v2,
+                                            double chromaErrorScale)
+  {
+    return (calculateErrorSqr(y1, y2)
+            + (chromaErrorScale * (calculateErrorSqr(u1, u2)
+                                   + calculateErrorSqr(v1, v2))));
+  }
+
+  static inline double calculateYUVErrorSqr(double y1, double u1, double v1,
+                                            double y2, double u2, double v2,
+                                            double lumaErrorScale,
+                                            double chromaErrorScale)
+  {
+    return ((lumaErrorScale * calculateErrorSqr(y1, y2))
+            + (chromaErrorScale * (calculateErrorSqr(u1, u2)
+                                   + calculateErrorSqr(v1, v2))));
+  }
+
   static inline void limitValue(int& x, int min_, int max_)
   {
     x = (x > min_ ? (x < max_ ? x : max_) : min_);
+  }
+
+  static inline void limitValue(float& x, float min_, float max_)
+  {
+    if (!(x >= min_ && x <= max_)) {
+      if (x < min_)
+        x = min_;
+      else if (x > max_)
+        x = max_;
+      else
+        x = (min_ + max_) * 0.5f;
+    }
   }
 
   static inline void limitValue(double& x, double min_, double max_)
@@ -103,6 +134,44 @@ namespace Plus4FLIConv {
       else
         x = (min_ + max_) * 0.5;
     }
+  }
+
+  static inline void limitRGBColor(float& r, float& g, float& b)
+  {
+    r = (r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f);
+    g = (g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f);
+    b = (b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f);
+  }
+
+  static inline void limitYUVColor(float& y, float& u, float& v)
+  {
+    y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+    double  tmp = 1.0 / double(FLIConverter::defaultColorSaturation);
+    double  uTmp = double(u) * tmp;
+    double  vTmp = double(v) * tmp;
+    double  c = (uTmp * uTmp) + (vTmp * vTmp);
+    if (c > 1.0) {
+      c = 1.0 / std::sqrt(c);
+      u = float(double(u) * c);
+      v = float(double(v) * c);
+    }
+  }
+
+  static inline void rgbToYUV(float& y, float& u, float& v,
+                              float r, float g, float b)
+  {
+    y = (0.299f * r) + (0.587f * g) + (0.114f * b);
+    u = (b - y) * 0.492f;
+    v = (r - y) * 0.877f;
+  }
+
+  static inline void yuvToRGB(float& r, float& g, float& b,
+                              float y, float u, float v)
+  {
+    r = y + (v * float(1.0 / 0.877));
+    g = y + (u * float(-0.114 / (0.492 * 0.587)))
+          + (v * float(-0.299 / (0.877 * 0.587)));
+    b = y + (u * float(1.0 / 0.492));
   }
 
 }       // namespace Plus4FLIConv

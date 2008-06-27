@@ -176,11 +176,6 @@ namespace Plus4FLIConv {
   {
     P4FLI_MultiColorBitmapInterlace&  this_ =
         *(reinterpret_cast<P4FLI_MultiColorBitmapInterlace *>(userData));
-    float   c = float(std::sqrt(double(u * u) + double(v * v)));
-    if (c > FLIConverter::defaultColorSaturation) {
-      u = u * FLIConverter::defaultColorSaturation / c;
-      v = v * FLIConverter::defaultColorSaturation / c;
-    }
     this_.resizedImage.y()[yc >> 1][xc >> 1] += (y * 0.25f);
     this_.resizedImage.u()[yc >> 1][xc >> 1] += (u * 0.25f);
     this_.resizedImage.v()[yc >> 1][xc >> 1] += (v * 0.25f);
@@ -194,7 +189,7 @@ namespace Plus4FLIConv {
     limitValue(ditherMode, 0, 5);
     limitValue(xShift0, -2, 7);
     borderColor = (borderColor & 0x7F) | 0x80;
-    nLines = (nLines > 128 ? (nLines < 248 ? nLines : 248) : 128);
+    limitValue(nLines, 128, 248);
     nLines = (nLines + 3) & (~(int(3)));
     limitValue(conversionQuality, 1, 30);
   }
@@ -504,10 +499,10 @@ namespace Plus4FLIConv {
     for (int c0 = 0; c0 < 128; c0++) {
       for (int c1 = 0; c1 < 128; c1++) {
         errorTable[(c0 << 7) | c1] =
-            calculateErrorSqr(errorPaletteY[c0], errorPaletteY[c1])
-            + ((calculateErrorSqr(errorPaletteU[c0], errorPaletteU[c1])
-                + calculateErrorSqr(errorPaletteV[c0], errorPaletteV[c1]))
-               * colorErrorScale);
+            calculateYUVErrorSqr(
+                errorPaletteY[c0], errorPaletteU[c0], errorPaletteV[c0],
+                errorPaletteY[c1], errorPaletteU[c1], errorPaletteV[c1],
+                colorErrorScale);
       }
     }
   }
@@ -666,14 +661,14 @@ namespace Plus4FLIConv {
       int     c =
           findNearestColor(y, u, v,
                            ditherPaletteY, ditherPaletteU, ditherPaletteV);
-      double  err0 = std::sqrt(calculateErrorSqr(errorPaletteY[c0], y0_)
-                               + ((calculateErrorSqr(errorPaletteU[c0], u0)
-                                   + calculateErrorSqr(errorPaletteV[c0], v0))
-                                  * 0.125));
-      double  err = std::sqrt(calculateErrorSqr(errorPaletteY[c], y0_)
-                              + ((calculateErrorSqr(errorPaletteU[c], u0)
-                                  + calculateErrorSqr(errorPaletteV[c], v0))
-                                 * 0.125));
+      double  err0 = std::sqrt(calculateYUVErrorSqr(errorPaletteY[c0],
+                                                    errorPaletteU[c0],
+                                                    errorPaletteV[c0],
+                                                    y0_, u0, v0, 0.125));
+      double  err = std::sqrt(calculateYUVErrorSqr(errorPaletteY[c],
+                                                   errorPaletteU[c],
+                                                   errorPaletteV[c],
+                                                   y0_, u0, v0, 0.125));
       ditheredImage[yc * 304L + xc] =
           (calculateError(err, err0) < ditherLimit ? c : c0);
       y = y0 + ((y - y0) * float(ditherScale));
@@ -1228,6 +1223,13 @@ namespace Plus4FLIConv {
                                  float(double(config["monitorGamma"]) / 1.65));
       imgConv.setPixelStoreCallback(&pixelStoreCallback, (void *) this);
       imgConv.convertImageFile(infileName);
+      for (int yc = 0; yc < nLines; yc++) {
+        for (int xc = 0; xc < 304; xc++) {
+          limitYUVColor(resizedImage.y()[yc][xc],
+                        resizedImage.u()[yc][xc],
+                        resizedImage.v()[yc][xc]);
+        }
+      }
       // initialize horizontal scroll table
       int     randomSeed = 0;
       Plus4Emu::setRandomSeed(randomSeed,

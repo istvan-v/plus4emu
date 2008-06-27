@@ -481,15 +481,14 @@ void Plus4FLIConvGUI::setWidgetColorToPlus4Color(Fl_Widget *o, int c)
   float   u = 0.0f;
   float   v = 0.0f;
   Plus4FLIConv::FLIConverter::convertPlus4Color(c & 0x7F, y, u, v, 1.0);
-  float   r = (v / 0.877f) + y;
-  float   b = (u / 0.492f) + y;
-  float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+  float   r = 0.0f;
+  float   g = 0.0f;
+  float   b = 0.0f;
+  Plus4FLIConv::yuvToRGB(r, g, b, y, u, v);
+  Plus4FLIConv::limitRGBColor(r, g, b);
   int     ri = int(r * 255.0f + 0.5f);
   int     gi = int(g * 255.0f + 0.5f);
   int     bi = int(b * 255.0f + 0.5f);
-  ri = (ri > 0 ? (ri < 255 ? ri : 255) : 0);
-  gi = (gi > 0 ? (gi < 255 ? gi : 255) : 0);
-  bi = (bi > 0 ? (bi < 255 ? bi : 255) : 0);
   unsigned int  tmp = ((unsigned int) ri << 24)
                       | ((unsigned int) gi << 16)
                       | ((unsigned int) bi << 8);
@@ -613,10 +612,14 @@ void Plus4FLIConvGUI::updateImageDisplay()
     unsigned char g = 0x00;
     unsigned char b = 0x00;
     Fl::get_color(Fl_Color(48), r, g, b);
-    float   y = (float(r) * 0.299f) + (float(g) * 0.587f) + (float(b) * 0.114f);
-    float   u = (float(b) - y) * 0.492f;
-    float   v = (float(r) - y) * 0.877f;
-    imgConv.setBorderColor(y / 255.0f, u / 255.0f, v / 255.0f);
+    float   y = 0.0f;
+    float   u = 0.0f;
+    float   v = 0.0f;
+    Plus4FLIConv::rgbToYUV(y, u, v,
+                           float(int(r)) / 255.0f,
+                           float(int(g)) / 255.0f,
+                           float(int(b)) / 255.0f);
+    imgConv.setBorderColor(y, u, v);
     imgConv.setC64Color(0, int(config["c64Color0"]));
     imgConv.setC64Color(1, int(config["c64Color1"]));
     imgConv.setC64Color(2, int(config["c64Color2"]));
@@ -777,12 +780,14 @@ void Plus4FLIConvGUI::pixelStoreCallback(void *userData, int xc, int yc,
                                          float y, float u, float v)
 {
   Plus4FLIConvGUI&  this_ = *(reinterpret_cast<Plus4FLIConvGUI *>(userData));
-  float   r = (v / 0.877f) + y;
-  float   b = (u / 0.492f) + y;
-  float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
-  int     ri = int((r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f) * 255.0f + 0.5f);
-  int     gi = int((g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f) * 255.0f + 0.5f);
-  int     bi = int((b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f) * 255.0f + 0.5f);
+  float   r = 0.0f;
+  float   g = 0.0f;
+  float   b = 0.0f;
+  Plus4FLIConv::yuvToRGB(r, g, b, y, u, v);
+  Plus4FLIConv::limitRGBColor(r, g, b);
+  int     ri = int(r * 255.0f + 0.5f);
+  int     gi = int(g * 255.0f + 0.5f);
+  int     bi = int(b * 255.0f + 0.5f);
   int     offs = ((yc * 768) + xc) * 3;
   this_.imageFileData[offs] = (unsigned char) ri;
   this_.imageFileData[offs + 1] = (unsigned char) gi;
