@@ -29,6 +29,14 @@
 #include <FL/Fl_Image.H>
 #include <FL/Fl_Shared_Image.H>
 
+// C64 palette from VICE 1.22
+static const unsigned char  c64Palette[48] = {
+    0,   0,   0,  255, 255, 255,  137,  64,  54,  122, 191, 199,
+  138,  70, 174,  104, 169,  65,   62,  49, 162,  208, 220, 113,
+  144,  95,  37,   92,  71,   0,  187, 119, 109,   85,  85,  85,
+  128, 128, 128,  172, 234, 136,  124, 112, 218,  171, 171, 171
+};
+
 static void defaultProgressMessageCb(void *userData, const char *msg)
 {
   (void) userData;
@@ -245,12 +253,11 @@ namespace Plus4FLIConv {
     (void) userData;
     (void) xc;
     (void) yc;
-    float   r = (v / 0.877f) + y;
-    float   b = (u / 0.492f) + y;
-    float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
-    r = (r > 0.0f ? (r < 1.0f ? r : 1.0f) : 0.0f);
-    g = (g > 0.0f ? (g < 1.0f ? g : 1.0f) : 0.0f);
-    b = (b > 0.0f ? (b < 1.0f ? b : 1.0f) : 0.0f);
+    float   r = 0.0f;
+    float   g = 0.0f;
+    float   b = 0.0f;
+    yuvToRGB(r, g, b, y, u, v);
+    limitRGBColor(r, g, b);
     std::fputc(int(r * 255.0f + 0.5f), stdout);
     std::fputc(int(g * 255.0f + 0.5f), stdout);
     std::fputc(int(b * 255.0f + 0.5f), stdout);
@@ -487,17 +494,27 @@ namespace Plus4FLIConv {
   bool YUVImageConverter::isPlus4Colormap(
       const std::vector< uint32_t >& colorMap)
   {
-    if (colorMap.size() < 98 || colorMap.size() > 512)
-      return false;
-    double  totalError = 0.0;
+    size_t  nColors = 0;
     for (size_t i = 0; i < colorMap.size(); i++) {
-      uint32_t  c = colorMap[i + (colorMap[0] < 0x80000000U ? 0 : 1)];
+      if (colorMap[i] < 0x80000000U)
+        nColors++;
+    }
+    if (!(nColors == 16 || (nColors >= 98 && nColors <= 512)))
+      return false;
+    bool    isC64Palette = (nColors == 16);
+    double  totalError = 0.0;
+    size_t  n = 0;
+    for (size_t i = 0; i < colorMap.size(); i++) {
+      uint32_t  c = colorMap[i];
+      if (c >= 0x80000000U)     // ignore transparent color
+        continue;
       float   r = float(int((c >> 16) & 0xFFU)) * (1.0f / 255.0f);
       float   g = float(int((c >> 8) & 0xFFU)) * (1.0f / 255.0f);
       float   b = float(int(c & 0xFFU)) * (1.0f / 255.0f);
-      float   y = (0.299f * r) + (0.587f * g) + (0.114f * b);
-      float   u = 0.492f * (b - y);
-      float   v = 0.877f * (r - y);
+      float   y = 0.0f;
+      float   u = 0.0f;
+      float   v = 0.0f;
+      rgbToYUV(y, u, v, r, g, b);
       float   tmp = float(std::sqrt(double(u * u) + double(v * v)));
       if (tmp > 0.000001f) {
         tmp = float(std::sqrt(double(FLIConverter::defaultColorSaturation
@@ -508,20 +525,62 @@ namespace Plus4FLIConv {
       float   y_ = 0.0f;
       float   u_ = 0.0f;
       float   v_ = 0.0f;
-      FLIConverter::convertPlus4Color(int(i), y_, u_, v_, 1.0);
-      totalError += (calculateErrorSqr(y, y_)
-                     + (0.5 * calculateErrorSqr(u, u_))
-                     + (0.5 * calculateErrorSqr(v, v_)));
+      if (!isC64Palette) {
+        FLIConverter::convertPlus4Color(int(n & 0x7F), y_, u_, v_, 1.0);
+      }
+      else {
+        float   r_ = float(int(c64Palette[(n & 0x0F) * 3 + 0])) / 255.0f;
+        float   g_ = float(int(c64Palette[(n & 0x0F) * 3 + 1])) / 255.0f;
+        float   b_ = float(int(c64Palette[(n & 0x0F) * 3 + 2])) / 255.0f;
+        rgbToYUV(y_, u_, v_, r_, g_, b_);
+      }
+      totalError += calculateYUVErrorSqr(y, u, v, y_, u_, v_, 0.5);
+      n++;
     }
-    totalError = totalError / double(int(colorMap.size()));
+    totalError = totalError / double(int(nColors));
     return (totalError < 0.015);
   }
 
   bool YUVImageConverter::convertPlus4ColormapImage(
-      const std::vector< uint16_t >& pixelBuf, int w, int h, bool haveAlpha)
+      const std::vector< uint16_t >& pixelBuf,
+      const std::vector< uint32_t >& colorMap, int w, int h)
   {
     progressMessage("Resizing image");
     setProgressPercentage(0);
+    // convert colormap
+    size_t  nColors = 0;
+    for (size_t i = 0; i < colorMap.size(); i++) {
+      if (colorMap[i] < 0x80000000U)
+        nColors++;
+    }
+    std::vector< float >  paletteY;
+    std::vector< float >  paletteU;
+    std::vector< float >  paletteV;
+    paletteY.resize(colorMap.size());
+    paletteU.resize(colorMap.size());
+    paletteV.resize(colorMap.size());
+    float   borderY = borderColorY;
+    borderY = (borderY > 0.0f ? (borderY < 1.0f ? borderY : 1.0f) : 0.0f);
+    borderY = float(std::pow(borderY, monitorGamma));
+    float   borderU = borderColorU;
+    float   borderV = borderColorV;
+    bool    isC64Palette = (nColors == 16);
+    size_t  n = 0;
+    for (size_t i = 0; i < colorMap.size(); i++) {
+      paletteY[i] = borderY;    // replace transparent pixels with border color
+      paletteU[i] = borderU;
+      paletteV[i] = borderV;
+      uint32_t  c = colorMap[i];
+      if (c < 0x80000000U) {
+        int     tmp = int(n & 0x7F);
+        if (isC64Palette)
+          tmp = c64ColorTable[tmp & 0x0F];
+        FLIConverter::convertPlus4Color(tmp,
+                                        paletteY[i], paletteU[i], paletteV[i],
+                                        monitorGamma);
+        n++;
+      }
+    }
     // calculate scale and offset
     float   aspectScale = (float(width) * pixelAspectRatio / float(height))
                           / (float(w) / float(h));
@@ -546,11 +605,6 @@ namespace Plus4FLIConv {
     int     xOffs_i = int(xOffs + (xOffs >= 0.0f ? 0.5f : -0.5f));
     int     yOffs_i = int(yOffs + (yOffs >= 0.0f ? 0.5f : -0.5f));
     // scale image to the specified width and height
-    float   borderY = borderColorY;
-    borderY = (borderY > 0.0f ? (borderY < 1.0f ? borderY : 1.0f) : 0.0f);
-    borderY = float(std::pow(borderY, monitorGamma));
-    float   borderU = borderColorU;
-    float   borderV = borderColorV;
     for (int yc = 0; yc < height; yc++) {
       if (!setProgressPercentage(yc * 100 / height)) {
         for (int tmpY = 0; tmpY < height; tmpY++) {
@@ -570,10 +624,9 @@ namespace Plus4FLIConv {
         float   v = borderV;
         if (xi >= 0 && xi < w && yi >= 0 && yi < h) {
           int     c = pixelBuf[(yi * w) + xi];
-          if (c > 0 || !haveAlpha) {
-            FLIConverter::convertPlus4Color(c - int(haveAlpha), y, u, v,
-                                            monitorGamma);
-          }
+          y = paletteY[c];
+          u = paletteU[c];
+          v = paletteV[c];
         }
         y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
         u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
@@ -615,10 +668,8 @@ namespace Plus4FLIConv {
         readColormapImage(pixelBuf, palette, *f);
         f->release();
         f = (Fl_Shared_Image *) 0;
-        if (isPlus4Colormap(palette)) {
-          return convertPlus4ColormapImage(pixelBuf, int(w), int(h),
-                                           (palette[0] >= 0x80000000U));
-        }
+        if (isPlus4Colormap(palette))
+          return convertPlus4ColormapImage(pixelBuf, palette, int(w), int(h));
       }
       else {
         // RGB or greyscale format
@@ -677,9 +728,12 @@ namespace Plus4FLIConv {
             b = float(int(tmp & 0xFFU)) * (1.0f / 255.0f);
             haveAlpha = (tmp >= 0x80000000U);
           }
-          float   y = (r * 0.299f) + (g * 0.587f) + (b * 0.114f);
-          float   u = (b - y) * 0.492f * (colorSaturationMult * (yMax - yMin));
-          float   v = (r - y) * 0.877f * (colorSaturationMult * (yMax - yMin));
+          float   y = 0.0f;
+          float   u = 0.0f;
+          float   v = 0.0f;
+          rgbToYUV(y, u, v, r, g, b);
+          u *= (colorSaturationMult * (yMax - yMin));
+          v *= (colorSaturationMult * (yMax - yMin));
           y = (y * (yMax - yMin)) + yMin;
           double  c = std::sqrt((u * u) + (v * v));
           if (double(y) < (c - 0.05) || double(y) > (1.05 - c)) {

@@ -60,7 +60,8 @@ namespace Plus4FLIConv {
     bool convertC64ImageFile(const char *fileName);
     static bool isPlus4Colormap(const std::vector< uint32_t >& colorMap);
     bool convertPlus4ColormapImage(const std::vector< uint16_t >& pixelBuf,
-                                   int w, int h, bool haveAlpha = false);
+                                   const std::vector< uint32_t >& colorMap,
+                                   int w, int h);
    public:
     YUVImageConverter();
     virtual ~YUVImageConverter();
