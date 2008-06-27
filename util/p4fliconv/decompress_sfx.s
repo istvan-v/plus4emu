@@ -23,14 +23,13 @@ sfxStartAddress = $100d
         .setcpu "6502"
         .code
 
-shiftRegister = $20
-crcValue = $20
-tmpValue = $21
+shiftRegister = $22
+crcValue = $22
+tmpValue = $23
 readByteBuffer = $24
 huffmanInitTmp = $25
 huffTableWriteAddrLow = $26
 huffTableWriteAddrHigh = $27
-huffCodeSizesRemaining = $28
 prvDistanceLowTable = $26
 prvDistanceHighTable = $2a
 bytesRemainingLow = $2e
@@ -107,8 +106,8 @@ l1:     lda decompressCode1Start_ - 1, x
         sta decompressCode2Start - decompressCode2Offset - 1, x
         lda decompressCode3Start_ - 1, x
         sta decompressCode3Start - 1, x
-        lda $1f, x
-        sta $095f, x
+        lda $01, x
+        sta $0941, x
         dex
         bne l1
         .if NO_BLANK_DISPLAY = 0
@@ -297,7 +296,6 @@ addrTable:
         .byte $00, $40
         .byte $00, $44
         .byte $08, $09
-        .byte $10, $10
 
 decompressCode1End:
 
@@ -321,11 +319,11 @@ l1:     sty huffmanInitTmp
 l2:     ldx addrTable, y
         sta decompressData, x
         ldy #$00
-        rts
+l12:    rts
 l3:     tya
-        adc #$09
+        adc #$07
         tay
-        ldx #$05
+        ldx #$04
 l4:     sta huffmanInitTmp - 1, x
         dey
         dey
@@ -334,22 +332,15 @@ l4:     sta huffmanInitTmp - 1, x
         bne l4
         jsr l2
         ldx huffmanInitTmp
-        lda #$01
-l5:     asl
+        lda #$02
         sta huffmanLimitLowTable, x
-        lda huffCodeSizesRemaining
-        eor #$09
-        beq l6
-        tya
-        rol
+l5:     tya
 l6:     sta huffmanLimitHighTable, x
-        ldy #$fe
-        sty huffmanDecodedValueHigh
-        iny
-        sty huffmanDecodedValueLow
-        iny
+        lda #$ff
+        sta huffmanDecodedValueLow
+        asl
+        sta huffmanDecodedValueHigh
         lda huffTableWriteAddrLow
-        sec
         sbc huffmanLimitLowTable, x
         sta huffmanOffsetLowTable, x
         lda huffTableWriteAddrHigh
@@ -384,13 +375,20 @@ l9:     jsr gammaDecode
         dec huffTableWriteAddrHigh
 l10:    dec huffTableWriteAddrHigh
         bne l7
-l11:    dec huffCodeSizesRemaining
+l11:    inx
+        txa
+        and #$0f
         beq l12
-        lda huffmanLimitLowTable, x
-        ldy huffmanLimitHighTable, x
-        inx
-        bne l5
-l12:    rts
+        eor #$07
+        php
+        lda huffmanLimitLowTable - 1, x
+        asl
+        sta huffmanLimitLowTable, x
+        lda huffmanLimitHighTable - 1, x
+        rol
+        plp
+        bne l6
+        beq l5
         .endproc
 
 decompressCode2End:
@@ -526,9 +524,9 @@ l2:     rol
         .endproc
 
         .proc sfxDecompressEnd
-        ldx #$a0
-l1:     lda $095f, x                    ; restore zeropage variables
-        sta $1f, x
+        ldx #$9e
+l1:     lda $0961, x                    ; restore zeropage variables
+        sta $21, x
         dex
         bne l1
         .if NO_COLOR_MEMORY_CLEAR = 0

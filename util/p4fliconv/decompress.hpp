@@ -30,7 +30,7 @@ namespace Plus4FLIConv {
 
   class PRGDecompressor {
    private:
-    static const unsigned char  sfxModuleLibrary[1889];
+    static const unsigned char  sfxModuleLibrary[1904];
     // main Huffman table (literal characters + match offset codes)
     unsigned int  *huffmanLimitTable0;
     unsigned int  *huffmanOffsetTable0;
