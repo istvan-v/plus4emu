@@ -26,6 +26,23 @@
 #include "prgdata.hpp"
 #include "interlace7.hpp"
 
+static void getDownsampledErrorScaleFactors(double& errScaleL,
+                                            double& errScaleC,
+                                            int downSampleSize,
+                                            double luminanceSearchModeParam,
+                                            double colorErrorScale)
+{
+  double  tmp = double(downSampleSize) / (luminanceSearchModeParam * 0.25);
+  errScaleL = (tmp < 1.0 ? tmp : (1.0 / tmp));
+  tmp = tmp * 0.5;
+  errScaleC = (tmp < 1.0 ? tmp : (1.0 / tmp));
+  errScaleL *= double(downSampleSize
+                      * (downSampleSize < 4 ? downSampleSize : 4));
+  errScaleC *= double(downSampleSize
+                      * (downSampleSize < 4 ? downSampleSize : 4));
+  errScaleC *= colorErrorScale;
+}
+
 namespace Plus4FLIConv {
 
   P4FLI_Interlace7::Line320::Line320()
@@ -134,23 +151,36 @@ namespace Plus4FLIConv {
       ditherMode(1),
       luminanceSearchMode(2),
       luminanceSearchModeParam(4.0),
+      colorErrorScale(0.5),
       xShift0(-1),
       xShift1(-1),
       borderColor(0x00),
       nLines(464),
       colorInterlaceMode(1),
+      conversionQuality(6),
       disablePAL(false),
       disableInterlace(false),
       luminance1BitMode(false),
       noLuminanceInterlace(false),
-      enable40ColumnMode(false)
+      enable40ColumnMode(false),
+      paletteY((float *) 0),
+      paletteU((float *) 0),
+      paletteV((float *) 0)
   {
+    paletteY = new float[3 * 128];
+    paletteU = &(paletteY[128]);
+    paletteV = &(paletteY[256]);
+    for (int i = 0; i < 128; i++) {
+      FLIConverter::convertPlus4Color(i, paletteY[i], paletteU[i], paletteV[i],
+                                      1.0);
+    }
     createYTable();
     createUVTables();
   }
 
   P4FLI_Interlace7::~P4FLI_Interlace7()
   {
+    delete[] paletteY;
   }
 
   void P4FLI_Interlace7::pixelStoreCallback(void *userData, int xc, int yc,
@@ -160,11 +190,6 @@ namespace Plus4FLIConv {
         *(reinterpret_cast<P4FLI_Interlace7 *>(userData));
     if (!this_.enable40ColumnMode)
       xc = xc + 16;
-    float   c = float(std::sqrt(double(u * u) + double(v * v)));
-    if (c > FLIConverter::defaultColorSaturation) {
-      u = u * FLIConverter::defaultColorSaturation / c;
-      v = v * FLIConverter::defaultColorSaturation / c;
-    }
     this_.resizedImage.y()[yc][xc >> 1] += (y * 0.5f);
     this_.resizedImage.u()[yc][xc >> 1] += (u * 0.5f);
     this_.resizedImage.v()[yc][xc >> 1] += (v * 0.5f);
@@ -224,7 +249,7 @@ namespace Plus4FLIConv {
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
     limitValue(ditherMode, 0, 5);
-    limitValue(luminanceSearchMode, 0, 5);
+    limitValue(luminanceSearchMode, 0, 6);
     switch (luminanceSearchMode) {
     case 2:
       limitValue(luminanceSearchModeParam, 1.0, 16.0);
@@ -235,16 +260,28 @@ namespace Plus4FLIConv {
     case 5:
       limitValue(luminanceSearchModeParam, 0.0, 0.25);
       break;
+    case 6:
+      limitValue(luminanceSearchModeParam, 1.0, 16.0);
+      if (ditherMode < 2) {
+        throw Plus4Emu::Exception("-searchmode 6 does not support "
+                                  "ordered dither types");
+      }
+      if (xShift0 != 0 || xShift1 != 0) {
+        throw Plus4Emu::Exception("-searchmode 6 does not support X shift");
+      }
+      break;
     default:
       limitValue(luminanceSearchModeParam, 0.0, 1.0);
       break;
     }
+    limitValue(colorErrorScale, 0.05, 1.0);
     limitValue(xShift0, -2, 7);
     limitValue(xShift1, -2, 7);
     borderColor = (borderColor & 0x7F) | 0x80;
-    nLines = (nLines > 256 ? (nLines < 496 ? nLines : 496) : 256);
+    limitValue(nLines, 256, 496);
     nLines = (nLines + 7) & (~(int(7)));
     limitValue(colorInterlaceMode, 0, 2);
+    limitValue(conversionQuality, 1, 30);
   }
 
   void P4FLI_Interlace7::ditherPixel(PRGData& prgData, long xc, long yc)
@@ -259,7 +296,7 @@ namespace Plus4FLIConv {
     float   pixelValueOriginal_ = resizedImage.y()[yc].getPixel(xc);
     float   pixelValueOriginal =
         float(std::pow(double(pixelValueOriginal_), 1.33333333));
-    float   ditherError = ditherErrorImage[yc].getPixel(xc);
+    float   ditherError = ditherErrorImage.y()[yc].getPixel(xc);
     float   pixelValueDithered = pixelValueOriginal + ditherError;
     float   pixelValue0 = ditherYTable[l0];
     float   pixelValue1 = ditherYTable[l1];
@@ -330,9 +367,9 @@ namespace Plus4FLIConv {
       long    xc_ = ((i + 3) % 5) - 2;
       xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
       float   tmp = float(errMultTbl[i + 1]) / float(errMultTbl[0]);
-      ditherErrorImage[yc_].setPixel(xc_,
-                                     ditherErrorImage[yc_].getPixel(xc_)
-                                     + (float(err) * tmp));
+      ditherErrorImage.y()[yc_].setPixel(xc_,
+                                         ditherErrorImage.y()[yc_].getPixel(xc_)
+                                         + (float(err) * tmp));
     }
   }
 
@@ -499,6 +536,284 @@ namespace Plus4FLIConv {
     return err;
   }
 
+  void P4FLI_Interlace7::findAttributes_YUVMode(PRGData& prgData,
+                                                long xc, long yc,
+                                                int& randomSeed)
+  {
+    xc = xc & (~(long(7)));
+    yc = yc & (~(long(3)));
+    float   tmpBufY_1x1[32];
+    float   tmpBufU_1x1[32];
+    float   tmpBufV_1x1[32];
+    float   tmpBufY_2x2[8];
+    float   tmpBufU_2x2[8];
+    float   tmpBufV_2x2[8];
+    float   tmpBufY_4x4[2];
+    float   tmpBufU_4x4[2];
+    float   tmpBufV_4x4[2];
+    float   tmpBufY_8x4[1];
+    float   tmpBufU_8x4[1];
+    float   tmpBufV_8x4[1];
+    for (int i = 0; i < 8; i++) {
+      tmpBufY_2x2[i] = 0.0f;
+      tmpBufU_2x2[i] = 0.0f;
+      tmpBufV_2x2[i] = 0.0f;
+    }
+    for (int i = 0; i < 2; i++) {
+      tmpBufY_4x4[i] = 0.0f;
+      tmpBufU_4x4[i] = 0.0f;
+      tmpBufV_4x4[i] = 0.0f;
+    }
+    tmpBufY_8x4[0] = 0.0f;
+    tmpBufU_8x4[0] = 0.0f;
+    tmpBufV_8x4[0] = 0.0f;
+    for (int y_ = 0; y_ < 4; y_++) {
+      for (int x_ = 0; x_ < 8; x_++) {
+        float   y = resizedImage.y()[yc + y_].getPixel(xc + x_);
+        float   u = resizedImage.u()[yc + y_].getPixel(xc + x_);
+        float   v = resizedImage.v()[yc + y_].getPixel(xc + x_);
+        if (!disablePAL) {
+          y = y + ditherErrorImage.y()[yc + y_].getPixel(xc + x_);
+          u = u + ditherErrorImage.u()[yc + y_].getPixel(xc + x_);
+          v = v + ditherErrorImage.v()[yc + y_].getPixel(xc + x_);
+          limitYUVColor(y, u, v);
+        }
+        tmpBufY_1x1[(y_ << 3) + x_] = y;
+        tmpBufU_1x1[(y_ << 3) + x_] = u;
+        tmpBufV_1x1[(y_ << 3) + x_] = v;
+        tmpBufY_2x2[((y_ >> 1) << 2) + (x_ >> 1)] += (y * 0.25f);
+        tmpBufU_2x2[((y_ >> 1) << 2) + (x_ >> 1)] += (u * 0.25f);
+        tmpBufV_2x2[((y_ >> 1) << 2) + (x_ >> 1)] += (v * 0.25f);
+        tmpBufY_4x4[x_ >> 2] += (y * 0.0625f);
+        tmpBufU_4x4[x_ >> 2] += (u * 0.0625f);
+        tmpBufV_4x4[x_ >> 2] += (v * 0.0625f);
+        tmpBufY_8x4[0] += (y * 0.03125f);
+        tmpBufU_8x4[0] += (u * 0.03125f);
+        tmpBufV_8x4[0] += (v * 0.03125f);
+      }
+    }
+    float   tmpPalette0Y[17];
+    float   tmpPalette0U[17];
+    float   tmpPalette0V[17];
+    float   tmpPalette1Y[17];
+    float   tmpPalette1U[17];
+    float   tmpPalette1V[17];
+    int     bestColor0_0 = 0;
+    int     bestColor1_0 = 0;
+    int     bestColor0_1 = 0;
+    int     bestColor1_1 = 0;
+    double  bestError = 1000000.0;
+    for (int l = 0; l < conversionQuality; l++) {
+      int     color0_0 = Plus4Emu::getRandomNumber(randomSeed) & 0x7F;
+      int     color1_0 = Plus4Emu::getRandomNumber(randomSeed) & 0x7F;
+      int     color0_1 = Plus4Emu::getRandomNumber(randomSeed) & 0x7F;
+      int     color1_1 = Plus4Emu::getRandomNumber(randomSeed) & 0x7F;
+      if ((color0_0 & 0x0F) == 0)
+        color0_0 = 0;
+      else if (luminance1BitMode)
+        color0_0 = color0_0 | 0x70;
+      if ((color1_0 & 0x0F) == 0)
+        color1_0 = 0;
+      else if (luminance1BitMode)
+        color1_0 = color1_0 | 0x70;
+      if ((color0_1 & 0x0F) == 0)
+        color0_1 = 0;
+      else if (luminance1BitMode)
+        color0_1 = color0_1 | 0x70;
+      if ((color1_1 & 0x0F) == 0)
+        color1_1 = 0;
+      else if (luminance1BitMode)
+        color1_1 = color1_1 | 0x70;
+      double  minErr = 1000000.0;
+      bool    doneFlag = false;
+      do {
+        doneFlag = true;
+        for (int i = 0; i < 4; i++) {
+          int&    colorValue =
+              (i == 0 ? color0_0 : (i == 1 ? color1_0
+                                             : (i == 2 ? color0_1 : color1_1)));
+          int     bestColor = colorValue;
+          for (int c = 0; c < 128; c++) {
+            if ((c & 0x0F) == 0 && c != 0)
+              continue;
+            if (luminance1BitMode && c != 0)
+              c = c | 0x70;
+            colorValue = c;
+            for (int j = 0; j < 17; j++) {
+              int     tmp = 16;
+              if (j > 0) {
+                tmp = j - 1;
+                // reverse bits
+                tmp = ((tmp & 0x0C) >> 2) | ((tmp & 0x03) << 2);
+                tmp = ((tmp & 0x0A) >> 1) | ((tmp & 0x05) << 1);
+              }
+              float   f = float(tmp) * 0.0625f;
+              tmpPalette0Y[j] = (paletteY[color0_0] * (1.0f - f))
+                                + (paletteY[color1_0] * f);
+              tmpPalette0U[j] = (paletteU[color0_0] * (1.0f - f))
+                                + (paletteU[color1_0] * f);
+              tmpPalette0V[j] = (paletteV[color0_0] * (1.0f - f))
+                                + (paletteV[color1_0] * f);
+              tmpPalette1Y[j] = (paletteY[color0_1] * (1.0f - f))
+                                + (paletteY[color1_1] * f);
+              tmpPalette1U[j] = (paletteU[color0_1] * (1.0f - f))
+                                + (paletteU[color1_1] * f);
+              tmpPalette1V[j] = (paletteV[color0_1] * (1.0f - f))
+                                + (paletteV[color1_1] * f);
+            }
+            double  totalError = 0.0;
+            // 1x1 downsample
+            double  errScaleL = 0.0;
+            double  errScaleC = 0.0;
+            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 1,
+                                            luminanceSearchModeParam,
+                                            colorErrorScale);
+            for (int j = 0; j < 32; j++) {
+              double  minErr2 = 1000000.0;
+              float   y = tmpBufY_1x1[j];
+              float   u = tmpBufU_1x1[j];
+              float   v = tmpBufV_1x1[j];
+              float   *tmpPaletteY =
+                  ((j & 8) == 0 ? &(tmpPalette0Y[0]) : &(tmpPalette1Y[0]));
+              float   *tmpPaletteU =
+                  ((j & 8) == 0 ? &(tmpPalette0U[0]) : &(tmpPalette1U[0]));
+              float   *tmpPaletteV =
+                  ((j & 8) == 0 ? &(tmpPalette0V[0]) : &(tmpPalette1V[0]));
+              for (int k = 0; k < 2; k++) {
+                double  err =
+                    calculateYUVErrorSqr(tmpPaletteY[k],
+                                         tmpPaletteU[k],
+                                         tmpPaletteV[k],
+                                         y, u, v, errScaleL, errScaleC);
+                if (err < minErr2)
+                  minErr2 = err;
+              }
+              totalError += minErr2;
+            }
+            if (totalError > (minErr * 1.000001))
+              continue;
+            // 2x2 downsample
+            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 2,
+                                            luminanceSearchModeParam,
+                                            colorErrorScale);
+            for (int j = 0; j < 8; j++) {
+              double  minErr2 = 1000000.0;
+              float   y = tmpBufY_2x2[j];
+              float   u = tmpBufU_2x2[j];
+              float   v = tmpBufV_2x2[j];
+              for (int k0 = 0; k0 < 3; k0++) {
+                for (int k1 = 0; k1 < 3; k1++) {
+                  float   y_ = (tmpPalette0Y[k0] + tmpPalette1Y[k1]) * 0.5f;
+                  float   u_ = (tmpPalette0U[k0] + tmpPalette1U[k1]) * 0.5f;
+                  float   v_ = (tmpPalette0V[k0] + tmpPalette1V[k1]) * 0.5f;
+                  double  err = calculateYUVErrorSqr(y_, u_, v_, y, u, v,
+                                                     errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+              }
+              totalError += minErr2;
+            }
+            if (totalError > (minErr * 1.000001))
+              continue;
+            // 4x4 downsample
+            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 4,
+                                            luminanceSearchModeParam,
+                                            colorErrorScale);
+            for (int j = 0; j < 2; j++) {
+              double  minErr2 = 1000000.0;
+              float   y = tmpBufY_4x4[j];
+              float   u = tmpBufU_4x4[j];
+              float   v = tmpBufV_4x4[j];
+              for (int k0 = 0; k0 < 9; k0++) {
+                for (int k1 = 0; k1 < 9; k1++) {
+                  float   y_ = (tmpPalette0Y[k0] + tmpPalette1Y[k1]) * 0.5f;
+                  float   u_ = (tmpPalette0U[k0] + tmpPalette1U[k1]) * 0.5f;
+                  float   v_ = (tmpPalette0V[k0] + tmpPalette1V[k1]) * 0.5f;
+                  double  err = calculateYUVErrorSqr(y_, u_, v_, y, u, v,
+                                                     errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+              }
+              totalError += minErr2;
+            }
+            if (totalError > (minErr * 1.000001))
+              continue;
+            // 8x4 downsample
+            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 8,
+                                            luminanceSearchModeParam,
+                                            colorErrorScale);
+            for (int j = 0; j < 1; j++) {
+              double  minErr2 = 1000000.0;
+              float   y = tmpBufY_8x4[j];
+              float   u = tmpBufU_8x4[j];
+              float   v = tmpBufV_8x4[j];
+              for (int k0 = 0; k0 < 17; k0++) {
+                for (int k1 = 0; k1 < 17; k1++) {
+                  float   y_ = (tmpPalette0Y[k0] + tmpPalette1Y[k1]) * 0.5f;
+                  float   u_ = (tmpPalette0U[k0] + tmpPalette1U[k1]) * 0.5f;
+                  float   v_ = (tmpPalette0V[k0] + tmpPalette1V[k1]) * 0.5f;
+                  double  err = calculateYUVErrorSqr(y_, u_, v_, y, u, v,
+                                                     errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+              }
+              totalError += minErr2;
+            }
+            if (totalError < (minErr * 0.999999)) {
+              bestColor = colorValue;
+              minErr = totalError;
+              doneFlag = false;
+            }
+          }
+          colorValue = bestColor;
+        }
+      } while (!doneFlag);
+      if (minErr < bestError) {
+        bestColor0_0 = color0_0;
+        bestColor1_0 = color1_0;
+        bestColor0_1 = color0_1;
+        bestColor1_1 = color1_1;
+        bestError = minErr;
+      }
+    }
+    // store luminance and color codes
+    int     l0_0 = (bestColor0_0 & 0x70) >> 4;
+    int     l1_0 = (bestColor1_0 & 0x70) >> 4;
+    int     c0_0 = bestColor0_0 & 0x0F;
+    int     c1_0 = bestColor1_0 & 0x0F;
+    int     l0_1 = (bestColor0_1 & 0x70) >> 4;
+    int     l1_1 = (bestColor1_1 & 0x70) >> 4;
+    int     c0_1 = bestColor0_1 & 0x0F;
+    int     c1_1 = bestColor1_1 & 0x0F;
+    if (c0_0 != 0)
+      l0_0++;
+    else
+      l0_0 = 0;
+    if (c1_0 != 0)
+      l1_0++;
+    else
+      l1_0 = 0;
+    if (c0_1 != 0)
+      l0_1++;
+    else
+      l0_1 = 0;
+    if (c1_1 != 0)
+      l1_1++;
+    else
+      l1_1 = 0;
+    prgData.l0(xc, yc) = l0_0;
+    prgData.l1(xc, yc) = l1_0;
+    prgData.c0(xc, yc) = c0_0;
+    prgData.c1(xc, yc) = c1_0;
+    prgData.l0(xc, yc + 1L) = l0_1;
+    prgData.l1(xc, yc + 1L) = l1_1;
+    prgData.c0(xc, yc + 1L) = c0_1;
+    prgData.c1(xc, yc + 1L) = c1_1;
+  }
+
   void P4FLI_Interlace7::generateBitmaps(PRGData& prgData)
   {
     for (int yc = 0; yc < nLines; yc += 2) {
@@ -535,6 +850,128 @@ namespace Plus4FLIConv {
           }
         }
       }
+    }
+  }
+
+  void P4FLI_Interlace7::ditherLine_YUVMode(PRGData& prgData, long yc)
+  {
+    // error diffusion dithering
+    for (long xc = 0L; xc < 320L; xc++) {
+      if (yc & 1L)
+        xc = 319L - xc;
+      int     color0 = (prgData.l0(xc, yc & (~(long(2)))) << 4)
+                       | prgData.c0(xc, yc & (~(long(2))));
+      int     color1 = (prgData.l1(xc, yc & (~(long(2)))) << 4)
+                       | prgData.c1(xc, yc & (~(long(2))));
+      if ((color0 & 0xF0) != 0)
+        color0 = color0 - 0x10;
+      else
+        color0 = 0x00;
+      if ((color1 & 0xF0) != 0)
+        color1 = color1 - 0x10;
+      else
+        color1 = 0x00;
+      float   yMin = paletteY[color0];
+      float   yMax = paletteY[color1];
+      if (yMax < yMin) {
+        float   tmp = yMin;
+        yMin = yMax;
+        yMax = tmp;
+      }
+      float   uMin = paletteU[color0];
+      float   uMax = paletteU[color1];
+      if (uMax < uMin) {
+        float   tmp = uMin;
+        uMin = uMax;
+        uMax = tmp;
+      }
+      float   vMin = paletteV[color0];
+      float   vMax = paletteV[color1];
+      if (vMax < vMin) {
+        float   tmp = vMin;
+        vMin = vMax;
+        vMax = tmp;
+      }
+      // find the palette color nearest the original pixel
+      float   y0 = resizedImage.y()[yc].getPixel(xc);
+      float   u0 = resizedImage.u()[yc].getPixel(xc);
+      float   v0 = resizedImage.v()[yc].getPixel(xc);
+      int     c0 = color0;
+      if (calculateYUVErrorSqr(paletteY[color1],
+                               paletteU[color1],
+                               paletteV[color1],
+                               y0, u0, v0, colorErrorScale)
+          < calculateYUVErrorSqr(paletteY[color0],
+                                 paletteU[color0],
+                                 paletteV[color0],
+                                 y0, u0, v0, colorErrorScale)) {
+        c0 = color1;
+      }
+      // find the palette color nearest the original pixel with error added
+      float   y = y0 + ditherErrorImage.y()[yc].getPixel(xc);
+      float   u = u0 + ditherErrorImage.u()[yc].getPixel(xc);
+      float   v = v0 + ditherErrorImage.v()[yc].getPixel(xc);
+      limitYUVColor(y, u, v);
+      int     c = color0;
+      if (calculateYUVErrorSqr(paletteY[color1],
+                               paletteU[color1],
+                               paletteV[color1],
+                               y, u, v, colorErrorScale)
+          < calculateYUVErrorSqr(paletteY[color0],
+                                 paletteU[color0],
+                                 paletteV[color0],
+                                 y, u, v, colorErrorScale)) {
+        c = color1;
+      }
+      double  err0 =
+          std::sqrt(calculateYUVErrorSqr(paletteY[c0],
+                                         paletteU[c0],
+                                         paletteV[c0],
+                                         y0, u0, v0, colorErrorScale));
+      double  err =
+          std::sqrt(calculateYUVErrorSqr(paletteY[c],
+                                         paletteU[c],
+                                         paletteV[c],
+                                         y0, u0, v0, colorErrorScale));
+      prgData.setPixel(xc, yc,
+                       ((calculateError(err, err0) < ditherLimit ? c : c0)
+                        != color0));
+      y = y0 + ((y - y0) * float(ditherScale));
+      u = u0 + ((u - u0) * float(ditherScale));
+      v = v0 + ((v - v0) * float(ditherScale));
+      float   errY = y - paletteY[c];
+      float   errU = u - paletteU[c];
+      float   errV = v - paletteV[c];
+      const int *errMultTbl = &(ditherTable_FloydSteinberg[0]);
+      switch (ditherMode) {
+      case 3:
+        errMultTbl = &(ditherTable_Jarvis[0]);
+        break;
+      case 4:
+        errMultTbl = &(ditherTable_Stucki[0]);
+        break;
+      case 5:
+        errMultTbl = &(ditherTable_Sierra2[0]);
+        break;
+      }
+      for (int i = 0; i < 12; i++) {
+        if (errMultTbl[i + 1] == 0)
+          continue;
+        long    yc_ = yc + ((i + 3) / 5);
+        long    xc_ = ((i + 3) % 5) - 2;
+        xc_ = ((yc & 1L) == 0L ? (xc + xc_) : (xc - xc_));
+        if (yc_ >= 0L && yc_ < long(nLines) && xc_ >= 0L && xc_ < 320L) {
+          float   errMult = float(errMultTbl[i + 1]) / float(errMultTbl[0]);
+          ditherErrorImage.y()[yc_].setPixel(
+              xc_, ditherErrorImage.y()[yc_].getPixel(xc_) + (errY * errMult));
+          ditherErrorImage.u()[yc_].setPixel(
+              xc_, ditherErrorImage.u()[yc_].getPixel(xc_) + (errU * errMult));
+          ditherErrorImage.v()[yc_].setPixel(
+              xc_, ditherErrorImage.v()[yc_].getPixel(xc_) + (errV * errMult));
+        }
+      }
+      if (yc & 1L)
+        xc = 319L - xc;
     }
   }
 
@@ -693,11 +1130,13 @@ namespace Plus4FLIConv {
       ditherMode = config["ditherMode"];
       luminanceSearchMode = config["luminanceSearchMode"];
       luminanceSearchModeParam = config["luminanceSearchModeParam"];
+      colorErrorScale = config["mcColorErrorScale"];
       xShift0 = config["xShift0"];
       xShift1 = config["xShift1"];
       borderColor = config["borderColor"];
       nLines = config["verticalSize"];
       colorInterlaceMode = config["colorInterlaceMode"];
+      conversionQuality = config["multiColorQuality"];
       disablePAL = !(bool(config["enablePAL"]));
       disableInterlace = (nLines < 256);
       if (disableInterlace)
@@ -705,6 +1144,7 @@ namespace Plus4FLIConv {
       luminance1BitMode = config["luminance1BitMode"];
       noLuminanceInterlace = config["noLuminanceInterlace"];
       checkParameters();
+      colorErrorScale = colorErrorScale * (disablePAL ? 0.707107 : 0.5);
       createYTable();
       createUVTables();
       enable40ColumnMode = (xShift0 == 0 && xShift1 == 0);
@@ -712,7 +1152,8 @@ namespace Plus4FLIConv {
       float   borderU = 0.0f;
       float   borderV = 0.0f;
       FLIConverter::convertPlus4Color(borderColor, borderY, borderU, borderV,
-                                      monitorGamma * 0.44);
+                                      (luminanceSearchMode != 6 ?
+                                       (monitorGamma * 0.44) : 1.0));
       prgData.setConversionType(0);
       prgData.clear();
       prgData.borderColor() = (unsigned char) borderColor;
@@ -724,7 +1165,9 @@ namespace Plus4FLIConv {
         resizedImage.u()[yc].setBorderColor(borderU);
         resizedImage.v()[yc].clear();
         resizedImage.v()[yc].setBorderColor(borderV);
-        ditherErrorImage[yc].clear();
+        ditherErrorImage.y()[yc].clear();
+        ditherErrorImage.u()[yc].clear();
+        ditherErrorImage.v()[yc].clear();
       }
       prvLineU.setBorderColor(borderU);
       prvLineV.setBorderColor(borderV);
@@ -783,106 +1226,19 @@ namespace Plus4FLIConv {
       }
       for (int yc = 0; yc < nLines; yc++) {
         for (int xc = 0; xc < 320; xc++) {
+          limitYUVColor(resizedImage.y()[yc][xc],
+                        resizedImage.u()[yc][xc],
+                        resizedImage.v()[yc][xc]);
           resizedImage.y()[yc][xc] =
-              float(std::pow(double(resizedImage.y()[yc][xc]), 0.704));
+              float(std::pow(double(resizedImage.y()[yc][xc]),
+                             (luminanceSearchMode != 6 ? 0.704 : 0.7272727)));
         }
       }
-      for (int yc = 0; yc < nLines; yc++) {
-        if ((yc & (noLuminanceInterlace ? 3 : 2)) != 0)
-          continue;
-        if (!setProgressPercentage(yc * 33 / nLines)) {
-          prgData[0] = 0x01;
-          prgData[1] = 0x10;
-          prgData[2] = 0x00;
-          prgData[3] = 0x00;
-          prgEndAddr = 0x1003U;
-          progressMessage("");
-          return false;
-        }
-        if (!(xShift0 == -1 || xShift1 == -1)) {
-          for (int xc = 0; xc < 320; xc += 8)
-            findLuminanceCodes(prgData, xc, yc);
-        }
-        else if (!(yc & 3)) {
-          // find optimal horizontal shifts
-          double  minErr = 1000000.0;
-          int     bestXShift[4];
-          int     xs[4];
-          for (int i = 0; i < 4; i++) {
-            bestXShift[i] = 0;
-            xs[i] = 0;
-          }
-          do {
-            for (int i = 0; i < 4; i++) {
-              xs[i] = xs[i] & 7;
-              resizedImage.y()[yc + i].setXShift(xs[i]);
-              resizedImage.u()[yc + i].setXShift(xs[i]);
-              resizedImage.v()[yc + i].setXShift(xs[i]);
-            }
-            bool    skipFlag = false;
-            for (int i = 0; i < 4; i++) {
-              // do not allow stepping by more than one pixel at once
-              if ((yc + i) > 0) {
-                int     d = resizedImage.y()[yc + i].getXShift()
-                            - resizedImage.y()[yc + i - 1].getXShift();
-                if (!(d == 0 || d == 1 || d == -1 || d == 7 || d == -7)) {
-                  skipFlag = true;
-                  break;
-                }
-              }
-            }
-            if (!skipFlag) {
-              // calculate the total error for four lines
-              double  err = 0.0;
-              for (int xc = 0; xc < 320; xc += 8)
-                err += findLuminanceCodes(prgData, xc, yc);
-              if (!noLuminanceInterlace) {
-                for (int xc = 0; xc < 320; xc += 8)
-                  err += findLuminanceCodes(prgData, xc, yc + 1);
-              }
-              if (err < minErr) {
-                for (int i = 0; i < 4; i++)
-                  bestXShift[i] = xs[i];
-                minErr = err;
-              }
-            }
-            for (int i = 0; i < 4; i++) {
-              xs[i] = xs[i] + 1;
-              if (xs[i] < 8)
-                break;
-            }
-          } while (xs[3] < 8);
-          // use the best horizontal shift that was found
-          for (int i = 0; i < 4; i++) {
-            resizedImage.y()[yc + i].setXShift(bestXShift[i]);
-            resizedImage.u()[yc + i].setXShift(bestXShift[i]);
-            resizedImage.v()[yc + i].setXShift(bestXShift[i]);
-          }
-          for (int xc = 0; xc < 320; xc += 8)
-            findLuminanceCodes(prgData, xc, yc);
-          if (!noLuminanceInterlace) {
-            for (int xc = 0; xc < 320; xc += 8)
-              findLuminanceCodes(prgData, xc, yc + 1);
-          }
-        }
-      }
-      generateBitmaps(prgData);
-      // convert color information
-      {
-        Line320 savedPrvLineU;
-        Line320 savedPrvLineV;
-        savedPrvLineU.setBorderColor(borderU);
-        savedPrvLineV.setBorderColor(borderV);
-        for (int xc = 0; xc < 320; xc++) {
-          prvLineU[xc] = borderU;
-          prvLineV[xc] = borderV;
-          savedPrvLineU[xc] = borderU;
-          savedPrvLineV[xc] = borderV;
-        }
+      if (luminanceSearchMode != 6) {
         for (int yc = 0; yc < nLines; yc++) {
-          if (yc & 2)
+          if ((yc & (noLuminanceInterlace ? 3 : 2)) != 0)
             continue;
-          if (!setProgressPercentage((yc * 67 / nLines) + 33)) {
+          if (!setProgressPercentage(yc * 33 / nLines)) {
             prgData[0] = 0x01;
             prgData[1] = 0x10;
             prgData[2] = 0x00;
@@ -891,29 +1247,142 @@ namespace Plus4FLIConv {
             progressMessage("");
             return false;
           }
-          line0U.clear();
-          line0V.clear();
-          line1U.clear();
-          line1V.clear();
-          line0U.setXShift(resizedImage.u()[yc].getXShift());
-          line0V.setXShift(resizedImage.v()[yc].getXShift());
-          line1U.setXShift(resizedImage.u()[yc + 2].getXShift());
-          line1V.setXShift(resizedImage.v()[yc + 2].getXShift());
-          if (resizedImage.y()[yc].getXShift()
-              >= resizedImage.y()[yc + 2].getXShift()) {
+          if (!(xShift0 == -1 || xShift1 == -1)) {
             for (int xc = 0; xc < 320; xc += 8)
-              findColorCodes(prgData, xc, yc, 1);
+              findLuminanceCodes(prgData, xc, yc);
           }
-          else {
-            for (int xc = 319; xc >= 0; xc -= 8)
-              findColorCodes(prgData, xc, yc, -1);
+          else if (!(yc & 3)) {
+            // find optimal horizontal shifts
+            double  minErr = 1000000.0;
+            int     bestXShift[4];
+            int     xs[4];
+            for (int i = 0; i < 4; i++) {
+              bestXShift[i] = 0;
+              xs[i] = 0;
+            }
+            do {
+              for (int i = 0; i < 4; i++) {
+                xs[i] = xs[i] & 7;
+                resizedImage.y()[yc + i].setXShift(xs[i]);
+                resizedImage.u()[yc + i].setXShift(xs[i]);
+                resizedImage.v()[yc + i].setXShift(xs[i]);
+              }
+              bool    skipFlag = false;
+              for (int i = 0; i < 4; i++) {
+                // do not allow stepping by more than one pixel at once
+                if ((yc + i) > 0) {
+                  int     d = resizedImage.y()[yc + i].getXShift()
+                              - resizedImage.y()[yc + i - 1].getXShift();
+                  if (!(d == 0 || d == 1 || d == -1 || d == 7 || d == -7)) {
+                    skipFlag = true;
+                    break;
+                  }
+                }
+              }
+              if (!skipFlag) {
+                // calculate the total error for four lines
+                double  err = 0.0;
+                for (int xc = 0; xc < 320; xc += 8)
+                  err += findLuminanceCodes(prgData, xc, yc);
+                if (!noLuminanceInterlace) {
+                  for (int xc = 0; xc < 320; xc += 8)
+                    err += findLuminanceCodes(prgData, xc, yc + 1);
+                }
+                if (err < minErr) {
+                  for (int i = 0; i < 4; i++)
+                    bestXShift[i] = xs[i];
+                  minErr = err;
+                }
+              }
+              for (int i = 0; i < 4; i++) {
+                xs[i] = xs[i] + 1;
+                if (xs[i] < 8)
+                  break;
+              }
+            } while (xs[3] < 8);
+            // use the best horizontal shift that was found
+            for (int i = 0; i < 4; i++) {
+              resizedImage.y()[yc + i].setXShift(bestXShift[i]);
+              resizedImage.u()[yc + i].setXShift(bestXShift[i]);
+              resizedImage.v()[yc + i].setXShift(bestXShift[i]);
+            }
+            for (int xc = 0; xc < 320; xc += 8)
+              findLuminanceCodes(prgData, xc, yc);
+            if (!noLuminanceInterlace) {
+              for (int xc = 0; xc < 320; xc += 8)
+                findLuminanceCodes(prgData, xc, yc + 1);
+            }
           }
+        }
+        generateBitmaps(prgData);
+        // convert color information
+        {
+          Line320 savedPrvLineU;
+          Line320 savedPrvLineV;
+          savedPrvLineU.setBorderColor(borderU);
+          savedPrvLineV.setBorderColor(borderV);
           for (int xc = 0; xc < 320; xc++) {
-            prvLineU[xc] = (line1U[xc] * 0.5f) + (savedPrvLineU[xc] * 0.5f);
-            prvLineV[xc] = (line1V[xc] * 0.5f) + (savedPrvLineV[xc] * 0.5f);
+            prvLineU[xc] = borderU;
+            prvLineV[xc] = borderV;
+            savedPrvLineU[xc] = borderU;
+            savedPrvLineV[xc] = borderV;
           }
-          savedPrvLineU = line1U;
-          savedPrvLineV = line1V;
+          for (int yc = 0; yc < nLines; yc++) {
+            if (yc & 2)
+              continue;
+            if (!setProgressPercentage((yc * 67 / nLines) + 33)) {
+              prgData[0] = 0x01;
+              prgData[1] = 0x10;
+              prgData[2] = 0x00;
+              prgData[3] = 0x00;
+              prgEndAddr = 0x1003U;
+              progressMessage("");
+              return false;
+            }
+            line0U.clear();
+            line0V.clear();
+            line1U.clear();
+            line1V.clear();
+            line0U.setXShift(resizedImage.u()[yc].getXShift());
+            line0V.setXShift(resizedImage.v()[yc].getXShift());
+            line1U.setXShift(resizedImage.u()[yc + 2].getXShift());
+            line1V.setXShift(resizedImage.v()[yc + 2].getXShift());
+            if (resizedImage.y()[yc].getXShift()
+                >= resizedImage.y()[yc + 2].getXShift()) {
+              for (int xc = 0; xc < 320; xc += 8)
+                findColorCodes(prgData, xc, yc, 1);
+            }
+            else {
+              for (int xc = 319; xc >= 0; xc -= 8)
+                findColorCodes(prgData, xc, yc, -1);
+            }
+            for (int xc = 0; xc < 320; xc++) {
+              prvLineU[xc] = (line1U[xc] * 0.5f) + (savedPrvLineU[xc] * 0.5f);
+              prvLineV[xc] = (line1V[xc] * 0.5f) + (savedPrvLineV[xc] * 0.5f);
+            }
+            savedPrvLineU = line1U;
+            savedPrvLineV = line1V;
+          }
+        }
+      }
+      else {
+        Plus4Emu::setRandomSeed(randomSeed, 54321U);
+        for (int yc = 0; yc < nLines; yc += 4) {
+          for (int xc = 0; xc < 320; xc += 8) {
+            if (!setProgressPercentage(((yc * 40) + (xc / 8)) * 100
+                                       / (nLines * 40))) {
+              prgData[0] = 0x01;
+              prgData[1] = 0x10;
+              prgData[2] = 0x00;
+              prgData[3] = 0x00;
+              prgEndAddr = 0x1003U;
+              progressMessage("");
+              return false;
+            }
+            findAttributes_YUVMode(prgData, xc, yc, randomSeed);
+          }
+          for (int i = 0; i < 4; i++)
+            ditherLine_YUVMode(prgData, yc + i);
         }
       }
       setProgressPercentage(100);

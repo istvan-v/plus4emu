@@ -125,11 +125,13 @@ namespace Plus4FLIConv {
     int     ditherMode;
     int     luminanceSearchMode;
     double  luminanceSearchModeParam;
+    double  colorErrorScale;
     int     xShift0;
     int     xShift1;
     int     borderColor;
     int     nLines;
     int     colorInterlaceMode;
+    int     conversionQuality;
     bool    disablePAL;
     bool    disableInterlace;
     bool    luminance1BitMode;
@@ -147,13 +149,16 @@ namespace Plus4FLIConv {
     float   errorYTable[9];
     UVTableEntry        uvTable[43];
     YUVImage320x496     resizedImage;
-    Image320x496        ditherErrorImage;
+    YUVImage320x496     ditherErrorImage;
     Line320 prvLineU;
     Line320 prvLineV;
     Line320 line0U;
     Line320 line0V;
     Line320 line1U;
     Line320 line1V;
+    float   *paletteY;          // 3x128 floats
+    float   *paletteU;
+    float   *paletteV;
     // ----------------
     static void pixelStoreCallback(void *, int, int, float, float, float);
     void colorToUV(int c, float& u, float& v);
@@ -163,7 +168,10 @@ namespace Plus4FLIConv {
     void ditherPixel(PRGData& prgData, long xc, long yc);
     inline double calculateLuminanceError(float n, int l0, int l1);
     double findLuminanceCodes(PRGData& prgData, long xc, long yc);
+    void findAttributes_YUVMode(PRGData& prgData, long xc, long yc,
+                                int& randomSeed);
     void generateBitmaps(PRGData& prgData);
+    void ditherLine_YUVMode(PRGData& prgData, long yc);
     void findColorCodes(PRGData& prgData, long xc, long yc, int dir_);
    public:
     P4FLI_Interlace7();

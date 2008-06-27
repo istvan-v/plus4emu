@@ -333,8 +333,9 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        color interlace mode (0: none, 1: hue "
                            "only, 2: hue and\n        saturation)\n");
       std::fprintf(stderr, "    -searchmode <M> <P> (defaults: 2, 4.0)\n");
-      std::fprintf(stderr, "        select luminance search algorithm (0 to 5),"
-                           " and parameter for\n        modes 2, 4, and 5\n");
+      std::fprintf(stderr, "        select luminance search algorithm (0 to 6),"
+                           " and parameter for\n"
+                           "        modes 2, 4, 5, and 6\n");
       std::fprintf(stderr, "    -mcchromaerr <N>    "
                            "(0.05 to 1.0, default: 0.5)\n");
       std::fprintf(stderr, "        scale factor applied to squared "

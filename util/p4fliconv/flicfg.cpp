@@ -161,7 +161,7 @@ namespace Plus4FLIConv {
     (*this)["colorInterlaceMode"].setCallback(&configChangeCallbackInteger,
                                               (void *) this, true);
     createKey("luminanceSearchMode", luminanceSearchMode);
-    (*this)["luminanceSearchMode"].setRange(0.0, 5.0);
+    (*this)["luminanceSearchMode"].setRange(0.0, 6.0);
     (*this)["luminanceSearchMode"].setCallback(&configChangeCallbackInteger,
                                                (void *) this, true);
     createKey("luminanceSearchModeParam", luminanceSearchModeParam);

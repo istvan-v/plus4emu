@@ -597,7 +597,7 @@ class Plus4FLIConvGUI {open
   }
 }} open
               xywh {225 155 350 25} down_box BORDER_BOX
-              code0 {o->add("MinRMSErr|MinMaxNearest|MinRMSErr_OutOfRangeMult|FloorMinCeilMax|MinRMSErr_Dither50|MinRMSErr_MinMaxNearest");}
+              code0 {o->add("MinRMSErr|MinMaxNearest|MinRMSErr_OutOfRangeMult|FloorMinCeilMax|MinRMSErr_Dither50|MinRMSErr_MinMaxNearest|MinRMSErr_YUV_Downsampled");}
             } {}
             Fl_Box {} {
               label {Search mode parameter}
@@ -613,7 +613,7 @@ class Plus4FLIConvGUI {open
     errorMessage(e.what());
   }
 }}
-              tooltip {This parameter is used only by modes 2, 4, and 5, and the allowed ranges for each mode are 1.0 to 16.0, 0.0 to 0.5, and 0.0 to 0.25, respectively} xywh {225 190 60 25} when 4 maximum 16 step 0.001 value 4
+              tooltip {This parameter is used only by modes 2, 4, 5, and 6, and the allowed ranges for each mode are 1.0 to 16.0, 0.0 to 0.5, 0.0 to 0.25, and 1.0 to 16.0, respectively} xywh {225 190 60 25} when 4 maximum 16 step 0.001 value 4
             }
             Fl_Value_Input mcColorErrorScaleValuator {
               label {MC chrominance error scale}
