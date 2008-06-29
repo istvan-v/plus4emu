@@ -1,10 +1,18 @@
 Changes in version 1.2.6.2
 --------------------------
 
-  * increased TED sound output level relative to SID output level, for
-    better accuracy in programs that use both types of sound at the same
-    time
-  * some utility improvements
+  * added machine configuration option to control the SID output volume;
+    this also affects the sound recorded to AVI files
+  * increased TED audio output level relative to the default SID output
+    level, for better accuracy in programs that use both types of sound
+    at the same time
+  * minor sound emulation fixes
+  * some utility improvements: 'compress' has more options now, and is
+    optimized somewhat for slightly better efficiency and speed;
+    'p4fliconv' automatically detects the use of the C64 palette in GIF
+    files and enables pixel exact reading mode, and there is a new
+    experimental hires conversion algorithm as well
+  * minor TED emulation optimizations
   * a few Linux compile and link errors have been fixed
 
 Changes in version 1.2.6.1

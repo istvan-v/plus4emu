@@ -630,7 +630,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
           xywh {10 35 380 370} hide
         } {
           Fl_Group {} {open
-            xywh {20 45 360 95} box ENGRAVED_FRAME align 21
+            xywh {20 45 360 135} box ENGRAVED_FRAME align 21
           } {
             Fl_Light_Button vmSIDModel6581Valuator {
               label {6581 emulation}
@@ -647,6 +647,14 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.vmConfigurationChanged = true;
 }}
               xywh {30 100 240 25} color 50 selection_color 3
+            }
+            Fl_Value_Slider vmSIDOutputVolumeValuator {
+              label {SID output volume (dB)}
+              callback {{
+  gui.config.vm.sidOutputVolume = int(o->value() + 8.5) - 8;
+  gui.config.vmConfigurationChanged = true;
+}}
+              xywh {30 141 120 23} type Horizontal color 47 selection_color 52 align 8 minimum -8 maximum 2 step 1
             }
           }
         }
@@ -725,6 +733,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   tapeMaxFreqValuator->value(gui.config.tape.soundFileFilterMaxFreq);
   vmSIDModel6581Valuator->value(gui.config.vm.sidModel6581 ? 1 : 0);
   vmSIDDigiBlasterValuator->value(gui.config.vm.sidDigiBlaster ? 1 : 0);
+  vmSIDOutputVolumeValuator->value(double(gui.config.vm.sidOutputVolume));
 }} {}
   }
   Function {setROMImageFile(uint8_t segment_, const std::string& fileName_)} {open private return_type void

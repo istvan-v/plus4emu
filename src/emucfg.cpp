@@ -94,6 +94,9 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.serialBusDelayOffset",
                                 vm.serialBusDelayOffset, int(0),
                                 vmConfigurationChanged, -100.0, 100.0);
+    defineConfigurationVariable(*this, "vm.sidOutputVolume",
+                                vm.sidOutputVolume, int(0),
+                                vmConfigurationChanged, -8.0, 2.0);
     defineConfigurationVariable(*this, "vm.enableACIA",
                                 vm.enableACIA, false,
                                 vmConfigurationChanged);
@@ -378,7 +381,8 @@ namespace Plus4Emu {
       vm_.setVideoFrequency(vm.videoClockFrequency);
       vm_.setSerialBusDelayOffset(vm.serialBusDelayOffset);
       vm_.setEnableACIAEmulation(vm.enableACIA);
-      vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster);
+      vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster,
+                              vm.sidOutputVolume);
       vmConfigurationChanged = false;
     }
     if (memoryConfigurationChanged) {

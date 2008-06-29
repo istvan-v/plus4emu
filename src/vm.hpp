@@ -204,9 +204,11 @@ namespace Plus4Emu {
      */
     virtual void setEnableACIAEmulation(bool isEnabled);
     /*!
-     * Set SID emulation parameters.
+     * Set SID emulation parameters. 'outputVolume' should be specified in
+     * decibels (-8 to +2).
      */
-    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
+    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster,
+                                     int outputVolume);
     /*!
      * Disable SID emulation (which is automatically enabled by writing to
      * any of the SID registers) to reduce CPU usage.

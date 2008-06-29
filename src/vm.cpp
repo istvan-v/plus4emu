@@ -311,10 +311,12 @@ namespace Plus4Emu {
     (void) isEnabled;
   }
 
-  void VirtualMachine::setSIDConfiguration(bool is6581, bool enableDigiBlaster)
+  void VirtualMachine::setSIDConfiguration(bool is6581, bool enableDigiBlaster,
+                                           int outputVolume)
   {
     (void) is6581;
     (void) enableDigiBlaster;
+    (void) outputVolume;
   }
 
   void VirtualMachine::disableSIDEmulation()

@@ -80,13 +80,13 @@ static double calcError(double gamma0, double gamma1)
   double  totalError = 0.0;
   int     i;
   for (i = 0; i < 8; i++) {
-    int     x1 = (int) ((tabl1[i] * 16384.0 / tabl2[7]) + 0.5);
+    int     x1 = (int) ((tabl1[i] * 24576.0 / tabl2[7]) + 0.5);
     int     x2 = calcDistortion(calcTEDSound(17 + i), gamma0, gamma1);
     double  err = (double) (x2 - x1) / sqrt((double) x1);
     totalError += (err * err);
   }
   for (i = 0; i < 8; i++) {
-    int     x1 = (int) ((tabl2[i] * 16384.0 / tabl2[7]) + 0.5);
+    int     x1 = (int) ((tabl2[i] * 24576.0 / tabl2[7]) + 0.5);
     int     x2 = calcDistortion(calcTEDSound(49 + i), gamma0, gamma1);
     double  err = (double) (x2 - x1) / sqrt((double) x1);
     totalError += (err * err);

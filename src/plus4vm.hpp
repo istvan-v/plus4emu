@@ -102,6 +102,7 @@ namespace Plus4 {
     SID       *sid_;
     int32_t   soundOutputAccumulator;
     int32_t   soundOutputSignal;
+    int32_t   sidOutputVolume;
     bool      sidEnabled;
     bool      sidModel6581;
     bool      digiBlasterEnabled;
@@ -214,9 +215,11 @@ namespace Plus4 {
      */
     virtual void setEnableACIAEmulation(bool isEnabled);
     /*!
-     * Set SID emulation parameters.
+     * Set SID emulation parameters. 'outputVolume' should be specified in
+     * decibels (-8 to +2).
      */
-    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster);
+    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster,
+                                     int outputVolume);
     /*!
      * Disable SID emulation (which is automatically enabled by writing to
      * any of the SID registers) to reduce CPU usage.

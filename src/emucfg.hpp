@@ -45,6 +45,7 @@ namespace Plus4Emu {
       unsigned int  videoClockFrequency;
       unsigned int  speedPercentage;    // NOTE: this uses soundSettingsChanged
       int           serialBusDelayOffset;
+      int           sidOutputVolume;
       bool          enableACIA;
       bool          sidModel6581;
       bool          sidDigiBlaster;
