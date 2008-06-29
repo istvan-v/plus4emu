@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -25,17 +25,19 @@
 #  undef REGPARM
 #endif
 #if defined(__GNUC__) && (__GNUC__ >= 3) && defined(__i386__) && !defined(__ICC)
-#  define REGPARM __attribute__ ((__regparm__ (3)))
+#  define REGPARM __attribute__ ((__regparm__ (2)))
 #else
 #  define REGPARM
 #endif
 
 namespace Plus4 {
 
-  REGPARM int TED7360::render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_BMM_hires(TED7360& ted, int nextCharCnt)
   {
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 5;
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -105,14 +107,14 @@ namespace Plus4 {
         break;
       }
     }
-    return 5;
   }
 
-  REGPARM int TED7360::render_BMM_multicolor(TED7360& ted,
-                                             uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_BMM_multicolor(TED7360& ted, int nextCharCnt)
   {
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 5;
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c_[4];
     c_[0] = ted.colorRegisters[0];
     c_[3] = ted.colorRegisters[1];
@@ -195,13 +197,14 @@ namespace Plus4 {
         break;
       }
     }
-    return 5;
   }
 
-  REGPARM int TED7360::render_char_std(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_char_std(TED7360& ted, int nextCharCnt)
   {
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 5;
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c0 = ted.colorRegisters[0];
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
@@ -290,13 +293,14 @@ namespace Plus4 {
         break;
       }
     }
-    return 5;
   }
 
-  REGPARM int TED7360::render_char_ECM(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_char_ECM(TED7360& ted, int nextCharCnt)
   {
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 5;
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if (nextCharCnt == 0) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t a = ted.shiftRegisterCharacter.attr_();
@@ -367,13 +371,14 @@ namespace Plus4 {
         break;
       }
     }
-    return 5;
   }
 
-  REGPARM int TED7360::render_char_MCM(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_char_MCM(TED7360& ted, int nextCharCnt)
   {
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 5;
     bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     uint8_t c_[4];
     c_[0] = ted.colorRegisters[0];
     c_[1] = ted.colorRegisters[1];
@@ -520,32 +525,15 @@ namespace Plus4 {
         break;
       }
     }
-    return 5;
   }
 
-  REGPARM int TED7360::render_blank(TED7360& ted, uint8_t *bufp, int offs)
+  REGPARM void TED7360::render_blank(TED7360& ted, int nextCharCnt)
   {
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
-    if ((unsigned int) nextCharCnt < 4U) {
-      ted.shiftRegisterCharacter = ted.currentCharacter;
-      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
-      if (!(ted.videoMode & 0x01))
-        ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
-      else
-        ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
-    }
-    else {
-      ted.shiftRegisterCharacter.bitmap_() =
-          ted.shiftRegisterCharacter.bitmap_() << 4;
-    }
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
+    ted.video_buf_pos = ted.video_buf_pos + 2;
     bufp[0] = ted.videoOutputFlags;
     bufp[1] = uint8_t(0x00);
-    return 2;
-  }
-
-  REGPARM int TED7360::render_border(TED7360& ted, uint8_t *bufp, int offs)
-  {
-    int     nextCharCnt = int(ted.horizontalScroll) - offs;
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();
@@ -558,19 +546,41 @@ namespace Plus4 {
       ted.shiftRegisterCharacter.bitmap_() =
           ted.shiftRegisterCharacter.bitmap_() << 4;
     }
+  }
+
+  REGPARM void TED7360::render_border(TED7360& ted, int nextCharCnt)
+  {
+    if ((unsigned int) nextCharCnt < 4U) {
+      ted.shiftRegisterCharacter = ted.currentCharacter;
+      uint8_t b = ted.shiftRegisterCharacter.bitmap_();
+      if (b) {
+        if (!(ted.videoMode & 0x01))
+          ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
+        else
+          ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
+      }
+    }
+    else {
+      ted.shiftRegisterCharacter.bitmap_() =
+          ted.shiftRegisterCharacter.bitmap_() << 4;
+    }
+    ted.prv_video_buf_pos = ted.video_buf_pos;
+    uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
     uint8_t borderColor = ted.colorRegisters[4];
     if (borderColor != ted.tedRegisters[0x19]) {
+      ted.video_buf_pos = ted.video_buf_pos + 5;
       bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
       bufp[1] = borderColor;
       borderColor = ted.tedRegisters[0x19];
       bufp[2] = borderColor;
       bufp[3] = borderColor;
       bufp[4] = borderColor;
-      return 5;
     }
-    bufp[0] = ted.videoOutputFlags;
-    bufp[1] = borderColor;
-    return 2;
+    else {
+      ted.video_buf_pos = ted.video_buf_pos + 2;
+      bufp[0] = ted.videoOutputFlags;
+      bufp[1] = borderColor;
+    }
   }
 
   void TED7360::updateVideoMode()

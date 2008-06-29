@@ -29,17 +29,12 @@ namespace Plus4 {
 
   void TED7360::runOneCycle_freezeMode()
   {
-    delayedEvents0.stopDMA();
-    dmaActive = false;
-    cpuHaltedFlag = false;
-    M7501::setIsCPURunning(true);
-    // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
     if (!(videoColumn & 0x01)) {
-      characterPosition = 0x03FF;
-      if (incrementingCharacterPosition) {
-        savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
-        characterPosition = savedCharacterPosition;
-      }
+      // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
+      delayedEvents0.stopDMA();
+      dmaActive = false;
+      cpuHaltedFlag = false;
+      M7501::setIsCPURunning(true);
       if (delayedEvents0) {
         DelayedEventsMask delayedEvents(delayedEvents0);
         delayedEvents0 = 0U;
@@ -54,46 +49,23 @@ namespace Plus4 {
       M7501::run(cpu_clock_multiplier);
       if (incrementingDMAPosition)
         dmaPosition = (dmaPosition + 1) & 0x03FF;
-      prv_video_buf_pos = video_buf_pos;
-      uint8_t *bufp = &(video_buf[video_buf_pos]);
-      (void) render_blank(*this, bufp, 0);
-      bufp[0] = (bufp[0] & 0x01) | 0x30;
-      video_buf_pos = video_buf_pos + 2;
-      tedRegisters[0x1E] = videoColumn;
-      videoColumn |= uint8_t(0x01);
+      render_blank(*this, horizontalScroll);
     }
-    if (!ted_disabled) {
-      runOneCycle();
-      return;
+    else {
+      // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
+      TEDCallback *p = firstCallback1;
+      while (p) {
+        TEDCallback *nxt = p->nxt1;
+        p->func(p->userData);
+        p = nxt;
+      }
+      if (!singleClockModeFlags)
+        M7501::run(cpu_clock_multiplier);
+      else
+        idleMemoryRead();
+      render_blank(*this, int(horizontalScroll) - 4);
     }
-    // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
-    if (delayedEvents1) {
-      DelayedEventsMask delayedEvents(delayedEvents1);
-      delayedEvents1 = 0U;
-      processDelayedEvents(delayedEvents);
-    }
-    TEDCallback *p = firstCallback1;
-    while (p) {
-      TEDCallback *nxt = p->nxt1;
-      p->func(p->userData);
-      p = nxt;
-    }
-    if (!singleClockModeFlags)
-      M7501::run(cpu_clock_multiplier);
-    else
-      idleMemoryRead();
-    prv_video_buf_pos = video_buf_pos;
-    uint8_t *bufp = &(video_buf[video_buf_pos]);
-    (void) render_blank(*this, bufp, 4);
-    bufp[0] = (bufp[0] & 0x01) | 0x30;
-    video_buf_pos = video_buf_pos + 2;
-    if (!cycle_count)
-      calculateSoundOutput();
-    tedRegisters[0x1E] = videoColumn;
-    if (!ted_disabled)
-      videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
-    videoColumn &= uint8_t(0x7E);
-    cycle_count = (cycle_count + 1) & 3;
+    video_buf[video_buf_pos - 2] = (video_buf[video_buf_pos - 2] & 0x01) | 0x30;
   }
 
   void TED7360::runOneCycle()
@@ -102,18 +74,13 @@ namespace Plus4 {
       videoOutputCallback(&(video_buf[0]), video_buf_pos);
       video_buf_pos = 0;
     }
-
-    if (ted_disabled) {
-      runOneCycle_freezeMode();
-      return;
+    characterPosition = 0x03FF;
+    if (incrementingCharacterPosition) {
+      savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
+      characterPosition = savedCharacterPosition;
     }
-    if (!(videoColumn & uint8_t(0x01))) {
+    if (!ted_disabled) {
       // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
-      characterPosition = 0x03FF;
-      if (incrementingCharacterPosition) {
-        savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
-        characterPosition = savedCharacterPosition;
-      }
       DelayedEventsMask delayedEvents(delayedEvents0);
       delayedEvents0 = 0U;
       switch (videoColumn) {
@@ -303,12 +270,7 @@ namespace Plus4 {
       if (incrementingDMAPosition)
         dmaPosition = (dmaPosition + 1) & 0x03FF;
       // calculate video output
-      {
-        prv_video_buf_pos = video_buf_pos;
-        uint8_t *bufp = &(video_buf[video_buf_pos]);
-        int     n = current_render_func(*this, bufp, 0);
-        video_buf_pos = video_buf_pos + n;
-      }
+      current_render_func(*this, horizontalScroll);
       // check timer interrupts
       if (timer1_run) {
         if (!timer1_state) {
@@ -332,154 +294,154 @@ namespace Plus4 {
           updateInterruptFlag();
         }
       }
-      // update horizontal position (reads are delayed by one cycle)
-      tedRegisters[0x1E] = videoColumn;
-      videoColumn |= uint8_t(0x01);
     }
-
-    if (ted_disabled) {
+    else {
       runOneCycle_freezeMode();
-      return;
     }
+    // update horizontal position (reads are delayed by one cycle)
+    tedRegisters[0x1E] = videoColumn;
+    videoColumn |= uint8_t(0x01);
+
     // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
     if (delayedEvents1) {
       DelayedEventsMask delayedEvents(delayedEvents1);
       delayedEvents1 = 0U;
       processDelayedEvents(delayedEvents);
     }
-    switch (videoColumn) {
-    case 43:                            // equalization pulse 1 end
-      if (vsyncFlags) {
-        videoOutputFlags =
-            uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
-        selectRenderFunction();
-      }
-      break;
-    case 87:                            // increment flash counter
-      if (videoLine == 205)
-        delayedEvents1.incrementFlashCounter();
-      break;
-    case 95:                            // equalization pulse 2 start
-      if (vsyncFlags) {
-        videoOutputFlags =
-            uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
-        selectRenderFunction();
-      }
-      break;
-    }
-    // run external callbacks
-    {
-      TEDCallback *p = firstCallback1;
-      while (p) {
-        TEDCallback *nxt = p->nxt1;
-        p->func(p->userData);
-        p = nxt;
-      }
-    }
-    // run CPU
-    if (!singleClockModeFlags) {
-      M7501::run(cpu_clock_multiplier);
-    }
-    else {
-      // bitmap fetches are done on odd cycle counts
-      // FIXME: if single clock mode is not turned on, the CPU and TED could
-      // both use the address bus at the same time, setting it to the bitwise
-      // AND of the two addresses
-      if (!bitmapAddressDisableFlags) {
-        // read bitmap data from memory
-        uint16_t  addr_ = uint16_t(characterLine);
-        if (!(tedRegisters[0x06] & 0x80)) {
-          if (!(tedRegisters[0x06] & 0x20)) {   // normal character mode
-            addr_ |= uint16_t(charset_base_addr
-                              | (int(char_buf[characterColumn] & characterMask)
-                                 << 3));
-          }
-          else {                                // normal bitmap mode
-            addr_ |= uint16_t(bitmap_base_addr | (characterPosition << 3));
-          }
+    if (!ted_disabled) {
+      switch (videoColumn) {
+      case 43:                          // equalization pulse 1 end
+        if (vsyncFlags) {
+          videoOutputFlags =
+              uint8_t((videoOutputFlags & 0x7F) | (vsyncFlags & 0x80));
+          selectRenderFunction();
         }
-        else {
-          if (!(tedRegisters[0x06] & 0x20)) {   // IC test / character mode
-            addr_ |= uint16_t((int(attr_buf_tmp[characterColumn]) << 3)
-                              | 0xF800);
-          }
-          else {                                // IC test / bitmap mode
-            addr_ |= uint16_t(bitmap_base_addr
-                              | ((characterPosition
-                                  & (int(attr_buf_tmp[characterColumn])
-                                     | 0xFF00)) << 3));
-          }
+        break;
+      case 87:                          // increment flash counter
+        if (videoLine == 205)
+          delayedEvents1.incrementFlashCounter();
+        break;
+      case 95:                          // equalization pulse 2 start
+        if (vsyncFlags) {
+          videoOutputFlags =
+              uint8_t((videoOutputFlags | 0x80) ^ (vsyncFlags & 0x80));
+          selectRenderFunction();
         }
-        if (!(tedBitmapReadMap & 0x80U)) {
-          if ((addr_ & 0xFFE0) != 0xFF00) {
-            // read bitmap data from RAM
-            unsigned int  tmp = (unsigned int) memoryMapIndexTable[addr_ >> 12];
-            uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
-            dataBusState = p[addr_ & 0x3FFF];
+        break;
+      }
+      // run external callbacks
+      {
+        TEDCallback *p = firstCallback1;
+        while (p) {
+          TEDCallback *nxt = p->nxt1;
+          p->func(p->userData);
+          p = nxt;
+        }
+      }
+      // run CPU
+      if (!singleClockModeFlags) {
+        M7501::run(cpu_clock_multiplier);
+      }
+      else {
+        // bitmap fetches are done on odd cycle counts
+        // FIXME: if single clock mode is not turned on, the CPU and TED could
+        // both use the address bus at the same time, setting it to the bitwise
+        // AND of the two addresses
+        if (!bitmapAddressDisableFlags) {
+          // read bitmap data from memory
+          uint16_t  addr_ = uint16_t(characterLine);
+          if (!(tedRegisters[0x06] & 0x80)) {
+            if (!(tedRegisters[0x06] & 0x20)) { // normal character mode
+              addr_ |= uint16_t(charset_base_addr
+                                | (int(char_buf[characterColumn]
+                                       & characterMask) << 3));
+            }
+            else {                              // normal bitmap mode
+              addr_ |= uint16_t(bitmap_base_addr | (characterPosition << 3));
+            }
           }
           else {
-            // read bitmap data from TED registers
-            (void) readMemory(addr_);
+            if (!(tedRegisters[0x06] & 0x20)) { // IC test / character mode
+              addr_ |= uint16_t((int(attr_buf_tmp[characterColumn]) << 3)
+                                | 0xF800);
+            }
+            else {                              // IC test / bitmap mode
+              addr_ |= uint16_t(bitmap_base_addr
+                                | ((characterPosition
+                                    & (int(attr_buf_tmp[characterColumn])
+                                       | 0xFF00)) << 3));
+            }
           }
-        }
-        else if (addr_ >= 0x8000) {
-          if (addr_ < 0xFC00) {
-            // read bitmap data from ROM
-            unsigned int  tmp = (unsigned int) memoryMapIndexTable[addr_ >> 12];
-            uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
-            if (p)
+          if (!(tedBitmapReadMap & 0x80U)) {
+            if ((addr_ & 0xFFE0) != 0xFF00) {
+              // read bitmap data from RAM
+              unsigned int  tmp =
+                  (unsigned int) memoryMapIndexTable[addr_ >> 12];
+              uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
               dataBusState = p[addr_ & 0x3FFF];
+            }
+            else {
+              // read bitmap data from TED registers
+              (void) readMemory(addr_);
+            }
           }
-          else if (addr_ < 0xFD00 || addr_ >= 0xFF00) {
-            // read bitmap data from ROM or TED registers
-            memoryReadMap = tedBitmapReadMap;
-            (void) readMemory(addr_);
-            memoryReadMap = cpuMemoryReadMap;
+          else if (addr_ >= 0x8000) {
+            if (addr_ < 0xFC00) {
+              // read bitmap data from ROM
+              unsigned int  tmp = (unsigned int) addr_ >> 14;
+              uint8_t *p = segmentTable[memoryMapTable[tedBitmapReadMap | tmp]];
+              if (p)
+                dataBusState = p[addr_ & 0x3FFF];
+            }
+            else if (addr_ < 0xFD00 || addr_ >= 0xFF00) {
+              // read bitmap data from ROM or TED registers
+              memoryReadMap = tedBitmapReadMap;
+              (void) readMemory(addr_);
+              memoryReadMap = cpuMemoryReadMap;
+            }
           }
         }
+        else
+          idleMemoryRead();
       }
-      else
-        idleMemoryRead();
-    }
-    // calculate video output
-    {
-      prv_video_buf_pos = video_buf_pos;
-      uint8_t *bufp = &(video_buf[video_buf_pos]);
-      int     n = current_render_func(*this, bufp, 4);
-      video_buf_pos = video_buf_pos + n;
-    }
-    // update video shift register
-    currentCharacter.bitmap_() = 0x00;
-    if (videoShiftRegisterEnabled)
-      currentCharacter = nextCharacter;
-    if (characterColumn != 40) {
-      nextCharacter.attr_() = attr_buf[characterColumn];
-      attr_buf[characterColumn] = attr_buf_tmp[characterColumn];
-      nextCharacter.char_() = char_buf[characterColumn];
-      if (++characterColumn >= 64)
-        characterColumn = (renderWindow ? 0 : 40);
+      // calculate video output
+      current_render_func(*this, int(horizontalScroll) - 4);
+      // update video shift register
+      currentCharacter.bitmap_() = 0x00;
+      if (videoShiftRegisterEnabled)
+        currentCharacter = nextCharacter;
+      if (characterColumn != 40) {
+        nextCharacter.attr_() = attr_buf[characterColumn];
+        attr_buf[characterColumn] = attr_buf_tmp[characterColumn];
+        nextCharacter.char_() = char_buf[characterColumn];
+        if (++characterColumn >= 64)
+          characterColumn = (renderWindow ? 0 : 40);
+      }
+      else {
+        nextCharacter.attr_() = 0x00;
+        nextCharacter.char_() = 0x00;
+      }
+      nextCharacter.bitmap_() = dataBusState;
+      nextCharacter.flags_() = uint8_t(characterPosition == cursor_position ?
+                                       0xFF : 0x0F) ^ videoMode;
+      // update timer 2 and 3 on odd cycle count (886 kHz rate)
+      timer2_state = (timer2_state - int(timer2_run)) & 0xFFFF;
+      timer3_state = (timer3_state - int(timer3_run)) & 0xFFFF;
     }
     else {
-      nextCharacter.attr_() = 0x00;
-      nextCharacter.char_() = 0x00;
+      runOneCycle_freezeMode();
     }
-    nextCharacter.bitmap_() = dataBusState;
-    nextCharacter.flags_() =
-        uint8_t(characterPosition == cursor_position ? 0xFF : 0x0F) ^ videoMode;
-    // update timer 2 and 3 on odd cycle count (886 kHz rate)
-    if (timer2_run)
-      timer2_state = (timer2_state - 1) & 0xFFFF;
-    if (timer3_run)
-      timer3_state = (timer3_state - 1) & 0xFFFF;
     // update sound generators on every 8th cycle (221 kHz)
-    if (!cycle_count)
+    if (!cycle_count) {
       calculateSoundOutput();
+      cycle_count = 4;
+    }
+    cycle_count--;
     // update horizontal position (reads are delayed by one cycle)
     tedRegisters[0x1E] = videoColumn;
     if (!ted_disabled)
       videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
     videoColumn &= uint8_t(0x7E);
-    cycle_count = (cycle_count + 1) & 3;
   }
 
   void TED7360::processDelayedEvents(uint32_t n)

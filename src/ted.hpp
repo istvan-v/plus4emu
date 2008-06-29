@@ -28,7 +28,7 @@
 #  undef REGPARM
 #endif
 #if defined(__GNUC__) && (__GNUC__ >= 3) && defined(__i386__) && !defined(__ICC)
-#  define REGPARM __attribute__ ((__regparm__ (3)))
+#  define REGPARM __attribute__ ((__regparm__ (2)))
 #else
 #  define REGPARM
 #endif
@@ -353,14 +353,13 @@ namespace Plus4 {
     static void     write_register_FF3F(void *userData,
                                         uint16_t addr, uint8_t value);
     // render functions
-    static REGPARM int render_BMM_hires(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM int render_BMM_multicolor(TED7360& ted,
-                                             uint8_t *bufp, int offs);
-    static REGPARM int render_char_std(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM int render_char_ECM(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM int render_char_MCM(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM int render_blank(TED7360& ted, uint8_t *bufp, int offs);
-    static REGPARM int render_border(TED7360& ted, uint8_t *bufp, int offs);
+    static REGPARM void render_BMM_hires(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_BMM_multicolor(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_char_std(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_char_ECM(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_char_MCM(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_blank(TED7360& ted, int nextCharCnt);
+    static REGPARM void render_border(TED7360& ted, int nextCharCnt);
     void updateVideoMode();
     void initRegisters();
     void initializeRAMSegment(uint8_t *p);
@@ -392,11 +391,12 @@ namespace Plus4 {
     // NOTE: FF1E is stored shifted right by one bit
     uint8_t     tedRegisters[32];
    private:
-    // render function selected by bits of FF06 and FF07
-    // returns the number of bytes written to 'bufp'
-    REGPARM int (*render_func)(TED7360& ted, uint8_t *bufp, int offs);
-    // currently used render function (may be blanking or border)
-    REGPARM int (*current_render_func)(TED7360& ted, uint8_t *bufp, int offs);
+    // Render function selected by bits of FF06 and FF07; writes four pixels
+    // to the video output buffer. 'nextCharCnt' is the number of pixels
+    // remaining until the next character.
+    REGPARM void (*render_func)(TED7360& ted, int nextCharCnt);
+    // Currently used render function (may be blanking or border).
+    REGPARM void (*current_render_func)(TED7360& ted, int nextCharCnt);
     // CPU clock multiplier
     int         cpu_clock_multiplier;
     // current video line (0 to 311, = (FF1D, FF1C))

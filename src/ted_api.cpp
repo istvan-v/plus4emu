@@ -305,7 +305,7 @@ namespace Plus4 {
     buf.writeByte((uint8_t(cpuMemoryReadMap) & uint8_t(0x80))
                   | (uint8_t(cpuMemoryReadMap >> 11) & uint8_t(0x0F)));
     // save internal registers
-    buf.writeByte(cycle_count);
+    buf.writeByte((4 - cycle_count) & 3);
     buf.writeByte(videoColumn);
     buf.writeUInt32(uint32_t(videoLine));
     buf.writeByte(uint8_t(characterLine));
@@ -452,6 +452,7 @@ namespace Plus4 {
       if (version < 0x01000003)
         (void) buf.readUInt32();        // was tedRegisterWriteMask
       cycle_count = buf.readByte() & 0x03;
+      cycle_count = (4 - cycle_count) & 3;
       videoColumn = buf.readByte() & 0x7F;
       if (version < 0x01000002) {
         videoColumn =
