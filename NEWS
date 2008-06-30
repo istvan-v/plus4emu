@@ -1,6 +1,22 @@
-Changes in version 1.2.6.2
---------------------------
+Changes in version 1.2.7
+------------------------
 
+  * added some simple editing features that can be used with the mouse:
+      left click: sets the cursor position
+      right click: sets the cursor position, and copies the selected
+        word to the clipboard
+      ctrl + right click: sets the cursor position, and copies text from
+        the selected line to the clipboard
+      shift + right click: copies text from the whole screen to the
+        clipboard without changing the cursor position
+      middle click: sets the cursor position, and pastes text from the
+        clipboard
+      shift + middle click: pastes text from the clipboard without
+        changing the cursor position
+    Note that these are not available when light pen emulation - which
+    also uses the mouse - is enabled.
+  * new command line option (-keybuf) for typing text of any length at
+    startup; the text can also be read from a file
   * added machine configuration option to control the SID output volume;
     this also affects the sound recorded to AVI files
   * increased TED audio output level relative to the default SID output

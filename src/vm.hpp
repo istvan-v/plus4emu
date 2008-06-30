@@ -225,6 +225,28 @@ namespace Plus4Emu {
      */
     virtual void setLightPenPosition(int xPos, int yPos);
     /*!
+     * Set the cursor position. 'xPos' and 'yPos' should be in the range
+     * 0 to 65535 for the visible 768x576 display area.
+     */
+    virtual void setCursorPosition(int xPos, int yPos);
+    /*!
+     * Copy text from the screen memory. 'xPos' and 'yPos' can be a small
+     * integer (0 to 39, and 0 to 24, respectively) to copy from a specific
+     * line or the word at 'xPos', a large integer (100 to 65535) to copy from
+     * a line or word at a physical screen position, or -1 to copy the line or
+     * word at the current cursor position.
+     * If 'yPos' is less than -1, the whole screen is copied as multiple lines,
+     * and 'xPos' is ignored; otherwise, if 'xPos' is less than -1, then a
+     * (logical) line, otherwise a word is copied.
+     */
+    virtual std::string copyText(int xPos, int yPos) const;
+    /*!
+     * Paste the text from 's' to the keyboard buffer of the emulated machine,
+     * optionally setting the cursor position to 'xPos' and 'yPos' (0 to 65535)
+     * first if both are non-negative.
+     */
+    virtual void pasteText(const char *s, int xPos, int yPos);
+    /*!
      * Set if printer emulation should be enabled.
      */
     virtual void setEnablePrinter(bool isEnabled);

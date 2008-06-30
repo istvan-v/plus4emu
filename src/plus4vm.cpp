@@ -134,7 +134,8 @@ namespace Plus4 {
     TED7360::reset(cold_reset);
   }
 
-  uint8_t Plus4VM::TED7360_::sidRegisterRead(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t Plus4VM::TED7360_::sidRegisterRead(
+      void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     if (ted.vm.sidEnabled) {
@@ -159,8 +160,8 @@ namespace Plus4 {
     return ted.dataBusState;
   }
 
-  void Plus4VM::TED7360_::sidRegisterWrite(void *userData,
-                                           uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void Plus4VM::TED7360_::sidRegisterWrite(
+      void *userData, uint16_t addr, uint8_t value)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
@@ -177,7 +178,8 @@ namespace Plus4 {
     ted.vm.sid_->write(regNum, value);
   }
 
-  uint8_t Plus4VM::TED7360_::parallelIECRead(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t Plus4VM::TED7360_::parallelIECRead(
+      void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
 #if 0
@@ -215,8 +217,8 @@ namespace Plus4 {
     return ted.dataBusState;
   }
 
-  void Plus4VM::TED7360_::parallelIECWrite(void *userData,
-                                           uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void Plus4VM::TED7360_::parallelIECWrite(
+      void *userData, uint16_t addr, uint8_t value)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
@@ -242,8 +244,8 @@ namespace Plus4 {
     }
   }
 
-  uint8_t Plus4VM::TED7360_::memoryRead0001Callback(void *userData,
-                                                    uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t Plus4VM::TED7360_::memoryRead0001Callback(
+      void *userData, uint16_t addr)
   {
     (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
@@ -263,8 +265,8 @@ namespace Plus4 {
     return tmp;
   }
 
-  void Plus4VM::TED7360_::memoryWrite0001Callback(void *userData,
-                                                  uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void Plus4VM::TED7360_::memoryWrite0001Callback(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
@@ -282,7 +284,8 @@ namespace Plus4 {
     }
   }
 
-  uint8_t Plus4VM::TED7360_::aciaRegisterRead(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t Plus4VM::TED7360_::aciaRegisterRead(
+      void *userData, uint16_t addr)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     if (ted.vm.aciaEnabled) {
@@ -298,8 +301,8 @@ namespace Plus4 {
     return ted.dataBusState;
   }
 
-  void Plus4VM::TED7360_::aciaRegisterWrite(void *userData,
-                                            uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void Plus4VM::TED7360_::aciaRegisterWrite(
+      void *userData, uint16_t addr, uint8_t value)
   {
     TED7360_& ted = *(reinterpret_cast<TED7360_ *>(userData));
     ted.dataBusState = value;
@@ -578,6 +581,171 @@ namespace Plus4 {
       vm.setEnableACIACallback(false);
   }
 
+  void Plus4VM::pasteTextCallback(void *userData)
+  {
+    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
+    vm.pasteTextCycleCnt--;
+    if (vm.pasteTextCycleCnt >= 0)
+      return;
+    vm.pasteTextCycleCnt = 10000;
+    if (vm.isRecordingDemo | vm.isPlayingDemo) {
+      vm.removePasteTextCallback();
+      return;
+    }
+    if (vm.ted->readMemoryCPU(0x00EF) != 0 ||
+        vm.ted->readMemoryCPU(0x055D) != 0 ||
+        !vm.checkEditorMode()) {
+      // wait if not all characters are consumed yet, or not in editor mode
+      vm.pasteTextWaitCnt++;
+      if (vm.pasteTextWaitCnt >= (vm.pasteTextBufferPos > 0 ? 448 : 96)) {
+        // time out after about 5 seconds (or 1 second for the first character)
+        vm.removePasteTextCallback();
+      }
+      return;
+    }
+    vm.pasteTextWaitCnt = 0;
+    if (vm.pasteTextCursorPositionX >= 0 && vm.pasteTextCursorPositionY >= 0) {
+      vm.setCursorPosition_(vm.pasteTextCursorPositionX,
+                            vm.pasteTextCursorPositionY);
+    }
+    vm.pasteTextCursorPositionX = -1;
+    vm.pasteTextCursorPositionY = -1;
+    if (vm.pasteTextBuffer == (char *) 0) {
+      vm.removePasteTextCallback();     // no text to paste
+      return;
+    }
+    int     charCnt = 0;
+    char    c = '\0';
+    do {
+      c = vm.pasteTextBuffer[vm.pasteTextBufferPos++];
+      if (c == '\0') {
+        vm.ted->writeMemoryCPU(0x00EF, uint8_t(charCnt));
+        vm.removePasteTextCallback();   // done pasting all characters
+        return;
+      }
+      if (c == '\n')
+        c = '\r';
+      if (c >= char(0x7F) || (c < char(0x20) && !(c == '\t' || c == '\r'))) {
+        // ignore invalid characters
+        continue;
+      }
+      // convert tabs to spaces, and swap upper and lower case
+      if (c == '\t')
+        c = ' ';
+      else if (c >= 'A' && c <= 'Z')
+        c = (c - 'A') + 'a';
+      else if (c >= 'a' && c <= 'z')
+        c = (c - 'a') + 'A';
+      // store characters in keyboard buffer
+      vm.ted->writeMemoryCPU(uint16_t(0x0527 + charCnt), uint8_t(c));
+      charCnt++;
+      // until the buffer is full or end of line
+    } while (charCnt < 10 && c != '\r');
+    vm.ted->writeMemoryCPU(0x00EF, uint8_t(charCnt));
+  }
+
+  void Plus4VM::removePasteTextCallback()
+  {
+    ted->setCallback(&pasteTextCallback, (void *) this, 0);
+    pasteTextCycleCnt = 0;
+    pasteTextWaitCnt = 0;
+    pasteTextCursorPositionX = -1;
+    pasteTextCursorPositionY = -1;
+    pasteTextBufferPos = 0;
+    if (pasteTextBuffer != (char *) 0) {
+      delete[] pasteTextBuffer;
+      pasteTextBuffer = (char *) 0;
+    }
+  }
+
+  bool Plus4VM::checkEditorMode() const
+  {
+    M7501Registers  r;
+    ted->getRegisters(r);
+    if (!(r.reg_PC >= 0xD90A && r.reg_PC <= 0xD911 &&
+          ted->getMemoryPage(3) == 0x01)) {
+      // if not waiting for input, return
+      return false;
+    }
+    // some additional consistency checks:
+    int     cursorPositionL = ted->readMemoryCPU(0xFF0D);
+    int     cursorPositionH = ted->readMemoryCPU(0xFF0C) & 0x03;
+    int     cursorPosition = (cursorPositionH << 8) | cursorPositionL;
+    if (cursorPosition >= 0x03E8)
+      return false;             // cursor not visible
+    int     cursorLine = cursorPosition / 40;
+    int     cursorColumn = cursorPosition % 40;
+    int     cursorLineStart = cursorLine * 40;
+    int     cursorLineStartL = cursorLineStart & 0xFF;
+    int     cursorLineStartH = cursorLineStart >> 8;
+    if (!(int(ted->readMemoryCPU(0x00C8)) == cursorLineStartL &&
+          int(ted->readMemoryCPU(0x00C9)) == (cursorLineStartH | 0x0C) &&
+          int(ted->readMemoryCPU(0x00CA)) == cursorColumn &&
+          int(ted->readMemoryCPU(0x00CD)) == cursorLine &&
+          int(ted->readMemoryCPU(0x00EA)) == cursorLineStartL &&
+          int(ted->readMemoryCPU(0x00EB)) == (cursorLineStartH | 0x08))) {
+      // TED cursor position is not consistent with zeropage variables
+      return false;
+    }
+    if (cursorLine > int(ted->readMemoryCPU(0x07E5)) ||
+        cursorLine < int(ted->readMemoryCPU(0x07E6)) ||
+        ted->readMemoryCPU(0x07E5) < ted->readMemoryCPU(0x07E6) ||
+        cursorColumn < int(ted->readMemoryCPU(0x07E7)) ||
+        cursorColumn > int(ted->readMemoryCPU(0x07E8)) ||
+        ted->readMemoryCPU(0x07E7) > ted->readMemoryCPU(0x07E8)) {
+      // cursor position is out of range
+      return false;
+    }
+    return true;
+  }
+
+  void Plus4VM::setCursorPosition_(int xPos, int yPos)
+  {
+    if (isRecordingDemo | isPlayingDemo)
+      return;
+    if (xPos < 0 || xPos > 65535 || yPos < 0 || yPos > 65535)
+      return;
+    if (!checkEditorMode())
+      return;
+    int     xc = ((xPos * 384) >> 16) + 424;
+    if (xc >= 456)
+      xc -= 456;
+    if (xc < 0 || xc >= 320)
+      return;
+    int     yc = (yPos * 288) >> 16;
+    if (!ted->getIsNTSCMode()) {
+      yc = yc + 275;
+      if (yc >= 312)
+        yc -= 312;
+    }
+    else {
+      yc = yc + 225;
+      if (yc >= 262)
+        yc -= 262;
+    }
+    if (yc < 4 || yc >= 204)
+      return;
+    xc = xc / 8;
+    yc = (yc - 4) / 8;
+    if (yc > int(ted->readMemoryCPU(0x07E5)) ||
+        yc < int(ted->readMemoryCPU(0x07E6)) ||
+        xc < int(ted->readMemoryCPU(0x07E7)) ||
+        xc > int(ted->readMemoryCPU(0x07E8))) {
+      return;
+    }
+    ted->writeMemoryCPU(0x00C4, uint8_t(0x80));
+    ted->writeMemoryCPU(0x00C8, uint8_t((yc * 40) & 0xFF));
+    ted->writeMemoryCPU(0x00C9, uint8_t(((yc * 40) >> 8) | 0x0C));
+    ted->writeMemoryCPU(0x00CA, uint8_t(xc));
+    ted->writeMemoryCPU(0x00CD, uint8_t(yc));
+    ted->writeMemoryCPU(0x00EA, uint8_t((yc * 40) & 0xFF));
+    ted->writeMemoryCPU(0x00EB, uint8_t(((yc * 40) >> 8) | 0x08));
+    ted->writeMemoryCPU(0xFF0C, uint8_t(((yc * 40) + xc) >> 8));
+    ted->writeMemoryCPU(0xFF0D, uint8_t(((yc * 40) + xc) & 0xFF));
+  }
+
+  // --------------------------------------------------------------------------
+
   Plus4VM::Plus4VM(Plus4Emu::VideoDisplay& display_,
                    Plus4Emu::AudioOutput& audioOutput_)
     : VirtualMachine(display_, audioOutput_),
@@ -630,7 +798,13 @@ namespace Plus4 {
       drive8Is1551(false),
       drive9Is1551(false),
       iecDrive8((ParallelIECDrive *) 0),
-      iecDrive9((ParallelIECDrive *) 0)
+      iecDrive9((ParallelIECDrive *) 0),
+      pasteTextCycleCnt(0),
+      pasteTextWaitCnt(0),
+      pasteTextCursorPositionX(-1),
+      pasteTextCursorPositionY(-1),
+      pasteTextBufferPos(0),
+      pasteTextBuffer((char *) 0)
   {
     for (int i = 0; i < 12; i++)
       serialDevices[i] = (SerialDevice *) 0;
@@ -675,6 +849,7 @@ namespace Plus4 {
     }
     catch (...) {
     }
+    removePasteTextCallback();
     for (int i = 0; i < 12; i++) {
       if (serialDevices[i] != (SerialDevice *) 0) {
         delete serialDevices[i];
@@ -731,6 +906,7 @@ namespace Plus4 {
   {
     stopDemoPlayback();         // TODO: should be recorded as an event ?
     stopDemoRecording(false);
+    removePasteTextCallback();
     ted->reset(isColdReset);
     setTapeMotorState(false);
     sid_->reset();
@@ -1007,6 +1183,176 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::setCursorPosition(int xPos, int yPos)
+  {
+    if (xPos < 0 || xPos > 65535 || yPos < 0 || yPos > 65535)
+      return;
+    if (isRecordingDemo | isPlayingDemo)
+      return;
+    removePasteTextCallback();
+    pasteTextCursorPositionX = xPos;
+    pasteTextCursorPositionY = yPos;
+    ted->setCallback(&pasteTextCallback, (void *) this, 1);
+  }
+
+  std::string Plus4VM::copyText(int xPos, int yPos) const
+  {
+    std::string s = "";
+    if (yPos >= 100) {
+      yPos = (yPos * 288) >> 16;
+      if (!ted->getIsNTSCMode()) {
+        yPos = yPos + 275;
+        if (yPos >= 312)
+          yPos -= 312;
+      }
+      else {
+        yPos = yPos + 225;
+        if (yPos >= 262)
+          yPos -= 262;
+      }
+      if (yPos < 4 || yPos >= 204)
+        return s;
+      yPos = (yPos - 4) / 8;
+    }
+    else if (yPos == -1) {
+      yPos = ted->readMemoryCPU(0x00CD);
+    }
+    if (yPos >= 25)
+      return s;
+    if (yPos < 0)
+      xPos = -2;
+    if (xPos >= 100) {
+      xPos = ((xPos * 384) >> 16) + 424;
+      if (xPos >= 456)
+        xPos -= 456;
+      if (xPos < 0 || xPos >= 320)
+        return s;
+      xPos = xPos / 8;
+    }
+    else if (xPos == -1) {
+      xPos = ted->readMemoryCPU(0x00CA);
+    }
+    if (xPos >= 40)
+      return s;
+    bool    lineContTable[26];
+    for (int i = 0; i < 25; i++) {
+      lineContTable[i] =
+          bool(ted->readMemoryCPU(0x07EE + (i >> 3)) & (0x80 >> (i & 7)));
+    }
+    lineContTable[25] = false;
+    int     firstLine = 0;
+    int     lastLine = 24;
+    if (yPos >= 0) {
+      int     y = yPos;
+      while (y > 0 && lineContTable[y]) {
+        y--;
+        if (xPos >= 0)
+          xPos = xPos + 40;
+      }
+      firstLine = y;
+      while (lineContTable[y + 1])
+        y++;
+      lastLine = y;
+    }
+    for (int y = firstLine; y <= lastLine; y++) {
+      char    tmpBuf[42];
+      for (int x = 0; x < 40; x++) {
+        uint8_t tmp = ted->readMemoryCPU(0x0C00 | ((y * 40) + x)) & 0x7F;
+        if (!((tmp >= 0x20 && tmp <= 0x3F) || (tmp >= 0x41 && tmp <= 0x5A))) {
+          // convert character codes to ASCII:
+          if (tmp >= 0x01 && tmp <= 0x1A)
+            tmp = tmp + 0x60;
+          else if (tmp == 0x00 || tmp == 0x1B || tmp == 0x1D || tmp == 0x1E)
+            tmp = tmp + 0x40;
+          else if (tmp == 0x60)
+            tmp = 0x20;
+          else
+            tmp = 0x5F; // replace any invalid characters with underscores
+        }
+        tmpBuf[x] = char(tmp);
+      }
+      tmpBuf[40] = '\0';
+      if (xPos < 0) {
+        if (yPos >= 0 && !lineContTable[y]) {
+          // strip leading spaces if this is a first line
+          while (tmpBuf[0] == ' ') {
+            for (int i = 0; tmpBuf[i] != '\0'; i++)
+              tmpBuf[i] = tmpBuf[i + 1];
+          }
+        }
+        if (!lineContTable[y + 1]) {
+          // strip trailing spaces if this is a last line,
+          // and append a newline character
+          int     i = 40;
+          while (--i >= 0) {
+            if (tmpBuf[i] == ' ')
+              tmpBuf[i] = '\0';
+            if (tmpBuf[i] == '\0')
+              continue;
+            break;
+          }
+          if (s.length() < 1 && i < 0)  // skip any leading empty lines
+            continue;
+          tmpBuf[i + 1] = '\n';
+          tmpBuf[i + 2] = '\0';
+        }
+      }
+      // append to output buffer
+      s += &(tmpBuf[0]);
+    }
+    // remove trailing newline characters
+    while (s.length() > 0 && s[s.length() - 1] == '\n')
+      s.resize(s.length() - 1);
+    if (xPos >= 0) {
+      // if only a word is copied:
+      int     startPos = xPos;
+      int     endPos = xPos;
+      while (startPos >= 0) {
+        char    c = s[startPos];
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') ||
+              c == '.' || c == '"' || c == '#' || c == '$' || c == '_')) {
+          break;
+        }
+        startPos--;
+      }
+      if (startPos < xPos)
+        startPos++;
+      while (size_t(endPos) < s.length()) {
+        char    c = s[endPos];
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') ||
+              c == '.' || c == '"' || c == '#' || c == '$' || c == '_')) {
+          if (endPos == xPos)
+            endPos++;
+          break;
+        }
+        endPos++;
+      }
+      if ((endPos - startPos) == 1 && s[startPos] == ' ')
+        s.clear();      // do not copy a single space character
+      else
+        s = s.substr(size_t(startPos), size_t(endPos - startPos));
+    }
+    return s;
+  }
+
+  void Plus4VM::pasteText(const char *s, int xPos, int yPos)
+  {
+    if (s == (char *) 0 || s[0] == '\0')
+      return;           // nothing to paste
+    if (isRecordingDemo | isPlayingDemo)
+      return;
+    removePasteTextCallback();
+    size_t  lenp1 = std::strlen(s) + 1;
+    pasteTextBuffer = new char[lenp1];
+    for (size_t i = 0; i < lenp1; i++)
+      pasteTextBuffer[i] = s[i];
+    pasteTextCursorPositionX = xPos;
+    pasteTextCursorPositionY = yPos;
+    ted->setCallback(&pasteTextCallback, (void *) this, 1);
+  }
+
   void Plus4VM::setEnablePrinter(bool isEnabled)
   {
     VC1526  *printer_ =
@@ -1237,7 +1583,7 @@ namespace Plus4 {
       if (fileName_.length() > 0) {
         // insert or replace disk
         bool    isD64 = false;
-        bool    isD81 = false;
+        bool    isD81 = true;
         {
           // find out file type
           std::FILE *f = std::fopen(fileName_.c_str(), "rb");
@@ -1941,7 +2287,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010206); // version 1.2.6
+    demoBuffer.writeUInt32(0x00010207); // version 1.2.7
     demoFile = &f;
     isRecordingDemo = true;
     ted->setCallback(&demoRecordCallback, this, 1);
@@ -1982,6 +2328,7 @@ namespace Plus4 {
     ted->setTapeMotorState(false);
     setTapeMotorState(false);
     stopDemo();
+    removePasteTextCallback();
     snapshotLoadFlag = true;
     disableUnusedFloppyDrives();
     resetFloppyDrive(-1);
@@ -2071,7 +2418,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010206) {
+    if (version != 0x00010207) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }

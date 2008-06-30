@@ -335,6 +335,26 @@ namespace Plus4Emu {
     (void) yPos;
   }
 
+  void VirtualMachine::setCursorPosition(int xPos, int yPos)
+  {
+    (void) xPos;
+    (void) yPos;
+  }
+
+  std::string VirtualMachine::copyText(int xPos, int yPos) const
+  {
+    (void) xPos;
+    (void) yPos;
+    return std::string("");
+  }
+
+  void VirtualMachine::pasteText(const char *s, int xPos, int yPos)
+  {
+    (void) s;
+    (void) xPos;
+    (void) yPos;
+  }
+
   void VirtualMachine::setEnablePrinter(bool isEnabled)
   {
     (void) isEnabled;

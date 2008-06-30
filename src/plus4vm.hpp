@@ -42,18 +42,22 @@ namespace Plus4 {
     class TED7360_ : public TED7360 {
      private:
       Plus4VM&  vm;
-      static uint8_t sidRegisterRead(void *userData, uint16_t addr);
-      static void sidRegisterWrite(void *userData,
-                                   uint16_t addr, uint8_t value);
-      static uint8_t parallelIECRead(void *userData, uint16_t addr);
-      static void parallelIECWrite(void *userData,
-                                   uint16_t addr, uint8_t value);
-      static uint8_t memoryRead0001Callback(void *userData, uint16_t addr);
-      static void memoryWrite0001Callback(void *userData,
-                                          uint16_t addr, uint8_t value);
-      static uint8_t aciaRegisterRead(void *userData, uint16_t addr);
-      static void aciaRegisterWrite(void *userData,
-                                    uint16_t addr, uint8_t value);
+      static PLUS4EMU_REGPARM2 uint8_t sidRegisterRead(
+          void *userData, uint16_t addr);
+      static PLUS4EMU_REGPARM3 void sidRegisterWrite(
+          void *userData, uint16_t addr, uint8_t value);
+      static PLUS4EMU_REGPARM2 uint8_t parallelIECRead(
+          void *userData, uint16_t addr);
+      static PLUS4EMU_REGPARM3 void parallelIECWrite(
+          void *userData, uint16_t addr, uint8_t value);
+      static PLUS4EMU_REGPARM2 uint8_t memoryRead0001Callback(
+          void *userData, uint16_t addr);
+      static PLUS4EMU_REGPARM3 void memoryWrite0001Callback(
+          void *userData, uint16_t addr, uint8_t value);
+      static PLUS4EMU_REGPARM2 uint8_t aciaRegisterRead(
+          void *userData, uint16_t addr);
+      static PLUS4EMU_REGPARM3 void aciaRegisterWrite(
+          void *userData, uint16_t addr, uint8_t value);
      public:
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
@@ -136,6 +140,12 @@ namespace Plus4 {
     bool      drive9Is1551;
     ParallelIECDrive  *iecDrive8;
     ParallelIECDrive  *iecDrive9;
+    int       pasteTextCycleCnt;
+    int       pasteTextWaitCnt;
+    int       pasteTextCursorPositionX;
+    int       pasteTextCursorPositionY;
+    size_t    pasteTextBufferPos;
+    char      *pasteTextBuffer;
     // ----------------
     void stopDemoPlayback();
     void stopDemoRecording(bool writeFile_);
@@ -160,6 +170,10 @@ namespace Plus4 {
         aciaCallbackFlag = isEnabled;
       }
     }
+    static void pasteTextCallback(void *userData);
+    void removePasteTextCallback();
+    bool checkEditorMode() const;
+    void setCursorPosition_(int xPos, int yPos);
    public:
     Plus4VM(Plus4Emu::VideoDisplay&, Plus4Emu::AudioOutput&);
     virtual ~Plus4VM();
@@ -235,6 +249,28 @@ namespace Plus4 {
      * out of range turn off the light pen.
      */
     virtual void setLightPenPosition(int xPos, int yPos);
+    /*!
+     * Set the cursor position. 'xPos' and 'yPos' should be in the range
+     * 0 to 65535 for the visible 768x576 display area.
+     */
+    virtual void setCursorPosition(int xPos, int yPos);
+    /*!
+     * Copy text from the screen memory. 'xPos' and 'yPos' can be a small
+     * integer (0 to 39, and 0 to 24, respectively) to copy from a specific
+     * line or the word at 'xPos', a large integer (100 to 65535) to copy from
+     * a line or word at a physical screen position, or -1 to copy the line or
+     * word at the current cursor position.
+     * If 'yPos' is less than -1, the whole screen is copied as multiple lines,
+     * and 'xPos' is ignored; otherwise, if 'xPos' is less than -1, then a
+     * (logical) line, otherwise a word is copied.
+     */
+    virtual std::string copyText(int xPos, int yPos) const;
+    /*!
+     * Paste the text from 's' to the keyboard buffer of the emulated machine,
+     * optionally setting the cursor position to 'xPos' and 'yPos' (0 to 65535)
+     * first if both are non-negative.
+     */
+    virtual void pasteText(const char *s, int xPos, int yPos);
     /*!
      * Set if printer emulation should be enabled.
      */

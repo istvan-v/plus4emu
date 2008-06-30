@@ -82,6 +82,8 @@ void Plus4EmuGUI::init_()
   printerWindow = (Plus4EmuGUI_PrinterWindow *) 0;
   aboutWindow = (Plus4EmuGUI_AboutWindow *) 0;
   savedSpeedPercentage = 0U;
+  cursorPositionX = -2;
+  cursorPositionY = -2;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
   demoDirectory = defaultDir_;
@@ -114,10 +116,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.6.2 beta (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7 beta (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.6.2 beta (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7 beta (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -765,6 +767,115 @@ void Plus4EmuGUI::resizeWindow(int w, int h)
     emulatorWindow->cursor(FL_CURSOR_NONE);
 }
 
+int Plus4EmuGUI::handleMouseEvent(int event)
+{
+  switch (event) {
+  case FL_PUSH:
+  case FL_DRAG:
+    emulatorWindow->take_focus();
+    {
+      double  xPos_f = double(Fl::event_x());
+      double  yPos_f = double(Fl::event_y());
+      double  w = double(emulatorWindow->w());
+      double  h = double(emulatorWindow->h());
+      w = (w >= 1.0 ? w : 1.0);
+      h = (h >= 1.0 ? h : 1.0);
+      double  aspectRatio = config.display.pixelAspectRatio;
+      aspectRatio = (aspectRatio >= 0.125 ? aspectRatio : 0.125);
+      aspectRatio = (aspectRatio * w / h) * 0.75;
+      xPos_f = xPos_f / w;
+      yPos_f = yPos_f / h;
+      if (aspectRatio >= 1.0)
+        xPos_f = (xPos_f - 0.5) * aspectRatio + 0.5;
+      else
+        yPos_f = (yPos_f - 0.5) / aspectRatio + 0.5;
+      int     xPos = int(xPos_f * 65536.0);
+      int     yPos = int(yPos_f * 65536.0);
+      if (lightPenEnabled) {
+        xPos = xPos - 170;
+        if (xPos >= 0 && xPos < 65536 && yPos >= 0 && yPos < 65536)
+          vmThread.setLightPenPosition(xPos, yPos);
+        else
+          vmThread.setLightPenPosition(-1, -1);
+      }
+      else if (event == FL_PUSH && (displayMode & 1) == 0 &&
+               (xPos >= 256 && xPos < 65280 && yPos >= 256 && yPos < 65280)) {
+        if (Fl::event_button1()) {
+          // left click: set cursor position
+          vmThread.setCursorPosition(xPos, yPos);
+        }
+        else if (Fl::event_button3()) {
+          // right click: copy text to clipboard
+          if (lockVMThread()) {
+            try {
+              std::string s;
+              if (Fl::event_shift()) {
+                // if the shift key is pressed, copy the whole screen
+                s = vm.copyText(-2, -2);
+              }
+              else {
+                vm.setCursorPosition(xPos, yPos);
+                if (Fl::event_ctrl()) {
+                  // if the control key is pressed, copy the selected line
+                  s = vm.copyText(-2, yPos);
+                }
+                else {
+                  // otherwise just copy the selected word
+                  s = vm.copyText(xPos, yPos);
+                }
+              }
+              Fl::copy(s.c_str(), int(s.length()), 0);
+              unlockVMThread();
+            }
+            catch (std::exception& e) {
+              unlockVMThread();
+              errorMessage(e.what());
+            }
+          }
+        }
+        else if (Fl::event_button2()) {
+          // middle click: paste text from clipboard
+          if (Fl::event_shift()) {
+            // do not set cursor position if the shift key is pressed
+            cursorPositionX = -1;
+            cursorPositionY = -1;
+          }
+          else {
+            // save cursor position
+            cursorPositionX = xPos;
+            cursorPositionY = yPos;
+          }
+          Fl::paste(*emulatorWindow, 0);
+        }
+      }
+    }
+    break;
+  case FL_RELEASE:
+    vmThread.setLightPenPosition(-1, -1);
+    break;
+  case FL_PASTE:
+    // pasting text from the clipboard
+    if (cursorPositionX >= -1 && cursorPositionY >= -1) {
+      int     xPos = cursorPositionX;
+      int     yPos = cursorPositionY;
+      cursorPositionX = -2;
+      cursorPositionY = -2;
+      if (lockVMThread()) {
+        try {
+          vm.pasteText(Fl::event_text(), xPos, yPos);
+          unlockVMThread();
+        }
+        catch (std::exception& e) {
+          unlockVMThread();
+          errorMessage(e.what());
+        }
+      }
+    }
+    break;
+  }
+  return 1;
+}
+
 int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
@@ -782,35 +893,9 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
     return 1;
   case FL_PUSH:
   case FL_DRAG:
-    gui_.emulatorWindow->take_focus();
-    if (gui_.lightPenEnabled) {
-      double  xPos = double(Fl::event_x());
-      double  yPos = double(Fl::event_y());
-      double  w = double(gui_.emulatorWindow->w());
-      double  h = double(gui_.emulatorWindow->h());
-      w = (w >= 1.0 ? w : 1.0);
-      h = (h >= 1.0 ? h : 1.0);
-      double  aspectRatio = gui_.config.display.pixelAspectRatio;
-      aspectRatio = (aspectRatio >= 0.125 ? aspectRatio : 0.125);
-      aspectRatio = (aspectRatio * w / h) * 0.75;
-      xPos = xPos / w;
-      yPos = yPos / h;
-      if (aspectRatio >= 1.0)
-        xPos = (xPos - 0.5) * aspectRatio + 0.5;
-      else
-        yPos = (yPos - 0.5) / aspectRatio + 0.5;
-      xPos = xPos - 0.002604;
-      if (xPos >= 0.0 && xPos < 1.0 && yPos >= 0.0 && yPos < 1.0) {
-        gui_.vmThread.setLightPenPosition(int(xPos * 65536.0),
-                                          int(yPos * 65536.0));
-      }
-      else
-        gui_.vmThread.setLightPenPosition(-1, -1);
-    }
-    return 1;
   case FL_RELEASE:
-    gui_.vmThread.setLightPenPosition(-1, -1);
-    return 1;
+  case FL_PASTE:
+    return gui_.handleMouseEvent(event);
   case FL_KEYUP:
   case FL_KEYDOWN:
     {

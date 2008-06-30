@@ -371,6 +371,12 @@ namespace Plus4Emu {
                      xPos_, yPos_));
   }
 
+  void VMThread::setCursorPosition(int xPos_, int yPos_)
+  {
+    queueMessage(allocateMessage<Message_CursorPositionEvent, int, int>(
+                     xPos_, yPos_));
+  }
+
   void VMThread::tapePlay()
   {
     queueMessage(allocateMessage<Message_TapePlay>());
@@ -520,6 +526,15 @@ namespace Plus4Emu {
   void VMThread::Message_LightPenEvent::process()
   {
     vmThread.vm.setLightPenPosition(xPos, yPos);
+  }
+
+  VMThread::Message_CursorPositionEvent::~Message_CursorPositionEvent()
+  {
+  }
+
+  void VMThread::Message_CursorPositionEvent::process()
+  {
+    vmThread.vm.setCursorPosition(xPos, yPos);
   }
 
   VMThread::Message_TapePlay::~Message_TapePlay()

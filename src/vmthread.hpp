@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -129,6 +129,11 @@ namespace Plus4Emu {
      */
     void setLightPenPosition(int xPos_, int yPos_);
     /*!
+     * Set the cursor position. 'xPos_' and 'yPos_' should be in the range
+     * 0 to 65535 for the visible 768x576 display area.
+     */
+    void setCursorPosition(int xPos_, int yPos_);
+    /*!
      * Start tape playback.
      */
     void tapePlay();
@@ -241,6 +246,20 @@ namespace Plus4Emu {
       {
       }
       virtual ~Message_LightPenEvent();
+      virtual void process();
+    };
+    class Message_CursorPositionEvent : public Message {
+     private:
+      int     xPos;
+      int     yPos;
+     public:
+      Message_CursorPositionEvent(VMThread& vmThread_, int xPos_, int yPos_)
+        : Message(vmThread_),
+          xPos(xPos_),
+          yPos(yPos_)
+      {
+      }
+      virtual ~Message_CursorPositionEvent();
       virtual void process();
     };
     class Message_TapePlay : public Message {
