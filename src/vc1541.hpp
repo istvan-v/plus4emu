@@ -113,15 +113,24 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // ----------------
-    static uint8_t readMemory_RAM(void *userData, uint16_t addr);
-    static uint8_t readMemory_Dummy(void *userData, uint16_t addr);
-    static uint8_t readMemory_VIA1(void *userData, uint16_t addr);
-    static uint8_t readMemory_VIA2(void *userData, uint16_t addr);
-    static uint8_t readMemory_ROM(void *userData, uint16_t addr);
-    static void writeMemory_RAM(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_VIA1(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_VIA2(void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_Dummy(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_VIA1(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_VIA2(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeMemory_RAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_Dummy(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_VIA1(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_VIA2(
+        void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
     static void processCallback(void *userData);

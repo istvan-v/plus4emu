@@ -44,6 +44,13 @@ namespace Plus4 {
     }
   };
 
+  typedef PLUS4EMU_REGPARM2 uint8_t (*M7501MemoryReadCallback)(void *userData,
+                                                               uint16_t addr);
+
+  typedef PLUS4EMU_REGPARM3 void (*M7501MemoryWriteCallback)(void *userData,
+                                                             uint16_t addr,
+                                                             uint8_t value);
+
   class M7501 : protected M7501Registers {
    private:
     static const unsigned char  CPU_OP_RD_OPCODE            =  0;
@@ -149,11 +156,8 @@ namespace Plus4 {
     uint8_t     reg_L;
     uint8_t     reg_H;
     bool        breakOnInvalidOpcode;
-    typedef uint8_t (*MemoryReadFunc)(void *userData, uint16_t addr);
-    typedef void (*MemoryWriteFunc)(void *userData,
-                                    uint16_t addr, uint8_t value);
-    MemoryReadFunc  *memoryReadCallbacks;
-    MemoryWriteFunc *memoryWriteCallbacks;
+    M7501MemoryReadCallback   *memoryReadCallbacks;
+    M7501MemoryWriteCallback  *memoryWriteCallbacks;
     void        *memoryCallbackUserData;
     uint8_t     *breakPointTable;
     unsigned int  breakPointCnt;
@@ -179,15 +183,12 @@ namespace Plus4 {
     M7501();
     virtual ~M7501();
     inline void setMemoryReadCallback(uint16_t addr_,
-                                      uint8_t (*func)(void *userData,
-                                                      uint16_t addr))
+                                      M7501MemoryReadCallback func)
     {
       memoryReadCallbacks[addr_] = func;
     }
     inline void setMemoryWriteCallback(uint16_t addr_,
-                                       void (*func)(void *userData,
-                                                    uint16_t addr,
-                                                    uint8_t value))
+                                       M7501MemoryWriteCallback func)
     {
       memoryWriteCallbacks[addr_] = func;
     }
@@ -195,11 +196,11 @@ namespace Plus4 {
     {
       memoryCallbackUserData = userData;
     }
-    inline MemoryReadFunc getMemoryReadCallback(uint16_t addr_) const
+    inline M7501MemoryReadCallback getMemoryReadCallback(uint16_t addr_) const
     {
       return memoryReadCallbacks[addr_];
     }
-    inline MemoryWriteFunc getMemoryWriteCallback(uint16_t addr_) const
+    inline M7501MemoryWriteCallback getMemoryWriteCallback(uint16_t addr_) const
     {
       return memoryWriteCallbacks[addr_];
     }

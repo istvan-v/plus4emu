@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 
 namespace Plus4 {
 
-  void TED7360::write_register_0000(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_0000(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -32,8 +32,8 @@ namespace Plus4 {
     ted.writeMemory(0x0001, ted.ioRegister_0001);
   }
 
-  void TED7360::write_register_0001(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_0001(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -44,8 +44,8 @@ namespace Plus4 {
     ted.ioPortWrite(tmp);
   }
 
-  void TED7360::write_register_FD1x(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FD1x(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -54,8 +54,8 @@ namespace Plus4 {
       ted.user_port_state = value;
   }
 
-  void TED7360::write_register_FD3x(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FD3x(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -63,8 +63,8 @@ namespace Plus4 {
     ted.keyboard_row_select_mask = int(value) | 0xFF00;
   }
 
-  void TED7360::write_register_FFxx(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FFxx(
+      void *userData, uint16_t addr, uint8_t value)
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
@@ -72,8 +72,8 @@ namespace Plus4 {
     ted.tedRegisters[n] = value;
   }
 
-  void TED7360::write_register_FF00(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF00(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -83,8 +83,8 @@ namespace Plus4 {
     ted.timer1_reload_value = (ted.timer1_reload_value & 0xFF00) | int(value);
   }
 
-  void TED7360::write_register_FF01(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF01(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -95,8 +95,8 @@ namespace Plus4 {
     ted.timer1_reload_value = (ted.timer1_reload_value & 0x00FF) | tmp;
   }
 
-  void TED7360::write_register_FF02(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF02(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -106,8 +106,8 @@ namespace Plus4 {
     ted.timer2_state = (ted.timer2_state & 0xFF00) | int(value);
   }
 
-  void TED7360::write_register_FF03(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF03(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -121,8 +121,8 @@ namespace Plus4 {
     ted.timer2_state = (ted.timer2_state & 0x00FF) | (int(value) << 8);
   }
 
-  void TED7360::write_register_FF04(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF04(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -131,8 +131,8 @@ namespace Plus4 {
     ted.timer3_state = (ted.timer3_state & 0xFF00) | int(value);
   }
 
-  void TED7360::write_register_FF05(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF05(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -141,8 +141,8 @@ namespace Plus4 {
     ted.timer3_state = (ted.timer3_state & 0x00FF) | (int(value) << 8);
   }
 
-  void TED7360::write_register_FF06(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF06(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -193,8 +193,8 @@ namespace Plus4 {
     }
   }
 
-  void TED7360::write_register_FF07(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF07(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -244,8 +244,8 @@ namespace Plus4 {
     }
   }
 
-  void TED7360::write_register_FF08(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF08(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -259,8 +259,8 @@ namespace Plus4 {
     ted.tedRegisters[0x08] = key_state;
   }
 
-  void TED7360::write_register_FF09(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF09(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -271,8 +271,8 @@ namespace Plus4 {
     ted.updateInterruptFlag();
   }
 
-  void TED7360::write_register_FF0A(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0A(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -284,8 +284,8 @@ namespace Plus4 {
     ted.checkVideoInterrupt();
   }
 
-  void TED7360::write_register_FF0B(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0B(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -296,8 +296,8 @@ namespace Plus4 {
     ted.checkVideoInterrupt();
   }
 
-  void TED7360::write_register_FF0C(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0C(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -307,8 +307,8 @@ namespace Plus4 {
     ted.cursor_position |= (int(value & uint8_t(0x03)) << 8);
   }
 
-  void TED7360::write_register_FF0D(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0D(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -318,8 +318,8 @@ namespace Plus4 {
     ted.cursor_position |= int(value);
   }
 
-  void TED7360::write_register_FF12(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF12(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -332,8 +332,8 @@ namespace Plus4 {
     ted.soundChannel1Reload = uint16_t((((tmp + 1) ^ 0x03FF) & 0x03FF) + 1);
   }
 
-  void TED7360::write_register_FF13(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF13(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -344,8 +344,8 @@ namespace Plus4 {
     ted.updateVideoMode();
   }
 
-  void TED7360::write_register_FF14(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF14(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -354,8 +354,8 @@ namespace Plus4 {
     ted.dmaBaseAddr = (ted.dmaBaseAddr & 0x0400) | (int(value & 0xF8) << 8);
   }
 
-  void TED7360::write_register_FF15_to_FF19(void *userData,
-                                            uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF15_to_FF19(
+      void *userData, uint16_t addr, uint8_t value)
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     ted.dataBusState = value;
@@ -369,8 +369,8 @@ namespace Plus4 {
       ted.delayedEvents0.setColorRegister(n);
   }
 
-  void TED7360::write_register_FF1A(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1A(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -380,8 +380,8 @@ namespace Plus4 {
         (int(value & 0x03) << 8) | int(ted.tedRegisters[0x1B]);
   }
 
-  void TED7360::write_register_FF1B(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1B(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -391,8 +391,8 @@ namespace Plus4 {
         (int(ted.tedRegisters[0x1A] & 0x03) << 8) | int(value);
   }
 
-  void TED7360::write_register_FF1C(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1C(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -403,8 +403,8 @@ namespace Plus4 {
     ted.checkVideoInterrupt();
   }
 
-  void TED7360::write_register_FF1D(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1D(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -415,8 +415,8 @@ namespace Plus4 {
     ted.checkVideoInterrupt();
   }
 
-  void TED7360::write_register_FF1E(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1E(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -427,8 +427,8 @@ namespace Plus4 {
     ted.tedRegisters[0x1E] = ted.videoColumn;
   }
 
-  void TED7360::write_register_FF1F(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF1F(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));

@@ -21,18 +21,10 @@
 #include "cpu.hpp"
 #include "ted.hpp"
 
-#ifdef REGPARM
-#  undef REGPARM
-#endif
-#if defined(__GNUC__) && (__GNUC__ >= 3) && defined(__i386__) && !defined(__ICC)
-#  define REGPARM __attribute__ ((__regparm__ (2)))
-#else
-#  define REGPARM
-#endif
-
 namespace Plus4 {
 
-  REGPARM void TED7360::render_BMM_hires(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_BMM_hires(TED7360& ted,
+                                                   int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -109,7 +101,8 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_BMM_multicolor(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_BMM_multicolor(TED7360& ted,
+                                                        int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -199,7 +192,7 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_char_std(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_char_std(TED7360& ted, int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -295,7 +288,7 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_char_ECM(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_char_ECM(TED7360& ted, int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -373,7 +366,7 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_char_MCM(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_char_MCM(TED7360& ted, int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -527,7 +520,7 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_blank(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_blank(TED7360& ted, int nextCharCnt)
   {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
@@ -548,7 +541,7 @@ namespace Plus4 {
     }
   }
 
-  REGPARM void TED7360::render_border(TED7360& ted, int nextCharCnt)
+  PLUS4EMU_REGPARM2 void TED7360::render_border(TED7360& ted, int nextCharCnt)
   {
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;

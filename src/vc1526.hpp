@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -95,20 +95,30 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // --------
-    static uint8_t readRIOT1RAM(void *userData, uint16_t addr);
-    static void writeRIOT1RAM(void *userData, uint16_t addr, uint8_t value);
-    static uint8_t readRIOT2RAM(void *userData, uint16_t addr);
-    static void writeRIOT2RAM(void *userData, uint16_t addr, uint8_t value);
-    static uint8_t readMemoryROM(void *userData, uint16_t addr);
-    static void writeMemoryDummy(void *userData, uint16_t addr, uint8_t value);
-    static uint8_t readVIARegister(void *userData, uint16_t addr);
-    static void writeVIARegister(void *userData, uint16_t addr, uint8_t value);
-    static uint8_t readRIOT1Register(void *userData, uint16_t addr);
-    static void writeRIOT1Register(void *userData,
-                                   uint16_t addr, uint8_t value);
-    static uint8_t readRIOT2Register(void *userData, uint16_t addr);
-    static void writeRIOT2Register(void *userData,
-                                   uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readRIOT1RAM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeRIOT1RAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readRIOT2RAM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeRIOT2RAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readMemoryROM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeMemoryDummy(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readVIARegister(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeVIARegister(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readRIOT1Register(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeRIOT1Register(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readRIOT2Register(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeRIOT2Register(
+        void *userData, uint16_t addr, uint8_t value);
     void updatePins();
     void updateMotors();
     static void processCallback(void *userData);

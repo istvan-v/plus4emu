@@ -20,15 +20,16 @@
 #include "plus4emu.hpp"
 #include "cpu.hpp"
 
-static uint8_t dummyMemoryReadCallback(void *userData, uint16_t addr)
+static PLUS4EMU_REGPARM2
+    uint8_t dummyMemoryReadCallback(void *userData, uint16_t addr)
 {
   (void) userData;
   (void) addr;
   return uint8_t(0xFF);
 }
 
-static void dummyMemoryWriteCallback(void *userData,
-                                     uint16_t addr, uint8_t value)
+static PLUS4EMU_REGPARM3
+    void dummyMemoryWriteCallback(void *userData, uint16_t addr, uint8_t value)
 {
   (void) userData;
   (void) addr;
@@ -48,8 +49,8 @@ namespace Plus4 {
       reg_L(0),
       reg_H(0),
       breakOnInvalidOpcode(false),
-      memoryReadCallbacks((MemoryReadFunc *) 0),
-      memoryWriteCallbacks((MemoryWriteFunc *) 0),
+      memoryReadCallbacks((M7501MemoryReadCallback *) 0),
+      memoryWriteCallbacks((M7501MemoryWriteCallback *) 0),
       memoryCallbackUserData((void *) 0),
       breakPointTable((uint8_t *) 0),
       breakPointCnt(0U),
@@ -60,10 +61,10 @@ namespace Plus4 {
       newPCAddress(int32_t(-1))
   {
     try {
-      memoryReadCallbacks = new MemoryReadFunc[65536];
+      memoryReadCallbacks = new M7501MemoryReadCallback[65536];
       for (size_t i = 0; i < 65536; i++)
         memoryReadCallbacks[i] = &dummyMemoryReadCallback;
-      memoryWriteCallbacks = new MemoryWriteFunc[65536];
+      memoryWriteCallbacks = new M7501MemoryWriteCallback[65536];
       for (size_t i = 0; i < 65536; i++)
         memoryWriteCallbacks[i] = &dummyMemoryWriteCallback;
     }

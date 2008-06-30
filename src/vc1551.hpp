@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -192,14 +192,22 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // ----------------
-    static uint8_t readMemory_RAM(void *userData, uint16_t addr);
-    static uint8_t readMemory_Dummy(void *userData, uint16_t addr);
-    static uint8_t readMemory_TIA(void *userData, uint16_t addr);
-    static uint8_t readMemory_ROM(void *userData, uint16_t addr);
-    static void writeMemory_RAM(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_0001(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value);
-    static void writeMemory_TIA(void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_Dummy(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_TIA(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeMemory_RAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_0001(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_Dummy(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeMemory_TIA(
+        void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
     void updateParallelInterface();

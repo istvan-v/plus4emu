@@ -81,28 +81,32 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  uint8_t VC1551::readMemory_RAM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_RAM(
+      void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = vc1551.memory_ram[addr & 0x07FF];
     return vc1551.dataBusState;
   }
 
-  uint8_t VC1551::readMemory_Dummy(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_Dummy(
+      void *userData, uint16_t addr)
   {
     (void) addr;
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     return vc1551.dataBusState;
   }
 
-  uint8_t VC1551::readMemory_TIA(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_TIA(
+      void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = vc1551.tpi1.readRegister(addr);
     return vc1551.dataBusState;
   }
 
-  uint8_t VC1551::readMemory_ROM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_ROM(
+      void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     if (vc1551.memory_rom)
@@ -110,14 +114,16 @@ namespace Plus4 {
     return vc1551.dataBusState;
   }
 
-  void VC1551::writeMemory_RAM(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1551::writeMemory_RAM(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = value & 0xFF;
     vc1551.memory_ram[addr & 0x07FF] = vc1551.dataBusState;
   }
 
-  void VC1551::writeMemory_0001(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1551::writeMemory_0001(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
@@ -125,14 +131,16 @@ namespace Plus4 {
     vc1551.memory_ram[0x0001] |= (value & uint8_t(0x6F));
   }
 
-  void VC1551::writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1551::writeMemory_Dummy(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = value & 0xFF;
   }
 
-  void VC1551::writeMemory_TIA(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1551::writeMemory_TIA(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.dataBusState = value & 0xFF;

@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -70,16 +70,20 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // memory read/write callbacks
-    static uint8_t readRAM(void *userData, uint16_t addr);
-    static uint8_t readDummy(void *userData, uint16_t addr);
-    static uint8_t readCIA8520(void *userData, uint16_t addr);
-    static uint8_t readWD177x(void *userData, uint16_t addr);
-    static uint8_t readROM0(void *userData, uint16_t addr);
-    static uint8_t readROM1(void *userData, uint16_t addr);
-    static void writeRAM(void *userData, uint16_t addr, uint8_t value);
-    static void writeDummy(void *userData, uint16_t addr, uint8_t value);
-    static void writeCIA8520(void *userData, uint16_t addr, uint8_t value);
-    static void writeWD177x(void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM2 uint8_t readRAM(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readDummy(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readCIA8520(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readWD177x(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readROM0(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readROM1(void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeRAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeDummy(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeCIA8520(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeWD177x(
+        void *userData, uint16_t addr, uint8_t value);
     static void processCallback(void *userData);
    public:
     VC1581(SerialBus& serialBus_, int driveNum_ = 8);

@@ -24,15 +24,6 @@
 #include "fileio.hpp"
 #include "cpu.hpp"
 
-#ifdef REGPARM
-#  undef REGPARM
-#endif
-#if defined(__GNUC__) && (__GNUC__ >= 3) && defined(__i386__) && !defined(__ICC)
-#  define REGPARM __attribute__ ((__regparm__ (2)))
-#else
-#  define REGPARM
-#endif
-
 namespace Plus4 {
 
   class TED7360 : public M7501 {
@@ -225,141 +216,183 @@ namespace Plus4 {
         this->mask_ |= uint32_t(0x80000000U);
       }
     };
-    // memory and register read functions
-    static uint8_t  read_memory_0000_to_0FFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_1000_to_3FFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_4000_to_7FFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_8000_to_BFFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_C000_to_FBFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_FC00_to_FCFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_FD00_to_FEFF(void *userData, uint16_t addr);
-    static uint8_t  read_memory_FF00_to_FFFF(void *userData, uint16_t addr);
-    static uint8_t  read_register_0000(void *userData, uint16_t addr);
-    static uint8_t  read_register_0001(void *userData, uint16_t addr);
-    static uint8_t  read_register_FD0x(void *userData, uint16_t addr);
-    static uint8_t  read_register_FD1x(void *userData, uint16_t addr);
-    static uint8_t  read_register_FD16(void *userData, uint16_t addr);
-    static uint8_t  read_register_FD3x(void *userData, uint16_t addr);
-    static uint8_t  read_register_FFxx(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF00(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF01(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF02(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF03(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF04(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF05(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF06(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF09(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF0A(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF0C(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF10(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF12(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF13(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF14(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1A(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1B(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1C(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1E(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF1F(void *userData, uint16_t addr);
-    static uint8_t  read_register_FF3E_FF3F(void *userData, uint16_t addr);
-    // memory and register write functions
-    static void     write_memory_0000_to_0FFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_1000_to_3FFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_4000_to_7FFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_8000_to_BFFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_C000_to_FBFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_FC00_to_FCFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_FD00_to_FEFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_memory_FF00_to_FFFF(void *userData,
-                                              uint16_t addr, uint8_t value);
-    static void     write_register_0000(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_0001(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FD1x(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FD16(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FD3x(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FDDx(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FFxx(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF00(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF01(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF02(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF03(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF04(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF05(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF06(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF07(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF08(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF09(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0A(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0B(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0C(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0D(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0E(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF0F(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF10(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF11(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF12(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF13(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF14(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF15_to_FF19(void *userData,
-                                                uint16_t addr, uint8_t value);
-    static void     write_register_FF1A(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF1B(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF1C(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF1D(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF1E(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF1F(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF3E(void *userData,
-                                        uint16_t addr, uint8_t value);
-    static void     write_register_FF3F(void *userData,
-                                        uint16_t addr, uint8_t value);
+    // memory and TED register read functions
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_0000_to_0FFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_1000_to_3FFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_4000_to_7FFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_8000_to_BFFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_C000_to_FBFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_FC00_to_FCFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_FD00_to_FEFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_memory_FF00_to_FFFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_0000(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_0001(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FD0x(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FD1x(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FD16(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FD3x(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FFxx(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF00(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF01(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF02(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF03(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF04(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF05(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF06(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF09(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF0A(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF0C(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF10(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF12(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF13(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF14(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF1A(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF1B(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF1C(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF1E(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF1F(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t read_register_FF3E_FF3F(
+        void *userData, uint16_t addr);
+    // memory and TED register write functions
+    static PLUS4EMU_REGPARM3 void write_memory_0000_to_0FFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_1000_to_3FFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_4000_to_7FFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_8000_to_BFFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_C000_to_FBFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_FC00_to_FCFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_FD00_to_FEFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_memory_FF00_to_FFFF(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_0000(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_0001(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FD1x(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FD16(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FD3x(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FDDx(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FFxx(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF00(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF01(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF02(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF03(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF04(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF05(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF06(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF07(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF08(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF09(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0A(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0B(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0C(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0D(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0E(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF0F(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF10(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF11(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF12(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF13(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF14(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF15_to_FF19(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1A(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1B(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1C(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1D(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1E(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF1F(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF3E(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void write_register_FF3F(
+        void *userData, uint16_t addr, uint8_t value);
     // render functions
-    static REGPARM void render_BMM_hires(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_BMM_multicolor(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_char_std(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_char_ECM(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_char_MCM(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_blank(TED7360& ted, int nextCharCnt);
-    static REGPARM void render_border(TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_BMM_hires(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_BMM_multicolor(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_char_std(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_char_ECM(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_char_MCM(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_blank(
+        TED7360& ted, int nextCharCnt);
+    static PLUS4EMU_REGPARM2 void render_border(
+        TED7360& ted, int nextCharCnt);
     void updateVideoMode();
     void initRegisters();
     void initializeRAMSegment(uint8_t *p);
@@ -394,9 +427,11 @@ namespace Plus4 {
     // Render function selected by bits of FF06 and FF07; writes four pixels
     // to the video output buffer. 'nextCharCnt' is the number of pixels
     // remaining until the next character.
-    REGPARM void (*render_func)(TED7360& ted, int nextCharCnt);
+    PLUS4EMU_REGPARM2 void (*render_func)(
+        TED7360& ted, int nextCharCnt);
     // Currently used render function (may be blanking or border).
-    REGPARM void (*current_render_func)(TED7360& ted, int nextCharCnt);
+    PLUS4EMU_REGPARM2 void (*current_render_func)(
+        TED7360& ted, int nextCharCnt);
     // CPU clock multiplier
     int         cpu_clock_multiplier;
     // current video line (0 to 311, = (FF1D, FF1C))
@@ -813,10 +848,6 @@ namespace Plus4 {
   };
 
 }       // namespace Plus4
-
-#ifdef REGPARM
-#  undef REGPARM
-#endif
 
 #endif  // PLUS4EMU_TED_HPP
 

@@ -597,21 +597,24 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  uint8_t VC1541::readMemory_RAM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1541::readMemory_RAM(
+      void *userData, uint16_t addr)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = vc1541.memory_ram[addr & 0x07FF];
     return vc1541.dataBusState;
   }
 
-  uint8_t VC1541::readMemory_Dummy(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1541::readMemory_Dummy(
+      void *userData, uint16_t addr)
   {
     (void) addr;
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     return vc1541.dataBusState;
   }
 
-  uint8_t VC1541::readMemory_VIA1(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1541::readMemory_VIA1(
+      void *userData, uint16_t addr)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     uint8_t serialBusInput = uint8_t((vc1541.serialBus.getDATA() & 0x01)
@@ -622,14 +625,16 @@ namespace Plus4 {
     return vc1541.dataBusState;
   }
 
-  uint8_t VC1541::readMemory_VIA2(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1541::readMemory_VIA2(
+      void *userData, uint16_t addr)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = vc1541.via2.readRegister(addr & 0x000F);
     return vc1541.dataBusState;
   }
 
-  uint8_t VC1541::readMemory_ROM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1541::readMemory_ROM(
+      void *userData, uint16_t addr)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     if (vc1541.memory_rom)
@@ -637,21 +642,24 @@ namespace Plus4 {
     return vc1541.dataBusState;
   }
 
-  void VC1541::writeMemory_RAM(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1541::writeMemory_RAM(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = value & 0xFF;
     vc1541.memory_ram[addr & 0x07FF] = vc1541.dataBusState;
   }
 
-  void VC1541::writeMemory_Dummy(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1541::writeMemory_Dummy(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = value & 0xFF;
   }
 
-  void VC1541::writeMemory_VIA1(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1541::writeMemory_VIA1(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = value & 0xFF;
@@ -659,7 +667,8 @@ namespace Plus4 {
     vc1541.via1.writeRegister(addr, vc1541.dataBusState);
   }
 
-  void VC1541::writeMemory_VIA2(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1541::writeMemory_VIA2(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.dataBusState = value & 0xFF;

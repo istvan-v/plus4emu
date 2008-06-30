@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -95,31 +95,36 @@ namespace Plus4 {
 
   // --------------------------------------------------------------------------
 
-  uint8_t VC1526::readRIOT1RAM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readRIOT1RAM(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     return vc1526.riot1.readMemory(addr);
   }
 
-  void VC1526::writeRIOT1RAM(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeRIOT1RAM(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.riot1.writeMemory(addr, value);
   }
 
-  uint8_t VC1526::readRIOT2RAM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readRIOT2RAM(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     return vc1526.riot2.readMemory(addr);
   }
 
-  void VC1526::writeRIOT2RAM(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeRIOT2RAM(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.riot2.writeMemory(addr, value);
   }
 
-  uint8_t VC1526::readMemoryROM(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readMemoryROM(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     if (vc1526.memory_rom != (uint8_t *) 0)
@@ -127,26 +132,30 @@ namespace Plus4 {
     return 0xFF;
   }
 
-  void VC1526::writeMemoryDummy(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeMemoryDummy(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) userData;
     (void) addr;
     (void) value;
   }
 
-  uint8_t VC1526::readVIARegister(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readVIARegister(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     return vc1526.via.readRegister(addr);
   }
 
-  void VC1526::writeVIARegister(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeVIARegister(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.via.writeRegister(addr, value);
   }
 
-  uint8_t VC1526::readRIOT1Register(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readRIOT1Register(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     uint8_t riot1PortAInput = vc1526.riot1.getPortAInput() & 0x7C;
@@ -158,19 +167,22 @@ namespace Plus4 {
     return vc1526.riot1.readRegister(addr);
   }
 
-  void VC1526::writeRIOT1Register(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeRIOT1Register(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.riot1.writeRegister(addr, value);
   }
 
-  uint8_t VC1526::readRIOT2Register(void *userData, uint16_t addr)
+  PLUS4EMU_REGPARM2 uint8_t VC1526::readRIOT2Register(
+      void *userData, uint16_t addr)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     return vc1526.riot2.readRegister(addr);
   }
 
-  void VC1526::writeRIOT2Register(void *userData, uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void VC1526::writeRIOT2Register(
+      void *userData, uint16_t addr, uint8_t value)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.riot2.writeRegister(addr, value);
@@ -209,8 +221,8 @@ namespace Plus4 {
       pageBuf[i] = 0xFF;        // clear to white
     cpu.setMemoryCallbackUserData((void *) this);
     for (uint16_t i = 0x0000; i <= 0x1FFF; i++) {
-      uint8_t (*readCallback_)(void *, uint16_t) = &readMemoryROM;
-      void    (*writeCallback_)(void *, uint16_t, uint8_t) = &writeMemoryDummy;
+      M7501MemoryReadCallback   readCallback_ = &readMemoryROM;
+      M7501MemoryWriteCallback  writeCallback_ = &writeMemoryDummy;
       if (i < 0x0200) {
         if (!(i & 0x0080)) {
           readCallback_ = &readRIOT1RAM;

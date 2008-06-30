@@ -69,8 +69,8 @@ static const int16_t  tedSoundDistortionTable[301] = {
 
 namespace Plus4 {
 
-  void TED7360::write_register_FF0E(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0E(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -80,8 +80,8 @@ namespace Plus4 {
     ted.soundChannel1Reload = uint16_t((((tmp + 1) ^ 0x03FF) & 0x03FF) + 1);
   }
 
-  void TED7360::write_register_FF0F(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF0F(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -91,8 +91,8 @@ namespace Plus4 {
     ted.soundChannel2Reload = uint16_t((((tmp + 1) ^ 0x03FF) & 0x03FF) + 1);
   }
 
-  void TED7360::write_register_FF10(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF10(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
@@ -102,8 +102,8 @@ namespace Plus4 {
     ted.soundChannel2Reload = uint16_t((((tmp + 1) ^ 0x03FF) & 0x03FF) + 1);
   }
 
-  void TED7360::write_register_FF11(void *userData,
-                                    uint16_t addr, uint8_t value)
+  PLUS4EMU_REGPARM3 void TED7360::write_register_FF11(
+      void *userData, uint16_t addr, uint8_t value)
   {
     (void) addr;
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
