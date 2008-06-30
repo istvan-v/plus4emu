@@ -47,11 +47,7 @@ int main(int argc, char **argv)
   try {
     Fl::lock();
     fl_register_images();
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-    Plus4Emu::setGUIColorScheme(1);
-#else
-    Plus4Emu::setGUIColorScheme(0);
-#endif
+    Plus4Emu::setGUIColorScheme(3);
     Plus4FLIConv::FLIConfiguration  config;
     config.resetDefaultSettings();
     std::string infileName = "";
