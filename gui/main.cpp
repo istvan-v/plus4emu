@@ -58,6 +58,7 @@ int main(int argc, char **argv)
   int       diskNameIndex = 0;
   int       tapeNameIndex = 0;
   int       snapshotNameIndex = 0;
+  int       pasteTextIndex = 0;
   int       colorScheme = 0;
   int       retval = 0;
   bool      glEnabled = true;
@@ -88,6 +89,11 @@ int main(int argc, char **argv)
         if (++i >= argc)
           throw Plus4Emu::Exception("missing snapshot file name");
         snapshotNameIndex = i;
+      }
+      else if (std::strcmp(argv[i], "-keybuf") == 0) {
+        if (++i >= argc)
+          throw Plus4Emu::Exception("missing text for -keybuf");
+        pasteTextIndex = i;
       }
       else if (std::strcmp(argv[i], "-colorscheme") == 0) {
         if (++i >= argc)
@@ -123,6 +129,9 @@ int main(int argc, char **argv)
                   << std::endl;
         std::cerr << "    -snapshot <FNAME>   "
                      "load snapshot or demo file on startup" << std::endl;
+        std::cerr << "    -keybuf <TEXT>      "
+                     "type TEXT on startup (can be any length, or @FILENAME)"
+                  << std::endl;
         std::cerr << "    -opengl             "
                      "use OpenGL video driver (this is the default)"
                   << std::endl;
@@ -228,6 +237,7 @@ int main(int argc, char **argv)
                std::strcmp(argv[i], "-disk") == 0 ||
                std::strcmp(argv[i], "-tape") == 0 ||
                std::strcmp(argv[i], "-snapshot") == 0 ||
+               std::strcmp(argv[i], "-keybuf") == 0 ||
                std::strcmp(argv[i], "-colorscheme") == 0) {
         i++;
       }
@@ -256,12 +266,12 @@ int main(int argc, char **argv)
       }
     }
     config->applySettings();
-    if (snapshotNameIndex >= 1) {
+    if (snapshotNameIndex > 0) {
       Plus4Emu::File  f(argv[snapshotNameIndex], false);
       vm->registerChunkTypes(f);
       f.processAllChunks();
     }
-    else if (prgNameIndex >= 1) {
+    else if (prgNameIndex > 0) {
       vm->setEnableDisplay(false);
       vm->setEnableAudioOutput(false);
       vm->run(900000);
@@ -270,7 +280,7 @@ int main(int argc, char **argv)
       vm->setEnableDisplay(config->display.enabled);
       vm->setEnableAudioOutput(config->sound.enabled);
     }
-    else if (diskNameIndex >= 1) {
+    else if (diskNameIndex > 0) {
       (*config)["floppy.a.imageFile"] = argv[diskNameIndex];
       config->applySettings();
       vm->setEnableDisplay(false);
@@ -286,7 +296,7 @@ int main(int argc, char **argv)
       vm->setEnableDisplay(config->display.enabled);
       vm->setEnableAudioOutput(config->sound.enabled);
     }
-    else if (tapeNameIndex >= 1) {
+    else if (tapeNameIndex > 0) {
       (*config)["tape.imageFile"] = argv[tapeNameIndex];
       config->applySettings();
       vm->setEnableDisplay(false);
@@ -303,6 +313,51 @@ int main(int argc, char **argv)
       vm->setEnableAudioOutput(config->sound.enabled);
       // FIXME: this does not set the tape button status display on the GUI
       vm->tapePlay();
+    }
+    if (pasteTextIndex > 0) {
+      const char  *s = argv[pasteTextIndex];
+      if (s != (char *) 0 && s[0] != '\0') {
+        if (s[0] != '@') {
+          vm->pasteText(s, -1, -1);
+        }
+        else {
+          // paste text from file
+          s++;
+          std::string buf = "";
+          std::FILE   *f = (std::FILE *) 0;
+          try {
+            if (s[0] != '\0')
+              f = std::fopen(s, "rb");
+            if (!f)
+              throw Plus4Emu::Exception("cannot open text file");
+            int     prvChar = EOF;
+            while (true) {
+              int     c = std::fgetc(f);
+              if (c == EOF)
+                break;
+              c = c & 0xFF;
+              if (c > 0x00 && c < 0x7F) {
+                // convert line endings
+                if (!(prvChar == 0x0D && c == 0x0A)) {
+                  if (c != 0x0D)
+                    buf += char(c);
+                  else
+                    buf += '\n';
+                }
+              }
+              prvChar = c;
+            }
+            std::fclose(f);
+            f = (std::FILE *) 0;
+          }
+          catch (...) {
+            if (f)
+              std::fclose(f);
+            throw;
+          }
+          vm->pasteText(buf.c_str(), -1, -1);
+        }
+      }
     }
     vmThread = new Plus4Emu::VMThread(*vm);
     gui_ = new Plus4EmuGUI(*(dynamic_cast<Plus4Emu::VideoDisplay *>(w)),
