@@ -100,6 +100,9 @@ class Plus4EmuGUI {open
   }
   decl {void errorMessage(const char *msg);} {public
   }
+  decl {Fl_Menu_Item& getMenuItem(int n);} {}
+  decl {int getMenuItemIndex(int n);} {}
+  decl {void createMenus();} {}
   decl {void run();} {public
   }
   decl {void resizeWindow(int w, int h);} {}
@@ -203,6 +206,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FloppyRsD(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRst(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyGC(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_PPriority(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_KbdConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v);} {}

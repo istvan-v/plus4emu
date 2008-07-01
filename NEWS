@@ -19,6 +19,8 @@ Changes in version 1.2.7
     startup; the text can also be read from a file
   * added machine configuration option to control the SID output volume;
     this also affects the sound recorded to AVI files
+  * the process priority of the emulator can be changed from the GUI
+    (currently, this is only implemented on Windows)
   * increased TED audio output level relative to the default SID output
     level, for better accuracy in programs that use both types of sound
     at the same time

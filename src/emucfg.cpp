@@ -20,6 +20,7 @@
 #include "plus4emu.hpp"
 #include "cfg_db.hpp"
 #include "emucfg.hpp"
+#include "system.hpp"
 
 template <typename T>
 static void configChangeCallback(void *userData,
@@ -97,6 +98,17 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.sidOutputVolume",
                                 vm.sidOutputVolume, int(0),
                                 vmConfigurationChanged, -8.0, 2.0);
+    defineConfigurationVariable(*this, "vm.processPriority",
+                                vm.processPriority, int(0),
+                                vmProcessPriorityChanged,
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+                                -2.0, 3.0
+#else
+                                // TODO: implement process priority setting
+                                // on non-Windows platforms
+                                0.0, 0.0
+#endif
+                                );
     defineConfigurationVariable(*this, "vm.enableACIA",
                                 vm.enableACIA, false,
                                 vmConfigurationChanged);
@@ -384,6 +396,15 @@ namespace Plus4Emu {
       vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster,
                               vm.sidOutputVolume);
       vmConfigurationChanged = false;
+    }
+    if (vmProcessPriorityChanged) {
+      try {
+        setProcessPriority(vm.processPriority);
+      }
+      catch (std::exception& e) {
+        errorCallback(errorCallbackUserData, e.what());
+      }
+      vmProcessPriorityChanged = false;
     }
     if (memoryConfigurationChanged) {
       uint64_t  ramPattern = 0UL;

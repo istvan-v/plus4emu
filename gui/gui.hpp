@@ -35,6 +35,7 @@
 #include "script.hpp"
 #include "plus4vm.hpp"
 
+#include <FL/Fl_Menu_Item.H>
 #include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Native_File_Chooser.H>
 

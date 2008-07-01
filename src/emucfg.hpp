@@ -46,11 +46,13 @@ namespace Plus4Emu {
       unsigned int  speedPercentage;    // NOTE: this uses soundSettingsChanged
       int           serialBusDelayOffset;
       int           sidOutputVolume;
+      int           processPriority;    // uses vmProcessPriorityChanged
       bool          enableACIA;
       bool          sidModel6581;
       bool          sidDigiBlaster;
     } vm;
     bool          vmConfigurationChanged;
+    bool          vmProcessPriorityChanged;
     // --------
     struct MemoryRAMConfiguration_ {
       int         size;

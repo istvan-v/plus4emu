@@ -36,6 +36,9 @@
 #  include <sys/time.h>
 #  include <unistd.h>
 #  include <pthread.h>
+#  if defined(__linux) || defined(__linux__)
+#    include <sys/resource.h>
+#  endif
 #endif
 
 #include <errno.h>
@@ -515,6 +518,44 @@ namespace Plus4Emu {
       n = 0x7FFFFFFEU;
     seedValue = int(n);
     (void) getRandomNumber(seedValue);
+  }
+
+  void setProcessPriority(int n)
+  {
+#if 0 && (defined(__linux) || defined(__linux__))
+    // FIXME: this does not work correctly
+    n = (-n) * 10;
+    n = (n > -20 ? (n < 19 ? n : 19) : -20);
+    if (setpriority(PRIO_PROCESS, 0, n) != 0)
+      throw Plus4Emu::Exception("error setting process priority");
+#endif
+#if defined(WIN32)
+    n = (n > -2 ? (n < 2 ? n : 2) : -2);
+    DWORD   tmp = NORMAL_PRIORITY_CLASS;
+    switch (n) {
+    case -2:
+      tmp = IDLE_PRIORITY_CLASS;
+      break;
+    case -1:
+      tmp = BELOW_NORMAL_PRIORITY_CLASS;
+      break;
+    case 1:
+      tmp = ABOVE_NORMAL_PRIORITY_CLASS;
+      break;
+    case 2:
+      tmp = HIGH_PRIORITY_CLASS;
+      break;
+#if 0
+    case 3:
+      tmp = REALTIME_PRIORITY_CLASS;
+      break;
+#endif
+    }
+    if (!SetPriorityClass(GetCurrentProcess(), tmp))
+      throw Plus4Emu::Exception("error setting process priority");
+#else
+    (void) n;
+#endif
   }
 
 }       // namespace Plus4Emu

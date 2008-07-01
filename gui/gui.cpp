@@ -323,13 +323,13 @@ void Plus4EmuGUI::updateDisplay(double t)
   int   newDemoStatus = (vmThreadStatus.isRecordingDemo ?
                          2 : (vmThreadStatus.isPlayingDemo ? 1 : 0));
   if (newDemoStatus != oldDemoStatus) {
-    const Fl_Menu_Item *m = mainMenuBar->find_item("File/Stop demo (Ctrl+F12)");
+    Fl_Menu_Item& m = getMenuItem(0);   // "File/Stop demo (Ctrl+F12)"
     if (newDemoStatus == 0) {
       if (oldDemoStatus == 2)
         closeDemoFile(false);
       demoStatusDisplay1->hide();
       demoStatusDisplay2->hide();
-      const_cast<Fl_Menu_Item *>(m)->deactivate();
+      m.deactivate();
     }
     else {
       demoStatusDisplay1->show();
@@ -342,7 +342,7 @@ void Plus4EmuGUI::updateDisplay(double t)
         demoStatusDisplay2->labelcolor(Fl_Color(1));
         demoStatusDisplay2->label("R");
       }
-      const_cast<Fl_Menu_Item *>(m)->activate();
+      m.activate();
     }
     oldDemoStatus = newDemoStatus;
     mainWindow->redraw();
@@ -476,16 +476,60 @@ void Plus4EmuGUI::errorMessage(const char *msg)
   }
 }
 
-void Plus4EmuGUI::run()
+Fl_Menu_Item& Plus4EmuGUI::getMenuItem(int n)
 {
-  config.setErrorCallback(&errorMessageCallback, (void *) this);
-  // set initial window size from saved configuration
-  flDisplay->setFLTKEventCallback(&handleFLTKEvent, (void *) this);
-  mainWindow->resizable((Fl_Widget *) 0);
-  emulatorWindow->color(47, 47);
-  resizeWindow(config.display.width, config.display.height);
-  updateDisplay_windowTitle();
-  // create menu bar
+  const char  *s = (char *) 0;
+  switch (n) {
+  case 0:
+    s = "File/Stop demo (Ctrl+F12)";
+    break;
+  case 1:
+    s = "File/Record audio/Stop";
+    break;
+  case 2:
+    s = "File/Record video/Stop";
+    break;
+  case 3:
+    s = "Machine/Speed/No limit (Alt+W)";
+    break;
+  case 4:
+    s = "Machine/Printer/Enable printer";
+    break;
+  case 5:
+    s = "Machine/Printer/1525 mode";
+    break;
+  case 6:
+    s = "Machine/Enable light pen";
+    break;
+  case 7:
+    s = "Options/Process priority/Idle";
+    break;
+  case 8:
+    s = "Options/Process priority/Below normal";
+    break;
+  case 9:
+    s = "Options/Process priority/Normal";
+    break;
+  case 10:
+    s = "Options/Process priority/Above normal";
+    break;
+  case 11:
+    s = "Options/Process priority/High";
+    break;
+  default:
+    throw Plus4Emu::Exception("internal error: invalid menu item number");
+  }
+  return *(const_cast<Fl_Menu_Item *>(mainMenuBar->find_item(s)));
+}
+
+int Plus4EmuGUI::getMenuItemIndex(int n)
+{
+  const Fl_Menu_Item  *tmp = &(getMenuItem(n));
+  return int(tmp - mainMenuBar->menu());
+}
+
+void Plus4EmuGUI::createMenus()
+{
   mainMenuBar->add("File/Configuration/Load from ASCII file",
                    (char *) 0, &menuCallback_File_LoadConfig, (void *) this);
   mainMenuBar->add("File/Configuration/Load from binary file",
@@ -654,6 +698,16 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Options_FloppyRst, (void *) this);
   mainMenuBar->add("Options/Floppy/Disable unused drives",
                    (char *) 0, &menuCallback_Options_FloppyGC, (void *) this);
+  mainMenuBar->add("Options/Process priority/Idle",
+                   (char *) 0, &menuCallback_Options_PPriority, (void *) this);
+  mainMenuBar->add("Options/Process priority/Below normal",
+                   (char *) 0, &menuCallback_Options_PPriority, (void *) this);
+  mainMenuBar->add("Options/Process priority/Normal",
+                   (char *) 0, &menuCallback_Options_PPriority, (void *) this);
+  mainMenuBar->add("Options/Process priority/Above normal",
+                   (char *) 0, &menuCallback_Options_PPriority, (void *) this);
+  mainMenuBar->add("Options/Process priority/High",
+                   (char *) 0, &menuCallback_Options_PPriority, (void *) this);
   mainMenuBar->add("Options/Keyboard map (Alt+I)",
                    (char *) 0, &menuCallback_Options_KbdConfig, (void *) this);
   mainMenuBar->add("Options/Set working directory (Alt+Q)",
@@ -664,21 +718,40 @@ void Plus4EmuGUI::run()
                    (char *) 0, &menuCallback_Debug_DriveStats, (void *) this);
   mainMenuBar->add("Help/About",
                    (char *) 0, &menuCallback_Help_About, (void *) this);
-  const_cast<Fl_Menu_Item *>(mainMenuBar->find_item(
-                                 "File/Record video/Stop"))->deactivate();
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Speed/No limit (Alt+W)")
-                        - mainMenuBar->menu()),
-                    FL_MENU_TOGGLE);
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/Enable printer")
-                        - mainMenuBar->menu()),
-                    FL_MENU_TOGGLE);
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Printer/1525 mode")
-                        - mainMenuBar->menu()),
-                    FL_MENU_TOGGLE);
-  mainMenuBar->mode(int(mainMenuBar->find_item("Machine/Enable light pen")
-                        - mainMenuBar->menu()),
-                    FL_MENU_TOGGLE);
+  // "File/Record video/Stop"
+  getMenuItem(2).deactivate();
+  // "Machine/Speed/No limit (Alt+W)"
+  // "Machine/Printer/Enable printer"
+  // "Machine/Printer/1525 mode"
+  // "Machine/Enable light pen"
+  for (int i = 3; i <= 6; i++)
+    mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_TOGGLE);
+  // "Options/Process priority/Idle"
+  // "Options/Process priority/Below normal"
+  // "Options/Process priority/Normal"
+  // "Options/Process priority/Above normal"
+  // "Options/Process priority/High"
+  for (int i = 7; i <= 11; i++)
+    mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_RADIO);
+#ifndef WIN32
+  // TODO: implement process priority setting on non-Windows platforms
+  for (int i = 7; i <= 11; i++)
+    getMenuItem(i).deactivate();
+#endif
   updateMenu();
+}
+
+void Plus4EmuGUI::run()
+{
+  config.setErrorCallback(&errorMessageCallback, (void *) this);
+  // set initial window size from saved configuration
+  flDisplay->setFLTKEventCallback(&handleFLTKEvent, (void *) this);
+  mainWindow->resizable((Fl_Widget *) 0);
+  emulatorWindow->color(47, 47);
+  resizeWindow(config.display.width, config.display.height);
+  updateDisplay_windowTitle();
+  // create menu bar
+  createMenus();
   mainWindow->show();
   emulatorWindow->show();
   // load and apply GUI configuration
@@ -824,7 +897,12 @@ int Plus4EmuGUI::handleMouseEvent(int event)
                   s = vm.copyText(xPos, yPos);
                 }
               }
+#ifndef WIN32
               Fl::copy(s.c_str(), int(s.length()), 0);
+#else
+              // work around FLTK bug/inconsistency
+              Fl::copy(s.c_str(), int(s.length()), 1);
+#endif
               unlockVMThread();
             }
             catch (std::exception& e) {
@@ -845,7 +923,12 @@ int Plus4EmuGUI::handleMouseEvent(int event)
             cursorPositionX = xPos;
             cursorPositionY = yPos;
           }
+#ifndef WIN32
           Fl::paste(*emulatorWindow, 0);
+#else
+          // work around FLTK bug/inconsistency
+          Fl::paste(*emulatorWindow, 1);
+#endif
         }
       }
     }
@@ -1232,7 +1315,8 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 {
   if (lockVMThread()) {
     try {
-      bool    updateMenuFlag_ = config.soundSettingsChanged;
+      bool    updateMenuFlag_ =
+          config.soundSettingsChanged | config.vmProcessPriorityChanged;
       config.applySettings();
       vmThread.setSpeedPercentage(config.vm.speedPercentage == 100U &&
                                   config.sound.enabled ?
@@ -1268,17 +1352,20 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 
 void Plus4EmuGUI::updateMenu()
 {
-  const Fl_Menu_Item  *m;
-  m = mainMenuBar->find_item("Machine/Speed/No limit (Alt+W)");
+  // "Machine/Speed/No limit (Alt+W)"
   if (config.vm.speedPercentage == 0U)
-    const_cast<Fl_Menu_Item *>(m)->set();
+    getMenuItem(3).set();
   else
-    const_cast<Fl_Menu_Item *>(m)->clear();
-  m = mainMenuBar->find_item("File/Record audio/Stop");
+    getMenuItem(3).clear();
+  // "File/Record audio/Stop"
   if (config.sound.file.length() > 0)
-    const_cast<Fl_Menu_Item *>(m)->activate();
+    getMenuItem(1).activate();
   else
-    const_cast<Fl_Menu_Item *>(m)->deactivate();
+    getMenuItem(1).deactivate();
+  // "Options/Process priority"
+  int     tmp = config.vm.processPriority + 9;
+  tmp = (tmp > 7 ? (tmp < 11 ? tmp : 11) : 7);
+  getMenuItem(tmp).setonly();
 }
 
 void Plus4EmuGUI::errorMessageCallback(void *userData, const char *msg)
@@ -1819,8 +1906,7 @@ void Plus4EmuGUI::menuCallback_File_RecordVideo(Fl_Widget *o, void *v)
                                  gui_.config.videoCapture.yuvFormat,
                                  &Plus4EmuGUI::errorMessageCallback,
                                  &Plus4EmuGUI::fileNameCallback, v);
-        const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(
-                                       "File/Record video/Stop"))->activate();
+        gui_.getMenuItem(2).activate();         // "File/Record video/Stop"
         gui_.vm.setVideoCaptureFile(tmp);
       }
       catch (...) {
@@ -1844,8 +1930,7 @@ void Plus4EmuGUI::menuCallback_File_StopAVIRecord(Fl_Widget *o, void *v)
     if (gui_.lockVMThread()) {
       try {
         gui_.vm.closeVideoCapture();
-        const_cast<Fl_Menu_Item *>(gui_.mainMenuBar->find_item(
-                                       "File/Record video/Stop"))->deactivate();
+        gui_.getMenuItem(2).deactivate();       // "File/Record video/Stop"
       }
       catch (...) {
         gui_.unlockVMThread();
@@ -2282,9 +2367,8 @@ void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
   try {
     if (gui_.lockVMThread()) {
       try {
-        const Fl_Menu_Item  *m =
-            gui_.mainMenuBar->find_item("Machine/Printer/Enable printer");
-        gui_.vm.setEnablePrinter(m->value() != 0);
+        // "Machine/Printer/Enable printer"
+        gui_.vm.setEnablePrinter(gui_.getMenuItem(4).value() != 0);
       }
       catch (...) {
         gui_.unlockVMThread();
@@ -2305,9 +2389,8 @@ void Plus4EmuGUI::menuCallback_Machine_PrtMode(Fl_Widget *o, void *v)
   try {
     if (gui_.lockVMThread()) {
       try {
-        const Fl_Menu_Item  *m =
-            gui_.mainMenuBar->find_item("Machine/Printer/1525 mode");
-        gui_.vm.setPrinter1525Mode(m->value() != 0);
+        // "Machine/Printer/1525 mode"
+        gui_.vm.setPrinter1525Mode(gui_.getMenuItem(5).value() != 0);
       }
       catch (...) {
         gui_.unlockVMThread();
@@ -2422,9 +2505,8 @@ void Plus4EmuGUI::menuCallback_Machine_EnableLP(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  const Fl_Menu_Item  *m =
-      gui_.mainMenuBar->find_item("Machine/Enable light pen");
-  gui_.lightPenEnabled = (m->value() != 0);
+  // "Machine/Enable light pen"
+  gui_.lightPenEnabled = (gui_.getMenuItem(6).value() != 0);
   if (!gui_.lightPenEnabled)
     gui_.vmThread.setLightPenPosition(-1, -1);
 }
@@ -2867,6 +2949,24 @@ void Plus4EmuGUI::menuCallback_Options_FloppyGC(Fl_Widget *o, void *v)
     catch (...) {
     }
     gui_.unlockVMThread();
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Options_PPriority(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  int     n = -2;
+  for (int i = 7; i <= 11; i++) {
+    if (gui_.getMenuItem(i).value() != 0)
+      n = i - 9;
+  }
+  try {
+    gui_.config["vm.processPriority"] = n;
+    gui_.applyEmulatorConfiguration();
+  }
+  catch (std::exception& e) {
+    gui_.errorMessage(e.what());
   }
 }
 

@@ -156,6 +156,11 @@ namespace Plus4Emu {
   // initialize a pseudo-random generator to be used with getRandomNumber()
   void setRandomSeed(int& seedValue, uint32_t n);
 
+  // Set the process priority to 'n' (-2 to +3, 0 is the normal priority,
+  // higher values mean higher priority). On error, such as not having
+  // sufficient privileges, Plus4Emu::Exception may be thrown.
+  void setProcessPriority(int n);
+
 }       // namespace Plus4Emu
 
 #endif  // PLUS4EMU_SYSTEM_HPP
