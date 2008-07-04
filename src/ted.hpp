@@ -296,9 +296,7 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void write_memory_8000_to_BFFF(
         void *userData, uint16_t addr, uint8_t value);
-    static PLUS4EMU_REGPARM3 void write_memory_C000_to_FBFF(
-        void *userData, uint16_t addr, uint8_t value);
-    static PLUS4EMU_REGPARM3 void write_memory_FC00_to_FCFF(
+    static PLUS4EMU_REGPARM3 void write_memory_C000_to_FCFF(
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void write_memory_FD00_to_FEFF(
         void *userData, uint16_t addr, uint8_t value);
@@ -402,6 +400,7 @@ namespace Plus4 {
     void processDelayedEvents(uint32_t n);
     void checkVerticalEvents();
     // -----------------------------------------------------------------
+    static const uint32_t soundDecayCycles = 131072U;   // in sound clock cycles
    protected:
     // CPU I/O registers
     uint8_t     ioRegister_0000;
@@ -500,10 +499,10 @@ namespace Plus4 {
     uint8_t     soundChannel1State;
     uint8_t     soundChannel2State;
     uint8_t     soundChannel2NoiseState;
-    uint8_t     soundChannel2NoiseOutput;
     uint8_t     soundVolume;            // 0 to 75 (0, 6, 16, ..., 56, 66, 75)
     uint8_t     soundChannel1Output;    // 0 to 75
     uint8_t     soundChannel2Output;    // 0 to 75
+    uint8_t     soundOutput;            // 0 to 150
     uint8_t     prvSoundOutput;         // 0 to 150
     // video buffers
     uint8_t     attr_buf[64];
@@ -664,10 +663,13 @@ namespace Plus4 {
     inline void updateSoundChannel2Output()
     {
       soundChannel2Output = 0x00;
-      if (tedRegisters[0x11] & 0x20)
+      if (tedRegisters[0x11] & 0x20) {
         soundChannel2Output = (soundChannel2State ? soundVolume : 0x00);
-      else if (tedRegisters[0x11] & 0x40)
-        soundChannel2Output = (soundChannel2NoiseOutput ? 0x00 : soundVolume);
+      }
+      else if (tedRegisters[0x11] & 0x40) {
+        soundChannel2Output =
+            ((soundChannel2NoiseState & 0x01) - 0x01) & soundVolume;
+      }
     }
    protected:
     virtual void playSample(int16_t sampleValue)

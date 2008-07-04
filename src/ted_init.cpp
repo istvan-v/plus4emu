@@ -81,11 +81,11 @@ namespace Plus4 {
     }
     for (uint16_t i = 0xC000; i <= 0xFBFF; i++) {
       setMemoryReadCallback(i, &read_memory_C000_to_FBFF);
-      setMemoryWriteCallback(i, &write_memory_C000_to_FBFF);
+      setMemoryWriteCallback(i, &write_memory_C000_to_FCFF);
     }
     for (uint16_t i = 0xFC00; i <= 0xFCFF; i++) {
       setMemoryReadCallback(i, &read_memory_FC00_to_FCFF);
-      setMemoryWriteCallback(i, &write_memory_FC00_to_FCFF);
+      setMemoryWriteCallback(i, &write_memory_C000_to_FCFF);
     }
     for (uint16_t i = 0xFD00; i <= 0xFEFF; i++) {
       setMemoryReadCallback(i, &read_memory_FD00_to_FEFF);
@@ -241,15 +241,15 @@ namespace Plus4 {
     soundChannel2Reload = 0x03FF;
     prvSoundChannel1Overflow = false;
     prvSoundChannel2Overflow = false;
-    soundChannel1Decay = 131072U;
-    soundChannel2Decay = 131072U;
+    soundChannel1Decay = soundDecayCycles;
+    soundChannel2Decay = soundDecayCycles;
     soundChannel1State = uint8_t(1);
     soundChannel2State = uint8_t(1);
     soundChannel2NoiseState = uint8_t(0xFF);
-    soundChannel2NoiseOutput = uint8_t(1);
     soundVolume = 0x00;
     soundChannel1Output = 0x00;
     soundChannel2Output = 0x00;
+    soundOutput = 0x00;
     prvSoundOutput = 0x00;
     for (int i = 0; i < 64; i++) {              // video buffers
       attr_buf[i] = uint8_t(0);

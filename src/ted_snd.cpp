@@ -113,11 +113,12 @@ namespace Plus4 {
     if (value & 0x80) {
       ted.soundChannel1State = uint8_t(1);
       ted.soundChannel2State = uint8_t(1);
+      ted.soundChannel2NoiseState =
+          (ted.soundChannel2NoiseState << 1) | uint8_t(1);
     }
-    else {
-      ted.updateSoundChannel1Output();
-      ted.updateSoundChannel2Output();
-    }
+    ted.updateSoundChannel1Output();
+    ted.updateSoundChannel2Output();
+    ted.soundOutput = ted.soundChannel1Output + ted.soundChannel2Output;
   }
 
   void TED7360::calculateSoundOutput()
@@ -129,29 +130,26 @@ namespace Plus4 {
       soundChannel1State = uint8_t(1);
       soundChannel2State = uint8_t(1);
       soundChannel2NoiseState = uint8_t(0xFF);
-      soundChannel2NoiseOutput = uint8_t(1);
-      updateSoundChannel1Output();
-      updateSoundChannel2Output();
       if (soundChannel1Cnt == 1) {
-        if (soundChannel1Decay > 0U && soundChannel1Decay <= 131072U) {
+        if (soundChannel1Decay > 0U && soundChannel1Decay <= soundDecayCycles) {
           soundChannel1Decay--;
           soundChannel1State = uint8_t(0);
         }
         prvSoundChannel1Overflow = true;
       }
       else {
-        soundChannel1Decay = 131072U;
+        soundChannel1Decay = soundDecayCycles;
         prvSoundChannel1Overflow = false;
       }
       if (soundChannel2Cnt == 1) {
-        if (soundChannel2Decay > 0U && soundChannel2Decay <= 131072U) {
+        if (soundChannel2Decay > 0U && soundChannel2Decay <= soundDecayCycles) {
           soundChannel2Decay--;
           soundChannel2State = uint8_t(0);
         }
         prvSoundChannel2Overflow = true;
       }
       else {
-        soundChannel2Decay = 131072U;
+        soundChannel2Decay = soundDecayCycles;
         prvSoundChannel2Overflow = false;
       }
     }
@@ -162,9 +160,10 @@ namespace Plus4 {
       if (soundChannel1Overflow) {
         soundChannel1Cnt = soundChannel1Reload;
         if (!prvSoundChannel1Overflow) {
-          soundChannel1Decay = 131072U;
+          soundChannel1Decay = soundDecayCycles;
           soundChannel1State = (~soundChannel1State) & uint8_t(1);
           updateSoundChannel1Output();
+          soundOutput = soundChannel1Output + soundChannel2Output;
         }
       }
       prvSoundChannel1Overflow = soundChannel1Overflow;
@@ -172,6 +171,7 @@ namespace Plus4 {
       if (!soundChannel1Decay) {
         soundChannel1State = uint8_t(1);
         updateSoundChannel1Output();
+        soundOutput = soundChannel1Output + soundChannel2Output;
       }
       // channel 2
       soundChannel2Cnt--;
@@ -179,18 +179,19 @@ namespace Plus4 {
       if (soundChannel2Overflow) {
         soundChannel2Cnt = soundChannel2Reload;
         if (!prvSoundChannel2Overflow) {
-          soundChannel2Decay = 131072U;
+          soundChannel2Decay = soundDecayCycles;
           soundChannel2State = (~soundChannel2State) & uint8_t(1);
-          // channel 2 noise, 8 bit polycnt (10110011)
-          uint8_t tmp = soundChannel2NoiseState & uint8_t(0xB3);
+          // channel 2 noise, 8 bit polycnt (10110010)
+          // (note: this produces identical output to the older code, which
+          // used a constant of 0xB3 and an additional XOR, but is simpler)
+          uint8_t tmp = soundChannel2NoiseState & uint8_t(0xB2);
           tmp = tmp ^ (tmp >> 1);
           tmp = tmp ^ (tmp >> 2);
           tmp = tmp ^ (tmp >> 4);
-          soundChannel2NoiseOutput ^= tmp;
-          soundChannel2NoiseOutput &= uint8_t(1);
           soundChannel2NoiseState <<= 1;
-          soundChannel2NoiseState |= soundChannel2NoiseOutput;
+          soundChannel2NoiseState |= (tmp & uint8_t(1));
           updateSoundChannel2Output();
+          soundOutput = soundChannel1Output + soundChannel2Output;
         }
       }
       prvSoundChannel2Overflow = soundChannel2Overflow;
@@ -198,10 +199,10 @@ namespace Plus4 {
       if (!soundChannel2Decay) {
         soundChannel2State = uint8_t(1);
         updateSoundChannel2Output();
+        soundOutput = soundChannel1Output + soundChannel2Output;
       }
     }
     // mix sound outputs
-    uint8_t soundOutput = soundChannel1Output + soundChannel2Output;
     int16_t tmp =
         tedSoundDistortionTable[size_t(prvSoundOutput) + size_t(soundOutput)];
     prvSoundOutput = soundOutput;

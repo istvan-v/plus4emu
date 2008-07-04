@@ -340,7 +340,7 @@ namespace Plus4 {
     buf.writeByte(soundChannel1State);
     buf.writeByte(soundChannel2State);
     buf.writeByte(soundChannel2NoiseState);
-    buf.writeByte(soundChannel2NoiseOutput);
+    buf.writeByte(soundChannel2NoiseState & uint8_t(0x01)); // for compatibility
     buf.writeBoolean(videoShiftRegisterEnabled);
     buf.writeByte(shiftRegisterCharacter.bitmap_());
     buf.writeByte(shiftRegisterCharacter.attr_());
@@ -508,15 +508,16 @@ namespace Plus4 {
       else {
         prvSoundChannel1Overflow = (soundChannel1Reload == 0x0001);
         prvSoundChannel2Overflow = (soundChannel2Reload == 0x0001);
-        soundChannel1Decay = 131072U;
-        soundChannel2Decay = 131072U;
+        soundChannel1Decay = soundDecayCycles;
+        soundChannel2Decay = soundDecayCycles;
       }
       soundChannel1State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       soundChannel2State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       soundChannel2NoiseState = buf.readByte();
-      soundChannel2NoiseOutput = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
+      (void) buf.readByte();            // was soundChannel2NoiseOutput
       updateSoundChannel1Output();
       updateSoundChannel2Output();
+      soundOutput = soundChannel1Output + soundChannel2Output;
       videoShiftRegisterEnabled = buf.readBoolean();
       shiftRegisterCharacter.bitmap_() = buf.readByte();
       if (version == 0x01000000)
