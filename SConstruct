@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 1
-buildRelease = 0
+enableDebug = 0
+buildRelease = 1
 
 compilerFlags = ''
 if buildRelease:
@@ -19,8 +19,8 @@ if enableDebug and not buildRelease:
     compilerFlags = ' -Wall -W -ansi -pedantic ' + compilerFlags
 else:
     compilerFlags = ' -Wall -O3 ' + compilerFlags
-    compilerFlags = compilerFlags + ' -fno-inline-functions '
-    compilerFlags = compilerFlags + ' -fomit-frame-pointer -ffast-math '
+    compilerFlags = compilerFlags + ' -fno-inline-functions -frename-registers '
+    compilerFlags = compilerFlags + ' -fweb -fomit-frame-pointer -ffast-math '
 
 fltkConfig = 'fltk-config'
 
