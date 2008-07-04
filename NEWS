@@ -1,7 +1,9 @@
 Changes in version 1.2.7
 ------------------------
 
-  * added some simple editing features that can be used with the mouse:
+  * added support for using the mouse to change the cursor position in
+    the emulated machine, and copying text to and pasting from the
+    clipboard; the following functions are available:
       left click: sets the cursor position
       right click: sets the cursor position, and copies the selected
         word to the clipboard
@@ -13,24 +15,25 @@ Changes in version 1.2.7
         clipboard
       shift + middle click: pastes text from the clipboard without
         changing the cursor position
-    Note that these are not available when light pen emulation - which
+    Note that these are disabled when a display mode that hides the menu
+    bar and the mouse cursor is selected, or light pen emulation - which
     also uses the mouse - is enabled.
   * new command line option (-keybuf) for typing text of any length at
     startup; the text can also be read from a file
   * added machine configuration option to control the SID output volume;
     this also affects the sound recorded to AVI files
-  * the process priority of the emulator can be changed from the GUI
-    (currently, this is only implemented on Windows)
   * increased TED audio output level relative to the default SID output
     level, for better accuracy in programs that use both types of sound
     at the same time
   * minor sound emulation fixes
+  * the process priority of the emulator can be changed from the GUI
+    (currently, this is only implemented on Windows)
   * some utility improvements: 'compress' has more options now, and is
     optimized somewhat for slightly better efficiency and speed;
     'p4fliconv' automatically detects the use of the C64 palette in GIF
     files and enables pixel exact reading mode, and there is a new
     experimental hires conversion algorithm as well
-  * minor TED emulation optimizations
+  * minor optimizations
   * a few Linux compile and link errors have been fixed
 
 Changes in version 1.2.6.1

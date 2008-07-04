@@ -1,5 +1,5 @@
-plus4emu 1.2.7 beta
-===================
+plus4emu 1.2.7
+==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -98,11 +98,25 @@ General
   * configurable keyboard map for the emulated machine; it is also
     possible to use external game controller devices like joysticks and
     gamepads
+  * mouse and clipboard support for setting the cursor position,
+    copying, and pasting text in the emulated machine:
+      left click: sets the cursor position
+      right click: sets the cursor position, and copies the selected
+        word to the clipboard
+      ctrl + right click: sets the cursor position, and copies text from
+        the selected line to the clipboard
+      shift + right click: copies text from the whole screen to the
+        clipboard without changing the cursor position
+      middle click: sets the cursor position, and pastes text from the
+        clipboard
+      shift + middle click: pastes text from the clipboard without
+        changing the cursor position
 
 The emulator package also includes some utilities:
 
-  * compress - compresses Plus/4 .PRG files with very good compression
-    ratio (CA65 assembler source code for the decompressor is available)
+  * compress - compresses Plus/4 .PRG and .P00 files with very good
+    compression ratio (CA65 assembler source code for the decompressor
+    is available)
   * makecfg - reinstalls the configuration files of the emulator
   * p4fliconv - converts JPEG and other format images to various Plus/4
     video modes (hires/multicolor, FLI, interlace, etc.); it can be used
@@ -203,6 +217,9 @@ Command line options
     load and automatically start tape image on startup
   -snapshot <FILENAME>
     load snapshot or demo file on startup
+  -keybuf <TEXT>
+    type TEXT on startup (can be any length, or @FILENAME to read from a
+    file)
   -opengl
     use OpenGL video driver (this is the default, and is recommended
     when hardware accelerated OpenGL is available)
@@ -848,7 +865,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 Credits
 -------
 
-Thanks to Hársfalvi Levente for testing the emulator and providing some
-hardware information, and MagerValp for testing on MacOS X and
-contributing binaries.
+Thanks to:
+
+Hársfalvi Levente - testing the emulator and providing some hardware
+                    information
+MagerValp         - testing on MacOS X and contributing binaries
+Andrea Musuruane  - bug reports and fixes related to building the
+                    emulator on Fedora Linux
+Chronos           - TED and SID sound testing on the real machine
 
