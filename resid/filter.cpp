@@ -253,7 +253,7 @@ namespace Plus4 {
 
     // Multiply with 1048576/clock frequency to facilitate division by
     // the clock frequency by right-shifting 20 times (2 ^ 20 = 1048576).
-    const double scaleFac = 1048576.0 / 940000.0;
+    const double scaleFac = 1048576.0 / 890805.0;
 
     w0 = static_cast<sound_sample>(2*pi*f0[fc]*scaleFac);
 
