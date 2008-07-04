@@ -164,28 +164,16 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 2]];
     ted.dataBusState = value;
-    if (p)
-      p[addr & 0x3FFF] = value;
+    p[addr & 0x3FFF] = value;
   }
 
-  PLUS4EMU_REGPARM3 void TED7360::write_memory_C000_to_FBFF(
+  PLUS4EMU_REGPARM3 void TED7360::write_memory_C000_to_FCFF(
       void *userData, uint16_t addr, uint8_t value)
   {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 3]];
     ted.dataBusState = value;
-    if (p)
-      p[addr & 0x3FFF] = value;
-  }
-
-  PLUS4EMU_REGPARM3 void TED7360::write_memory_FC00_to_FCFF(
-      void *userData, uint16_t addr, uint8_t value)
-  {
-    TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
-    uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 5]];
-    ted.dataBusState = value;
-    if (p)
-      p[addr & 0x3FFF] = value;
+    p[addr & 0x3FFF] = value;
   }
 
   PLUS4EMU_REGPARM3 void TED7360::write_memory_FD00_to_FEFF(
@@ -204,8 +192,7 @@ namespace Plus4 {
     TED7360&  ted = *(reinterpret_cast<TED7360 *>(userData));
     uint8_t   *p = ted.segmentTable[ted.memoryMapTable[ted.memoryWriteMap + 7]];
     ted.dataBusState = value;
-    if (p)
-      p[addr & 0x3FFF] = value;
+    p[addr & 0x3FFF] = value;
   }
 
   PLUS4EMU_REGPARM3 void TED7360::write_register_FD16(

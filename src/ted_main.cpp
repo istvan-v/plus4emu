@@ -250,9 +250,8 @@ namespace Plus4 {
         }
       }
       // run CPU
-      if (!cpuHaltedFlag) {
+      if (!cpuHaltedFlag)
         M7501::run(cpu_clock_multiplier);
-      }
       // perform DMA fetches on even cycle counts
       if (!(M7501::getIsCPURunning())) {
         if (cpuHaltedFlag) {
