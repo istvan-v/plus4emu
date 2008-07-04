@@ -403,8 +403,8 @@ namespace Plus4 {
         riot1PortAInput = riot1PortAInput ^ (vc1526.serialBus.getDATA() & 0x80);
         vc1526.riot1.setPortA(riot1PortAInput);
       }
-      vc1526.cpu.runOneCycle();
       vc1526.via.runOneCycle();
+      vc1526.cpu.runOneCycle();
       vc1526.riot1.runOneCycle();
       vc1526.riot2.runOneCycle();
       if (!vc1526.updatePinCnt) {

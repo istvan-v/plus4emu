@@ -175,7 +175,7 @@ namespace Plus4 {
     bool        syncFlag;               // true if found sync
     uint8_t     motorUpdateCnt;         // decrements from 15 to 0
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
-    int         shiftRegisterBitCntFrac;    // 0 to 65535
+    int         shiftRegisterBitCntFrac;    // 65535 to 0
     int         interruptTimer;         // decrements from 8324 to -7 at 1 MHz,
                                         // IRQ is active when negative
     int         headPosition;           // index to track buffer
@@ -192,6 +192,8 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // ----------------
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM_0000_07FF(
+        void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM(
         void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_Dummy(
@@ -200,6 +202,8 @@ namespace Plus4 {
         void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM(
         void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeMemory_RAM_0000_07FF(
+        void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void writeMemory_RAM(
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void writeMemory_0001(

@@ -43,11 +43,15 @@ namespace Plus4 {
   {
     // initialize memory map
     setMemoryCallbackUserData((void *) &vc1551_);
-    for (uint16_t i = 0x0000; i <= 0x0FFF; i++) {
+    for (uint16_t i = 0x0000; i <= 0x07FF; i++) {
+      setMemoryReadCallback(i, &VC1551::readMemory_RAM_0000_07FF);
+      setMemoryWriteCallback(i, &VC1551::writeMemory_RAM_0000_07FF);
+    }
+    setMemoryWriteCallback(0x0001, &VC1551::writeMemory_0001);
+    for (uint16_t i = 0x0800; i <= 0x0FFF; i++) {
       setMemoryReadCallback(i, &VC1551::readMemory_RAM);
       setMemoryWriteCallback(i, &VC1551::writeMemory_RAM);
     }
-    setMemoryWriteCallback(0x0001, &VC1551::writeMemory_0001);
     for (uint16_t i = 0x1000; i <= 0x3FFF; i++) {
       setMemoryReadCallback(i, &VC1551::readMemory_Dummy);
       setMemoryWriteCallback(i, &VC1551::writeMemory_Dummy);
@@ -61,7 +65,7 @@ namespace Plus4 {
       setMemoryWriteCallback(i, &VC1551::writeMemory_Dummy);
     }
     for (uint32_t i = 0xC000; i <= 0xFFFF; i++) {
-      setMemoryReadCallback(uint16_t(i), &VC1551::readMemory_ROM);
+      setMemoryReadCallback(uint16_t(i), &VC1551::readMemory_Dummy);
       setMemoryWriteCallback(uint16_t(i), &VC1551::writeMemory_Dummy);
     }
   }
@@ -80,6 +84,14 @@ namespace Plus4 {
   }
 
   // --------------------------------------------------------------------------
+
+  PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_RAM_0000_07FF(
+      void *userData, uint16_t addr)
+  {
+    VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
+    vc1551.dataBusState = vc1551.memory_ram[addr];
+    return vc1551.dataBusState;
+  }
 
   PLUS4EMU_REGPARM2 uint8_t VC1551::readMemory_RAM(
       void *userData, uint16_t addr)
@@ -109,9 +121,16 @@ namespace Plus4 {
       void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
-    if (vc1551.memory_rom)
-      vc1551.dataBusState = vc1551.memory_rom[addr & 0x3FFF];
+    vc1551.dataBusState = vc1551.memory_rom[addr];
     return vc1551.dataBusState;
+  }
+
+  PLUS4EMU_REGPARM3 void VC1551::writeMemory_RAM_0000_07FF(
+      void *userData, uint16_t addr, uint8_t value)
+  {
+    VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
+    vc1551.dataBusState = value & 0xFF;
+    vc1551.memory_ram[addr] = vc1551.dataBusState;
   }
 
   PLUS4EMU_REGPARM3 void VC1551::writeMemory_RAM(
@@ -274,7 +293,7 @@ namespace Plus4 {
       syncFlag(false),
       motorUpdateCnt(0),
       shiftRegisterBitCnt(0),
-      shiftRegisterBitCntFrac(0x0000),
+      shiftRegisterBitCntFrac(0xFFFF),
       interruptTimer(8324),
       headPosition(0),
       currentTrackFrac(0),
@@ -304,8 +323,21 @@ namespace Plus4 {
 
   void VC1551::setROMImage(int n, const uint8_t *romData_)
   {
-    if (n == 3)
+    if (n == 3) {
+      if (romData_ != (uint8_t *) 0 &&
+          cpu.getMemoryReadCallback(0xC000) == &readMemory_Dummy) {
+        for (uint32_t i = 0xC000U; i <= 0xFFFFU; i++)
+          cpu.setMemoryReadCallback(uint16_t(i), &readMemory_ROM);
+      }
+      else if (romData_ == (uint8_t *) 0 &&
+               cpu.getMemoryReadCallback(0xC000) != &readMemory_Dummy) {
+        for (uint32_t i = 0xC000U; i <= 0xFFFFU; i++)
+          cpu.setMemoryReadCallback(uint16_t(i), &readMemory_Dummy);
+      }
+      if (romData_ != (uint8_t *) 0)
+        romData_ = romData_ - 0xC000;
       memory_rom = romData_;
+    }
   }
 
   void VC1551::setDiskImageFile(const std::string& fileName_)
@@ -346,16 +378,15 @@ namespace Plus4 {
       vc1551.cpu.runOneCycle();
       vc1551.cpu.runOneCycle();
       if (!vc1551.motorUpdateCnt) {
-        vc1551.motorUpdateCnt = 16;
         vc1551.headLoadedFlag = vc1551.updateMotors();
+        vc1551.motorUpdateCnt = 15;
       }
-      vc1551.motorUpdateCnt--;
-      vc1551.shiftRegisterBitCntFrac =
-          vc1551.shiftRegisterBitCntFrac
-          + vc1551.trackSpeedTable[vc1551.currentTrack];
-      if (vc1551.shiftRegisterBitCntFrac >= 65536) {
-        vc1551.shiftRegisterBitCntFrac =
-            vc1551.shiftRegisterBitCntFrac & 0xFFFF;
+      else {
+        vc1551.motorUpdateCnt--;
+      }
+      vc1551.shiftRegisterBitCntFrac -= vc1551.currentTrackSpeed;
+      if (vc1551.shiftRegisterBitCntFrac < 0) {
+        vc1551.shiftRegisterBitCntFrac += 65536;
         if (vc1551.shiftRegisterBitCnt >= 7) {
           vc1551.shiftRegisterBitCnt = 0;
           // read/write next byte
@@ -425,8 +456,8 @@ namespace Plus4 {
         return tpi1.readRegister(addr);
     }
     else if (addr >= 0xC000) {
-      if (memory_rom)
-        return memory_rom[addr & 0x3FFF];
+      if (cpu.getMemoryReadCallback(0xC000) != &readMemory_Dummy)
+        return memory_rom[(addr & 0x3FFF) | 0xC000];
     }
     return uint8_t(0xFF);
   }

@@ -44,6 +44,7 @@ namespace Plus4 {
                                         // (1 to 'nTracks' are valid tracks)
     int         nTracks;                // number of tracks (35 to 42, or zero
                                         // if there is no disk image file)
+    int         currentTrackSpeed;      // bits per 1 MHz cycle * 65536
     std::FILE   *imageFile;
     bool        writeProtectFlag;
     uint8_t     diskID;
@@ -98,7 +99,7 @@ namespace Plus4 {
     uint8_t     via2PortBInput;         // bit 7: /SYNC, bit 4: /WPS
     uint8_t     motorUpdateCnt;         // decrements from 15 to 0
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
-    int         shiftRegisterBitCntFrac;    // 0 to 65535
+    int         shiftRegisterBitCntFrac;    // 65535 to 0
     int         headPosition;           // index to track buffer
     int         currentTrackFrac;       // -65536 to 65536 (-32768 and 32768
                                         // are "half tracks")
@@ -113,6 +114,8 @@ namespace Plus4 {
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
     // ----------------
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM_0000_07FF(
+        void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM(
         void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_Dummy(
@@ -121,8 +124,12 @@ namespace Plus4 {
         void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM2 uint8_t readMemory_VIA2(
         void *userData, uint16_t addr);
-    static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM(
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM_8000_BFFF(
         void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM2 uint8_t readMemory_ROM_C000_FFFF(
+        void *userData, uint16_t addr);
+    static PLUS4EMU_REGPARM3 void writeMemory_RAM_0000_07FF(
+        void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void writeMemory_RAM(
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void writeMemory_Dummy(

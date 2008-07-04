@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -63,12 +63,17 @@ namespace Plus4 {
     bool      cb2IsOutput;
     uint8_t   shiftRegister;
     uint8_t   shiftCounter;
-    uint8_t   prvIRQState;
+    bool      irqState;
     inline void updateInterruptFlags()
     {
-      viaRegisters[0x0D] = viaRegisters[0x0D] & 0x7F;
-      if (viaRegisters[0x0D] & viaRegisters[0x0E])
-        viaRegisters[0x0D] = viaRegisters[0x0D] | 0x80;
+      bool    newIRQState =
+          bool((viaRegisters[0x0D] & viaRegisters[0x0E]) & 0x7F);
+      if (newIRQState != irqState) {
+        irqState = newIRQState;
+        viaRegisters[0x0D] &= uint8_t(0x7F);
+        viaRegisters[0x0D] |= uint8_t(int(newIRQState) << 7);
+        irqStateChangeCallback(newIRQState);
+      }
     }
     void timer1Underflow();
     inline void updateTimer1()
@@ -97,11 +102,6 @@ namespace Plus4 {
       updateTimer1();
       if (!timer2PulseCountingMode)
         updateTimer2();
-      uint8_t newIRQState = viaRegisters[0x0D];
-      if ((newIRQState ^ prvIRQState) & 0x80) {
-        prvIRQState = newIRQState;
-        irqStateChangeCallback(bool(newIRQState & 0x80));
-      }
     }
     uint8_t readRegister(uint16_t addr);
     void writeRegister(uint16_t addr, uint8_t value);

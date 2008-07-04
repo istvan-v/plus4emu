@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ namespace Plus4 {
     cb1Input = true;
     cb2Input = true;
     shiftRegister = 0x00;
-    prvIRQState = 0x00;
+    irqState = false;
     this->reset();
   }
 
@@ -74,8 +74,8 @@ namespace Plus4 {
     shiftCounter = 0;
     updatePortA();
     updatePortB();
-    if (prvIRQState & 0x80) {
-      prvIRQState = 0x00;
+    if (irqState) {
+      irqState = false;
       irqStateChangeCallback(false);
     }
   }
