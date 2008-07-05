@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -741,6 +741,14 @@ namespace Plus4Emu {
 
   void FLTKDisplay::draw()
   {
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+    // damage() only seems to work when called from draw() on Windows
+    if (this->damage() & FL_DAMAGE_EXPOSE) {
+      forceUpdateLineMask = 0xFF;
+      forceUpdateLineCnt = 0;
+      forceUpdateTimer.reset();
+    }
+#endif
     if (redrawFlag) {
       redrawFlag = false;
       displayFrame();
@@ -823,12 +831,16 @@ namespace Plus4Emu {
       if (screenshotCallbackCnt)
         checkScreenshotCallback();
     }
+#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER))
+    // damage() only seems to work when called from draw() on Windows
     if (this->damage() & FL_DAMAGE_EXPOSE) {
       forceUpdateLineMask = 0xFF;
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
     }
-    else if (forceUpdateTimer.getRealTime() >= 0.085) {
+    else
+#endif
+    if (forceUpdateTimer.getRealTime() >= 0.085) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);

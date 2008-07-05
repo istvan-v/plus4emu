@@ -1066,35 +1066,47 @@ namespace Plus4Emu {
     messageQueueMutex.unlock();
   }
 
+  void OpenGLDisplay::initializeGLDisplay()
+  {
+    glViewport(0, 0, GLsizei(this->w()), GLsizei(this->h()));
+    glPushMatrix();
+    glOrtho(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
+    // on first call: initialize texture
+    glEnable(GL_TEXTURE_2D);
+    GLuint  tmp = 0;
+    glGenTextures(1, &tmp);
+    textureID = (unsigned long) tmp;
+    GLint   savedTextureID;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
+    glBindTexture(GL_TEXTURE_2D, tmp);
+    setTextureParameters(displayParameters.displayQuality);
+    initializeTexture(displayParameters, textureSpace);
+    glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
+    // clear display
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
+    glColor4f(GLfloat(0), GLfloat(0), GLfloat(0), GLfloat(1));
+    glBegin(GL_QUADS);
+    glVertex2f(GLfloat(0.0), GLfloat(0.0));
+    glVertex2f(GLfloat(1.0), GLfloat(0.0));
+    glVertex2f(GLfloat(1.0), GLfloat(1.0));
+    glVertex2f(GLfloat(0.0), GLfloat(1.0));
+    glEnd();
+    glPopMatrix();
+  }
+
   void OpenGLDisplay::draw()
   {
-    if (!textureID) {
-      glViewport(0, 0, GLsizei(this->w()), GLsizei(this->h()));
-      glPushMatrix();
-      glOrtho(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
-      // on first call: initialize texture
-      glEnable(GL_TEXTURE_2D);
-      GLuint  tmp = 0;
-      glGenTextures(1, &tmp);
-      textureID = (unsigned long) tmp;
-      GLint   savedTextureID;
-      glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
-      glBindTexture(GL_TEXTURE_2D, tmp);
-      setTextureParameters(displayParameters.displayQuality);
-      initializeTexture(displayParameters, textureSpace);
-      glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
-      // clear display
-      glDisable(GL_TEXTURE_2D);
-      glDisable(GL_BLEND);
-      glColor4f(GLfloat(0), GLfloat(0), GLfloat(0), GLfloat(1));
-      glBegin(GL_QUADS);
-      glVertex2f(GLfloat(0.0), GLfloat(0.0));
-      glVertex2f(GLfloat(1.0), GLfloat(0.0));
-      glVertex2f(GLfloat(1.0), GLfloat(1.0));
-      glVertex2f(GLfloat(0.0), GLfloat(1.0));
-      glEnd();
-      glPopMatrix();
+    if (!textureID)
+      initializeGLDisplay();
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+    // damage() only seems to work when called from draw() on Windows
+    if (this->damage() & FL_DAMAGE_EXPOSE) {
+      forceUpdateLineMask = 0xFF;
+      forceUpdateLineCnt = 0;
+      forceUpdateTimer.reset();
     }
+#endif
     if (redrawFlag || videoResampleEnabled) {
       redrawFlag = false;
       displayFrame();
@@ -1284,12 +1296,16 @@ namespace Plus4Emu {
       if (screenshotCallbackCnt)
         checkScreenshotCallback();
     }
+#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER))
+    // damage() only seems to work when called from draw() on Windows
     if (this->damage() & FL_DAMAGE_EXPOSE) {
       forceUpdateLineMask = 0xFF;
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
     }
-    else if (forceUpdateTimer.getRealTime() >= 0.085) {
+    else
+#endif
+    if (forceUpdateTimer.getRealTime() >= 0.085) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);

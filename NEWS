@@ -34,6 +34,9 @@ Changes in version 1.2.7
     files and enables pixel exact reading mode, and there is a new
     experimental hires conversion algorithm as well
   * minor optimizations
+  * fixed bug that prevented the emulator display from being correctly
+    redrawn when damaged on Windows in software video mode or OpenGL
+    with the quality set to 0
   * a few Linux compile and link errors have been fixed
 
 Changes in version 1.2.6.1
