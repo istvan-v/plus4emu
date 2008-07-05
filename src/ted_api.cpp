@@ -269,7 +269,7 @@ namespace Plus4 {
   void TED7360::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000004);        // version number
+    buf.writeUInt32(0x01000005);        // version number
     uint8_t   romBitmap = 0;
     for (uint8_t i = 0; i < 8; i++) {
       // find non-empty ROM segments
@@ -340,7 +340,7 @@ namespace Plus4 {
     buf.writeByte(soundChannel1State);
     buf.writeByte(soundChannel2State);
     buf.writeByte(soundChannel2NoiseState);
-    buf.writeByte(soundChannel2NoiseState & uint8_t(0x01)); // for compatibility
+    buf.writeByte(prvCycleCount);
     buf.writeBoolean(videoShiftRegisterEnabled);
     buf.writeByte(shiftRegisterCharacter.bitmap_());
     buf.writeByte(shiftRegisterCharacter.attr_());
@@ -391,7 +391,7 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    if (!(version >= 0x01000000 && version <= 0x01000004)) {
+    if (!(version >= 0x01000000 && version <= 0x01000005)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible Plus/4 snapshot format");
     }
@@ -514,10 +514,14 @@ namespace Plus4 {
       soundChannel1State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       soundChannel2State = uint8_t(buf.readByte() == uint8_t(0) ? 0 : 1);
       soundChannel2NoiseState = buf.readByte();
-      (void) buf.readByte();            // was soundChannel2NoiseOutput
-      updateSoundChannel1Output();
-      updateSoundChannel2Output();
-      soundOutput = soundChannel1Output + soundChannel2Output;
+      if (version >= 0x01000005) {
+        prvCycleCount = buf.readByte() & 0x03;
+      }
+      else {
+        (void) buf.readByte();          // was soundChannel2NoiseOutput
+        prvCycleCount = 3;
+      }
+      updateSoundOutput();
       videoShiftRegisterEnabled = buf.readBoolean();
       shiftRegisterCharacter.bitmap_() = buf.readByte();
       if (version == 0x01000000)

@@ -400,7 +400,10 @@ namespace Plus4 {
     void processDelayedEvents(uint32_t n);
     void checkVerticalEvents();
     // -----------------------------------------------------------------
-    static const uint32_t soundDecayCycles = 131072U;   // in sound clock cycles
+    static const uint32_t soundDecayCycles = 0x02E000U; // in sound clock cycles
+    static const uint8_t  soundVolumeTable[16];
+    static const uint8_t  soundMixTable[128];
+    static const int16_t  soundDistortionTable[301];
    protected:
     // CPU I/O registers
     uint8_t     ioRegister_0000;
@@ -494,14 +497,16 @@ namespace Plus4 {
     uint16_t    soundChannel2Reload;    // 1 to 1024
     bool        prvSoundChannel1Overflow;
     bool        prvSoundChannel2Overflow;
-    uint32_t    soundChannel1Decay;     // set channel state to 1 after 131072
-    uint32_t    soundChannel2Decay;     // 221 kHz cycles at freq = 0x03FE
+    // set channel state to 1 after 'soundDecayCycles' 221 kHz cycles
+    // at freq = 0x03FE
+    uint32_t    soundChannel1Decay;
+    uint32_t    soundChannel2Decay;
     uint8_t     soundChannel1State;
     uint8_t     soundChannel2State;
     uint8_t     soundChannel2NoiseState;
+    uint8_t     prvCycleCount;          // used when resetting shift register
+    uint8_t     soundFlags;             // = (($FF11) & 0xF0) >> 1
     uint8_t     soundVolume;            // 0 to 75 (0, 6, 16, ..., 56, 66, 75)
-    uint8_t     soundChannel1Output;    // 0 to 75
-    uint8_t     soundChannel2Output;    // 0 to 75
     uint8_t     soundOutput;            // 0 to 150
     uint8_t     prvSoundOutput;         // 0 to 150
     // video buffers
@@ -654,22 +659,13 @@ namespace Plus4 {
       }
       memoryReadMap = cpuMemoryReadMap;
     }
-    inline void updateSoundChannel1Output()
+    inline void updateSoundOutput()
     {
-      soundChannel1Output = 0x00;
-      if (tedRegisters[0x11] & 0x10)
-        soundChannel1Output = (soundChannel1State ? soundVolume : 0x00);
-    }
-    inline void updateSoundChannel2Output()
-    {
-      soundChannel2Output = 0x00;
-      if (tedRegisters[0x11] & 0x20) {
-        soundChannel2Output = (soundChannel2State ? soundVolume : 0x00);
-      }
-      else if (tedRegisters[0x11] & 0x40) {
-        soundChannel2Output =
-            ((soundChannel2NoiseState & 0x01) - 0x01) & soundVolume;
-      }
+      soundOutput =
+          soundMixTable[soundFlags
+                        | (soundChannel1State << 2) | (soundChannel2State << 1)
+                        | (soundChannel2NoiseState & 0x01)]
+          * soundVolume;
     }
    protected:
     virtual void playSample(int16_t sampleValue)

@@ -246,9 +246,9 @@ namespace Plus4 {
     soundChannel1State = uint8_t(1);
     soundChannel2State = uint8_t(1);
     soundChannel2NoiseState = uint8_t(0xFF);
+    prvCycleCount = 0;
+    soundFlags = 0x00;
     soundVolume = 0x00;
-    soundChannel1Output = 0x00;
-    soundChannel2Output = 0x00;
     soundOutput = 0x00;
     prvSoundOutput = 0x00;
     for (int i = 0; i < 64; i++) {              // video buffers
