@@ -36,6 +36,7 @@ namespace Plus4Emu {
     bool enableShader();
     void disableShader();
     void displayFrame();
+    void initializeGLDisplay();
     void decodeLine_quality0(uint16_t *outBuf,
                              Message_LineData **lineBuffers_, size_t lineNum);
     void decodeLine_quality2(uint16_t *outBuf,
