@@ -311,11 +311,10 @@ class Plus4EmuDisplaySndConfiguration {
     display.quality = 1;
 #ifndef WIN32
     sound.latency = 0.05;
-    sound.hwPeriods = 8;
 #else
     sound.latency = 0.1;
-    sound.hwPeriods = 16;
 #endif
+    sound.hwPeriods = 16;
     config.createKey("display.quality", display.quality);
     config.createKey("sound.latency", sound.latency);
     config.createKey("sound.hwPeriods", sound.hwPeriods);
