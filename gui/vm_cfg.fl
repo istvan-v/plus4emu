@@ -159,7 +159,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   }
   o->value(double(gui.config.memory.ram.size));
 }}
-            xywh {20 45 120 25} align 8 when 4 minimum 16 maximum 4096 step 16 value 64
+            xywh {20 45 120 25} align 8 when 4 minimum 16 maximum 1024 step 16 value 64
             code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Input memoryRAMStartupPatternValuator {
@@ -788,7 +788,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   try {
     std::string tmp;
     if (gui.browseFile(tmp, gui.romImageDirectory,
-                       "ROM image files\\t*.{bin,rom}",
+                       "ROM image files\\t*.{bin,crt,rom}",
                        Fl_Native_File_Chooser::BROWSE_FILE,
                        "Select ROM image file")) {
       setROMImageFile(segment_, tmp);
