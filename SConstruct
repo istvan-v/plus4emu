@@ -19,8 +19,8 @@ if enableDebug and not buildRelease:
     compilerFlags = ' -Wall -W -ansi -pedantic ' + compilerFlags
 else:
     compilerFlags = ' -Wall -O3 ' + compilerFlags
-    compilerFlags = compilerFlags + ' -fno-inline-functions -frename-registers '
-    compilerFlags = compilerFlags + ' -fweb -fomit-frame-pointer -ffast-math '
+    compilerFlags = compilerFlags + ' -fno-inline-functions '
+    compilerFlags = compilerFlags + ' -fomit-frame-pointer -ffast-math '
 
 fltkConfig = 'fltk-config'
 
