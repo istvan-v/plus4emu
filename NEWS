@@ -34,6 +34,11 @@ Changes in version 1.2.7
     files and enables pixel exact reading mode, and there is a new
     experimental hires conversion algorithm as well
   * minor optimizations
+  * in OpenGL video mode, the vertical interlace effect is now also
+    displayed at quality 1 and 2, and quality 2 uses 32-bit textures for
+    improved color accuracy at the expense of being somewhat slower
+    (previously, both interlace and 32-bit textures were enabled only at
+    quality 3)
   * fixed bug that prevented the emulator display from being correctly
     redrawn when damaged on Windows in software video mode or OpenGL
     with the quality set to 0

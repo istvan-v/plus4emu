@@ -246,7 +246,7 @@ static void initializeTexture(const Plus4Emu::VideoDisplay::DisplayParameters&
     txtWidth = 512;
     break;
   }
-  if (dp.displayQuality < 3) {
+  if (dp.displayQuality < 2) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, txtWidth, txtHeight, 0,
                  GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
                  (const GLvoid *) textureBuffer);
@@ -504,70 +504,6 @@ namespace Plus4Emu {
     }
   }
 
-  void OpenGLDisplay::decodeLine_quality2(uint16_t *outBuf,
-                                          Message_LineData **lineBuffers_,
-                                          size_t lineNum)
-  {
-    Message_LineData  *l = (Message_LineData *) 0;
-    if (lineNum < 578) {
-      if (lineBuffers_[lineNum] != (Message_LineData *) 0)
-        l = lineBuffers_[lineNum];
-      else
-        l = lineBuffers_[lineNum ^ 1];
-    }
-    if (!l) {
-      for (size_t xc = 0; xc < 768; xc++)
-        outBuf[xc] = uint16_t(0);
-      return;
-    }
-    const unsigned char *bufp = (unsigned char *) 0;
-    size_t  nBytes = 0;
-    size_t  bufPos = 0;
-    size_t  xc = 0;
-    uint8_t videoFlags = uint8_t(((~lineNum) & 2) | ((l->flags & 0x80) >> 2));
-    size_t  pixelSample2 = l->lineLength;
-    l->getLineData(bufp, nBytes);
-    if (displayParameters.ntscMode)
-      videoFlags = videoFlags | 0x10;
-    if (pixelSample2 == (displayParameters.ntscMode ? 392 : 490) &&
-        !(l->flags & 0x01)) {
-      do {
-        size_t  n = colormap16.convertFourToEightPixels(&(outBuf[xc]),
-                                                        &(bufp[bufPos]),
-                                                        videoFlags);
-        bufPos = bufPos + n;
-        xc = xc + 8;
-      } while (xc < 768);
-    }
-    else {
-      uint16_t  tmpBuf[4];
-      size_t  pixelSample1 = 980;
-      size_t  pixelSampleCnt = 0;
-      uint8_t readPos = 4;
-      do {
-        if (readPos >= 4) {
-          readPos = readPos & 3;
-          if (bufPos >= nBytes) {
-            for ( ; xc < 768; xc++)
-              outBuf[xc] = uint16_t(0);
-            break;
-          }
-          pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
-          size_t  n = colormap16.convertFourPixels(&(tmpBuf[0]),
-                                                   &(bufp[bufPos]), videoFlags);
-          bufPos += n;
-        }
-        outBuf[xc] = tmpBuf[readPos];
-        pixelSampleCnt += pixelSample2;
-        if (pixelSampleCnt >= pixelSample1) {
-          pixelSampleCnt -= pixelSample1;
-          readPos++;
-        }
-        xc++;
-      } while (xc < 768);
-    }
-  }
-
   void OpenGLDisplay::decodeLine_quality3(uint32_t *outBuf,
                                           Message_LineData **lineBuffers_,
                                           int lineNum)
@@ -580,8 +516,14 @@ namespace Plus4Emu {
         l = lineBuffers_[lineNum ^ 1];
     }
     if (!l) {
-      for (size_t xc = 0; xc < 768; xc++)
-        outBuf[xc] = 0x00808000U;
+      if (yuvTextureMode) {
+        for (size_t xc = 0; xc < 768; xc++)
+          outBuf[xc] = 0x00808000U;
+      }
+      else {
+        for (size_t xc = 0; xc < 768; xc++)
+          outBuf[xc] = 0x00000000U;
+      }
       return;
     }
     const unsigned char *bufp = (unsigned char *) 0;
@@ -608,14 +550,11 @@ namespace Plus4Emu {
       size_t  pixelSample1 = 980;
       size_t  pixelSampleCnt = 0;
       uint8_t readPos = 4;
-      do {
+      while (true) {
         if (readPos >= 4) {
           readPos = readPos & 3;
-          if (bufPos >= nBytes) {
-            for ( ; xc < 768; xc++)
-              outBuf[xc] = 0x00808000U;
+          if (bufPos >= nBytes)
             break;
-          }
           pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
           size_t  n = colormap32.convertFourPixels(&(tmpBuf[0]),
                                                    &(bufp[bufPos]), videoFlags);
@@ -627,8 +566,17 @@ namespace Plus4Emu {
           pixelSampleCnt -= pixelSample1;
           readPos++;
         }
-        xc++;
-      } while (xc < 768);
+        if (++xc >= 768)
+          return;
+      }
+      if (yuvTextureMode) {
+        for ( ; xc < 768; xc++)
+          outBuf[xc] = 0x00808000U;
+      }
+      else {
+        for ( ; xc < 768; xc++)
+          outBuf[xc] = 0x00000000U;
+      }
     }
   }
 
@@ -670,10 +618,22 @@ namespace Plus4Emu {
                                          double x0, double y0,
                                          double x1, double y1)
   {
+    GLfloat txtycf0 = GLfloat(1.0 / 16.0);
+    GLfloat txtycf1 = GLfloat(15.0 / 16.0);
+    if (lineBuffers_[100] == (Message_LineData *) 0 &&
+        lineBuffers_[101] != (Message_LineData *) 0) {
+      // interlace
+      txtycf0 -= GLfloat(0.5 / 16.0);
+      txtycf1 -= GLfloat(0.5 / 16.0);
+    }
     // half horizontal resolution, no interlace (384x288)
     for (size_t yc = 0; yc < 588; yc += 28) {
-      for (size_t offs = 0; offs < 32; offs += 2) {
-        // decode video data, and build 16-bit texture
+      if (yc > 0) {
+        std::memcpy(&(textureBuffer16[0]), &(textureBuffer16[14 * 384]),
+                    sizeof(uint16_t) * size_t(2 * 384));
+      }
+      // decode video data, and build 16-bit texture
+      for (size_t offs = (yc > 0 ? 4 : 0); offs < 32; offs += 2) {
         decodeLine_quality0(&(textureBuffer16[(offs >> 1) * 384]),
                             lineBuffers_, yc + offs);
       }
@@ -681,23 +641,20 @@ namespace Plus4Emu {
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 16,
                       GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
       // update display
-      double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0))
-                           * (y1 - y0));
-      double  ycf1 = y0 + ((double(int(yc + 28)) * (1.0 / 576.0))
-                           * (y1 - y0));
-      double  txtycf1 = 15.0 / 16.0;
+      double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0)) * (y1 - y0));
+      double  ycf1 = y0 + ((double(int(yc + 28)) * (1.0 / 576.0)) * (y1 - y0));
       if (yc == 560) {
         ycf1 -= ((y1 - y0) * (12.0 / 576.0));
-        txtycf1 -= (6.0 / 16.0);
+        txtycf1 -= GLfloat(6.0 / 16.0);
       }
       glBegin(GL_QUADS);
-      glTexCoord2f(GLfloat(0.0), GLfloat(1.0 / 16.0));
+      glTexCoord2f(GLfloat(0.0), txtycf0);
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(1.0 / 16.0));
+      glTexCoord2f(GLfloat(384.0 / 512.0), txtycf0);
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(384.0 / 512.0), GLfloat(txtycf1));
+      glTexCoord2f(GLfloat(384.0 / 512.0), txtycf1);
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
-      glTexCoord2f(GLfloat(0.0), GLfloat(txtycf1));
+      glTexCoord2f(GLfloat(0.0), txtycf1);
       glVertex2f(GLfloat(x0), GLfloat(ycf1));
       glEnd();
     }
@@ -707,34 +664,43 @@ namespace Plus4Emu {
                                          double x0, double y0,
                                          double x1, double y1)
   {
+    GLfloat txtycf0 = GLfloat(1.0 / 16.0);
+    GLfloat txtycf1 = GLfloat(15.0 / 16.0);
+    if (lineBuffers_[100] == (Message_LineData *) 0 &&
+        lineBuffers_[101] != (Message_LineData *) 0) {
+      // interlace
+      txtycf0 -= GLfloat(0.5 / 16.0);
+      txtycf1 -= GLfloat(0.5 / 16.0);
+    }
     // full horizontal resolution, no interlace (768x288)
     for (size_t yc = 0; yc < 588; yc += 28) {
-      for (size_t offs = 0; offs < 32; offs += 2) {
-        // decode video data, and build 16-bit texture
-        decodeLine_quality2(&(textureBuffer16[(offs >> 1) * 768]),
+      if (yc > 0) {
+        std::memcpy(&(textureBuffer32[0]), &(textureBuffer32[14 * 768]),
+                    sizeof(uint32_t) * size_t(2 * 768));
+      }
+      // decode video data, and build 32-bit texture
+      for (size_t offs = (yc > 0 ? 4 : 0); offs < 32; offs += 2) {
+        decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
                             lineBuffers_, yc + offs);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
-                      GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textureSpace);
+                      GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
       // update display
-      double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0))
-                           * (y1 - y0));
-      double  ycf1 = y0 + ((double(int(yc + 28)) * (1.0 / 576.0))
-                           * (y1 - y0));
-      double  txtycf1 = 15.0 / 16.0;
+      double  ycf0 = y0 + ((double(int(yc)) * (1.0 / 576.0)) * (y1 - y0));
+      double  ycf1 = y0 + ((double(int(yc + 28)) * (1.0 / 576.0)) * (y1 - y0));
       if (yc == 560) {
         ycf1 -= ((y1 - y0) * (12.0 / 576.0));
-        txtycf1 -= (6.0 / 16.0);
+        txtycf1 -= GLfloat(6.0 / 16.0);
       }
       glBegin(GL_QUADS);
-      glTexCoord2f(GLfloat(0.0), GLfloat(1.0 / 16.0));
+      glTexCoord2f(GLfloat(0.0), txtycf0);
       glVertex2f(GLfloat(x0), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(1.0 / 16.0));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), txtycf0);
       glVertex2f(GLfloat(x1), GLfloat(ycf0));
-      glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(txtycf1));
+      glTexCoord2f(GLfloat(768.0 / 1024.0), txtycf1);
       glVertex2f(GLfloat(x1), GLfloat(ycf1));
-      glTexCoord2f(GLfloat(0.0), GLfloat(txtycf1));
+      glTexCoord2f(GLfloat(0.0), txtycf1);
       glVertex2f(GLfloat(x0), GLfloat(ycf1));
       glEnd();
     }
@@ -758,8 +724,12 @@ namespace Plus4Emu {
     }
     // full horizontal resolution, interlace (768x576), TV emulation
     for (int yc = -4; yc < 594; yc += 26) {
-      for (int offs = 0; offs < 32; offs += 2) {
-        // decode video data, and build 32-bit texture
+      if (yc > 0) {
+        std::memcpy(&(textureBuffer32[0]), &(textureBuffer32[13 * 768]),
+                    sizeof(uint32_t) * size_t(3 * 768));
+      }
+      // decode video data, and build 32-bit texture
+      for (int offs = (yc > 0 ? 6 : 0); offs < 32; offs += 2) {
         decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
                             lineBuffers_, yc + offs);
       }
@@ -1197,6 +1167,14 @@ namespace Plus4Emu {
       else if (typeid(*m) == typeid(Message_SetParameters)) {
         Message_SetParameters *msg;
         msg = static_cast<Message_SetParameters *>(m);
+        if (msg->dp.displayQuality < 2) {
+          yuvTextureMode = false;
+          colormap16.setDisplayParameters(msg->dp, false);
+        }
+        else {
+          yuvTextureMode = (msg->dp.displayQuality >= 3);
+          colormap32.setDisplayParameters(msg->dp, yuvTextureMode);
+        }
         if (displayParameters.displayQuality != msg->dp.displayQuality ||
             displayParameters.bufferingMode != msg->dp.bufferingMode) {
           Fl::remove_idle(&fltkIdleCallback, (void *) this);
@@ -1245,8 +1223,12 @@ namespace Plus4Emu {
             }
           }
           // reset texture
-          if (msg->dp.displayQuality < 3) {
+          if (msg->dp.displayQuality < 2) {
             std::memset(textureBuffer16, 0, sizeof(uint16_t) * 1024 * 16);
+          }
+          else if (!yuvTextureMode) {
+            for (size_t n = 0; n < (1024 * 16); n++)
+              textureBuffer32[n] = 0x00000000U;
           }
           else {
             for (size_t n = 0; n < (1024 * 16); n++)
@@ -1261,14 +1243,6 @@ namespace Plus4Emu {
           glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
         }
         displayParameters = msg->dp;
-        if (displayParameters.displayQuality < 3) {
-          yuvTextureMode = false;
-          colormap16.setDisplayParameters(displayParameters, false);
-        }
-        else {
-          yuvTextureMode = true;
-          colormap32.setDisplayParameters(displayParameters, true);
-        }
         for (size_t yc = 0; yc < 289; yc++)
           linesChanged[yc] = true;
       }
