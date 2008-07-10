@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0109 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -251,12 +251,13 @@ class Plus4EmuGUI_PrinterWindow {open
   } {
     code {{
   try {
-    std::string fName;
-    std::FILE   *f = (std::FILE *) 0;
+    std::string fName = gui.screenshotFileName;
     if (!gui.browseFile(fName, gui.screenshotDirectory, "TGA files\\t*.tga",
                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save printer output"))
       return;
+    gui.screenshotFileName = fName;
+    std::FILE   *f = (std::FILE *) 0;
     if (gui.lockVMThread()) {
       try {
         const uint8_t *buf = (uint8_t *) 0;
@@ -320,8 +321,8 @@ class Plus4EmuGUI_PrinterWindow {open
             else {
               int     tmp = xc + 2;
               while (tmp < w_ && (tmp - xc) < 128) {
-                if (bufp[tmp] == bufp[tmp - 1]) {
-                  tmp--;
+                if (bufp[tmp] == bufp[tmp - 1] && bufp[tmp] == bufp[tmp - 2]) {
+                  tmp -= 2;
                   break;
                 }
                 tmp++;
