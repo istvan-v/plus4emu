@@ -214,7 +214,9 @@ namespace Plus4 {
       pageBuf((uint8_t *) 0),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
-      noBreakOnDataRead(false)
+      noBreakOnDataRead(false),
+      outFileASCIIMode(false),
+      outFile((std::FILE *) 0)
   {
     pageBuf = new uint8_t[pageWidth * pageHeight];
     for (size_t i = 0; i < size_t(pageWidth * pageHeight); i++)
@@ -257,6 +259,13 @@ namespace Plus4 {
 
   VC1526::~VC1526()
   {
+    if (outFile) {
+      // FIXME: errors are ignored here
+      if (outFileASCIIMode)
+        std::fputc('\n', outFile);
+      std::fflush(outFile);
+      std::fclose(outFile);
+    }
     delete[] pageBuf;
   }
 
@@ -486,6 +495,44 @@ namespace Plus4 {
       riot2.setPortA(riot2.getPortAInput() | 0x08);
   }
 
+  void VC1526::setTextOutputFile(const char *fileName, bool asciiMode)
+  {
+    if (fileName == (char *) 0 || fileName[0] == '\0') {
+      // if closing output file:
+      if (outFile) {
+        bool    err = false;
+        if (outFileASCIIMode)
+          err = (std::fputc('\n', outFile) == EOF);
+        if (std::fflush(outFile) != 0)
+          err = true;
+        if (std::fclose(outFile) != 0)
+          err = true;
+        outFile = (std::FILE *) 0;
+        outFileASCIIMode = false;
+        // reset memory write callbacks
+        for (uint16_t i = 0x0080; i <= 0x00FF; i++) {
+          cpu.setMemoryWriteCallback(i, &writeRIOT2RAM);
+          cpu.setMemoryWriteCallback(i | uint16_t(0x0100), &writeRIOT2RAM);
+        }
+        if (err)
+          throw Plus4Emu::Exception("error closing printer output file");
+      }
+      return;
+    }
+    if (outFile)
+      setTextOutputFile((char *) 0);    // close old output file first
+    std::FILE *f = std::fopen(fileName, (asciiMode ? "w" : "wb"));
+    if (!f)
+      throw Plus4Emu::Exception("error opening printer output file");
+    outFile = f;
+    outFileASCIIMode = asciiMode;
+    // set memory write callbacks
+    for (uint16_t i = 0x0080; i <= 0x00FF; i++) {
+      cpu.setMemoryWriteCallback(i, &writeRIOT2RAMAndFile);
+      cpu.setMemoryWriteCallback(i | uint16_t(0x0100), &writeRIOT2RAMAndFile);
+    }
+  }
+
   void VC1526::reset()
   {
     via.reset();
@@ -574,6 +621,48 @@ namespace Plus4 {
       via.writeRegister(addr, value);
       break;
     }
+  }
+
+  PLUS4EMU_REGPARM3 void VC1526::writeRIOT2RAMAndFile(
+      void *userData, uint16_t addr, uint8_t value)
+  {
+    VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
+    addr = addr & 0x007F;
+    vc1526.riot2.writeMemory(addr, value);
+    if (!(addr >= 0x0013 && addr <= 0x0067))
+      return;
+    if (value != vc1526.riot1.readMemory(0x0064))
+      return;
+    {
+      M7501Registers  r;
+      vc1526.cpu.getRegisters(r);
+      if (!(r.reg_PC >= 0xF4BE && r.reg_PC <= 0xF4C5))
+        return;
+    }
+    if (!vc1526.outFile) {
+      // file is closed: reset memory write callbacks, and return
+      for (uint16_t i = 0x0080; i <= 0x00FF; i++) {
+        vc1526.cpu.setMemoryWriteCallback(i, &VC1526::writeRIOT2RAM);
+        vc1526.cpu.setMemoryWriteCallback(i | uint16_t(0x0100),
+                                          &VC1526::writeRIOT2RAM);
+      }
+      return;
+    }
+    if (vc1526.outFileASCIIMode) {
+      // convert character to ASCII format
+      if ((value >= 0x41 && value <= 0x5A) || (value >= 0x61 && value <= 0x7A))
+        value = value ^ 0x20;   // swap upper/lower case
+      else if (value == 0x0A || value == 0x0D)
+        value = 0x0A;           // CR -> LF
+      else if (value == 0x09 || value == 0xA0)
+        value = 0x20;           // tab -> space
+      else if (value < 0x20 || (value >= 0x80 && value <= 0x9F))
+        return;                 // strip any other non-printable characters
+      else if (!(value >= 0x20 && value <= 0x5F && value != 0x5C))
+        value = 0x5F;           // replace invalid characters with underscores
+    }
+    // FIXME: errors are ignored here
+    std::fputc(value, vc1526.outFile);
   }
 
 }       // namespace Plus4

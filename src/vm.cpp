@@ -402,6 +402,13 @@ namespace Plus4Emu {
     (void) isEnabled;
   }
 
+  void VirtualMachine::setPrinterTextOutputFile(const char *fileName,
+                                                bool asciiMode)
+  {
+    (void) fileName;
+    (void) asciiMode;
+  }
+
   void VirtualMachine::getVMStatus(VMStatus& vmStatus_)
   {
     vmStatus_.tapeReadOnly = getIsTapeReadOnly();

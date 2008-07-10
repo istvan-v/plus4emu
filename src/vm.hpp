@@ -290,6 +290,17 @@ namespace Plus4Emu {
      */
     virtual void setPrinterFormFeedOn(bool isEnabled);
     /*!
+     * Write the printer output to 'fileName'. If 'asciiMode' is false, then
+     * the raw character data received on the serial bus is written, otherwise
+     * it is converted to ASCII and written as a standard text file.
+     * If 'fileName' is NULL or empty, then a previously opened file is closed.
+     * On error, such as not being able to open the output file,
+     * Plus4Emu::Exception may be thrown.
+     * NOTE: printer emulation must be enabled before calling this function.
+     */
+    virtual void setPrinterTextOutputFile(const char *fileName,
+                                          bool asciiMode = false);
+    /*!
      * Returns status information about the emulated machine (see also
      * struct VMStatus above, and the comments for functions that return
      * individual status values).

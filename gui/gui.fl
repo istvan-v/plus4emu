@@ -166,9 +166,11 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_DeleteCP(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_DeleteCPs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapeClose(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtMode(Fl_Widget *o, void *v);} {}
-  decl {static void menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtWrtFile(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtASCII(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Reset(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ColdReset(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_ResetFreqs(Fl_Widget *o, void *v);} {}
@@ -181,15 +183,14 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_QuickCfgS1(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_QuickCfgS2(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Configure(Fl_Widget *o, void *v);} {}
-  decl {static void menuCallback_Options_DpyMode(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_DpySize1(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_DpySize2(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_DpySize3(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_DpyMode(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_DpyConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_SndIncVol(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_SndDecVol(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_SndConfig(Fl_Widget *o, void *v);} {}
-  decl {static void menuCallback_Options_FloppyCfg(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRmA(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRmB(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRmC(Fl_Widget *o, void *v);} {}
@@ -206,6 +207,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Options_FloppyRsD(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyRst(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FloppyGC(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Options_FloppyCfg(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_PPriority(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_KbdConfig(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Options_FileIODir(Fl_Widget *o, void *v);} {}

@@ -94,6 +94,8 @@ namespace Plus4 {
                                       uint16_t addr, uint8_t value);
     void        *breakPointCallbackUserData;
     bool        noBreakOnDataRead;
+    bool        outFileASCIIMode;
+    std::FILE   *outFile;
     // --------
     static PLUS4EMU_REGPARM2 uint8_t readRIOT1RAM(
         void *userData, uint16_t addr);
@@ -102,6 +104,8 @@ namespace Plus4 {
     static PLUS4EMU_REGPARM2 uint8_t readRIOT2RAM(
         void *userData, uint16_t addr);
     static PLUS4EMU_REGPARM3 void writeRIOT2RAM(
+        void *userData, uint16_t addr, uint8_t value);
+    static PLUS4EMU_REGPARM3 void writeRIOT2RAMAndFile(
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM2 uint8_t readMemoryROM(
         void *userData, uint16_t addr);
@@ -195,6 +199,16 @@ namespace Plus4 {
      * Set the state of the form feed button (false: off, true: on).
      */
     virtual void setFormFeedOn(bool isEnabled);
+    /*!
+     * Write the printer output to 'fileName'. If 'asciiMode' is false, then
+     * the raw character data received on the serial bus is written, otherwise
+     * it is converted to ASCII and written as a standard text file.
+     * If 'fileName' is NULL or empty, then a previously opened file is closed.
+     * On error, such as not being able to open the output file,
+     * Plus4Emu::Exception may be thrown.
+     */
+    virtual void setTextOutputFile(const char *fileName,
+                                   bool asciiMode = false);
     /*!
      * Reset printer.
      */
