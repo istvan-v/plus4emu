@@ -116,10 +116,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7 (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7.1 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7 (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7.1 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -516,6 +516,12 @@ Fl_Menu_Item& Plus4EmuGUI::getMenuItem(int n)
   case 11:
     s = "Options/Process priority/High";
     break;
+  case 12:
+    s = "Machine/Printer/Write output to text file";
+    break;
+  case 13:
+    s = "Machine/Printer/Text file ASCII format";
+    break;
   default:
     throw Plus4Emu::Exception("internal error: invalid menu item number");
   }
@@ -632,12 +638,16 @@ void Plus4EmuGUI::createMenus()
                    (char *) 0, &menuCallback_Machine_QuickCfgS1, (void *) this);
   mainMenuBar->add("Machine/Quick configuration/Save config 2",
                    (char *) 0, &menuCallback_Machine_QuickCfgS2, (void *) this);
+  mainMenuBar->add("Machine/Printer/View printer output",
+                   (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
   mainMenuBar->add("Machine/Printer/Enable printer",
                    (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
   mainMenuBar->add("Machine/Printer/1525 mode",
                    (char *) 0, &menuCallback_Machine_PrtMode, (void *) this);
-  mainMenuBar->add("Machine/Printer/View printer output",
-                   (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
+  mainMenuBar->add("Machine/Printer/Write output to text file",
+                   (char *) 0, &menuCallback_Machine_PrtWrtFile, (void *) this);
+  mainMenuBar->add("Machine/Printer/Text file ASCII format",
+                   (char *) 0, &menuCallback_Machine_PrtASCII, (void *) this);
   mainMenuBar->add("Machine/Enable light pen",
                    (char *) 0, &menuCallback_Machine_EnableLP, (void *) this);
   mainMenuBar->add("Machine/SID emulation/Enable",
@@ -648,8 +658,6 @@ void Plus4EmuGUI::createMenus()
                    (char *) 0, &menuCallback_Machine_Pause, (void *) this);
   mainMenuBar->add("Machine/Configure... (Shift+F10)",
                    (char *) 0, &menuCallback_Machine_Configure, (void *) this);
-  mainMenuBar->add("Options/Display/Configure... (Shift+F9)",
-                   (char *) 0, &menuCallback_Options_DpyConfig, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 384x288",
                    (char *) 0, &menuCallback_Options_DpySize1, (void *) this);
   mainMenuBar->add("Options/Display/Set size to 768x576",
@@ -658,14 +666,14 @@ void Plus4EmuGUI::createMenus()
                    (char *) 0, &menuCallback_Options_DpySize3, (void *) this);
   mainMenuBar->add("Options/Display/Cycle display mode (F9)",
                    (char *) 0, &menuCallback_Options_DpyMode, (void *) this);
+  mainMenuBar->add("Options/Display/Configure... (Shift+F9)",
+                   (char *) 0, &menuCallback_Options_DpyConfig, (void *) this);
   mainMenuBar->add("Options/Sound/Increase volume",
                    (char *) 0, &menuCallback_Options_SndIncVol, (void *) this);
   mainMenuBar->add("Options/Sound/Decrease volume",
                    (char *) 0, &menuCallback_Options_SndDecVol, (void *) this);
   mainMenuBar->add("Options/Sound/Configure...",
                    (char *) 0, &menuCallback_Options_SndConfig, (void *) this);
-  mainMenuBar->add("Options/Floppy/Configure... (Alt+D)",
-                   (char *) 0, &menuCallback_Options_FloppyCfg, (void *) this);
   mainMenuBar->add("Options/Floppy/Remove disk/Unit 8",
                    (char *) 0, &menuCallback_Options_FloppyRmA, (void *) this);
   mainMenuBar->add("Options/Floppy/Remove disk/Unit 9",
@@ -698,6 +706,8 @@ void Plus4EmuGUI::createMenus()
                    (char *) 0, &menuCallback_Options_FloppyRst, (void *) this);
   mainMenuBar->add("Options/Floppy/Disable unused drives",
                    (char *) 0, &menuCallback_Options_FloppyGC, (void *) this);
+  mainMenuBar->add("Options/Floppy/Configure... (Alt+D)",
+                   (char *) 0, &menuCallback_Options_FloppyCfg, (void *) this);
   mainMenuBar->add("Options/Process priority/Idle",
                    (char *) 0, &menuCallback_Options_PPriority, (void *) this);
   mainMenuBar->add("Options/Process priority/Below normal",
@@ -738,6 +748,11 @@ void Plus4EmuGUI::createMenus()
   for (int i = 7; i <= 11; i++)
     getMenuItem(i).deactivate();
 #endif
+  // "Machine/Printer/Write output to text file"
+  // "Machine/Printer/Text file ASCII format"
+  for (int i = 12; i <= 13; i++)
+    mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_TOGGLE);
+  getMenuItem(12).deactivate();
   updateMenu();
 }
 
@@ -2360,24 +2375,42 @@ void Plus4EmuGUI::menuCallback_Machine_TapeClose(Fl_Widget *o, void *v)
   }
 }
 
+void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  gui_.printerWindow->show();
+}
+
 void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
+    // "Machine/Printer/Enable printer"
+    bool    printerEnabled = (gui_.getMenuItem(4).value() != 0);
+    if (!printerEnabled) {
+      // "Machine/Printer/Write output to text file"
+      gui_.getMenuItem(12).clear();
+      gui_.getMenuItem(12).deactivate();
+      // "Machine/Printer/Text file ASCII format"
+      gui_.getMenuItem(13).activate();
+    }
     if (gui_.lockVMThread()) {
       try {
-        // "Machine/Printer/Enable printer"
-        gui_.vm.setEnablePrinter(gui_.getMenuItem(4).value() != 0);
+        gui_.vm.setEnablePrinter(printerEnabled);
       }
       catch (...) {
         gui_.unlockVMThread();
         throw;
       }
       gui_.unlockVMThread();
+      if (printerEnabled)
+        gui_.getMenuItem(12).activate();
     }
   }
   catch (std::exception& e) {
+    gui_.getMenuItem(4).clear();
     gui_.errorMessage(e.what());
   }
 }
@@ -2404,11 +2437,54 @@ void Plus4EmuGUI::menuCallback_Machine_PrtMode(Fl_Widget *o, void *v)
   }
 }
 
-void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)
+void Plus4EmuGUI::menuCallback_Machine_PrtWrtFile(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  gui_.printerWindow->show();
+  try {
+    // "Machine/Printer/Enable printer"
+    if (gui_.getMenuItem(4).value() == 0)
+      return;           // printer emulation is not enabled
+    // "Machine/Printer/Text file ASCII format"
+    gui_.getMenuItem(13).activate();
+    std::string fileName("");
+    // "Machine/Printer/Write output to text file"
+    if (gui_.getMenuItem(12).value() != 0) {
+      if (!gui_.browseFile(fileName, gui_.screenshotDirectory,
+                           "Text files\t*.txt",
+                           Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
+                           "Save printer output to text file")) {
+        gui_.getMenuItem(12).clear();
+        return;
+      }
+    }
+    bool    asciiMode = (gui_.getMenuItem(13).value() != 0);
+    if (gui_.lockVMThread()) {
+      try {
+        gui_.vm.setPrinterTextOutputFile(fileName.c_str(), asciiMode);
+      }
+      catch (...) {
+        gui_.unlockVMThread();
+        throw;
+      }
+      gui_.unlockVMThread();
+      if (fileName.length() > 0) {
+        // cannot change file format while the file is open
+        gui_.getMenuItem(13).deactivate();
+      }
+    }
+  }
+  catch (std::exception& e) {
+    gui_.getMenuItem(12).clear();
+    gui_.errorMessage(e.what());
+  }
+}
+
+void Plus4EmuGUI::menuCallback_Machine_PrtASCII(Fl_Widget *o, void *v)
+{
+  (void) o;
+  (void) v;
+  // nothing to do
 }
 
 void Plus4EmuGUI::menuCallback_Machine_Reset(Fl_Widget *o, void *v)
@@ -2558,26 +2634,6 @@ void Plus4EmuGUI::menuCallback_Machine_Configure(Fl_Widget *o, void *v)
   gui_.machineConfigWindow->show();
 }
 
-void Plus4EmuGUI::menuCallback_Options_DpyMode(Fl_Widget *o, void *v)
-{
-  (void) o;
-  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  switch (gui_.displayMode) {
-  case 0:
-    gui_.displayMode = 2;
-    break;
-  case 2:
-    gui_.displayMode = 3;
-    break;
-  case 3:
-    gui_.displayMode = 1;
-    break;
-  default:
-    gui_.displayMode = 0;
-    break;
-  }
-}
-
 void Plus4EmuGUI::menuCallback_Options_DpySize1(Fl_Widget *o, void *v)
 {
   (void) o;
@@ -2597,6 +2653,26 @@ void Plus4EmuGUI::menuCallback_Options_DpySize3(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   gui_.resizeWindow(1152, 864);
+}
+
+void Plus4EmuGUI::menuCallback_Options_DpyMode(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  switch (gui_.displayMode) {
+  case 0:
+    gui_.displayMode = 2;
+    break;
+  case 2:
+    gui_.displayMode = 3;
+    break;
+  case 3:
+    gui_.displayMode = 1;
+    break;
+  default:
+    gui_.displayMode = 0;
+    break;
+  }
 }
 
 void Plus4EmuGUI::menuCallback_Options_DpyConfig(Fl_Widget *o, void *v)
@@ -2641,13 +2717,6 @@ void Plus4EmuGUI::menuCallback_Options_SndConfig(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   gui_.soundSettingsWindow->show();
-}
-
-void Plus4EmuGUI::menuCallback_Options_FloppyCfg(Fl_Widget *o, void *v)
-{
-  (void) o;
-  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  gui_.diskConfigWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Options_FloppyRmA(Fl_Widget *o, void *v)
@@ -2950,6 +3019,13 @@ void Plus4EmuGUI::menuCallback_Options_FloppyGC(Fl_Widget *o, void *v)
     }
     gui_.unlockVMThread();
   }
+}
+
+void Plus4EmuGUI::menuCallback_Options_FloppyCfg(Fl_Widget *o, void *v)
+{
+  (void) o;
+  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  gui_.diskConfigWindow->show();
 }
 
 void Plus4EmuGUI::menuCallback_Options_PPriority(Fl_Widget *o, void *v)

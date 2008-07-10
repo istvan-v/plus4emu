@@ -733,15 +733,35 @@ namespace Plus4 {
         xc > int(ted->readMemoryCPU(0x07E8))) {
       return;
     }
+    uint16_t  savedColorAddr = 0;
+    {
+      M7501Registers  r;
+      ted->getRegisters(r);
+      savedColorAddr = uint16_t(0x0100 | ((r.reg_SP + 1) & 0xFF));
+      r.reg_YR = uint8_t(xc);
+      ted->setRegisters(r);
+    }
+    ted->writeMemoryCPU(uint16_t(0x0800)
+                        | uint16_t(ted->readMemoryCPU(0xFF0D))
+                        | (uint16_t(ted->readMemoryCPU(0xFF0C) & 0x03) << 8),
+                        ted->readMemoryCPU(savedColorAddr));
+    int     cursorLineStart = yc * 40;
+    int     cursorLineStartL = cursorLineStart & 0xFF;
+    int     cursorLineStartH = cursorLineStart >> 8;
+    int     cursorPosition = (yc * 40) + xc;
     ted->writeMemoryCPU(0x00C4, uint8_t(0x80));
-    ted->writeMemoryCPU(0x00C8, uint8_t((yc * 40) & 0xFF));
-    ted->writeMemoryCPU(0x00C9, uint8_t(((yc * 40) >> 8) | 0x0C));
+    ted->writeMemoryCPU(0x00C8, uint8_t(cursorLineStartL));
+    ted->writeMemoryCPU(0x00C9, uint8_t(cursorLineStartH | 0x0C));
     ted->writeMemoryCPU(0x00CA, uint8_t(xc));
     ted->writeMemoryCPU(0x00CD, uint8_t(yc));
-    ted->writeMemoryCPU(0x00EA, uint8_t((yc * 40) & 0xFF));
-    ted->writeMemoryCPU(0x00EB, uint8_t(((yc * 40) >> 8) | 0x08));
-    ted->writeMemoryCPU(0xFF0C, uint8_t(((yc * 40) + xc) >> 8));
-    ted->writeMemoryCPU(0xFF0D, uint8_t(((yc * 40) + xc) & 0xFF));
+    ted->writeMemoryCPU(0x00EA, uint8_t(cursorLineStartL));
+    ted->writeMemoryCPU(0x00EB, uint8_t(cursorLineStartH | 0x08));
+    ted->writeMemoryCPU(0xFF0C, uint8_t(cursorPosition >> 8));
+    ted->writeMemoryCPU(0xFF0D, uint8_t(cursorPosition & 0xFF));
+    ted->writeMemoryCPU(savedColorAddr,
+                        ted->readMemoryCPU(uint16_t(0x0800 | cursorPosition)));
+    ted->writeMemoryCPU(uint16_t(0x0800 | cursorPosition),
+                        ted->readMemoryCPU(0x053B));
   }
 
   // --------------------------------------------------------------------------
@@ -1467,6 +1487,17 @@ namespace Plus4 {
     printerFormFeedOn = isEnabled;
     if (printer_)
       printer_->setFormFeedOn(isEnabled);
+  }
+
+  void Plus4VM::setPrinterTextOutputFile(const char *fileName, bool asciiMode)
+  {
+    VC1526  *printer_ =
+        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    if (!printer_) {
+      throw Plus4Emu::Exception("cannot set printer output file "
+                                "- printer emulation is not enabled");
+    }
+    printer_->setTextOutputFile(fileName, asciiMode);
   }
 
   void Plus4VM::getVMStatus(VMStatus& vmStatus_)
