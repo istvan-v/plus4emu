@@ -1,3 +1,12 @@
+Changes in version 1.2.7.1
+--------------------------
+
+  * added new option for saving the printer output to a text file,
+    either as the raw characters sent to the printer, or converted to
+    ASCII
+  * when using the mouse to set the cursor position, the color of the
+    character under the cursor is now saved, set, and restored correctly
+
 Changes in version 1.2.7
 ------------------------
 
