@@ -85,6 +85,7 @@ namespace Plus4 {
     int         motorYPhase;
     int         prvMotorYPhase;
     int         motorYCnt;
+    bool        riot1PortAOutputChangeFlag;
     uint8_t     pinState;
     uint8_t     prvPinState;
     bool        changeFlag;
@@ -156,6 +157,10 @@ namespace Plus4 {
      * determined by serialBus.timesliceLength.
      */
     virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
+    /*!
+     * Called when the state of the ATN line changes.
+     */
+    virtual void atnStateChangeCallback(bool newState);
     /*!
      * Returns a pointer to the page data, which is encoded as an 8-bit
      * greyscale image. The data size is getPageWidth() * getPageHeight()

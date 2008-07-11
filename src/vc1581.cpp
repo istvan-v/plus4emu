@@ -174,6 +174,7 @@ namespace Plus4 {
     VC1581& vc1581 = *(reinterpret_cast<VC1581 *>(userData));
     vc1581.dataBusState = value & uint8_t(0xFF);
     vc1581.cia.writeRegister(addr & 0x000F, vc1581.dataBusState);
+    vc1581.atnStateChangeCallback(bool(vc1581.serialBus.getATN()));
     vc1581.wd177x.setSide(vc1581.cia.getPortA() & 0x01);
   }
 
@@ -219,6 +220,7 @@ namespace Plus4 {
       memory_ram[i] = 0x00;
     // select drive number
     ciaPortAInput = uint8_t((driveNum_ & 3) << 3) | uint8_t(0x67);
+    atnStateChangeCallback(bool(serialBus.getATN()));
     // configure WD177x emulation
     wd177x.setIsWD1773(false);
     wd177x.setEnableBusyFlagHack(true);
@@ -276,7 +278,6 @@ namespace Plus4 {
     vc1581.timeRemaining += vc1581.serialBus.timesliceLength;
     while (vc1581.timeRemaining >= 0) {
       vc1581.timeRemaining -= (int64_t(1) << 32);
-      vc1581.cia.setFlagState(!!(vc1581.serialBus.getATN()));
       vc1581.cpu.runOneCycle();
       vc1581.cpu.runOneCycle();
       if (vc1581.diskChangeCnt) {
@@ -288,18 +289,22 @@ namespace Plus4 {
       }
       vc1581.cia.setPortA(vc1581.ciaPortAInput);
       vc1581.cia.run(2);
-      uint8_t n = vc1581.cia.getPortB();
-      uint8_t dataOut =
-          ((vc1581.serialBus.getATN() ^ uint8_t(0xFF)) & (n & uint8_t(0x10)))
-          | (n & uint8_t(0x02));
-      vc1581.serialBus.setCLKAndDATA(vc1581.deviceNumber,
-                                     !(n & uint8_t(0x08)), !dataOut);
     }
   }
 
   SerialDevice::ProcessCallbackPtr VC1581::getProcessCallback()
   {
     return &processCallback;
+  }
+
+  void VC1581::atnStateChangeCallback(bool newState)
+  {
+    cia.setFlagState(newState);
+    uint8_t n = cia.getPortB();
+    uint8_t dataOut =
+        ((serialBus.getATN() ^ uint8_t(0xFF)) & (n & uint8_t(0x10)))
+        | (n & uint8_t(0x02));
+    serialBus.setCLKAndDATA(deviceNumber, !(n & uint8_t(0x08)), !dataOut);
   }
 
   void VC1581::reset()
@@ -310,6 +315,7 @@ namespace Plus4 {
     wd177x.setSide(cia.getPortA() & 0x01);
     diskChangeCnt = 350000;
     ciaPortAInput = (ciaPortAInput & uint8_t(0x7F)) | uint8_t(0x02);
+    atnStateChangeCallback(bool(serialBus.getATN()));
   }
 
   M7501 * VC1581::getCPU()
@@ -376,10 +382,13 @@ namespace Plus4 {
   void VC1581::writeMemoryDebug(uint16_t addr, uint8_t value)
   {
     if (addr < 0x4400) {
-      if (addr < 0x2000)
+      if (addr < 0x2000) {
         memory_ram[addr] = value;
-      else if (addr >= 0x4000)
+      }
+      else if (addr >= 0x4000) {
         cia.writeRegister(addr & 0x000F, value);
+        atnStateChangeCallback(bool(serialBus.getATN()));
+      }
     }
     else if (addr >= 0x6000 && addr <= 0x63FF) {
       switch (addr & 3) {

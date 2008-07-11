@@ -93,6 +93,7 @@ namespace Plus4 {
     uint8_t     deviceNumber;
     uint8_t     dataBusState;
     uint8_t     via1PortBInput;
+    bool        via1PortBOutputChangeFlag;
     bool        halfCycleFlag;
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
@@ -180,6 +181,10 @@ namespace Plus4 {
      * emulation.
      */
     virtual SerialDevice::ProcessCallbackPtr getHighAccuracyProcessCallback();
+    /*!
+     * Called when the state of the ATN line changes.
+     */
+    virtual void atnStateChangeCallback(bool newState);
     /*!
      * Reset floppy drive.
      */

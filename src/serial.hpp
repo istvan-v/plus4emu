@@ -140,6 +140,13 @@ namespace Plus4 {
       return (ProcessCallbackPtr) 0;
     }
     /*!
+     * Called when the state of the ATN line changes.
+     */
+    virtual void atnStateChangeCallback(bool newState)
+    {
+      (void) newState;
+    }
+    /*!
      * Use 'romData_' (should point to 16384 bytes of data which is expected
      * to remain valid until either a new address is set or the object is
      * destroyed, or can be NULL for no ROM data) for ROM bank 'n'; allowed

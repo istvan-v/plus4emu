@@ -116,6 +116,10 @@ namespace Plus4 {
      */
     virtual SerialDevice::ProcessCallbackPtr getProcessCallback();
     /*!
+     * Called when the state of the ATN line changes.
+     */
+    virtual void atnStateChangeCallback(bool newState);
+    /*!
      * Reset floppy drive.
      */
     virtual void reset();

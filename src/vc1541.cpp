@@ -697,6 +697,7 @@ namespace Plus4 {
     vc1541.dataBusState = value & 0xFF;
     addr = addr & 0x000F;
     vc1541.via1.writeRegister(addr, vc1541.dataBusState);
+    vc1541.via1PortBOutputChangeFlag = true;
   }
 
   PLUS4EMU_REGPARM3 void VC1541::writeMemory_VIA2(
@@ -835,6 +836,7 @@ namespace Plus4 {
       deviceNumber(uint8_t(driveNum_)),
       dataBusState(0x00),
       via1PortBInput(0xFF),
+      via1PortBOutputChangeFlag(true),
       halfCycleFlag(false),
       headLoadedFlag(false),
       prvByteWasFF(false),
@@ -859,6 +861,7 @@ namespace Plus4 {
     via1PortBInput = uint8_t(0x9F | ((deviceNumber & 0x03) << 5));
     via1.setPortB(via1PortBInput);
     via1.setPortA(0xFE);
+    via1.setCA1(!(serialBus.getATN()));
     via2.setPortB(0xEF);
     this->reset();
   }
@@ -917,14 +920,14 @@ namespace Plus4 {
     vc1541.timeRemaining += vc1541.serialBus.timesliceLength;
     while (vc1541.timeRemaining >= 0) {
       vc1541.timeRemaining -= (int64_t(1) << 32);
-      {
+      if (vc1541.via1PortBOutputChangeFlag) {
+        vc1541.via1PortBOutputChangeFlag = false;
         uint8_t via1PortBOutput = vc1541.via1.getPortB();
         uint8_t atnInput = (~(uint8_t(vc1541.serialBus.getATN())));
         uint8_t atnAck_ = via1PortBOutput ^ atnInput;
         atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
         vc1541.serialBus.setCLKAndDATA(vc1541.deviceNumber,
                                        !(via1PortBOutput & 0x08), !(atnAck_));
-        vc1541.via1.setCA1(bool(atnInput));
       }
       vc1541.via1.runOneCycle();
       vc1541.via2.runOneCycle();
@@ -960,15 +963,17 @@ namespace Plus4 {
       if (!vc1541.halfCycleFlag) {
         // delay serial port output by ~833.3 ns
         vc1541.halfCycleFlag = true;
-        uint8_t via1PortBOutput = vc1541.via1.getPortB();
-        uint8_t atnAck_ =
-            via1PortBOutput ^ (~(uint8_t(vc1541.serialBus.getATN())));
-        atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
-        vc1541.serialBus.setCLKAndDATA(vc1541.deviceNumber,
-                                       !(via1PortBOutput & 0x08), !(atnAck_));
+        if (vc1541.via1PortBOutputChangeFlag) {
+          vc1541.via1PortBOutputChangeFlag = false;
+          uint8_t via1PortBOutput = vc1541.via1.getPortB();
+          uint8_t atnAck_ =
+              via1PortBOutput ^ (~(uint8_t(vc1541.serialBus.getATN())));
+          atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
+          vc1541.serialBus.setCLKAndDATA(vc1541.deviceNumber,
+                                         !(via1PortBOutput & 0x08), !(atnAck_));
+        }
       }
       if (vc1541.timeRemaining >= int64_t(vc1541.serialBusDelay)) {
-        vc1541.via1.setCA1(!vc1541.serialBus.getATN());
         vc1541.via1.runOneCycle();
         vc1541.via2.runOneCycle();
         vc1541.cpu.runOneCycle();
@@ -1010,6 +1015,12 @@ namespace Plus4 {
     return &processCallbackHighAccuracy;
   }
 
+  void VC1541::atnStateChangeCallback(bool newState)
+  {
+    via1PortBOutputChangeFlag = true;
+    via1.setCA1(!newState);
+  }
+
   void VC1541::reset()
   {
     (void) flushTrack();        // FIXME: should report errors ?
@@ -1018,6 +1029,7 @@ namespace Plus4 {
     cpu.reset();
     via1.setPortA(0xFE);
     via1PortBInput = uint8_t(0x9F | ((deviceNumber & 0x03) << 5));
+    via1PortBOutputChangeFlag = true;
     via1.setPortB(via1PortBInput);
   }
 
@@ -1077,6 +1089,7 @@ namespace Plus4 {
         break;
       case 0x1800:
         via1.writeRegister(addr & 0x000F, value);
+        via1PortBOutputChangeFlag = true;
         break;
       case 0x1C00:
         via2.writeRegister(addr & 0x000F, value);

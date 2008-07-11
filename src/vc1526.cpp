@@ -172,6 +172,7 @@ namespace Plus4 {
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.riot1.writeRegister(addr, value);
+    vc1526.riot1PortAOutputChangeFlag = true;
   }
 
   PLUS4EMU_REGPARM2 uint8_t VC1526::readRIOT2Register(
@@ -208,6 +209,7 @@ namespace Plus4 {
       motorYPhase(0),
       prvMotorYPhase(0),
       motorYCnt(0),
+      riot1PortAOutputChangeFlag(true),
       pinState(0x00),
       prvPinState(0x00),
       changeFlag(true),
@@ -403,7 +405,8 @@ namespace Plus4 {
     vc1526.timeRemaining += vc1526.serialBus.timesliceLength;
     while (vc1526.timeRemaining >= 0) {
       vc1526.timeRemaining -= (int64_t(1) << 32);
-      {
+      if (vc1526.riot1PortAOutputChangeFlag) {
+        vc1526.riot1PortAOutputChangeFlag = false;
         bool    dataOut = !(vc1526.riot1.getPortA() & 0x40);
         bool    atnAck = !(vc1526.riot1.getPortA() & 0x20);
         atnAck = atnAck && !(vc1526.serialBus.getATN());
@@ -433,6 +436,12 @@ namespace Plus4 {
   SerialDevice::ProcessCallbackPtr VC1526::getProcessCallback()
   {
     return &processCallback;
+  }
+
+  void VC1526::atnStateChangeCallback(bool newState)
+  {
+    (void) newState;
+    riot1PortAOutputChangeFlag = true;
   }
 
   const uint8_t * VC1526::getPageData() const
@@ -540,6 +549,7 @@ namespace Plus4 {
     riot2.reset();
     cpu.reset();
     riot1.setPortB((riot1.getPortBInput() & 0xF8) | uint8_t(deviceNumber & 3));
+    riot1PortAOutputChangeFlag = true;
   }
 
   M7501 * VC1526::getCPU()
@@ -610,6 +620,7 @@ namespace Plus4 {
       break;
     case 0x0200:
       riot1.writeRegister(addr, value);
+      riot1PortAOutputChangeFlag = true;
       break;
     case 0x0240:
       via.writeRegister(addr, value);

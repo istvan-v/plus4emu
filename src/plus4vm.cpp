@@ -130,6 +130,10 @@ namespace Plus4 {
     if (cold_reset) {
       serialPort.removeDevices(0xFFFF);
       serialPort.setATN(true);
+      for (int i = 4; i < 12; i++) {
+        if (vm.serialDevices[i] != (SerialDevice *) 0)
+          vm.serialDevices[i]->atnStateChangeCallback(true);
+      }
     }
     TED7360::reset(cold_reset);
   }
@@ -280,7 +284,16 @@ namespace Plus4 {
     if (!(ted.vm.isRecordingDemo | ted.vm.isPlayingDemo)) {
       ted.serialPort.setDATA(0, !(tmp & uint8_t(0x01)));
       ted.serialPort.setCLK(0, !(tmp & uint8_t(0x02)));
-      ted.serialPort.setATN(!(tmp & uint8_t(0x04)));
+      bool    atnState = !(tmp & uint8_t(0x04));
+      if (atnState != bool(ted.serialPort.getATN())) {
+        ted.serialPort.setATN(atnState);
+        if (ted.vm.serialDevices[4] != (SerialDevice *) 0)
+          ted.vm.serialDevices[4]->atnStateChangeCallback(atnState);
+        for (int i = 8; i < 12; i++) {
+          if (ted.vm.serialDevices[i] != (SerialDevice *) 0)
+            ted.vm.serialDevices[i]->atnStateChangeCallback(atnState);
+        }
+      }
     }
   }
 
