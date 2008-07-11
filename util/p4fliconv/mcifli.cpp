@@ -1364,7 +1364,7 @@ namespace Plus4FLIConv {
       // convert input image to 121 colors with dithering
       progressMessage("Calculating FLI data");
       for (int yc = 0; yc < nLines; yc++) {
-        if (!setProgressPercentage(yc * 20 / nLines)) {
+        if (!setProgressPercentage(yc * 10 / nLines)) {
           prgData[0] = 0x01;
           prgData[1] = 0x10;
           prgData[2] = 0x00;
@@ -1379,7 +1379,7 @@ namespace Plus4FLIConv {
       double  totalError = 0.0;
       for (int yc = 0; yc < nLines; yc += 2) {
         // field 0 (x = 0, 2, 4, ...)
-        if (!setProgressPercentage((yc * 40 / nLines) + 20)) {
+        if (!setProgressPercentage((yc * 45 / nLines) + 10)) {
           prgData[0] = 0x01;
           prgData[1] = 0x10;
           prgData[2] = 0x00;
@@ -1412,7 +1412,7 @@ namespace Plus4FLIConv {
       }
       for (int yc = 0; yc < nLines; yc += 2) {
         // field 1 (x = 1, 3, 5, ...)
-        if (!setProgressPercentage((yc * 40 / nLines) + 60)) {
+        if (!setProgressPercentage((yc * 45 / nLines) + 55)) {
           prgData[0] = 0x01;
           prgData[1] = 0x10;
           prgData[2] = 0x00;

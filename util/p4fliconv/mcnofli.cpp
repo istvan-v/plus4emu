@@ -625,7 +625,7 @@ namespace Plus4FLIConv {
       int     randomSeed = 0;
       Plus4Emu::setRandomSeed(randomSeed, 1U);
       for (int l = 0; l < (conversionQuality * 2); l++) {
-        if (!setProgressPercentage(((l * 80) / (conversionQuality * 2)) + 20))
+        if (!setProgressPercentage(((l * 90) / (conversionQuality * 2)) + 10))
           return false;
         // set initial palette with different methods, and choose the one
         // that results in the least error after optimization
@@ -819,9 +819,9 @@ namespace Plus4FLIConv {
           maxCnt = colorCnts[i];
         }
       }
-      int     progressCnt = int(colorTable0.size());
-      int     progressMax = int(colorTable0.size()) * 5;
-      if (!setProgressPercentage(20))
+      int     progressCnt = int(colorTable0.size()) / 2;
+      int     progressMax = progressCnt + (int(colorTable0.size()) * 4);
+      if (!setProgressPercentage(10))
         return false;
       for (int i = 0; i < 2; i++) {
         // color #0 (FF15)
@@ -1098,7 +1098,7 @@ namespace Plus4FLIConv {
       // convert input image to 121 colors with dithering
       progressMessage("Calculating FLI data");
       for (int yc = 0; yc < 200; yc++) {
-        if (!setProgressPercentage(yc * 20 / 200)) {
+        if (!setProgressPercentage(yc * 10 / 200)) {
           prgData[0] = 0x01;
           prgData[1] = 0x10;
           prgData[2] = 0x00;
