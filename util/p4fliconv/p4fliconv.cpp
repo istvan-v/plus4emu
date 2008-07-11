@@ -502,7 +502,92 @@ void Plus4FLIConvGUI::setWidgetColorToPlus4Color(Fl_Widget *o, int c)
 void Plus4FLIConvGUI::updateConfigWindow()
 {
   try {
-    conversionTypeValuator->value(int(config["conversionType"]));
+    int     conversionType = config["conversionType"];
+    int     luminanceSearchMode = config["luminanceSearchMode"];
+    if (conversionType < 6) {
+      verticalSizeValuator->activate();
+      xShift0Valuator->activate();
+    }
+    else {
+      verticalSizeValuator->deactivate();
+      xShift0Valuator->deactivate();
+    }
+    if (conversionType < 2)
+      xShift1Valuator->activate();
+    else
+      xShift1Valuator->deactivate();
+    switch (conversionType) {
+    case 0:
+    case 2:
+    case 4:
+    case 6:
+      // high resolution modes
+      saturationMultValuator->activate();
+      saturationPowValuator->activate();
+      if (luminanceSearchMode != 6) {
+        monitorGammaValuator->activate();
+        multiColorQualityValuator->deactivate();
+        mcColorErrorScaleValuator->deactivate();
+      }
+      else {
+        monitorGammaValuator->deactivate();
+        if (int(config["ditherMode"]) < 2)
+          config["ditherMode"] = int(2);
+        multiColorQualityValuator->activate();
+        if (conversionType < 6) {
+          config["xShift0"] = int(0);
+          config["xShift1"] = int(0);
+          xShift0Valuator->deactivate();
+          xShift1Valuator->deactivate();
+        }
+        mcColorErrorScaleValuator->activate();
+      }
+      enablePALValuator->activate();
+      if (conversionType == 0 && luminanceSearchMode != 6) {
+        noLuminanceInterlaceValuator->activate();
+        colorInterlaceModeValuator->activate();
+      }
+      else {
+        noLuminanceInterlaceValuator->deactivate();
+        colorInterlaceModeValuator->deactivate();
+      }
+      luminanceSearchModeValuator->activate();
+      if (luminanceSearchMode == 2 || luminanceSearchMode >= 4)
+        lumSearchModeParamValuator->activate();
+      else
+        lumSearchModeParamValuator->deactivate();
+      break;
+    case 1:
+    case 3:
+    case 5:
+    case 7:
+      // multicolor modes
+      saturationMultValuator->activate();
+      saturationPowValuator->activate();
+      monitorGammaValuator->activate();
+      multiColorQualityValuator->activate();
+      mcColorErrorScaleValuator->activate();
+      enablePALValuator->deactivate();
+      noLuminanceInterlaceValuator->deactivate();
+      colorInterlaceModeValuator->deactivate();
+      luminanceSearchModeValuator->deactivate();
+      lumSearchModeParamValuator->deactivate();
+      break;
+    case 8:
+      // multicolor character mode
+      saturationMultValuator->deactivate();
+      saturationPowValuator->deactivate();
+      monitorGammaValuator->activate();
+      multiColorQualityValuator->deactivate();
+      mcColorErrorScaleValuator->deactivate();
+      enablePALValuator->deactivate();
+      noLuminanceInterlaceValuator->deactivate();
+      colorInterlaceModeValuator->deactivate();
+      luminanceSearchModeValuator->deactivate();
+      lumSearchModeParamValuator->deactivate();
+      break;
+    }
+    conversionTypeValuator->value(conversionType);
     verticalSizeValuator->value(int(config["verticalSize"]));
     borderColorValuator->value(int(config["borderColor"]));
     setWidgetColorToPlus4Color(borderColorDisplay, int(config["borderColor"]));
@@ -530,7 +615,7 @@ void Plus4FLIConvGUI::updateConfigWindow()
     noLuminanceInterlaceValuator->value(
         int(bool(config["noLuminanceInterlace"])));
     colorInterlaceModeValuator->value(int(config["colorInterlaceMode"]));
-    luminanceSearchModeValuator->value(int(config["luminanceSearchMode"]));
+    luminanceSearchModeValuator->value(luminanceSearchMode);
     lumSearchModeParamValuator->value(
         double(config["luminanceSearchModeParam"]));
     mcColorErrorScaleValuator->value(double(config["mcColorErrorScale"]));

@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0109 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -176,6 +176,7 @@ class Plus4FLIConvGUI {open
   catch (std::exception& e) {
     errorMessage(e.what());
   }
+  updateConfigWindow();
 }} open
               xywh {225 50 350 25} down_box BORDER_BOX
               code0 {o->add("Interlaced high resolution FLI|Interlaced multicolor FLI|High resolution FLI, bitmap interlace only|Multicolor FLI, bitmap interlace only|High resolution FLI|Multicolor FLI|Hires 320x200 (no FLI)|Multicolor 160x200 (no FLI)|Logo Editor 2.0 multicolor (128x64)");}
@@ -595,6 +596,7 @@ class Plus4FLIConvGUI {open
   catch (std::exception& e) {
     errorMessage(e.what());
   }
+  updateConfigWindow();
 }} open
               xywh {225 155 350 25} down_box BORDER_BOX
               code0 {o->add("MinRMSErr|MinMaxNearest|MinRMSErr_OutOfRangeMult|FloorMinCeilMax|MinRMSErr_Dither50|MinRMSErr_MinMaxNearest|MinRMSErr_YUV_Downsampled");}
