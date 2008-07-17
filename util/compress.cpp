@@ -278,6 +278,7 @@ int main(int argc, char **argv)
       }
       else if (tmp == "-noprg") {
         noPRGMode = true;
+        noZPUpdate = true;
       }
       else if (tmp == "-fli") {
         fliImageFormat = true;
@@ -335,6 +336,16 @@ int main(int argc, char **argv)
       fileLengths[fileNames.size() - 1] = fileLengths[fileNames.size()];
     if (loadAddresses[fileNames.size()] >= 0)
       loadAddresses[fileNames.size() - 1] = loadAddresses[fileNames.size()];
+    if (!(extractMode || testMode)) {
+      // in compress mode, these parameters can only be applied to the input
+      // files
+      if (fileOffsets[fileNames.size() - 1] > 0)
+        fileOffsets[fileNames.size() - 2] = fileOffsets[fileNames.size()];
+      if (fileLengths[fileNames.size() - 1] < 65536)
+        fileLengths[fileNames.size() - 2] = fileLengths[fileNames.size()];
+      if (loadAddresses[fileNames.size() - 1] >= 0)
+        loadAddresses[fileNames.size() - 2] = loadAddresses[fileNames.size()];
+    }
     if (testMode) {
       // test compressed file(s)
       noPRGMode = true;
@@ -436,7 +447,6 @@ int main(int argc, char **argv)
                                   "at the same time");
       }
       rawLoadAddr = 0;                  // not used, but must be >= 0
-      noZPUpdate = true;
     }
     std::vector< unsigned char >  outBuf;
     std::vector< unsigned char >  inBuf;
