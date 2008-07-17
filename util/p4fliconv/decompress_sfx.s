@@ -23,35 +23,29 @@ sfxStartAddress = $100d
         .setcpu "6502"
         .code
 
-shiftRegister = $22
-crcValue = $22
-tmpValue = $23
-readByteBuffer = $24
-huffmanInitTmp = $25
-huffTableWriteAddrLow = $26
-huffTableWriteAddrHigh = $27
-prvDistanceLowTable = $26
-prvDistanceHighTable = $2a
-bytesRemainingLow = $2e
-bytesRemainingHigh = $2f
-decompressWriteAddrLow = $30
-decompressWriteAddrHigh = $31
-tmpLow = $32
-tmpHigh = $33
-inputDataStartAddrLow = $33
-inputDataStartAddrHigh = $34
-inputDataEndAddrLow = $35
-inputDataEndAddrHigh = $36
-lzMatchReadAddrLow = $34
-lzMatchReadAddrHigh = $35
+lzMatchReadAddrLow = $2b
+lzMatchReadAddrHigh = $2c
+prvDistanceTablePos = $2d
+prvDistanceLowTable = $2e
+prvDistanceHighTable = $32
+huffmanInitTmp = $2e
+huffTableWriteAddrLow = $2f
+huffTableWriteAddrHigh = $30
+huffmanDecodedValueLow = $32
+huffmanDecodedValueHigh = $33
+huffSymbolsRemainingLow = $34
+huffSymbolsRemainingHigh = $35
+shiftRegister = $36
+crcValue = $36
 readAddrLow = $37
 readAddrHigh = $38
-prvDistanceTablePos = $39
-huffmanDecodedValueLow = $3a
-huffmanDecodedValueHigh = $3b
-huffSymbolsRemainingLow = $3c
-huffSymbolsRemainingHigh = $3d
-gammaDecodedValueHigh = $3f
+readByteBuffer = $39
+bytesRemainingLow = $3a
+bytesRemainingHigh = $3b
+decompressWriteAddrLow = $3c
+decompressWriteAddrHigh = $3d
+tmpLow = $3e
+tmpHigh = $3f
 huffmanLimitLowTable = $40
 huffmanLimitHighTable = $50
 huffmanOffsetLowTable = $60
@@ -89,16 +83,6 @@ decompressCode2Offset = decompressCodeCopyLength - decompressCode2Size
         .endif
         sei
         cld
-        ldx #$ff
-        txs
-        .if NO_BLANK_DISPLAY = 0
-        lda $ff06                       ; save TED registers
-        pha
-        .endif
-        .if NO_BORDER_EFFECT = 0 && NO_COLOR_MEMORY_CLEAR = 0
-        lda borderColor
-        pha
-        .endif
         ldx #decompressCodeCopyLength
 l1:     lda decompressCode1Start_ - 1, x
         sta decompressCode1Start - 1, x
@@ -111,12 +95,22 @@ l1:     lda decompressCode1Start_ - 1, x
         dex
         bne l1
         .if NO_BLANK_DISPLAY = 0
+        lda $ff06                       ; save TED registers
         stx $ff06
         .endif
         .if NO_CRC_CHECK = 0
         stx crcValue
         .endif
         stx $ff3f
+        dex
+        txs
+        .if NO_BLANK_DISPLAY = 0
+        pha
+        .endif
+        .if NO_BORDER_EFFECT = 0 && NO_COLOR_MEMORY_CLEAR = 0
+        lda borderColor
+        pha
+        .endif
         lda loadEndAddrLow
         sec
         sbc #<decompressCode3End_
@@ -124,17 +118,16 @@ l1:     lda decompressCode1Start_ - 1, x
         beq l5
         ldx #<decompressCode3End_
         stx loadEndAddrLow
-        bcs l2
-        dec loadEndAddrHigh
+        bcc l2
+        inc loadEndAddrHigh
 l2:     eor #$ff
         sec
         adc readAddrLow
         sta readAddrLow
         bcs l4
-        .byte $2c
-l3:     dec loadEndAddrHigh
-        dec readAddrHigh
-l4:     dey
+l3:     dec readAddrHigh
+l4:     dec loadEndAddrHigh
+:       dey
         lda (loadEndAddrLow), y
         sta (readAddrLow), y
         .if NO_CRC_CHECK = 0
@@ -144,7 +137,7 @@ l4:     dey
         sta crcValue
         .endif
         tya
-        bne l4
+        bne :-
 l5:     lda loadEndAddrHigh
         cmp #>decompressCode3End_
         bne l3
@@ -306,22 +299,20 @@ decompressCode1End:
 decompressCode2Start:
 
         .proc huffmanInit
+        tya
         jsr l1
-        iny
-l1:     sty huffmanInitTmp
-        ldy #$00
-        ldx #$01
-        jsr readXBits
-        ldy huffmanInitTmp
-        lsr
-        bcs l3
+        lda #$01
+l1:     asl shiftRegister
+        bne :+
+        jsr readCompressedByte
+:       bcs l3
+        tay
         lda addrTable + 2, y
 l2:     ldx addrTable, y
         sta decompressData, x
         ldy #$00
 l12:    rts
-l3:     tya
-        adc #$07
+l3:     ora #$08
         tay
         ldx #$04
 l4:     sta huffmanInitTmp - 1, x
@@ -349,7 +340,7 @@ l6:     sta huffmanLimitHighTable, x
         jsr gammaDecode
         sta huffSymbolsRemainingLow
         cmp #$01
-        lda gammaDecodedValueHigh
+        lda tmpHigh
         adc #$00
         sta huffSymbolsRemainingHigh
 l7:     dec huffSymbolsRemainingLow
@@ -362,7 +353,7 @@ l8:     inc huffmanLimitLowTable, x
 l9:     jsr gammaDecode
         adc huffmanDecodedValueLow
         sta huffmanDecodedValueLow
-        lda gammaDecodedValueHigh
+        lda tmpHigh
         adc huffmanDecodedValueHigh
         sta huffmanDecodedValueHigh
         sta (huffTableWriteAddrLow), y
@@ -469,7 +460,7 @@ l2:     rol
         .endproc
 
         .proc readCompressedByte
-        sta tmpValue
+        sta tmpLow
         inc readAddrLow
         bne l1
         inc readAddrHigh
@@ -485,13 +476,13 @@ l1:
         rol
         sta shiftRegister
         .endif
-        lda tmpValue
+        lda tmpLow
         rts
         .endproc
 
         .proc gammaDecode
         lda #$01
-        sty gammaDecodedValueHigh
+        sty tmpHigh
 l1:     asl shiftRegister
         bne l2
         jsr readCompressedByte
@@ -500,7 +491,7 @@ l2:     bcc gammaDecode - 1
         bne l3
         jsr readCompressedByte
 l3:     rol
-        rol gammaDecodedValueHigh
+        rol tmpHigh
         bcc l1
         .endproc
 
@@ -524,9 +515,9 @@ l2:     rol
         .endproc
 
         .proc sfxDecompressEnd
-        ldx #$9e
-l1:     lda $0961, x                    ; restore zeropage variables
-        sta $21, x
+        ldx #$95
+l1:     lda $096a, x                    ; restore zeropage variables
+        sta $2a, x
         dex
         bne l1
         .if NO_COLOR_MEMORY_CLEAR = 0

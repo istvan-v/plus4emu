@@ -28,35 +28,33 @@ startAddr = $e504
         .export decompressData
         .export decompressFLI
 
-shiftRegister = $22
-crcValue = $22
-tmpValue = $23
-readByteBuffer = $24
-huffmanInitTmp = $25
-huffTableWriteAddrLow = $26
-huffTableWriteAddrHigh = $27
-prvDistanceLowTable = $26
-prvDistanceHighTable = $2a
-bytesRemainingLow = $2e
-bytesRemainingHigh = $2f
-decompressWriteAddrLow = $30
-decompressWriteAddrHigh = $31
-tmpLow = $32
-tmpHigh = $33
-inputDataStartAddrLow = $33
-inputDataStartAddrHigh = $34
-inputDataEndAddrLow = $35
-inputDataEndAddrHigh = $36
-lzMatchReadAddrLow = $34
-lzMatchReadAddrHigh = $35
-readAddrLow = $37
-readAddrHigh = $38
-prvDistanceTablePos = $39
-huffmanDecodedValueLow = $3a
-huffmanDecodedValueHigh = $3b
-huffSymbolsRemainingLow = $3c
-huffSymbolsRemainingHigh = $3d
-gammaDecodedValueHigh = $3f
+lzMatchReadAddrLow = $2b
+lzMatchReadAddrHigh = $2c
+prvDistanceTablePos = $2d
+prvDistanceLowTable = $2e
+prvDistanceHighTable = $32
+huffmanInitTmp = $2e
+huffTableWriteAddrLow = $2f
+huffTableWriteAddrHigh = $30
+huffmanDecodedValueLow = $32
+huffmanDecodedValueHigh = $33
+huffSymbolsRemainingLow = $34
+huffSymbolsRemainingHigh = $35
+inputDataStartAddrLow = $32
+inputDataStartAddrHigh = $33
+inputDataEndAddrLow = $34
+inputDataEndAddrHigh = $35
+readAddrLow = $36
+readAddrHigh = $37
+shiftRegister = $38
+crcValue = $38
+readByteBuffer = $39
+bytesRemainingLow = $3a
+bytesRemainingHigh = $3b
+decompressWriteAddrLow = $3c
+decompressWriteAddrHigh = $3d
+tmpLow = $3e
+tmpHigh = $3f
 huffmanLimitLowTable = $40
 huffmanLimitHighTable = $50
 huffmanOffsetLowTable = $60
@@ -72,20 +70,19 @@ compressedFLIDataStart = $1800
 compressedFLIDataEnd = $e504
 
         .proc decompressFLI
-        ldx #$e0
-        lda #<compressedFLIDataStart
+        ldx #$e6
+l1:     dex
+        lda fliAddrTable - $e0, x
         sta $00, x
-        clc
-        adc compressedFLIDataSizeLSB
-        sta $02, x
+        ; NOTE: this assumes that the LSB of 'compressedFLIDataStart' is zero,
+        ; and all other bytes to be copied are non-zero
+        bne l1
+        ldy compressedFLIDataSizeLSB
         lda #>compressedFLIDataStart
-        sta $01, x
-        adc compressedFLIDataSizeMSB
+        clc
+        adc ($02, x)
+        sty $02, x
         sta $03, x
-        lda #<compressedFLIDataEnd
-        sta $04, x
-        lda #>compressedFLIDataEnd
-        sta $05, x
         jmp decompressData
         .endproc
 
@@ -202,23 +199,32 @@ deltaValue = decompressDataBlock::l14 + 5
 
 ; -----------------------------------------------------------------------------
 
+addrTable:
+        .byte <(readCharAddrLow - decompressDataBlock)
+        .byte <(readLengthAddrLow - decompressDataBlock)
+        .byte <read9Bits
+        .byte <read5Bits
+        .byte <huffmanDecode1
+        .byte <huffmanDecode2
+        .byte $00, $40
+        .byte $00, $44
+        .byte $08, $09
+
         .proc huffmanInit
+        tya
         jsr l1
-        iny
-l1:     sty huffmanInitTmp
-        ldy #$00
-        ldx #$01
-        jsr readXBits
-        ldy huffmanInitTmp
-        lsr
-        bcs l3
+        lda #$01
+l1:     asl shiftRegister
+        bne :+
+        jsr readCompressedByte
+:       bcs l3
+        tay
         lda addrTable + 2, y
 l2:     ldx addrTable, y
         sta decompressDataBlock, x
         ldy #$00
 l12:    rts
-l3:     tya
-        adc #$07
+l3:     ora #$08
         tay
         ldx #$04
 l4:     sta huffmanInitTmp - 1, x
@@ -246,7 +252,7 @@ l6:     sta huffmanLimitHighTable, x
         jsr gammaDecode
         sta huffSymbolsRemainingLow
         cmp #$01
-        lda gammaDecodedValueHigh
+        lda tmpHigh
         adc #$00
         sta huffSymbolsRemainingHigh
 l7:     dec huffSymbolsRemainingLow
@@ -259,7 +265,7 @@ l8:     inc huffmanLimitLowTable, x
 l9:     jsr gammaDecode
         adc huffmanDecodedValueLow
         sta huffmanDecodedValueLow
-        lda gammaDecodedValueHigh
+        lda tmpHigh
         adc huffmanDecodedValueHigh
         sta huffmanDecodedValueHigh
         sta (huffTableWriteAddrLow), y
@@ -379,7 +385,7 @@ l2:     rol
         .endproc
 
         .proc readCompressedByte
-        sta tmpValue
+        sta tmpLow
         inc readAddrLow
         bne l1
         inc readAddrHigh
@@ -395,13 +401,13 @@ l1:
         rol
         sta shiftRegister
         .endif
-        lda tmpValue
+        lda tmpLow
         rts
         .endproc
 
         .proc gammaDecode
         lda #$01
-        sty gammaDecodedValueHigh
+        sty tmpHigh
 l1:     asl shiftRegister
         bne l2
         jsr readCompressedByte
@@ -410,20 +416,9 @@ l2:     bcc gammaDecode - 1
         bne l3
         jsr readCompressedByte
 l3:     rol
-        rol gammaDecodedValueHigh
+        rol tmpHigh
         bcc l1
         .endproc
-
-addrTable:
-        .byte <(readCharAddrLow - decompressDataBlock)
-        .byte <(readLengthAddrLow - decompressDataBlock)
-        .byte <read9Bits
-        .byte <read5Bits
-        .byte <huffmanDecode1
-        .byte <huffmanDecode2
-        .byte $00, $40
-        .byte $00, $44
-        .byte $08, $09
 
 ; -----------------------------------------------------------------------------
 
@@ -468,17 +463,16 @@ l2:     lda $0940, x
         beq l6
         ldx inputDataStartAddrLow
         stx inputDataEndAddrLow
-        bcs l3
-        dec inputDataEndAddrHigh
+        bcc l3
+        inc inputDataEndAddrHigh
 l3:     eor #$ff
         sec
         adc readAddrLow
         sta readAddrLow
         bcs l5
-        .byte $2c
-l4:     dec inputDataEndAddrHigh
-        dec readAddrHigh
-l5:     dey
+l4:     dec readAddrHigh
+l5:     dec inputDataEndAddrHigh
+:       dey
         lda (inputDataEndAddrLow), y
         sta (readAddrLow), y
         .if NO_CRC_CHECK = 0
@@ -488,7 +482,7 @@ l5:     dey
         sta crcValue
         .endif
         tya
-        bne l5
+        bne :-
 l6:     lda inputDataEndAddrHigh
         cmp inputDataStartAddrHigh
         bne l4
@@ -516,9 +510,9 @@ l9:     jsr decompressDataBlock         ; decompress all data blocks
         tax
         sta $ff3e, x
         .endif
-        ldx #$9e                        ; restore zeropage variables
-l10:    lda $0961, x
-        sta $21, x
+        ldx #$95                        ; restore zeropage variables
+l10:    lda $096a, x
+        sta $2a, x
         dex
         bne l10
         .if NO_COLOR_MEMORY_CLEAR = 0
@@ -537,4 +531,9 @@ l11:    sta $0800, y
         plp
         rts
         .endproc
+
+fliAddrTable:
+        .word compressedFLIDataStart
+        .word compressedFLIDataSizeMSB
+        .word compressedFLIDataEnd
 
