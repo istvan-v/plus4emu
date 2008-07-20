@@ -18,6 +18,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "gui.hpp"
+#include "guicolor.hpp"
 
 #ifdef WIN32
 #  undef WIN32
@@ -536,6 +537,11 @@ int Plus4EmuGUI::getMenuItemIndex(int n)
 
 void Plus4EmuGUI::createMenus()
 {
+  Plus4Emu::setWindowIcon(mainWindow, 0);
+  Plus4Emu::setWindowIcon(diskConfigWindow->window, 1);
+  Plus4Emu::setWindowIcon(displaySettingsWindow->window, 2);
+  Plus4Emu::setWindowIcon(keyboardConfigWindow->window, 3);
+  Plus4Emu::setWindowIcon(machineConfigWindow->window, 3);
   mainMenuBar->add("File/Configuration/Load from ASCII file",
                    (char *) 0, &menuCallback_File_LoadConfig, (void *) this);
   mainMenuBar->add("File/Configuration/Load from binary file",

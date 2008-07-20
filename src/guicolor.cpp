@@ -22,6 +22,22 @@
 
 #include <cmath>
 #include <FL/Fl.H>
+#include <FL/Fl_Window.H>
+
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+
+#include <windows.h>
+#include <FL/x.H>
+
+static const char *windowClassTable[5] = {
+  "Plus4Emu_MainWindow",
+  "Plus4Emu_DiskCfgWindow",
+  "Plus4Emu_DisplayCfgWindow",
+  "Plus4Emu_KbdCfgWindow",
+  "Plus4Emu_CBMFile"
+};
+
+#endif  // WIN32
 
 static const unsigned char colorTable[24] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -108,6 +124,22 @@ namespace Plus4Emu {
       Fl::set_color(Fl_Color(int(FL_GRAY_RAMP) + i),
                     (unsigned char) r, (unsigned char) g, (unsigned char) b);
     }
+  }
+
+  void setWindowIcon(Fl_Window *w, int iconNum)
+  {
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+    iconNum = (iconNum > 0 ? (iconNum < 4 ? iconNum : 4) : 0);
+    // FIXME: according to the FLTK documentation, Fl_Window::show(int, char**)
+    // should be used for the icon to be displayed, but Fl_Window::show() seems
+    // to work anyway on Windows
+    w->xclass(windowClassTable[iconNum]);
+    w->icon((char *) LoadIcon(fl_display, MAKEINTRESOURCE(iconNum + 101)));
+#else
+    // TODO: implement window icons for non-Windows platforms
+    (void) w;
+    (void) iconNum;
+#endif
   }
 
 }       // namespace Plus4Emu

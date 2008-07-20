@@ -20,9 +20,31 @@
 #ifndef PLUS4EMU_GUICOLOR_HPP
 #define PLUS4EMU_GUICOLOR_HPP
 
+class Fl_Window;
+
 namespace Plus4Emu {
 
+  /*!
+   * Set the GUI theme to be used (should be called before any window is
+   * shown):
+   *   0: default (dark background)
+   *   1: Windows 2000
+   *   2: plastic
+   *   3: Gtk+
+   */
   void setGUIColorScheme(int colorScheme = 0);
+
+  /*!
+   * Set the icon for window 'w' (must be called before the window is first
+   * shown). This is currently only implemented for Windows. 'iconNum' can be
+   * one of the following values:
+   *   0: CBM logo
+   *   1: floppy drive icon
+   *   2: display icon
+   *   3: keyboard icon
+   *   4: CBM file icon
+   */
+  void setWindowIcon(Fl_Window *w, int iconNum);
 
 }       // namespace Plus4Emu
 

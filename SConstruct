@@ -341,12 +341,24 @@ else:
     plus4emuEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
 plus4emuEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
 
-plus4emu = plus4emuEnvironment.Program('plus4emu',
-    ['gui/gui.cpp']
-    + fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl', 'gui/disp_cfg.fl',
-                    'gui/kbd_cfg.fl', 'gui/snd_cfg.fl', 'gui/vm_cfg.fl',
-                    'gui/debug.fl', 'gui/printer.fl', 'gui/about.fl'])
-    + ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp'])
+plus4emuSources = ['gui/gui.cpp']
+plus4emuSources += fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl',
+                                 'gui/disp_cfg.fl', 'gui/kbd_cfg.fl',
+                                 'gui/snd_cfg.fl', 'gui/vm_cfg.fl',
+                                 'gui/debug.fl', 'gui/printer.fl',
+                                 'gui/about.fl'])
+plus4emuSources += ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp']
+if win32CrossCompile:
+    plus4emuResourceObject = plus4emuEnvironment.Command(
+        'resource/resource.o',
+        ['resource/plus4emu.rc', 'resource/Cbm4.ico', 'resource/1551.ico',
+         'resource/Plus4Mon4.ico', 'resource/Plus4i.ico',
+         'resource/CbmFile.ico'],
+        'wine C:/MinGW/bin/windres.exe -v --use-temp-file '
+        + '--preprocessor="C:/MinGW/bin/gcc-sjlj.exe -E -xc -DRC_INVOKED" '
+        + '-o $TARGET resource/plus4emu.rc')
+    plus4emuSources += [plus4emuResourceObject]
+plus4emu = plus4emuEnvironment.Program('plus4emu', plus4emuSources)
 Depends(plus4emu, plus4emuLib)
 Depends(plus4emu, residLib)
 
