@@ -218,6 +218,12 @@ Section "Source code" SecSrc
   File "..\resid\*.cpp"
   File "..\resid\*.hpp"
 
+  SetOutPath "$INSTDIR\src\resource"
+
+  File "..\resource\Read_me.txt"
+  File "..\resource\plus4emu.rc"
+  File "..\resource\*.ico"
+
   SetOutPath "$INSTDIR\src\roms"
 
   File "..\roms\*.rom"
@@ -243,21 +249,35 @@ Section "Source code" SecSrc
 
 SectionEnd
 
-Section "Associate .prg, .p00, .d64, and .d81 files with plus4emu" SecAssoc
+Section "Associate .prg and .p00 files with plus4emu" SecAssocPRG
 
   WriteRegStr HKCR ".prg" "" "Plus4Emu.PRGFile"
   WriteRegStr HKCR ".p00" "" "Plus4Emu.PRGFile"
   WriteRegStr HKCR "Plus4Emu.PRGFile" "" "Plus/4 program"
-  WriteRegStr HKCR "Plus4Emu.PRGFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,0"
+  WriteRegStr HKCR "Plus4Emu.PRGFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,4"
   WriteRegStr HKCR "Plus4Emu.PRGFile\shell" "" "open"
   WriteRegStr HKCR "Plus4Emu.PRGFile\shell\open\command" "" '"$INSTDIR\plus4emu.exe" -prg "%1"'
+
+SectionEnd
+
+Section "Associate .d64 and .d81 files with plus4emu" SecAssocDisk
 
   WriteRegStr HKCR ".d64" "" "Plus4Emu.DiskFile"
   WriteRegStr HKCR ".d81" "" "Plus4Emu.DiskFile"
   WriteRegStr HKCR "Plus4Emu.DiskFile" "" "Plus/4 disk image"
-  WriteRegStr HKCR "Plus4Emu.DiskFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,0"
+  WriteRegStr HKCR "Plus4Emu.DiskFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,1"
   WriteRegStr HKCR "Plus4Emu.DiskFile\shell" "" "open"
   WriteRegStr HKCR "Plus4Emu.DiskFile\shell\open\command" "" '"$INSTDIR\plus4emu.exe" -disk "%1"'
+
+SectionEnd
+
+Section "Associate .tap files with plus4emu" SecAssocTape
+
+  WriteRegStr HKCR ".tap" "" "Plus4Emu.TapeFile"
+  WriteRegStr HKCR "Plus4Emu.TapeFile" "" "Plus/4 tape image"
+  WriteRegStr HKCR "Plus4Emu.TapeFile\DefaultIcon" "" "$INSTDIR\plus4emu.exe,4"
+  WriteRegStr HKCR "Plus4Emu.TapeFile\shell" "" "open"
+  WriteRegStr HKCR "Plus4Emu.TapeFile\shell\open\command" "" '"$INSTDIR\plus4emu.exe" -tape "%1"'
 
 SectionEnd
 
@@ -342,7 +362,9 @@ SectionEnd
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
   LangString DESC_SecUtils ${LANG_ENGLISH} "Install image converter and compressor utilities"
   LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
-  LangString DESC_SecAssoc ${LANG_ENGLISH} "Associate .prg, .p00, .d64, and .d81 files with plus4emu"
+  LangString DESC_SecAssocPRG ${LANG_ENGLISH} "Associate .prg and .p00 files with plus4emu"
+  LangString DESC_SecAssocDisk ${LANG_ENGLISH} "Associate .d64 and .d81 files with plus4emu"
+  LangString DESC_SecAssocTape ${LANG_ENGLISH} "Associate .tap files with plus4emu"
   LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
 
   ;Assign language strings to sections
@@ -350,7 +372,9 @@ SectionEnd
     !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_SecMain)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecUtils} $(DESC_SecUtils)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecSrc} $(DESC_SecSrc)
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecAssoc} $(DESC_SecAssoc)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocPRG} $(DESC_SecAssocPRG)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocDisk} $(DESC_SecAssocDisk)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocTape} $(DESC_SecAssocTape)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecDLRoms} $(DESC_SecDLRoms)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
