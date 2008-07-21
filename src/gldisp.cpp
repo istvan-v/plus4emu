@@ -483,11 +483,6 @@ namespace Plus4Emu {
       do {
         if (readPos >= 4) {
           readPos = readPos & 3;
-          if (bufPos >= nBytes) {
-            for ( ; xc < 384; xc++)
-              outBuf[xc] = uint16_t(0);
-            break;
-          }
           pixelSample1 = ((bufp[bufPos] & 0x01) ? 392 : 490);
           size_t  n = colormap16.convertFourPixels(&(tmpBuf[0]),
                                                    &(bufp[bufPos]), videoFlags);
@@ -550,11 +545,9 @@ namespace Plus4Emu {
       size_t  pixelSample1 = 980;
       size_t  pixelSampleCnt = 0;
       uint8_t readPos = 4;
-      while (true) {
+      do {
         if (readPos >= 4) {
           readPos = readPos & 3;
-          if (bufPos >= nBytes)
-            break;
           pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
           size_t  n = colormap32.convertFourPixels(&(tmpBuf[0]),
                                                    &(bufp[bufPos]), videoFlags);
@@ -566,17 +559,7 @@ namespace Plus4Emu {
           pixelSampleCnt -= pixelSample1;
           readPos++;
         }
-        if (++xc >= 768)
-          return;
-      }
-      if (yuvTextureMode) {
-        for ( ; xc < 768; xc++)
-          outBuf[xc] = 0x00808000U;
-      }
-      else {
-        for ( ; xc < 768; xc++)
-          outBuf[xc] = 0x00000000U;
-      }
+      } while (++xc < 768);
     }
   }
 
