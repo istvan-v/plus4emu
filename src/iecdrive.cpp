@@ -115,7 +115,7 @@ static const char *errorMessages[75] = {
   " NO CHANNEL",                // 70 (channel is already used)
   " DIRECTORY ERROR",           // 71
   " DISK FULL",                 // 72
-  "PLUS4EMU 1.2.7 IEC DRIVE",   // 73
+  "PLUS4EMU 1.2.8 IEC DRIVE",   // 73
   " DRIVE NOT READY"            // 74
 };
 

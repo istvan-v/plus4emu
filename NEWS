@@ -1,14 +1,16 @@
-Changes in version 1.2.7.1
---------------------------
+Changes in version 1.2.8
+------------------------
 
-  * added new option for saving the printer output to a text file,
-    either as the raw characters sent to the printer, or converted to
-    ASCII
+  * new option for saving the printer output to a text file, either as
+    the raw characters sent to the printer, or converted to ASCII
   * slightly improved compression when saving the printer output in TGA
     format
+  * added Windows icons from the Plus/4 icon set by SVS
   * when using the mouse to set the cursor position, the color of the
     character under the cursor is now saved, set, and restored correctly
-  * minor optimizations in serial device emulation
+  * minor utility and Windows installer improvements and fixes
+  * some optimizations in software video mode, and serial floppy drive
+    and printer emulation
 
 Changes in version 1.2.7
 ------------------------

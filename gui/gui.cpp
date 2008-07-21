@@ -117,10 +117,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7.1 (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.7.1 (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -542,6 +542,8 @@ void Plus4EmuGUI::createMenus()
   Plus4Emu::setWindowIcon(displaySettingsWindow->window, 2);
   Plus4Emu::setWindowIcon(keyboardConfigWindow->window, 3);
   Plus4Emu::setWindowIcon(machineConfigWindow->window, 3);
+  Plus4Emu::setWindowIcon(aboutWindow->window, 10);
+  Plus4Emu::setWindowIcon(errorMessageWindow, 12);
   mainMenuBar->add("File/Configuration/Load from ASCII file",
                    (char *) 0, &menuCallback_File_LoadConfig, (void *) this);
   mainMenuBar->add("File/Configuration/Load from binary file",

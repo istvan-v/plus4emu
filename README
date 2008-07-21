@@ -1,5 +1,5 @@
-plus4emu 1.2.7.1
-================
+plus4emu 1.2.8
+==============
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -872,5 +872,6 @@ Hársfalvi Levente - testing the emulator and providing some hardware
 MagerValp         - testing on MacOS X and contributing binaries
 Andrea Musuruane  - bug reports and fixes related to building the
                     emulator on Fedora Linux
-Chronos           - TED and SID sound testing on the real machine
+Chronos / ACW     - TED and SID sound testing on the real machine
+SVS / FIRE        - Windows icons
 
