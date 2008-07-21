@@ -475,6 +475,8 @@ int main(int argc, char **argv)
   std::string romDirectory = installDirectory + "roms";
   romDirectory += c;
   Plus4EmuConfigInstallerGUI  *gui = new Plus4EmuConfigInstallerGUI();
+  Plus4Emu::setWindowIcon(gui->mainWindow, 11);
+  Plus4Emu::setWindowIcon(gui->errorWindow, 12);
   if (!forceInstallFlag) {
     gui->mainWindow->show();
     do {

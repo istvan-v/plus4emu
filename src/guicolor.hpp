@@ -43,6 +43,10 @@ namespace Plus4Emu {
    *   2: display icon
    *   3: keyboard icon
    *   4: CBM file icon
+   *  10: information icon
+   *  11: question icon
+   *  12: warning icon
+   *  13: error icon
    */
   void setWindowIcon(Fl_Window *w, int iconNum);
 

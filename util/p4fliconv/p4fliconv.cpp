@@ -881,6 +881,9 @@ void Plus4FLIConvGUI::pixelStoreCallback(void *userData, int xc, int yc,
 
 void Plus4FLIConvGUI::run()
 {
+  Plus4Emu::setWindowIcon(aboutWindow, 10);
+  Plus4Emu::setWindowIcon(confirmMessageWindow, 11);
+  Plus4Emu::setWindowIcon(errorMessageWindow, 12);
   aboutWindowText->value(
       "p4fliconv: high resolution interlaced FLI converter utility\n"
       "Copyright (C) 2007-2008 by Istvan Varga; plus4emu is copyright\n"

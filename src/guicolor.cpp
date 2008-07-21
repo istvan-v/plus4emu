@@ -29,12 +29,21 @@
 #include <windows.h>
 #include <FL/x.H>
 
-static const char *windowClassTable[5] = {
-  "Plus4Emu_MainWindow",
-  "Plus4Emu_DiskCfgWindow",
-  "Plus4Emu_DisplayCfgWindow",
-  "Plus4Emu_KbdCfgWindow",
-  "Plus4Emu_CBMFile"
+static const char *windowClassTable[14] = {
+  "P4EMainWindow",
+  "P4EDiskCfgWindow",
+  "P4EDisplayCfgWindow",
+  "P4EKbdCfgWindow",
+  "P4ECBMFile",
+  (char *) 0,
+  (char *) 0,
+  (char *) 0,
+  (char *) 0,
+  (char *) 0,
+  "P4EInformation",
+  "P4EQuestion",
+  "P4EWarning",
+  "P4EError"
 };
 
 #endif  // WIN32
@@ -129,12 +138,43 @@ namespace Plus4Emu {
   void setWindowIcon(Fl_Window *w, int iconNum)
   {
 #if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-    iconNum = (iconNum > 0 ? (iconNum < 4 ? iconNum : 4) : 0);
+    if (!((iconNum >= 0 && iconNum <= 4) || (iconNum >= 10 && iconNum <= 13)))
+      return;                   // ignore invalid icon numbers
     // FIXME: according to the FLTK documentation, Fl_Window::show(int, char**)
     // should be used for the icon to be displayed, but Fl_Window::show() seems
     // to work anyway on Windows
     w->xclass(windowClassTable[iconNum]);
-    w->icon((char *) LoadIcon(fl_display, MAKEINTRESOURCE(iconNum + 101)));
+    HANDLE  iconHandle = (HANDLE) 0;
+    INT     xSize = GetSystemMetrics(SM_CXICON);
+    INT     ySize = GetSystemMetrics(SM_CYICON);
+    UINT    imageFlags = LR_DEFAULTCOLOR | LR_SHARED;
+    if (iconNum < 10) {
+      // plus4emu specific icons
+      iconHandle = LoadImage(fl_display, MAKEINTRESOURCE(iconNum + 101),
+                             IMAGE_ICON, xSize, ySize, imageFlags);
+    }
+    else {
+      // Windows system icons
+      switch (iconNum) {
+      case 10:
+        iconHandle = LoadImage((HINSTANCE) 0, IDI_INFORMATION,
+                               IMAGE_ICON, xSize, ySize, imageFlags);
+        break;
+      case 11:
+        iconHandle = LoadImage((HINSTANCE) 0, IDI_QUESTION,
+                               IMAGE_ICON, xSize, ySize, imageFlags);
+        break;
+      case 12:
+        iconHandle = LoadImage((HINSTANCE) 0, IDI_WARNING,
+                               IMAGE_ICON, xSize, ySize, imageFlags);
+        break;
+      case 13:
+        iconHandle = LoadImage((HINSTANCE) 0, IDI_ERROR,
+                               IMAGE_ICON, xSize, ySize, imageFlags);
+        break;
+      }
+    }
+    w->icon(reinterpret_cast<char *>(iconHandle));
 #else
     // TODO: implement window icons for non-Windows platforms
     (void) w;
