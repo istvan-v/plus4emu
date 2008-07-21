@@ -429,8 +429,6 @@ namespace Plus4Emu {
           do {
             if (readPos >= 4) {
               readPos = readPos & 3;
-              if (bufPos >= nBytes)
-                break;
               pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
               size_t  n = colormap_.convertFourPixels(&(tmpBuf[0]),
                                                       &(bufp[bufPos]),
@@ -448,11 +446,11 @@ namespace Plus4Emu {
             }
             xc++;
           } while (xc < 768);
-          for ( ; xc < 768; xc++) {
-            outBuf[xc * 3 + 0] = 0x00;
-            outBuf[xc * 3 + 1] = 0x00;
-            outBuf[xc * 3 + 2] = 0x00;
-          }
+        }
+        for ( ; xc < 768; xc++) {
+          outBuf[xc * 3 + 0] = 0x00;
+          outBuf[xc * 3 + 1] = 0x00;
+          outBuf[xc * 3 + 2] = 0x00;
         }
       }
       func(userData_, imageBuf_, 768, 576);
@@ -643,41 +641,126 @@ namespace Plus4Emu {
                 size_t    pixelSample2 = l->lineLength * 384;
                 if (displayParameters.ntscMode)
                   videoFlags = videoFlags | 0x10;
-                size_t    pixelSample1 = pixelSample1p;
-                size_t    pixelSampleCnt = 0;
-                uint8_t   readPos = 4;
-                do {
-                  if (readPos >= 4) {
-                    if (bufPos >= nBytes)
-                      break;
-                    pixelSample1 = ((bufp[bufPos] & 0x01) ?
-                                    pixelSample1n : pixelSample1p);
+                size_t    pixelSample1 =
+                    ((bufp[0] & 0x01) ? pixelSample1n : pixelSample1p);
+                if (pixelSample1 == pixelSample2 && !(l->flags & 0x01)) {
+                  // fast code for fixed 1x horizontal scale
+                  do {
                     size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
                                                            &(bufp[bufPos]),
                                                            videoFlags);
                     bufPos += n;
-                    readPos = readPos & 3;
-                  }
-                  uint32_t  tmp = tmpBuf[readPos];
-                  p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
-                  tmp = tmp >> 8;
-                  p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
-                  tmp = tmp >> 8;
-                  p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
-                  p = p + 3;
-                  pixelSampleCnt += pixelSample2;
-                  while (pixelSampleCnt >= pixelSample1) {
-                    pixelSampleCnt -= pixelSample1;
-                    readPos++;
-                  }
-                  xc++;
-                } while (xc < displayWidth_);
+                    for (int tmp = 0; tmp < 4; tmp++) {
+                      uint32_t  pixelValue = tmpBuf[tmp];
+                      p[0] = (unsigned char) (pixelValue & 0xFFU);
+                      p[1] = (unsigned char) ((pixelValue >> 8) & 0xFFU);
+                      p[2] = (unsigned char) ((pixelValue >> 16) & 0xFFU);
+                      p = p + 3;
+                    }
+                    xc = xc + 4;
+                  } while (xc < displayWidth_);
+                }
+                else if (pixelSample1 == (pixelSample2 * 2) &&
+                         !(l->flags & 0x01)) {
+                  // fast code for fixed 2x horizontal scale
+                  do {
+                    size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                           &(bufp[bufPos]),
+                                                           videoFlags);
+                    bufPos += n;
+                    for (int tmp = 0; tmp < 4; tmp++) {
+                      uint32_t  pixelValue = tmpBuf[tmp];
+                      p[3] = p[0] =
+                          (unsigned char) (pixelValue & 0xFFU);
+                      p[4] = p[1] =
+                          (unsigned char) ((pixelValue >> 8) & 0xFFU);
+                      p[5] = p[2] =
+                          (unsigned char) ((pixelValue >> 16) & 0xFFU);
+                      p = p + 6;
+                    }
+                    xc = xc + 8;
+                  } while (xc < displayWidth_);
+                }
+                else if (pixelSample1 == (pixelSample2 * 3) &&
+                         !(l->flags & 0x01)) {
+                  // fast code for fixed 3x horizontal scale
+                  do {
+                    size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                           &(bufp[bufPos]),
+                                                           videoFlags);
+                    bufPos += n;
+                    for (int tmp = 0; tmp < 4; tmp++) {
+                      uint32_t  pixelValue = tmpBuf[tmp];
+                      p[6] = p[3] = p[0] =
+                          (unsigned char) (pixelValue & 0xFFU);
+                      p[7] = p[4] = p[1] =
+                          (unsigned char) ((pixelValue >> 8) & 0xFFU);
+                      p[8] = p[5] = p[2] =
+                          (unsigned char) ((pixelValue >> 16) & 0xFFU);
+                      p = p + 9;
+                    }
+                    xc = xc + 12;
+                  } while (xc < displayWidth_);
+                }
+                else if (pixelSample1 == (pixelSample2 * 4) &&
+                         !(l->flags & 0x01)) {
+                  // fast code for fixed 4x horizontal scale
+                  do {
+                    size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                           &(bufp[bufPos]),
+                                                           videoFlags);
+                    bufPos += n;
+                    for (int tmp = 0; tmp < 4; tmp++) {
+                      uint32_t  pixelValue = tmpBuf[tmp];
+                      p[9] = p[6] = p[3] = p[0] =
+                          (unsigned char) (pixelValue & 0xFFU);
+                      p[10] = p[7] = p[4] = p[1] =
+                          (unsigned char) ((pixelValue >> 8) & 0xFFU);
+                      p[11] = p[8] = p[5] = p[2] =
+                          (unsigned char) ((pixelValue >> 16) & 0xFFU);
+                      p = p + 12;
+                    }
+                    xc = xc + 16;
+                  } while (xc < displayWidth_);
+                }
+                else {
+                  // generic resample code (slow)
+                  size_t    pixelSampleCnt = 0;
+                  uint8_t   readPos = 4;
+                  do {
+                    if (readPos >= 4) {
+                      pixelSample1 = ((bufp[bufPos] & 0x01) ?
+                                      pixelSample1n : pixelSample1p);
+                      size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                             &(bufp[bufPos]),
+                                                             videoFlags);
+                      bufPos += n;
+                      readPos = readPos & 3;
+                    }
+                    uint32_t  tmp = tmpBuf[readPos];
+                    p[0] = (unsigned char) tmp & (unsigned char) 0xFF;
+                    tmp = tmp >> 8;
+                    p[1] = (unsigned char) tmp & (unsigned char) 0xFF;
+                    tmp = tmp >> 8;
+                    p[2] = (unsigned char) tmp & (unsigned char) 0xFF;
+                    p = p + 3;
+                    pixelSampleCnt += pixelSample2;
+                    while (pixelSampleCnt >= pixelSample1) {
+                      pixelSampleCnt -= pixelSample1;
+                      readPos++;
+                    }
+                    xc++;
+                  } while (xc < displayWidth_);
+                }
               }
-              for ( ; xc < displayWidth_; xc++) {
-                p[0] = 0x00;
-                p[1] = 0x00;
-                p[2] = 0x00;
-                p = p + 3;
+              else {
+                // blank line
+                for ( ; xc < displayWidth_; xc++) {
+                  p[0] = 0x00;
+                  p[1] = 0x00;
+                  p[2] = 0x00;
+                  p = p + 3;
+                }
               }
             }
             fl_draw_image(pixelBuf_, x0, y0 + (yc & (~(int(3)))),
