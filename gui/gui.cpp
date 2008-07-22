@@ -117,10 +117,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8 (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8.1 (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8 (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8.1 (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
