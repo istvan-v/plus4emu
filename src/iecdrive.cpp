@@ -1197,7 +1197,8 @@ namespace Plus4 {
           }
         }
         // remove old entry from directory
-        fileDB.erase(fileName);
+        if (!scratchFile(fileName))
+          return;
       }
       int       err = createFile(f, fileName, fileType, recordSize);
       if (err == -1) {
