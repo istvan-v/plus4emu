@@ -21,6 +21,7 @@
 #define PLUS4EMU_IECDRIVE_HPP
 
 #include "plus4emu.hpp"
+#include "system.hpp"
 #include "vc1551.hpp"
 
 #include <map>
@@ -108,6 +109,7 @@ namespace Plus4 {
     unsigned char   recordData[256];
     Plus4FileName   diskName;
     unsigned char   diskID[2];
+    Plus4Emu::Timer ledFlashTimer;
     // --------
     void updateParallelInterface();
     int listenNextByte(uint8_t n);
@@ -143,6 +145,12 @@ namespace Plus4 {
     virtual void setWorkingDirectory(const std::string& dirName_);
     virtual bool parallelIECRead(uint16_t addr, uint8_t& value);
     virtual bool parallelIECWrite(uint16_t addr, uint8_t value);
+    /*!
+     * Returns the current state of drive LEDs. Bit 0 is set if the red LED
+     * is on, bit 1 is set if the green LED is on, and bit 2 is set if the
+     * blue LED is on.
+     */
+    virtual uint8_t getLEDState();
   };
 
 }       // namespace Plus4

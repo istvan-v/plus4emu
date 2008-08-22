@@ -18,9 +18,11 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "plus4emu.hpp"
+#include "system.hpp"
 #include "vc1551.hpp"
 #include "iecdrive.hpp"
 
+#include <cmath>
 #include <map>
 #include <sys/types.h>
 #include <dirent.h>
@@ -115,7 +117,7 @@ static const char *errorMessages[75] = {
   " NO CHANNEL",                // 70 (channel is already used)
   " DIRECTORY ERROR",           // 71
   " DISK FULL",                 // 72
-  "PLUS4EMU 1.2.8 IEC DRIVE",   // 73
+  "PLUS4EMU 1.2.9 IEC DRIVE",   // 73
   " DRIVE NOT READY"            // 74
 };
 
@@ -367,6 +369,7 @@ namespace Plus4 {
     bufPos = 0;
     bufBytes = 0;
     setErrorMessage(73);
+    ledFlashTimer.reset();
     for (int i = 0; i < 16; i++)
       filesOpened[i].clear();
     recordLength = 0;
@@ -559,6 +562,18 @@ namespace Plus4 {
     tpi.setPortC(uint8_t((int(handShake2) << 7) | 0x40));
     dataRegisterIn = tpi.getPortA();
     handShake1 = bool(tpi.getPortC() & 0x40);
+  }
+
+  uint8_t ParallelIECDrive::getLEDState()
+  {
+    if (errorCode < 20 || errorCode == 73)
+      return uint8_t(currentIOMode == 0 ? 0 : 6);
+    double  t = ledFlashTimer.getRealTime();
+    if (t > 0.333333) {
+      t = std::fmod(t, 0.333333);
+      ledFlashTimer.reset(t);
+    }
+    return uint8_t(t < 0.166667 ? 6 : 0);
   }
 
   // --------------------------------------------------------------------------

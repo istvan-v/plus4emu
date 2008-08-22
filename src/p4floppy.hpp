@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -46,7 +46,8 @@ namespace Plus4 {
     virtual bool haveDisk() const = 0;
     /*!
      * Returns the current state of drive LEDs. Bit 0 is set if the red LED
-     * is on, and bit 1 is set if the green LED is on.
+     * is on, bit 1 is set if the green LED is on, and bit 2 is set if the
+     * blue LED is on.
      */
     virtual uint8_t getLEDState() const = 0;
     /*!
