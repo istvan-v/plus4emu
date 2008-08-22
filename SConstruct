@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 0
-buildRelease = 1
+enableDebug = 1
+buildRelease = 0
 
 compilerFlags = ''
 if buildRelease:
@@ -250,28 +250,22 @@ def fluidCompile(flNames):
             cppNames += [cppName]
     return cppNames
 
-plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
-    Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx
+plus4emuLibSources = Split('''
     src/acia6551.cpp
     src/bplist.cpp
-    src/cfg_db.cpp
     src/cia8520.cpp
     src/cpu.cpp
     src/cpuoptbl.cpp
+    src/d64image.cpp
     src/disasm.cpp
     src/display.cpp
-    src/emucfg.cpp
     src/fileio.cpp
-    src/fldisp.cpp
-    src/gldisp.cpp
-    src/guicolor.cpp
     src/iecdrive.cpp
-    src/joystick.cpp
     src/memory.cpp
+    src/mps801.cpp
     src/plus4vm.cpp
     src/render.cpp
     src/riot6532.cpp
-    src/script.cpp
     src/snd_conv.cpp
     src/soundio.cpp
     src/system.cpp
@@ -289,16 +283,30 @@ plus4emuLib = plus4emuLibEnvironment.StaticLibrary('plus4emu', Split('''
     src/via6522.cpp
     src/videorec.cpp
     src/vm.cpp
-    src/vmthread.cpp
     src/wd177x.cpp
-'''))
+''')
+
+plus4emuLib = plus4emuLibEnvironment.StaticLibrary(
+    'plus4emu',
+    plus4emuLibSources + Split('''
+        Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx
+        src/cfg_db.cpp
+        src/emucfg.cpp
+        src/fldisp.cpp
+        src/gldisp.cpp
+        src/guicolor.cpp
+        src/joystick.cpp
+        src/script.cpp
+        src/sndio_pa.cpp
+        src/vmthread.cpp
+    '''))
 
 # -----------------------------------------------------------------------------
 
 residLibEnvironment = plus4emuLibEnvironment.Clone()
 residLibEnvironment.Append(CPPPATH = ['./resid'])
 
-residLib = residLibEnvironment.StaticLibrary('resid', Split('''
+residLibSources = Split('''
     resid/envelope.cpp
     resid/extfilt.cpp
     resid/filter.cpp
@@ -315,7 +323,32 @@ residLib = residLibEnvironment.StaticLibrary('resid', Split('''
     resid/wave8580_P_T.cpp
     resid/wave8580__ST.cpp
     resid/wave.cpp
-'''))
+''')
+
+residLib = residLibEnvironment.StaticLibrary('resid', residLibSources)
+
+# -----------------------------------------------------------------------------
+
+if win32CrossCompile or sys.platform[:5] == 'linux':
+    plus4emuDLLEnvironment = plus4emuLibEnvironment.Clone()
+    plus4emuDLLEnvironment.Append(CPPPATH = ['./plus4lib'])
+    plus4emuDLLEnvironment.Append(LIBS = ['sndfile'])
+    if not win32CrossCompile:
+        plus4emuDLLEnvironment.Append(CCFLAGS = ['-fvisibility=hidden'])
+        plus4emuDLLEnvironment.Append(LIBS = ['pthread'])
+        plus4emuDLL = plus4emuDLLEnvironment.SharedLibrary(
+            'plus4lib/plus4emu',
+            plus4emuLibSources + residLibSources + ['plus4lib/plus4api.cpp'])
+    else:
+        plus4emuDLLEnvironment.Prepend(
+            LINKFLAGS = ['-mwindows', '-Wl,--output-def,plus4lib/plus4emu.def'])
+        plus4emuDLLEnvironment.Prepend(LIBS = ['plus4emu', 'resid'])
+        plus4emuDLLEnvironment['SHLIBPREFIX'] = ''
+        plus4emuDLLEnvironment['SHLIBSUFFIX'] = ''
+        plus4emuDLL = plus4emuDLLEnvironment.SharedLibrary(
+            'plus4lib/plus4emu.dll', ['plus4lib/plus4api.cpp'])
+    Depends(plus4emuDLL, plus4emuLib)
+    Depends(plus4emuDLL, residLib)
 
 # -----------------------------------------------------------------------------
 
@@ -403,8 +436,32 @@ if sys.platform[:6] == 'darwin':
 
 # -----------------------------------------------------------------------------
 
+compressLibEnvironment = plus4emuLibEnvironment.Clone()
+compressLibEnvironment.Append(CPPPATH = ['./util/compress'])
+compressLib = compressLibEnvironment.StaticLibrary(
+    'compress',
+    Split('''
+        util/compress/compress0.cpp
+        util/compress/compress0.hpp
+        util/compress/compress1.cpp
+        util/compress/compress1.hpp
+        util/compress/compress2.cpp
+        util/compress/compress2.hpp
+        util/compress/compress.cpp
+        util/compress/compress.hpp
+        util/compress/decompress0.cpp
+        util/compress/decompress0.hpp
+        util/compress/decompress1.cpp
+        util/compress/decompress1.hpp
+        util/compress/decompress2.cpp
+        util/compress/decompress2.hpp
+    '''))
+
+# -----------------------------------------------------------------------------
+
 p4fliconvLibEnvironment = plus4emuGLGUIEnvironment.Clone()
-p4fliconvLibEnvironment.Append(CPPPATH = ['./util/p4fliconv'])
+p4fliconvLibEnvironment.Append(CPPPATH = ['./util/compress',
+                                          './util/p4fliconv'])
 if not haveZLib:
     print 'WARNING: zlib is not found, building p4fliconv without P4S support'
     p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
@@ -412,9 +469,7 @@ elif not win32CrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
     if not 'z' in p4fliconvLibEnvironment['LIBS']:
         p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
-p4fliconvLibSources = ['util/p4fliconv/compress.cpp',
-                       'util/p4fliconv/decompress.cpp',
-                       'util/p4fliconv/dither.cpp',
+p4fliconvLibSources = ['util/p4fliconv/dither.cpp',
                        'util/p4fliconv/flicfg.cpp',
                        'util/p4fliconv/flidisp.cpp',
                        'util/p4fliconv/hiresfli.cpp',
@@ -439,7 +494,7 @@ p4fliconvEnvironment = p4fliconvLibEnvironment.Clone()
 if win32CrossCompile:
     p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
-p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu'])
+p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
 if haveDotconf:
     if win32CrossCompile:
         # hack to work around binary incompatible dirent functions in
@@ -452,6 +507,7 @@ if not win32CrossCompile:
 p4fliconv = p4fliconvEnvironment.Program(
     'p4fliconv', ['util/p4fliconv/main.cpp'])
 Depends(p4fliconv, p4fliconvLib)
+Depends(p4fliconv, compressLib)
 Depends(p4fliconv, plus4emuLib)
 
 if win32CrossCompile:
@@ -462,6 +518,7 @@ if win32CrossCompile:
     p4fliconvGUI = p4fliconvGUIEnvironment.Program(
         'p4fliconv_gui', [p4fliconvGUIMain])
     Depends(p4fliconvGUI, p4fliconvLib)
+    Depends(p4fliconvGUI, compressLib)
     Depends(p4fliconvGUI, plus4emuLib)
 
 if sys.platform[:6] == 'darwin':
@@ -472,7 +529,7 @@ p4sconvEnvironment = p4fliconvLibEnvironment.Clone()
 if win32CrossCompile:
     p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
-p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'plus4emu'])
+p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
 if haveDotconf:
     if win32CrossCompile:
         # hack to work around binary incompatible dirent functions in
@@ -485,12 +542,13 @@ else:
     p4sconvEnvironment.Append(LIBS = ['pthread'])
 p4sconv = p4sconvEnvironment.Program('p4sconv', ['util/p4fliconv/p4sconv.cpp'])
 Depends(p4sconv, p4fliconvLib)
+Depends(p4sconv, compressLib)
 Depends(p4sconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 
-compressEnvironment = plus4emuLibEnvironment.Clone()
-compressEnvironment.Prepend(LIBS = ['p4fliconv'])
-compress = compressEnvironment.Program('compress', ['util/compress.cpp'])
-Depends(compress, p4fliconvLib)
+compressEnvironment = compressLibEnvironment.Clone()
+compressEnvironment.Prepend(LIBS = ['compress'])
+compress = compressEnvironment.Program('compress', ['util/compress/main.cpp'])
+Depends(compress, compressLib)
 
