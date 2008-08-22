@@ -351,6 +351,207 @@ namespace Plus4FLIConv {
       bitmapTable[i] = false;
   }
 
+  void PRGData::optimizeAttributes()
+  {
+    if (conversionType >= 8)
+      return;
+    bool    mcFlag = bool(conversionType & 1);
+    if (conversionType >= 6) {
+      // simple non-FLI video modes:
+      for (int k = 0; k < 2; k++) {
+        for (int yc = 0; yc < 25; yc++) {
+          for (int xc = 0; xc < 40; xc++) {
+            // make the use of attribute values more consistent for easier
+            // editing of the output file
+            if (k != 0) {
+              // scan backwards on second pass
+              xc = 39 - xc;
+              yc = 24 - yc;
+            }
+            int&    l0_ = luminanceCodeTable[((yc * 16) * 40) + xc];
+            int&    c0_ = colorCodeTable[((yc * 16) * 40) + xc];
+            int&    l1_ = luminanceCodeTable[(((yc * 16) | 2) * 40) + xc];
+            int&    c1_ = colorCodeTable[(((yc * 16) | 2) * 40) + xc];
+            int     c_0 = convertColorCode(l0_, c0_);
+            int     c_1 = convertColorCode(l1_, c1_);
+            int     c00Cnt = 0;
+            int     c01Cnt = 0;
+            int     c10Cnt = 0;
+            int     c11Cnt = 0;
+            for (int i = 0; i < 4; i++) {
+              int     xc_ = (i % 3) - 1;
+              int     yc_ = (i / 3) - 1;
+              if (k == 0) {
+                xc_ = xc + xc_;
+                yc_ = yc + yc_;
+              }
+              else {
+                xc_ = xc - xc_;
+                yc_ = yc - yc_;
+              }
+              if (xc_ >= 0 && xc_ < 40 && yc_ >= 0 && yc_ < 25) {
+                int     c_0_ = convertColorCode(this->l0(xc_ * 8, yc_ * 16),
+                                                this->c0(xc_ * 8, yc_ * 16));
+                int     c_1_ = convertColorCode(this->l1(xc_ * 8, yc_ * 16),
+                                                this->c1(xc_ * 8, yc_ * 16));
+                if (c_0 == c_0_)
+                  c00Cnt++;
+                if (c_0 == c_1_)
+                  c01Cnt++;
+                if (c_1 == c_0_)
+                  c10Cnt++;
+                if (c_1 == c_1_)
+                  c11Cnt++;
+              }
+            }
+            if (((c01Cnt - c00Cnt) + (c10Cnt - c11Cnt)) > 0) {
+              // swap colors
+              int     tmp = l0_;
+              l0_ = l1_;
+              l1_ = tmp;
+              tmp = c0_;
+              c0_ = c1_;
+              c1_ = tmp;
+              for (int yOffs = 0; yOffs < 8; yOffs++) {
+                for (int xOffs = 0; xOffs < 8; xOffs += (int(mcFlag) + 1)) {
+                  int     xc_ = (xc * 8) + xOffs;
+                  int     yc_ = ((yc * 8) + yOffs) * 2;
+                  bool    b = getPixel(xc_, yc_);
+                  if (!mcFlag) {
+                    setPixel(xc_, yc_, !b);
+                  }
+                  else {
+                    setPixel(xc_, yc_, getPixel(xc_ + 1, yc_));
+                    setPixel(xc_ + 1, yc_, b);
+                  }
+                }
+              }
+            }
+            if (k != 0) {
+              xc = 39 - xc;
+              yc = 24 - yc;
+            }
+          }
+        }
+      }
+    }
+    else {
+      // FLI video modes: make the use of attribute values more consistent
+      // for improved compression of the output file
+      for (int yc = 0; yc < nLines; yc++) {
+        if ((yc & 3) == (conversionType < 2 ? 2 : 1)) {
+          yc = yc | 3;
+          continue;
+        }
+        for (int xc = 0; xc < 40; xc++) {
+          int&    l0_ = luminanceCodeTable[(yc * 40) + xc];
+          int&    c0_ = colorCodeTable[(yc * 40) + xc];
+          int&    l1_ = luminanceCodeTable[((yc | 2) * 40) + xc];
+          int&    c1_ = colorCodeTable[((yc | 2) * 40) + xc];
+          int     c_0 = convertColorCode(l0_, c0_);
+          int     c_1 = convertColorCode(l1_, c1_);
+          if ((mcFlag ? c_1 : c_0) > (mcFlag ? c_0 : c_1)) {
+            // swap colors
+            int     tmp = l0_;
+            l0_ = l1_;
+            l1_ = tmp;
+            tmp = c0_;
+            c0_ = c1_;
+            c1_ = tmp;
+            for (int yOffs = 0; yOffs < 4; yOffs++) {
+              if ((yOffs & 1) != 0 &&
+                  !(conversionType >= 2 && conversionType < 4)) {
+                continue;
+              }
+              for (int xOffs = 0; xOffs < 8; xOffs += (int(mcFlag) + 1)) {
+                int     xc_ = (xc * 8) + xOffs;
+                int     yc_ = yc + yOffs;
+                bool    b = getPixel(xc_, yc_);
+                if (!mcFlag) {
+                  setPixel(xc_, yc_, !b);
+                }
+                else {
+                  setPixel(xc_, yc_, getPixel(xc_ + 1, yc_));
+                  setPixel(xc_ + 1, yc_, b);
+                }
+              }
+            }
+          }
+        }
+      }
+      if (mcFlag) {
+        for (int yc = 0; yc < nLines; yc++) {
+          if ((yc & 3) == (conversionType < 4 ? 2 : 1)) {
+            yc = yc | 3;
+            continue;
+          }
+          unsigned char&  c0_0 = lineColor0(yc);
+          unsigned char&  c0_1 = lineColor0(yc | 2);
+          unsigned char&  c3_0 = lineColor3(yc);
+          unsigned char&  c3_1 = lineColor3(yc | 2);
+          c0_0 = c0_0 & 0x7F;
+          c0_1 = c0_1 & 0x7F;
+          c3_0 = c3_0 & 0x7F;
+          c3_1 = c3_1 & 0x7F;
+          bool    color0ChangeEnabled =
+              (nLines <= 400 || lineXShift(yc | 2) == lineXShift(yc));
+          if (!color0ChangeEnabled) {
+            c0_1 = c0_0;
+            if (c3_1 != c3_0)
+              continue;
+          }
+          bool    swapFlag0 = false;
+          bool    swapFlag1 = false;
+          if (c3_0 < c0_0) {
+            unsigned char tmp = c0_0;
+            c0_0 = c3_0;
+            c3_0 = tmp;
+            swapFlag0 = !swapFlag0;
+          }
+          if (yc >= 4) {
+            if (c0_0 == lineColor3(yc - 2) || c3_0 == lineColor0(yc - 2)) {
+              unsigned char tmp = c0_0;
+              c0_0 = c3_0;
+              c3_0 = tmp;
+              swapFlag0 = !swapFlag0;
+            }
+          }
+          if (color0ChangeEnabled) {
+            if (c3_1 < c0_1) {
+              unsigned char tmp = c0_1;
+              c0_1 = c3_1;
+              c3_1 = tmp;
+              swapFlag1 = !swapFlag1;
+            }
+            if (c0_1 == c3_0 || c3_1 == c0_0) {
+              unsigned char tmp = c0_1;
+              c0_1 = c3_1;
+              c3_1 = tmp;
+              swapFlag1 = !swapFlag1;
+            }
+          }
+          else {
+            c0_1 = c0_0;
+            c3_1 = c3_0;
+            swapFlag1 = swapFlag0;
+          }
+          for (int yOffs = 0; yOffs < 4; yOffs += 2) {
+            if (!((yOffs == 0 && swapFlag0) || (yOffs != 0 && swapFlag1)))
+              continue;
+            for (int xc_ = 0; xc_ < 320; xc_ += 2) {
+              int     yc_ = yc + yOffs;
+              bool    b = getPixel(xc_, yc_);
+              if (getPixel(xc_ + 1, yc_) == b) {
+                setPixel(xc_, yc_, !b);
+                setPixel(xc_ + 1, yc_, !b);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   void PRGData::convertImageData()
   {
     if (conversionType >= 6) {

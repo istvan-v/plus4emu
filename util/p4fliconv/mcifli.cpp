@@ -1458,6 +1458,7 @@ namespace Plus4FLIConv {
         prgData.lineXShift((yc << 1) + 0) = (unsigned char) xs0;
         prgData.lineXShift((yc << 1) + 1) = (unsigned char) xs1;
       }
+      prgData.optimizeAttributes();
       prgData.convertImageData();
       prgEndAddr = prgData.getImageDataEndAddress();
     }

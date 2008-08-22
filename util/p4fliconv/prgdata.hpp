@@ -45,6 +45,10 @@ namespace Plus4FLIConv {
     PRGData();
     virtual ~PRGData();
     void clear();
+    // make the use of attribute values more consistent for easier
+    // editing of the output file and better compression (should be
+    // called before convertImageData())
+    void optimizeAttributes();
     void convertImageData();
     void setVerticalSize(int n);
     int getVerticalSize() const;

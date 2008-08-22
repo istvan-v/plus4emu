@@ -25,7 +25,6 @@
 #include "imageconv.hpp"
 #include "prgdata.hpp"
 #include "hiresnofli.hpp"
-#include "mcnofli.hpp"
 
 static void getDownsampledErrorScaleFactors(double& errScaleL,
                                             double& errScaleC,
@@ -1121,10 +1120,8 @@ namespace Plus4FLIConv {
       setProgressPercentage(100);
       progressMessage("");
       // write PRG output
+      prgData.optimizeAttributes();
       prgData.convertImageData();
-      // make the use of attribute values more consistent for easier
-      // editing of the output file
-      P4FLI_MultiColorNoFLI::optimizeAttributes(prgData);
       prgEndAddr = prgData.getImageDataEndAddress();
     }
     catch (...) {

@@ -147,9 +147,6 @@ namespace Plus4FLIConv {
                               const char *infileName,
                               YUVImageConverter& imgConv,
                               Plus4Emu::ConfigurationDB& config);
-    // make the use of attribute values more consistent for easier
-    // editing of the output file
-    static void optimizeAttributes(PRGData& prgData);
   };
 
 }       // namespace Plus4FLIConv

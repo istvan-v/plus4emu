@@ -981,81 +981,6 @@ namespace Plus4FLIConv {
     return true;
   }
 
-  void P4FLI_MultiColorNoFLI::optimizeAttributes(PRGData& prgData)
-  {
-    bool    mcFlag =
-        prgData[0x7BFA - 0x0FFF] == 0x4D && prgData[0x7BFB - 0x0FFF] == 0x55 &&
-        prgData[0x7BFC - 0x0FFF] == 0x4C && prgData[0x7BFD - 0x0FFF] == 0x54;
-    for (int k = 0; k < 2; k++) {
-      for (int yc = 0; yc < 25; yc++) {
-        for (int xc = 0; xc < 40; xc++) {
-          // make the use of attribute values more consistent for easier
-          // editing of the output file
-          if (k != 0) {
-            // scan backwards on second pass
-            xc = 39 - xc;
-            yc = 24 - yc;
-          }
-          int     addr = ((yc * 40) + xc) + (0x7800 - 0x0FFF);
-          int     l = prgData[addr];
-          int     c = prgData[addr + 0x0400];
-          int     c0 = (l & 0x70) | (c & 0x0F);
-          int     c1 = ((l & 0x07) << 4) | ((c & 0xF0) >> 4);
-          int     c00Cnt = 0;
-          int     c01Cnt = 0;
-          int     c10Cnt = 0;
-          int     c11Cnt = 0;
-          for (int i = 0; i < 4; i++) {
-            int     xc_ = (i % 3) - 1;
-            int     yc_ = (i / 3) - 1;
-            if (k == 0) {
-              xc_ = xc + xc_;
-              yc_ = yc + yc_;
-            }
-            else {
-              xc_ = xc - xc_;
-              yc_ = yc - yc_;
-            }
-            if (xc_ >= 0 && xc_ < 40 && yc_ >= 0 && yc_ < 25) {
-              int     addr_ = ((yc_ * 40) + xc_) + (0x7800 - 0x0FFF);
-              int     l_ = prgData[addr_];
-              int     c_ = prgData[addr_ + 0x0400];
-              int     c0_ = (l_ & 0x70) | (c_ & 0x0F);
-              int     c1_ = ((l_ & 0x07) << 4) | ((c_ & 0xF0) >> 4);
-              if (c0 == c0_)
-                c00Cnt++;
-              if (c0 == c1_)
-                c01Cnt++;
-              if (c1 == c0_)
-                c10Cnt++;
-              if (c1 == c1_)
-                c11Cnt++;
-            }
-          }
-          if (((c01Cnt - c00Cnt) + (c10Cnt - c11Cnt)) > 0) {
-            // swap colors
-            prgData[addr] =
-                (unsigned char) (((l & 0x07) << 4) | ((l & 0x70) >> 4));
-            prgData[addr + 0x0400] =
-                (unsigned char) (((c & 0x0F) << 4) | ((c & 0xF0) >> 4));
-            for (int i = 0; i < 8; i++) {
-              unsigned char&  b = prgData[((addr - (0x7800 - 0x0FFF)) << 3) + i
-                                          + (0x8000 - 0x0FFF)];
-              if (mcFlag)
-                b = ((b & 0x55) << 1) | ((b & 0xAA) >> 1);
-              else
-                b = b ^ 0xFF;
-            }
-          }
-          if (k != 0) {
-            xc = 39 - xc;
-            yc = 24 - yc;
-          }
-        }
-      }
-    }
-  }
-
   bool P4FLI_MultiColorNoFLI::processImage(PRGData& prgData,
                                            unsigned int& prgEndAddr,
                                            const char *infileName,
@@ -1129,8 +1054,8 @@ namespace Plus4FLIConv {
         progressMessage(&(tmpBuf[0]));
       }
       // write PRG output
+      prgData.optimizeAttributes();
       prgData.convertImageData();
-      optimizeAttributes(prgData);
       prgEndAddr = prgData.getImageDataEndAddress();
     }
     catch (...) {

@@ -174,6 +174,22 @@ namespace Plus4FLIConv {
     b = y + (u * float(1.0 / 0.492));
   }
 
+  static inline uint8_t convertColorCode(int l, int c)
+  {
+    c = c & 15;
+    return uint8_t((l == 0 || c == 0) ? 0 : ((((l - 1) & 7) << 4) | c));
+  }
+
+  static inline uint8_t colorCodeLuminance(int n)
+  {
+    return uint8_t((n & 15) == 0 ? 0 : (((n & 0x70) >> 4) + 1));
+  }
+
+  static inline uint8_t colorCodeColor(int n)
+  {
+    return uint8_t(n & 15);
+  }
+
 }       // namespace Plus4FLIConv
 
 class Plus4FLIConvGUI_TED7360 : public Plus4::TED7360 {
