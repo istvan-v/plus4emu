@@ -1,3 +1,26 @@
+Changes in version 1.2.9
+------------------------
+
+  * added a C interface that allows using the emulator as a shared
+    library in other programs; the library and header file can be found
+    in the 'plus4lib' subdirectory of the binary packages, and a simple
+    example program with compile instructions is also included
+  * implemented IEC level MPS-801 printer emulation, in addition to the
+    previously existing hardware level MPS-802 emulation
+  * added a new button to the debugger GUI that makes it possible to
+    break only when a branch is taken (i.e. the opposite of 'Step over')
+  * LED display is now also implemented for IEC level drive emulation
+  * the ROM images required by the emulator are included with the binary
+    packages, and no longer need to be downloaded separately
+  * fixed a bug in the 'Step over' function of the debugger
+  * fixed/improved support for D64 error information; this allows some
+    copy protected games that previously did not work to load correctly
+  * the 'compress' utility has two new compression methods, some new
+    options, and the original method is 3-5 times faster now while
+    producing identical files; also, compression support in 'p4fliconv'
+    is improved somewhat
+  * various minor bug fixes, optimizations, and other improvements
+
 Changes in version 1.2.8.1
 --------------------------
 

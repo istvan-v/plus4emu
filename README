@@ -1,5 +1,5 @@
-plus4emu 1.2.8.1
-================
+plus4emu 1.2.9 beta
+===================
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -42,6 +42,7 @@ Plus/4 emulation
     .R00, .S00, and .U00 files on the PC filesystem; this also supports
     the C, I, N, P, R, S, and V DOS commands
   * light pen emulation (compatible with the Trojan Light Pen software)
+  * IEC level MPS-801 printer emulation
   * hardware level 1526/MPS-802 printer emulation
   * load and automatically start .PRG, .P00, .D64, .D81, or .TAP file on
     start-up
@@ -111,6 +112,10 @@ General
         clipboard
       shift + middle click: pastes text from the clipboard without
         changing the cursor position
+  * the Plus/4 emulation can be used in other programs as a shared
+    library with a C interface; see the plus4lib/plus4emu.h header file
+    for details, and also plus4lib/sample.c for a simple example of
+    using the interface
 
 The emulator package also includes some utilities:
 
@@ -171,9 +176,8 @@ the PATH; on MacOS X, an .app package is created in 'plus4emu.app'.
 When installing the first time, you also need to set up configuration
 files and ROM images:
 
-  * download http://www.sharemation.com/IstvanV/roms/plus4emu_roms.zip,
-    and extract it to ~/.plus4emu/roms (or, in the case of MacOS X,
-    ~/Library/Application Support/plus4emu/roms)
+  * copy all .rom files from the roms directory to ~/.plus4emu/roms (or,
+    in the case of MacOS X, ~/Library/Application Support/plus4emu/roms)
   * after installing the ROM images, run 'plus4emu', and click OK to the
     windows that pop up asking for the base directory of configuration
     and data files, and if configuration files should be installed
@@ -188,10 +192,6 @@ A binary package with an installer is available at the SourceForge
 download page:
   http://sourceforge.net/project/showfiles.php?group_id=192837
 To install, just run the executable, and follow the instructions.
-The installer can automatically download the ROM images needed for
-running the emulator, but these can also be installed manually by
-downloading http://www.sharemation.com/IstvanV/roms/plus4emu_roms.zip,
-and extracting it to roms\ under the selected installation folder.
 When asked if configuration files should be reinstalled, click 'OK'
 when installing the first time, but this step can be skipped in later
 installations to preserve the configuration.
@@ -408,23 +408,30 @@ Quick configuration / Save config 2
   Save the current clock frequency and timing settings to
   ~/.plus4emu/p4vmcfg2.cfg.
 
-Printer / Enable printer
+Printer / Disable printer
+Printer / MPS-801 (IEC level)
+Printer / MPS-802 (hardware level)
+Printer / MPS-802 (1525 mode)
 
-  If enabled, a 1526/MPS-802 printer is emulated as device 4 on the
-  serial bus. Since the printer emulation is implemented at the hardware
-  level, turning this on will increase CPU usage.
-  NOTE: with the default printer ROM (1526_07c.rom), printing graphics
-  does not work in most programs. However, by using 1526_mod.rom as the
-  '1526' ROM in the machine configuration, this problem can be worked
-  around.
+  If enabled, an MPS-801 or 1526/MPS-802 printer is emulated as device 4
+  on the serial bus. The MPS-802 printer emulation is implemented at the
+  hardware level for full compatibility with a real printer. On the
+  other hand, the IEC level MPS-801 emulation uses less CPU time, prints
+  faster, and supports printing graphics.
 
 Printer / View printer output
 
   Shows the printer output in real time in a window. It is also possible
-  to save the page as a 700x990 8-bit RLE compressed TGA file. When the
-  printing reaches the bottom of the page, it stops, and the LED will
-  flash; you can then save the page to a file, click the 'Clear' button,
-  and turn on and then off 'Form feed' to continue printing.
+  to save the page as a 520x736 (MPS-801) or 700x990 (MPS-802) 8-bit RLE
+  compressed TGA file. When the printing reaches the bottom of the page,
+  it stops, and the LED will flash; you can then save the page to a
+  file, click the 'Clear' button, and turn on and then off 'Form feed'
+  to continue printing.
+  In the case of MPS-801 emulation, the form feed button is ignored, so
+  it is enough to click the 'Clear' button to continue with printing the
+  next page; in this mode, there is also an input buffer of 128
+  kilobytes - until the buffer is full, the printing (and writing the
+  output to a text file if enabled) is not blocked on the Plus/4.
   NOTE: it is recommended to close this window while using the debugger,
   since it cannot display printer output then, and may slow down the
   GUI.
@@ -568,12 +575,13 @@ Start debugger (Alt + M)
     02, 03  008000-00FFFF   Function (3-plus-1) ROM
     04, 05  010000-017FFF   Cartridge 1
     06, 07  018000-01FFFF   Cartridge 2 (used by p4fileio.rom)
-    0C      030000-033FFF   Printer ROM
+    0A      028000-02BFFF   MPS-801 printer ROM (4K, repeated 4x)
+    0C      030000-033FFF   1526/MPS-802 printer ROM (8K, repeated 2x)
     10      040000-043FFF   1541 floppy drive ROM
     20      080000-083FFF   1551 floppy drive ROM
     30, 31  0C0000-0C7FFF   1581 floppy drive ROM
     40-43   100000-10FFFF   Main CPU address space
-    50-53   140000-14FFFF   Printer CPU address space
+    50-53   140000-14FFFF   Printer CPU address space (MPS-802 only)
     60-63   180000-18FFFF   Floppy unit 8 CPU address space
     64-67   190000-19FFFF   Floppy unit 9 CPU address space
     68-6B   1A0000-1AFFFF   Floppy unit 10 CPU address space
