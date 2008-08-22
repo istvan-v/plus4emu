@@ -182,7 +182,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
             xywh {20 130 360 265} box DOWN_BOX color 48 selection_color 51 align 5
           } {
             Fl_Group {} {open
-              xywh {25 135 325 425} box FLAT_BOX color 48
+              xywh {25 135 325 455} box FLAT_BOX color 48
             } {
               Fl_Box {} {
                 label Segment
@@ -413,12 +413,12 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
-                label 1526
-                xywh {25 405 45 25} box BORDER_FRAME color 8 labelsize 12
+                label MPS801
+                xywh {25 405 45 25} box BORDER_FRAME color 8 labelsize 10
               }
-              Fl_Input memoryROM0CFileNameValuator {
+              Fl_Input memoryROM0AFileNameValuator {
                 callback {{
-  setROMImageFile(0x0C, o->value());
+  setROMImageFile(0x0A, o->value());
 }}
                 xywh {75 405 165 25}
                 code0 {o->cursor_color(Fl_Color(3));}
@@ -426,26 +426,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x0C);
+  browseROMImageFile(0x0A);
 }}
                 xywh {245 405 25 25} selection_color 50
               }
-              Fl_Value_Input memoryROM0COffsetValuator {
+              Fl_Value_Input memoryROM0AOffsetValuator {
                 callback {{
-  gui.config.memory.rom[0x0C].offset = int(o->clamp(o->value()) + 0.5);
+  gui.config.memory.rom[0x0A].offset = int(o->clamp(o->value()) + 0.5);
   gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x0C].offset));
+  o->value(double(gui.config.memory.rom[0x0A].offset));
 }}
                 xywh {280 405 65 25} when 4 maximum 999999 step 1
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
-                label 1541
+                label 1526
                 xywh {25 435 45 25} box BORDER_FRAME color 8 labelsize 12
               }
-              Fl_Input memoryROM10FileNameValuator {
+              Fl_Input memoryROM0CFileNameValuator {
                 callback {{
-  setROMImageFile(0x10, o->value());
+  setROMImageFile(0x0C, o->value());
 }}
                 xywh {75 435 165 25}
                 code0 {o->cursor_color(Fl_Color(3));}
@@ -453,26 +453,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x10);
+  browseROMImageFile(0x0C);
 }}
                 xywh {245 435 25 25} selection_color 50
               }
-              Fl_Value_Input memoryROM10OffsetValuator {
+              Fl_Value_Input memoryROM0COffsetValuator {
                 callback {{
-  gui.config.memory.rom[0x10].offset = int(o->clamp(o->value()) + 0.5);
+  gui.config.memory.rom[0x0C].offset = int(o->clamp(o->value()) + 0.5);
   gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x10].offset));
+  o->value(double(gui.config.memory.rom[0x0C].offset));
 }}
                 xywh {280 435 65 25} when 4 maximum 999999 step 1
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
-                label 1551
+                label 1541
                 xywh {25 465 45 25} box BORDER_FRAME color 8 labelsize 12
               }
-              Fl_Input memoryROM20FileNameValuator {
+              Fl_Input memoryROM10FileNameValuator {
                 callback {{
-  setROMImageFile(0x20, o->value());
+  setROMImageFile(0x10, o->value());
 }}
                 xywh {75 465 165 25}
                 code0 {o->cursor_color(Fl_Color(3));}
@@ -480,26 +480,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x20);
+  browseROMImageFile(0x10);
 }}
                 xywh {245 465 25 25} selection_color 50
               }
-              Fl_Value_Input memoryROM20OffsetValuator {
+              Fl_Value_Input memoryROM10OffsetValuator {
                 callback {{
-  gui.config.memory.rom[0x20].offset = int(o->clamp(o->value()) + 0.5);
+  gui.config.memory.rom[0x10].offset = int(o->clamp(o->value()) + 0.5);
   gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x20].offset));
+  o->value(double(gui.config.memory.rom[0x10].offset));
 }}
                 xywh {280 465 65 25} when 4 maximum 999999 step 1
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
-                label 1581L
+                label 1551
                 xywh {25 495 45 25} box BORDER_FRAME color 8 labelsize 12
               }
-              Fl_Input memoryROM30FileNameValuator {
+              Fl_Input memoryROM20FileNameValuator {
                 callback {{
-  setROMImageFile(0x30, o->value());
+  setROMImageFile(0x20, o->value());
 }}
                 xywh {75 495 165 25}
                 code0 {o->cursor_color(Fl_Color(3));}
@@ -507,26 +507,26 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x30);
+  browseROMImageFile(0x20);
 }}
                 xywh {245 495 25 25} selection_color 50
               }
-              Fl_Value_Input memoryROM30OffsetValuator {
+              Fl_Value_Input memoryROM20OffsetValuator {
                 callback {{
-  gui.config.memory.rom[0x30].offset = int(o->clamp(o->value()) + 0.5);
+  gui.config.memory.rom[0x20].offset = int(o->clamp(o->value()) + 0.5);
   gui.config.memoryConfigurationChanged = true;
-  o->value(double(gui.config.memory.rom[0x30].offset));
+  o->value(double(gui.config.memory.rom[0x20].offset));
 }}
                 xywh {280 495 65 25} when 4 maximum 999999 step 1
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Box {} {
-                label 1581H
+                label 1581L
                 xywh {25 525 45 25} box BORDER_FRAME color 8 labelsize 12
               }
-              Fl_Input memoryROM31FileNameValuator {
+              Fl_Input memoryROM30FileNameValuator {
                 callback {{
-  setROMImageFile(0x31, o->value());
+  setROMImageFile(0x30, o->value());
 }}
                 xywh {75 525 165 25}
                 code0 {o->cursor_color(Fl_Color(3));}
@@ -534,9 +534,36 @@ class Plus4EmuGUI_MachineConfigWindow {open
               Fl_Button {} {
                 label {...}
                 callback {{
-  browseROMImageFile(0x31);
+  browseROMImageFile(0x30);
 }}
                 xywh {245 525 25 25} selection_color 50
+              }
+              Fl_Value_Input memoryROM30OffsetValuator {
+                callback {{
+  gui.config.memory.rom[0x30].offset = int(o->clamp(o->value()) + 0.5);
+  gui.config.memoryConfigurationChanged = true;
+  o->value(double(gui.config.memory.rom[0x30].offset));
+}}
+                xywh {280 525 65 25} when 4 maximum 999999 step 1
+                code0 {o->cursor_color(Fl_Color(3));}
+              }
+              Fl_Box {} {
+                label 1581H
+                xywh {25 555 45 25} box BORDER_FRAME color 8 labelsize 12
+              }
+              Fl_Input memoryROM31FileNameValuator {
+                callback {{
+  setROMImageFile(0x31, o->value());
+}}
+                xywh {75 555 165 25}
+                code0 {o->cursor_color(Fl_Color(3));}
+              }
+              Fl_Button {} {
+                label {...}
+                callback {{
+  browseROMImageFile(0x31);
+}}
+                xywh {245 555 25 25} selection_color 50
               }
               Fl_Value_Input memoryROM31OffsetValuator {
                 callback {{
@@ -544,7 +571,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.memoryConfigurationChanged = true;
   o->value(double(gui.config.memory.rom[0x31].offset));
 }}
-                xywh {280 525 65 25} when 4 maximum 999999 step 1
+                xywh {280 555 65 25} when 4 maximum 999999 step 1
                 code0 {o->cursor_color(Fl_Color(3));}
               }
             }
@@ -714,6 +741,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   memoryROM06OffsetValuator->value(double(gui.config.memory.rom[0x06].offset));
   memoryROM07FileNameValuator->value(gui.config.memory.rom[0x07].file.c_str());
   memoryROM07OffsetValuator->value(double(gui.config.memory.rom[0x07].offset));
+  memoryROM0AFileNameValuator->value(gui.config.memory.rom[0x0A].file.c_str());
+  memoryROM0AOffsetValuator->value(double(gui.config.memory.rom[0x0A].offset));
   memoryROM0CFileNameValuator->value(gui.config.memory.rom[0x0C].file.c_str());
   memoryROM0COffsetValuator->value(double(gui.config.memory.rom[0x0C].offset));
   memoryROM10FileNameValuator->value(gui.config.memory.rom[0x10].file.c_str());
@@ -757,9 +786,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
       }
       long    offs = long(gui.config.memory.rom[segment_].offset);
       bool    updateFlag = false;
-      while ((offs + 32767L) < fSize &&
-             segment_ != 0x07 && segment_ != 0x0C &&
-             segment_ != 0x10 && segment_ != 0x20 && segment_ != 0x31) {
+      if ((offs + 32767L) < fSize &&
+          ((segment_ < 0x08 && (segment_ & 0x01) == 0) || segment_ == 0x30)) {
         segment_++;
         offs = offs + 16384L;
         updateFlag = true;
@@ -816,6 +844,9 @@ class Plus4EmuGUI_MachineConfigWindow {open
         break;
       case 0x07:
         memoryROM07FileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
+        break;
+      case 0x0A:
+        memoryROM0AFileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());
         break;
       case 0x0C:
         memoryROM0CFileNameValuator->value(gui.config.memory.rom[segment_].file.c_str());

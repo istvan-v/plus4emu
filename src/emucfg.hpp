@@ -74,8 +74,8 @@ namespace Plus4Emu {
         {
         }
       };
-      // ROM files can be loaded to segments 0x00 to 0x07, 0x0C, 0x10, 0x20,
-      // 0x30, and 0x31
+      // ROM files can be loaded to segments 0x00 to 0x07, 0x0A, 0x0C, 0x10,
+      // 0x20, 0x30, and 0x31
       ROMSegmentConfig  rom[50];
     };
     MemoryConfiguration_  memory;
