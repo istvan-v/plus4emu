@@ -23,7 +23,6 @@
 #include "p4fliconv.hpp"
 #include "prgdata.hpp"
 #include "compress.hpp"
-#include "decompress.hpp"
 #include "p4slib.hpp"
 #include "imgwrite.hpp"
 
@@ -78,6 +77,7 @@ namespace Plus4FLIConv {
       return;
     }
     std::FILE *f = (std::FILE *) 0;
+    Plus4Compress::Compressor *compress_ = (Plus4Compress::Compressor *) 0;
     try {
       if (outputFormat == 3) {
         // FED 1.5 format
@@ -159,17 +159,16 @@ namespace Plus4FLIConv {
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;
-          PRGCompressor   compress_(compressOutBuf);
-          PRGCompressor::CompressionParameters  compressCfg;
-          compress_.getCompressionParameters(compressCfg);
-          compressCfg.setCompressionLevel(compressionLevel);
-          compress_.setCompressionParameters(compressCfg);
-          compress_.setProgressMessageCallback(progressMessageCallback,
-                                               progressCallbackUserData);
-          compress_.setProgressPercentageCallback(progressPercentageCallback,
-                                                  progressCallbackUserData);
+          compress_ =
+              Plus4Compress::createCompressor(((rawMode || convType < 4) ?
+                                               0 : 2), compressOutBuf);
+          compress_->setCompressionLevel(compressionLevel);
+          compress_->setProgressMessageCallback(progressMessageCallback,
+                                                progressCallbackUserData);
+          compress_->setProgressPercentageCallback(progressPercentageCallback,
+                                                   progressCallbackUserData);
           if (!rawMode)
-            compress_.addZeroPageUpdate(prgEndAddr, false);
+            compress_->addZeroPageUpdate(prgEndAddr, false);
           unsigned int  startAddr = prgStartAddr;
           if (prgData.getImageDataStartAddress()
               > (prgData.getViewerCodeEndAddress() + 256U) &&
@@ -182,7 +181,7 @@ namespace Plus4FLIConv {
                  i++) {
               compressInBuf.push_back(prgData[i]);
             }
-            compress_.compressData(compressInBuf, startAddr, false, false);
+            compress_->compressData(compressInBuf, startAddr, false, false);
             startAddr = prgData.getImageDataStartAddress();
             compressInBuf.clear();
           }
@@ -191,7 +190,7 @@ namespace Plus4FLIConv {
                i++) {
             compressInBuf.push_back(prgData[i]);
           }
-          if (!compress_.compressData(compressInBuf, startAddr, true, true))
+          if (!compress_->compressData(compressInBuf, startAddr, true, true))
             compressionLevel = 0;
           if (compressionLevel > 0) {
             if (rawMode) {
@@ -210,8 +209,9 @@ namespace Plus4FLIConv {
             else {
               // add SFX module
               std::vector< unsigned char >  tmpBuf;
-              PRGDecompressor::getSFXModule(tmpBuf, -1,
-                                            false, true, true, false, false);
+              Plus4Compress::getSFXModule(
+                  tmpBuf, (convType < 4 ? 0 : 2), -1, false, true, true,
+                  (convType < 6 ? 2 : 0), (convType >= 4), true, false, false);
               for (size_t i = 0; i < tmpBuf.size(); i++) {
                 if (std::fputc(int(tmpBuf[i]), f) == EOF)
                   throw Plus4Emu::Exception("error writing PRG file");
@@ -242,12 +242,18 @@ namespace Plus4FLIConv {
       }
       std::fclose(f);
       f = (std::FILE *) 0;
+      if (compress_) {
+        delete compress_;
+        compress_ = (Plus4Compress::Compressor *) 0;
+      }
     }
     catch (...) {
       if (f) {
         std::fclose(f);
         std::remove(fileName);
       }
+      if (compress_)
+        delete compress_;
       throw;
     }
   }
