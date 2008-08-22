@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0109 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -705,6 +705,15 @@ class Plus4EmuGUI_DebugWindow {open
         callback {{
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(1);
+  this->hide();
+}}
+        xywh {595 685 80 25} selection_color 50
+      }
+      Fl_Button stepIntoButton {
+        label {Step into}
+        callback {{
+  focusWidget = stepButton;
+  gui.vm.setSingleStepMode(4);
   this->hide();
 }}
         xywh {685 685 80 25} selection_color 50
