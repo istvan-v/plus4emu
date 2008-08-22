@@ -97,7 +97,8 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     *   4: 1526 printer (data size is 8192 bytes)
+     *   4: 1526/MPS-802 printer (data size is 8192 bytes)
+     *   5: MPS-801 printer (data size is 4096 bytes)
      * if this device type does not use the selected ROM bank, the function
      * call is ignored.
      */
@@ -157,7 +158,8 @@ namespace Plus4 {
     virtual void writeMemoryDebug(uint16_t addr, uint8_t value);
     /*!
      * Returns the current state of drive LEDs. Bit 0 is set if the red LED
-     * is on, and bit 1 is set if the green LED is on.
+     * is on, bit 1 is set if the green LED is on, and bit 2 is set if the
+     * blue LED is on.
      */
     virtual uint8_t getLEDState() const;
     /*!

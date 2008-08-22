@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -155,7 +155,8 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     *   4: 1526 printer (data size is 8192 bytes)
+     *   4: 1526/MPS-802 printer (data size is 8192 bytes)
+     *   5: MPS-801 printer (data size is 4096 bytes)
      * if this device type does not use the selected ROM bank, the function
      * call is ignored.
      */

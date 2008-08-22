@@ -22,13 +22,14 @@
 
 #include "plus4emu.hpp"
 #include "serial.hpp"
+#include "printer.hpp"
 #include "cpu.hpp"
 #include "via6522.hpp"
 #include "riot6532.hpp"
 
 namespace Plus4 {
 
-  class VC1526 : public SerialDevice {
+  class VC1526 : public Printer {
    public:
     static const int    pageWidth = 700;
     static const int    pageHeight = 990;
@@ -147,7 +148,8 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     *   4: 1526 printer (data size is 8192 bytes)
+     *   4: 1526/MPS-802 printer (data size is 8192 bytes)
+     *   5: MPS-801 printer (data size is 4096 bytes)
      * if this device type does not use the selected ROM bank, the function
      * call is ignored.
      */
@@ -183,7 +185,7 @@ namespace Plus4 {
     /*!
      * Returns the current state of the printer LED (0: off, 1: on).
      */
-    virtual uint8_t getLEDState() const;
+    virtual uint8_t getLEDState();
     /*!
      * Returns the current position of the head. 'xPos' is in the range
      * 0 (left) to getPageWidth()-1 (right), 'yPos' is in the range 0 (top)

@@ -19,6 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "serial.hpp"
+#include "printer.hpp"
 #include "cpu.hpp"
 #include "via6522.hpp"
 #include "riot6532.hpp"
@@ -192,7 +193,7 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
 
   VC1526::VC1526(SerialBus& serialBus_, int devNum_)
-    : SerialDevice(serialBus_),
+    : Printer(serialBus_, devNum_),
       cpu(*this),
       via(*this),
       riot1(*this),
@@ -416,7 +417,7 @@ namespace Plus4 {
         vc1526.riot1.setPortA(riot1PortAInput);
       }
       vc1526.via.runOneCycle();
-      vc1526.cpu.runOneCycle();
+      vc1526.cpu.runOneCycle_RDYHigh();
       vc1526.riot1.runOneCycle();
       vc1526.riot2.runOneCycle();
       if (!vc1526.updatePinCnt) {
@@ -467,7 +468,7 @@ namespace Plus4 {
     headPosY = pixelToYPos(marginTop);
   }
 
-  uint8_t VC1526::getLEDState() const
+  uint8_t VC1526::getLEDState()
   {
     return uint8_t(((riot2.getPortA() ^ 0xFF) & 0x20) >> 5);
   }

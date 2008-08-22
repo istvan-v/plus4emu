@@ -83,12 +83,16 @@ namespace Plus4Emu {
       // floppy drive LED state is the sum of any of the following values:
       //   0x00000001: drive 0 red LED is on
       //   0x00000002: drive 0 green LED is on
+      //   0x00000004: drive 0 blue LED is on
       //   0x00000100: drive 1 red LED is on
       //   0x00000200: drive 1 green LED is on
+      //   0x00000400: drive 1 blue LED is on
       //   0x00010000: drive 2 red LED is on
       //   0x00020000: drive 2 green LED is on
+      //   0x00040000: drive 2 blue LED is on
       //   0x01000000: drive 3 red LED is on
       //   0x02000000: drive 3 green LED is on
+      //   0x04000000: drive 3 blue LED is on
       uint32_t  floppyDriveLEDState;
       // for each drive, the head position is encoded as a 16-bit value (bits
       // 0 to 15 for drive 0, bits 16 to 31 for drive 1, etc.):
@@ -247,9 +251,13 @@ namespace Plus4Emu {
      */
     virtual void pasteText(const char *s, int xPos, int yPos);
     /*!
-     * Set if printer emulation should be enabled.
+     * Set the type of printer to be emulated:
+     *   0: disable printer emulation (default)
+     *   1: MPS-801 (IEC level emulation)
+     *   2: 1526/MPS-802 (hardware level emulation)
+     *   3: 1526/MPS-802 in 1525 mode (hardware level emulation)
      */
-    virtual void setEnablePrinter(bool isEnabled);
+    virtual void setPrinterType(int n);
     /*!
      * Get the current printer output as an 8-bit greyscale image.
      * 'buf_' contains 'w_' * 'h_' bytes. If there is no printer, a NULL
@@ -281,10 +289,6 @@ namespace Plus4Emu {
      */
     virtual bool getIsPrinterOutputChanged() const;
     virtual void clearPrinterOutputChangedFlag();
-    /*!
-     * Set printer mode (false: 1526, true: 1525).
-     */
-    virtual void setPrinter1525Mode(bool isEnabled);
     /*!
      * Set the state of the printer form feed button (false: off, true: on).
      */
@@ -347,12 +351,16 @@ namespace Plus4Emu {
      * of any of the following values:
      *   0x00000001: drive 0 red LED is on
      *   0x00000002: drive 0 green LED is on
+     *   0x00000004: drive 0 blue LED is on
      *   0x00000100: drive 1 red LED is on
      *   0x00000200: drive 1 green LED is on
+     *   0x00000400: drive 1 blue LED is on
      *   0x00010000: drive 2 red LED is on
      *   0x00020000: drive 2 green LED is on
+     *   0x00040000: drive 2 blue LED is on
      *   0x01000000: drive 3 red LED is on
      *   0x02000000: drive 3 green LED is on
+     *   0x04000000: drive 3 blue LED is on
      */
     virtual uint32_t getFloppyDriveLEDState() const;
     /*!
@@ -528,6 +536,7 @@ namespace Plus4Emu {
      *   1: single step mode (break on every instruction, ignore breakpoints)
      *   2: step over mode
      *   3: trace (similar to mode 1, but does not ignore breakpoints)
+     *   4: step into mode
      */
     virtual void setSingleStepMode(int mode_);
     /*!

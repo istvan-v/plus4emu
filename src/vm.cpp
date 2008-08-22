@@ -19,6 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "fileio.hpp"
+#include "system.hpp"
 #include "display.hpp"
 #include "snd_conv.hpp"
 #include "soundio.hpp"
@@ -355,9 +356,9 @@ namespace Plus4Emu {
     (void) yPos;
   }
 
-  void VirtualMachine::setEnablePrinter(bool isEnabled)
+  void VirtualMachine::setPrinterType(int n)
   {
-    (void) isEnabled;
+    (void) n;
   }
 
   void VirtualMachine::getPrinterOutput(const uint8_t*& buf_,
@@ -390,11 +391,6 @@ namespace Plus4Emu {
 
   void VirtualMachine::clearPrinterOutputChangedFlag()
   {
-  }
-
-  void VirtualMachine::setPrinter1525Mode(bool isEnabled)
-  {
-    (void) isEnabled;
   }
 
   void VirtualMachine::setPrinterFormFeedOn(bool isEnabled)

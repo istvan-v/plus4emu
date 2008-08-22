@@ -30,6 +30,7 @@
 
 #include "resid/sid.hpp"
 #include "p4floppy.hpp"
+#include "mps801.hpp"
 #include "vc1526.hpp"
 #include "vc1541.hpp"
 #include "vc1551.hpp"
@@ -811,6 +812,7 @@ namespace Plus4 {
       floppyROM_1551((uint8_t *) 0),
       floppyROM_1581_0((uint8_t *) 0),
       floppyROM_1581_1((uint8_t *) 0),
+      printerROM_MPS801((uint8_t *) 0),
       printerROM_1526((uint8_t *) 0),
       videoBreakPointCnt(0),
       videoBreakPoints((uint8_t *) 0),
@@ -820,7 +822,6 @@ namespace Plus4 {
       lightPenPositionY(-1),
       lightPenCycleCounter(0),
       printerOutputChangedFlag(true),
-      printer1525Mode(false),
       printerFormFeedOn(false),
       videoCaptureNTSCMode(false),
       videoCapture((Plus4Emu::VideoCapture *) 0),
@@ -897,6 +898,8 @@ namespace Plus4 {
       delete[] floppyROM_1581_0;
     if (floppyROM_1581_1)
       delete[] floppyROM_1581_1;
+    if (printerROM_MPS801)
+      delete[] printerROM_MPS801;
     if (printerROM_1526)
       delete[] printerROM_1526;
     delete ted;
@@ -985,6 +988,10 @@ namespace Plus4 {
         delete[] floppyROM_1581_1;
         floppyROM_1581_1 = (uint8_t *) 0;
       }
+      if (printerROM_MPS801) {
+        delete[] printerROM_MPS801;
+        printerROM_MPS801 = (uint8_t *) 0;
+      }
       if (printerROM_1526) {
         delete[] printerROM_1526;
         printerROM_1526 = (uint8_t *) 0;
@@ -1012,6 +1019,11 @@ namespace Plus4 {
     size_t  nBytes = 16384;
     if (n >= 8) {
       switch (n) {
+      case 0x0A:
+        floppyROMSegment = 5;
+        floppyROMPtr = &printerROM_MPS801;
+        nBytes = 4096;
+        break;
       case 0x0C:
         floppyROMSegment = 4;
         floppyROMPtr = &printerROM_1526;
@@ -1386,45 +1398,63 @@ namespace Plus4 {
     ted->setCallback(&pasteTextCallback, (void *) this, 1);
   }
 
-  void Plus4VM::setEnablePrinter(bool isEnabled)
+  void Plus4VM::setPrinterType(int n)
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
-    if (isEnabled) {
-      if (!printer_) {
-        // TODO: allow setting device number ?
-        printer_ = new VC1526(ted->serialPort, printerDeviceNumber);
-        serialDevices[printerDeviceNumber] = printer_;
-        printer_->setROMImage(4, printerROM_1526);
-        printer_->setEnable1525Mode(printer1525Mode);
-        printer_->setFormFeedOn(printerFormFeedOn);
-        ted->setCallback(printer_->getProcessCallback(),
-                         printer_->getProcessCallbackUserData(), 1);
-        printer_->setBreakPointCallback(breakPointCallback,
-                                        breakPointCallbackUserData);
-        M7501   *p = printer_->getCPU();
-        if (p) {
-          p->setBreakPointPriorityThreshold(
-              ted->getBreakPointPriorityThreshold());
-          p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
-        }
-        printer_->setNoBreakOnDataRead(noBreakOnDataRead);
-      }
+    n = ((n >= 0 && n <= 3) ? n : 0);
+    // TODO: allow setting device number ?
+    SerialDevice*&  printerDevice = serialDevices[printerDeviceNumber];
+    int     prvPrinterType = 0;
+    if (printerDevice != (SerialDevice *) 0)
+      prvPrinterType = (typeid(*printerDevice) == typeid(VC1526) ? 2 : 1);
+    if (n >= 2 && prvPrinterType >= 2) {
+      // set 1526/MPS-802 printer 1525 mode only
+      reinterpret_cast<VC1526 *>(printerDevice)->setEnable1525Mode(n == 3);
+      return;
     }
-    else if (printer_) {
+    if (n == prvPrinterType)
+      return;                   // printer type is not changed, nothing to do
+    if (prvPrinterType != 0) {
+      // delete previous printer object
       printerOutputChangedFlag = true;
+      Printer *printer_ = reinterpret_cast<Printer *>(printerDevice);
       ted->setCallback(printer_->getProcessCallback(),
                        printer_->getProcessCallbackUserData(), 0);
-      delete serialDevices[printerDeviceNumber];
-      serialDevices[printerDeviceNumber] = (SerialDevice *) 0;
+      delete printerDevice;
+      printerDevice = (SerialDevice *) 0;
       ted->serialPort.removeDevice(printerDeviceNumber);
+    }
+    // create new printer object:
+    if (n == 1) {               // MPS-801 (IEC level emulation only)
+      MPS801  *printer_ = new MPS801(ted->serialPort, printerDeviceNumber);
+      printerDevice = printer_;
+      printer_->setROMImage(5, printerROM_MPS801);
+      ted->setCallback(printer_->getProcessCallback(),
+                       printer_->getProcessCallbackUserData(), 1);
+    }
+    else if (n >= 2) {          // 1526/MPS-802
+      VC1526  *printer_ = new VC1526(ted->serialPort, printerDeviceNumber);
+      printerDevice = printer_;
+      printer_->setROMImage(4, printerROM_1526);
+      printer_->setEnable1525Mode(n == 3);
+      printer_->setFormFeedOn(printerFormFeedOn);
+      ted->setCallback(printer_->getProcessCallback(),
+                       printer_->getProcessCallbackUserData(), 1);
+      printer_->setBreakPointCallback(breakPointCallback,
+                                      breakPointCallbackUserData);
+      M7501   *p = printer_->getCPU();
+      if (p) {
+        p->setBreakPointPriorityThreshold(
+            ted->getBreakPointPriorityThreshold());
+        p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
+      }
+      printer_->setNoBreakOnDataRead(noBreakOnDataRead);
     }
   }
 
   void Plus4VM::getPrinterOutput(const uint8_t*& buf_, int& w_, int& h_) const
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_) {
       buf_ = printer_->getPageData();
       w_ = printer_->getPageWidth();
@@ -1439,16 +1469,16 @@ namespace Plus4 {
 
   void Plus4VM::clearPrinterOutput()
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       printer_->clearPage();
   }
 
   uint8_t Plus4VM::getPrinterLEDState() const
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       return printer_->getLEDState();
     return 0x00;
@@ -1456,8 +1486,8 @@ namespace Plus4 {
 
   void Plus4VM::getPrinterHeadPosition(int& xPos, int& yPos)
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_) {
       printer_->getHeadPosition(xPos, yPos);
       return;
@@ -1468,8 +1498,8 @@ namespace Plus4 {
 
   bool Plus4VM::getIsPrinterOutputChanged() const
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       return printer_->getIsOutputChanged();
     return printerOutputChangedFlag;
@@ -1477,40 +1507,36 @@ namespace Plus4 {
 
   void Plus4VM::clearPrinterOutputChangedFlag()
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (printer_)
       printer_->clearOutputChangedFlag();
     printerOutputChangedFlag = false;
   }
 
-  void Plus4VM::setPrinter1525Mode(bool isEnabled)
-  {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
-    printer1525Mode = isEnabled;
-    if (printer_)
-      printer_->setEnable1525Mode(isEnabled);
-  }
-
   void Plus4VM::setPrinterFormFeedOn(bool isEnabled)
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
     printerFormFeedOn = isEnabled;
-    if (printer_)
-      printer_->setFormFeedOn(isEnabled);
+    SerialDevice  *printerDevice = serialDevices[printerDeviceNumber];
+    if (printerDevice) {
+      if (typeid(*printerDevice) == typeid(VC1526))
+        reinterpret_cast<VC1526 *>(printerDevice)->setFormFeedOn(isEnabled);
+    }
   }
 
   void Plus4VM::setPrinterTextOutputFile(const char *fileName, bool asciiMode)
   {
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (!printer_) {
-      throw Plus4Emu::Exception("cannot set printer output file "
-                                "- printer emulation is not enabled");
+      if (fileName != (char *) 0 && fileName[0] != '\0') {
+        throw Plus4Emu::Exception("cannot set printer output file "
+                                  "- printer emulation is not enabled");
+      }
     }
-    printer_->setTextOutputFile(fileName, asciiMode);
+    else {
+      printer_->setTextOutputFile(fileName, asciiMode);
+    }
   }
 
   void Plus4VM::getVMStatus(VMStatus& vmStatus_)
@@ -1531,11 +1557,19 @@ namespace Plus4 {
         n |= uint32_t(floppyDrive.getLEDState() & 0xFF);
         h |= uint64_t(floppyDrive.getHeadPosition() ^ 0xFFFF);
       }
+      else if (i == 8) {
+        if (drive8Is1551)
+          n |= uint32_t(iecDrive8->getLEDState() & 0xFF);
+      }
+      else if (i == 9) {
+        if (drive9Is1551)
+          n |= uint32_t(iecDrive9->getLEDState() & 0xFF);
+      }
     }
     vmStatus_.floppyDriveLEDState = n;
     vmStatus_.floppyDriveHeadPositions = (~h);
-    VC1526  *printer_ =
-        reinterpret_cast<VC1526 *>(serialDevices[printerDeviceNumber]);
+    Printer *printer_ =
+        reinterpret_cast<Printer *>(serialDevices[printerDeviceNumber]);
     if (!printer_) {
       vmStatus_.printerHeadPositionX = -1;
       vmStatus_.printerHeadPositionY = -1;
@@ -1750,6 +1784,14 @@ namespace Plus4 {
         FloppyDrive&  floppyDrive =
             *(reinterpret_cast<FloppyDrive *>(serialDevices[i]));
         n |= uint32_t(floppyDrive.getLEDState() & 0xFF);
+      }
+      else if (i == 8) {
+        if (drive8Is1551)
+          n |= uint32_t(iecDrive8->getLEDState() & 0xFF);
+      }
+      else if (i == 9) {
+        if (drive9Is1551)
+          n |= uint32_t(iecDrive9->getLEDState() & 0xFF);
       }
     }
     return n;
@@ -2065,6 +2107,10 @@ namespace Plus4 {
     else {
       uint8_t segment = uint8_t((addr >> 14) & 0xFF);
       switch (segment) {
+      case 0x0A:
+        if (printerROM_MPS801)
+          return printerROM_MPS801[addr & 0x0FFFU];
+        break;
       case 0x0C:
         if (printerROM_1526)
           return printerROM_1526[addr & 0x1FFFU];
@@ -2331,7 +2377,7 @@ namespace Plus4 {
     saveMachineConfiguration(f);
     saveState(f);
     demoBuffer.clear();
-    demoBuffer.writeUInt32(0x00010208); // version 1.2.8
+    demoBuffer.writeUInt32(0x00010209); // version 1.2.9
     demoFile = &f;
     isRecordingDemo = true;
     ted->setCallback(&demoRecordCallback, this, 1);
@@ -2462,7 +2508,7 @@ namespace Plus4 {
     // check version number
     unsigned int  version = buf.readUInt32();
 #if 0
-    if (version != 0x00010208) {
+    if (version != 0x00010209) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible plus4 demo format");
     }

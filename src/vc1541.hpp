@@ -25,44 +25,9 @@
 #include "via6522.hpp"
 #include "serial.hpp"
 #include "p4floppy.hpp"
+#include "d64image.hpp"
 
 namespace Plus4 {
-
-  class D64Image {
-   protected:
-    static const int      d64TrackOffsetTable[44];
-    static const int      sectorsPerTrackTable[44];
-    static const int      trackSizeTable[44];
-    static const int      trackSpeedTable[44];
-    static const uint8_t  gcrEncodeTable[16];
-    static const uint8_t  gcrDecodeTable[32];
-    uint8_t     trackBuffer_GCR[8192];
-    uint8_t     trackBuffer_D64[5376];  // for 21 256-byte sectors
-    uint8_t     badSectorTable[24];
-    bool        trackDirtyFlag;
-    int         currentTrack;           // 0 to 42
-                                        // (1 to 'nTracks' are valid tracks)
-    int         nTracks;                // number of tracks (35 to 42, or zero
-                                        // if there is no disk image file)
-    int         currentTrackSpeed;      // bits per 1 MHz cycle * 65536
-    std::FILE   *imageFile;
-    bool        writeProtectFlag;
-    uint8_t     diskID;
-    uint8_t     idCharacter1;
-    uint8_t     idCharacter2;
-    bool        haveBadSectorTable;
-    // ----------------
-    static void gcrEncodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf);
-    static bool gcrDecodeFourBytes(uint8_t *outBuf, const uint8_t *inBuf);
-    void gcrEncodeTrack(int trackNum, int nSectors, int nBytes);
-    int gcrDecodeTrack(int trackNum, int nSectors, int nBytes);
-    bool readTrack(int trackNum = -1);
-    bool flushTrack(int trackNum = -1);
-    virtual bool setCurrentTrack(int trackNum);
-    D64Image();
-    virtual ~D64Image();
-    void setImageFile(const std::string& fileName_);
-  };
 
   class VC1541 : public FloppyDrive, public D64Image {
    private:
@@ -98,9 +63,9 @@ namespace Plus4 {
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
     uint8_t     via2PortBInput;         // bit 7: /SYNC, bit 4: /WPS
-    uint8_t     motorUpdateCnt;         // decrements from 15 to 0
+    int8_t      motorUpdateCnt;         // 63 to 0, motor update at 62.5 kHz
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
-    int         shiftRegisterBitCntFrac;    // 65535 to 0
+    int8_t      shiftRegisterBitCntFrac;    // track speed (13..16) - 1 to 0
     int         headPosition;           // index to track buffer
     int         currentTrackFrac;       // -65536 to 65536 (-32768 and 32768
                                         // are "half tracks")
@@ -157,7 +122,8 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     *   4: 1526 printer (data size is 8192 bytes)
+     *   4: 1526/MPS-802 printer (data size is 8192 bytes)
+     *   5: MPS-801 printer (data size is 4096 bytes)
      * if this device type does not use the selected ROM bank, the function
      * call is ignored.
      */
@@ -223,7 +189,8 @@ namespace Plus4 {
     virtual void writeMemoryDebug(uint16_t addr, uint8_t value);
     /*!
      * Returns the current state of drive LEDs. Bit 0 is set if the red LED
-     * is on, and bit 1 is set if the green LED is on.
+     * is on, bit 1 is set if the green LED is on, and bit 2 is set if the
+     * blue LED is on.
      */
     virtual uint8_t getLEDState() const;
     /*!

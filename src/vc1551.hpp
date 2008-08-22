@@ -173,9 +173,9 @@ namespace Plus4 {
     bool        headLoadedFlag;
     bool        prvByteWasFF;           // for finding sync
     bool        syncFlag;               // true if found sync
-    uint8_t     motorUpdateCnt;         // decrements from 15 to 0
+    int8_t      motorUpdateCnt;         // 63 to 0, motor update at 62.5 kHz
     uint8_t     shiftRegisterBitCnt;    // 0 to 7, byte ready on 0
-    int         shiftRegisterBitCntFrac;    // 65535 to 0
+    int8_t      shiftRegisterBitCntFrac;    // track speed (13..16) - 1 to 0
     int         interruptTimer;         // decrements from 8324 to -7 at 1 MHz,
                                         // IRQ is active when negative
     int         headPosition;           // index to track buffer
@@ -230,7 +230,8 @@ namespace Plus4 {
      *   1: 1581 high
      *   2: 1541
      *   3: 1551
-     *   4: 1526 printer (data size is 8192 bytes)
+     *   4: 1526/MPS-802 printer (data size is 8192 bytes)
+     *   5: MPS-801 printer (data size is 4096 bytes)
      * if this device type does not use the selected ROM bank, the function
      * call is ignored.
      */
@@ -286,7 +287,8 @@ namespace Plus4 {
     virtual void writeMemoryDebug(uint16_t addr, uint8_t value);
     /*!
      * Returns the current state of drive LEDs. Bit 0 is set if the red LED
-     * is on, and bit 1 is set if the green LED is on.
+     * is on, bit 1 is set if the green LED is on, and bit 2 is set if the
+     * blue LED is on.
      */
     virtual uint8_t getLEDState() const;
     /*!
