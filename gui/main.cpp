@@ -19,6 +19,7 @@
 
 #include "gui.hpp"
 #include "system.hpp"
+#include "sndio_pa.hpp"
 #include "guicolor.hpp"
 
 #include <iostream>
