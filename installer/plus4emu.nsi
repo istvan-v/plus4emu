@@ -14,7 +14,7 @@
 
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.8.1.exe"
+  OutFile "plus4emu-1.2.9-beta.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
@@ -93,7 +93,17 @@ Section "plus4emu" SecMain
 
   SetOutPath "$INSTDIR\roms"
 
+  File /nonfatal "..\roms\1526_07c.rom"
+  File /nonfatal "..\roms\3plus1.rom"
+  File /nonfatal "..\roms\dos1541.rom"
+  File /nonfatal "..\roms\dos15412.rom"
+  File /nonfatal "..\roms\dos1551.rom"
+  File /nonfatal "..\roms\dos1581.rom"
+  File /nonfatal "..\roms\mps801.rom"
+  File /nonfatal "..\roms\p4_basic.rom"
   File "..\roms\p4fileio.rom"
+  File /nonfatal "..\roms\p4kernal.rom"
+  File /nonfatal "..\roms\p4_ntsc.rom"
 
   SetOutPath "$INSTDIR\tape"
 
@@ -143,6 +153,19 @@ Section "Utilities" SecUtils
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Image converter utility.lnk" "$INSTDIR\p4fliconv_gui.exe"
 
   !insertmacro MUI_STARTMENU_WRITE_END
+
+SectionEnd
+
+Section "Development library" SecPlus4Library
+
+  SetOutPath "$INSTDIR\plus4lib"
+
+  File "..\plus4lib\plus4emu.h"
+  File "..\plus4lib\plus4emu.def"
+  File "..\plus4lib\plus4emu.dll"
+  File "..\plus4lib\sample.c"
+  File "C:\MinGW\bin\libsndfile-1.dll"
+  File "C:\MinGW\bin\mingwm10.dll"
 
 SectionEnd
 
@@ -206,6 +229,12 @@ Section "Source code" SecSrc
 
   File "..\plus4emu.app\Contents\Resources\plus4emu.icns"
 
+  SetOutPath "$INSTDIR\src\plus4lib"
+
+  File "..\plus4lib\*.c"
+  File "..\plus4lib\*.cpp"
+  File "..\plus4lib\*.h"
+
   SetOutPath "$INSTDIR\src\resid"
 
   File "..\resid\AUTHORS"
@@ -239,12 +268,18 @@ Section "Source code" SecSrc
   File "..\util\*.c"
   File "..\util\*.cpp"
 
+  SetOutPath "$INSTDIR\src\util\compress"
+
+  File "..\util\compress\*.cpp"
+  File "..\util\compress\*.hpp"
+  File "..\util\compress\*.py"
+  File "..\util\compress\*.s"
+
   SetOutPath "$INSTDIR\src\util\p4fliconv"
 
   File "..\util\p4fliconv\*.fl"
   File /x "*_fl.cpp" "..\util\p4fliconv\*.cpp"
   File /x "*_fl.hpp" "..\util\p4fliconv\*.hpp"
-  File "..\util\p4fliconv\*.py"
   File "..\util\p4fliconv\*.s"
 
 SectionEnd
@@ -281,101 +316,27 @@ Section "Associate .tap files with plus4emu" SecAssocTape
 
 SectionEnd
 
-Section "Download ROM images" SecDLRoms
-
-  Var /GLOBAL useZimmersNet
-  Var /GLOBAL romFileName
-  Var /GLOBAL altDLPath
-  Var /GLOBAL romDLPath
-  StrCpy $useZimmersNet "no"
-  StrCpy $romFileName ""
-  StrCpy $altDLPath ""
-  StrCpy $romDLPath ""
-
-  SetOutPath "$INSTDIR\roms"
-
-  Push ""
-  Push ""
-  Push "p4_ntsc.rom"
-  Push "firmware/computers/plus4/kernal.318005-05.bin"
-  Push "p4kernal.rom"
-  Push "firmware/computers/plus4/kernal.318004-05.bin"
-  Push "p4_basic.rom"
-  Push "firmware/computers/plus4/basic.318006-01.bin"
-  Push "dos1581.rom"
-  Push "firmware/drives/new/1581/1581-rom.318045-02.bin"
-  Push "dos1551.rom"
-  Push "firmware/computers/plus4/1551.318008-01.bin"
-  Push "dos15412.rom"
-  Push "firmware/drives/new/1541/1541-II.251968-03.bin"
-  Push "dos1541.rom"
-  Push "firmware/drives/new/1541/1541-II.251968-03.bin"
-  Push "3plus1lo.rom"
-  Push "firmware/computers/plus4/3-plus-1.317053-01.bin"
-  Push "3plus1hi.rom"
-  Push "firmware/computers/plus4/3-plus-1.317054-01.bin"
-  Push "1526_mod.rom"
-  Push "firmware/printers/1526/1526-07c.bin"
-  Push "1526_07c.rom"
-  Push "firmware/printers/1526/1526-07c.bin"
-
-  downloadLoop:
-
-    Pop $altDLPath
-    Pop $romFileName
-    StrCmp $romFileName "" downloadLoopDone 0
-
-  setROMFileDLPath:
-
-    StrCmp $useZimmersNet "yes" setDLPath2 0
-    StrCpy $romDLPath "http://www.sharemation.com/IstvanV/roms/$romFileName"
-    Goto dlROMFile
-
-  setDLPath2:
-
-    StrCpy $romDLPath "http://www.zimmers.net/anonftp/pub/cbm/$altDLPath"
-
-  dlROMFile:
-
-    NSISdl::download "$romDLPath" "$INSTDIR\roms\$romFileName"
-    Pop $R0
-    StrCmp $R0 "success" downloadLoop 0
-    StrCmp $R0 "cancel" downloadLoop 0
-    StrCmp $useZimmersNet "no" tryZimmersNet 0
-    MessageBox MB_OK "Download failed: $R0"
-    Goto downloadLoop
-
-  tryZimmersNet:
-
-    MessageBox MB_OK "WARNING: download from www.sharemation.com failed ($R0), using www.zimmers.net instead"
-    StrCpy $useZimmersNet "yes"
-    Goto setROMFileDLPath
-
-  downloadLoopDone:
-
-SectionEnd
-
 ;--------------------------------
 ;Descriptions
 
   ;Language strings
   LangString DESC_SecMain ${LANG_ENGLISH} "plus4emu binaries"
   LangString DESC_SecUtils ${LANG_ENGLISH} "Install image converter and compressor utilities"
+  LangString DESC_SecPlus4Library ${LANG_ENGLISH} "Install plus4emu C interface (header, DLL file, and sample code)"
   LangString DESC_SecSrc ${LANG_ENGLISH} "plus4emu source code"
   LangString DESC_SecAssocPRG ${LANG_ENGLISH} "Associate .prg and .p00 files with plus4emu"
   LangString DESC_SecAssocDisk ${LANG_ENGLISH} "Associate .d64 and .d81 files with plus4emu"
   LangString DESC_SecAssocTape ${LANG_ENGLISH} "Associate .tap files with plus4emu"
-  LangString DESC_SecDLRoms ${LANG_ENGLISH} "Download and install ROM images"
 
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_SecMain)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecUtils} $(DESC_SecUtils)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecPlus4Library} $(DESC_SecPlus4Library)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecSrc} $(DESC_SecSrc)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocPRG} $(DESC_SecAssocPRG)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocDisk} $(DESC_SecAssocDisk)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocTape} $(DESC_SecAssocTape)
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecDLRoms} $(DESC_SecDLRoms)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
@@ -415,26 +376,42 @@ Section "Uninstall"
   Delete "$INSTDIR\config\P4_64k_PAL_3PLUS1.cfg"
   Delete "$INSTDIR\config\P4_64k_NTSC_3PLUS1.cfg"
   Delete "$INSTDIR\config\P4_16k_PAL_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_16k_PAL_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_16k_NTSC_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_16k_NTSC_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_64k_PAL_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_64k_PAL_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_64k_NTSC_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_64k_NTSC_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_16k_PAL_3PLUS1_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_16k_PAL_3PLUS1_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_16k_NTSC_3PLUS1_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_16k_NTSC_3PLUS1_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_64k_PAL_3PLUS1_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_64k_PAL_3PLUS1_TapeTurbo.cfg"
   Delete "$INSTDIR\config\P4_64k_NTSC_3PLUS1_FileIO.cfg"
+  Delete "$INSTDIR\config\P4_64k_NTSC_3PLUS1_TapeTurbo.cfg"
   RMDir "$INSTDIR\config"
   RMDir "$INSTDIR\demo"
   Delete "$INSTDIR\disk\disk.zip"
   RMDir "$INSTDIR\disk"
+  Delete "$INSTDIR\plus4lib\plus4emu.h"
+  Delete "$INSTDIR\plus4lib\plus4emu.def"
+  Delete "$INSTDIR\plus4lib\plus4emu.dll"
+  Delete "$INSTDIR\plus4lib\sample.c"
+  Delete "$INSTDIR\plus4lib\libsndfile-1.dll"
+  Delete "$INSTDIR\plus4lib\mingwm10.dll"
+  RMDir "$INSTDIR\plus4lib"
   RMDir "$INSTDIR\progs"
   Delete "$INSTDIR\roms\1526_07c.rom"
-  Delete "$INSTDIR\roms\1526_mod.rom"
+  Delete "$INSTDIR\roms\3plus1.rom"
   Delete "$INSTDIR\roms\3plus1hi.rom"
   Delete "$INSTDIR\roms\3plus1lo.rom"
   Delete "$INSTDIR\roms\dos1541.rom"
   Delete "$INSTDIR\roms\dos15412.rom"
   Delete "$INSTDIR\roms\dos1551.rom"
   Delete "$INSTDIR\roms\dos1581.rom"
+  Delete "$INSTDIR\roms\mps801.rom"
   Delete "$INSTDIR\roms\p4_basic.rom"
   Delete "$INSTDIR\roms\p4fileio.rom"
   Delete "$INSTDIR\roms\p4kernal.rom"
