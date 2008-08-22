@@ -199,8 +199,8 @@ class Plus4EmuMachineConfiguration {
       {
       }
     };
-    // ROM files can be loaded to segments 0x00 to 0x07, 0x0C, 0x10, 0x20,
-    // 0x30, and 0x31
+    // ROM files can be loaded to segments 0x00 to 0x07, 0x0A, 0x0C, 0x10,
+    // 0x20, 0x30, and 0x31
     ROMSegmentConfig  rom[50];
   } memory;
   struct {
@@ -223,14 +223,14 @@ static const char *machineConfigFileNames[16] = {
   "P4_16k_NTSC_3PLUS1.cfg",             // 5
   "P4_64k_PAL_3PLUS1.cfg",              // 6
   "P4_64k_NTSC_3PLUS1.cfg",             // 7
-  "P4_16k_PAL_FileIO.cfg",              // 8
-  "P4_16k_NTSC_FileIO.cfg",             // 9
-  "P4_64k_PAL_FileIO.cfg",              // 10
-  "P4_64k_NTSC_FileIO.cfg",             // 11
-  "P4_16k_PAL_3PLUS1_FileIO.cfg",       // 12
-  "P4_16k_NTSC_3PLUS1_FileIO.cfg",      // 13
-  "P4_64k_PAL_3PLUS1_FileIO.cfg",       // 14
-  "P4_64k_NTSC_3PLUS1_FileIO.cfg"       // 15
+  "P4_16k_PAL_TapeTurbo.cfg",           // 8
+  "P4_16k_NTSC_TapeTurbo.cfg",          // 9
+  "P4_64k_PAL_TapeTurbo.cfg",           // 10
+  "P4_64k_NTSC_TapeTurbo.cfg",          // 11
+  "P4_16k_PAL_3PLUS1_TapeTurbo.cfg",    // 12
+  "P4_16k_NTSC_3PLUS1_TapeTurbo.cfg",   // 13
+  "P4_64k_PAL_3PLUS1_TapeTurbo.cfg",    // 14
+  "P4_64k_NTSC_3PLUS1_TapeTurbo.cfg"    // 15
 };
 
 Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
@@ -251,11 +251,13 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
     memory.rom[0x01].file = romDirectory + "p4_ntsc.rom";
   }
   if ((n & 4) != 0) {
-    memory.rom[0x02].file = romDirectory + "3plus1lo.rom";
-    memory.rom[0x03].file = romDirectory + "3plus1hi.rom";
+    memory.rom[0x02].file = romDirectory + "3plus1.rom";
+    memory.rom[0x03].file = romDirectory + "3plus1.rom";
+    memory.rom[0x03].offset = 16384;
   }
   if (n >= 8)
     memory.rom[0x06].file = romDirectory + "p4fileio.rom";
+  memory.rom[0x0A].file = romDirectory + "mps801.rom";
   memory.rom[0x0C].file = romDirectory + "1526_07c.rom";
   memory.rom[0x10].file = romDirectory + "dos1541.rom";
   memory.rom[0x20].file = romDirectory + "dos1551.rom";
@@ -283,6 +285,8 @@ Plus4EmuMachineConfiguration::Plus4EmuMachineConfiguration(
   config.createKey("memory.rom.06.offset", memory.rom[0x06].offset);
   config.createKey("memory.rom.07.file", memory.rom[0x07].file);
   config.createKey("memory.rom.07.offset", memory.rom[0x07].offset);
+  config.createKey("memory.rom.0A.file", memory.rom[0x0A].file);
+  config.createKey("memory.rom.0A.offset", memory.rom[0x0A].offset);
   config.createKey("memory.rom.0C.file", memory.rom[0x0C].file);
   config.createKey("memory.rom.0C.offset", memory.rom[0x0C].offset);
   config.createKey("memory.rom.10.file", memory.rom[0x10].file);

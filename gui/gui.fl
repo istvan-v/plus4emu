@@ -91,6 +91,7 @@ class Plus4EmuGUI {open
   decl {unsigned int savedSpeedPercentage;} {}
   decl {int cursorPositionX;} {}
   decl {int cursorPositionY;} {}
+  decl {int printerType;} {}
   decl {void init_();} {}
   decl {void updateDisplay_windowTitle();} {}
   decl {void updateDisplay_windowMode();} {}
@@ -167,8 +168,7 @@ class Plus4EmuGUI {open
   decl {static void menuCallback_Machine_DeleteCPs(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_TapeClose(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v);} {}
-  decl {static void menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v);} {}
-  decl {static void menuCallback_Machine_PrtMode(Fl_Widget *o, void *v);} {}
+  decl {static void menuCallback_Machine_PrtSetType(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtWrtFile(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_PrtASCII(Fl_Widget *o, void *v);} {}
   decl {static void menuCallback_Machine_Reset(Fl_Widget *o, void *v);} {}

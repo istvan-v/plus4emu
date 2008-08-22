@@ -85,6 +85,7 @@ void Plus4EmuGUI::init_()
   savedSpeedPercentage = 0U;
   cursorPositionX = -2;
   cursorPositionY = -2;
+  printerType = 0;
   std::string defaultDir_(".");
   snapshotDirectory = defaultDir_;
   demoDirectory = defaultDir_;
@@ -117,10 +118,10 @@ void Plus4EmuGUI::init_()
 void Plus4EmuGUI::updateDisplay_windowTitle()
 {
   if (oldPauseFlag) {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8.1 (paused)");
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.9 beta (paused)");
   }
   else {
-    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.8.1 (%d%%)",
+    std::sprintf(&(windowTitleBuf[0]), "plus4emu 1.2.9 beta (%d%%)",
                  int(oldSpeedPercentage));
   }
   mainWindow->label(&(windowTitleBuf[0]));
@@ -404,18 +405,19 @@ void Plus4EmuGUI::updateDisplay(double t)
     tapeStatusDisplay->redraw();
   }
   if (vmThreadStatus.floppyDriveLEDState != oldFloppyDriveLEDState) {
+    static const Fl_Color ledColors_[8] = {
+      FL_BLACK,       Fl_Color(128),  FL_GREEN,       Fl_Color(87),
+      Fl_Color(236),  FL_MAGENTA,     Fl_Color(222),  FL_WHITE
+    };
     uint32_t  tmp = vmThreadStatus.floppyDriveLEDState;
     oldFloppyDriveLEDState = tmp;
-    Fl_Color  ledColors_[4] = {
-      FL_BLACK, Fl_Color(128), FL_GREEN, Fl_Color(87)
-    };
-    driveALEDDisplay->color(ledColors_[tmp & 3U]);
+    driveALEDDisplay->color(ledColors_[tmp & 7U]);
     driveALEDDisplay->redraw();
-    driveBLEDDisplay->color(ledColors_[(tmp >> 8) & 3U]);
+    driveBLEDDisplay->color(ledColors_[(tmp >> 8) & 7U]);
     driveBLEDDisplay->redraw();
-    driveCLEDDisplay->color(ledColors_[(tmp >> 16) & 3U]);
+    driveCLEDDisplay->color(ledColors_[(tmp >> 16) & 7U]);
     driveCLEDDisplay->redraw();
-    driveDLEDDisplay->color(ledColors_[(tmp >> 24) & 3U]);
+    driveDLEDDisplay->color(ledColors_[(tmp >> 24) & 7U]);
     driveDLEDDisplay->redraw();
   }
   if (printerWindow->window->shown())
@@ -493,12 +495,6 @@ Fl_Menu_Item& Plus4EmuGUI::getMenuItem(int n)
   case 3:
     s = "Machine/Speed/No limit (Alt+W)";
     break;
-  case 4:
-    s = "Machine/Printer/Enable printer";
-    break;
-  case 5:
-    s = "Machine/Printer/1525 mode";
-    break;
   case 6:
     s = "Machine/Enable light pen";
     break;
@@ -522,6 +518,18 @@ Fl_Menu_Item& Plus4EmuGUI::getMenuItem(int n)
     break;
   case 13:
     s = "Machine/Printer/Text file ASCII format";
+    break;
+  case 14:
+    s = "Machine/Printer/Disable printer";
+    break;
+  case 15:
+    s = "Machine/Printer/MPS-801 (IEC level)";
+    break;
+  case 16:
+    s = "Machine/Printer/MPS-802 (hardware level)";
+    break;
+  case 17:
+    s = "Machine/Printer/MPS-802 (1525 mode)";
     break;
   default:
     throw Plus4Emu::Exception("internal error: invalid menu item number");
@@ -648,10 +656,14 @@ void Plus4EmuGUI::createMenus()
                    (char *) 0, &menuCallback_Machine_QuickCfgS2, (void *) this);
   mainMenuBar->add("Machine/Printer/View printer output",
                    (char *) 0, &menuCallback_Machine_PrtShowWin, (void *) this);
-  mainMenuBar->add("Machine/Printer/Enable printer",
-                   (char *) 0, &menuCallback_Machine_PrtEnable, (void *) this);
-  mainMenuBar->add("Machine/Printer/1525 mode",
-                   (char *) 0, &menuCallback_Machine_PrtMode, (void *) this);
+  mainMenuBar->add("Machine/Printer/Disable printer",
+                   (char *) 0, &menuCallback_Machine_PrtSetType, (void *) this);
+  mainMenuBar->add("Machine/Printer/MPS-801 (IEC level)",
+                   (char *) 0, &menuCallback_Machine_PrtSetType, (void *) this);
+  mainMenuBar->add("Machine/Printer/MPS-802 (hardware level)",
+                   (char *) 0, &menuCallback_Machine_PrtSetType, (void *) this);
+  mainMenuBar->add("Machine/Printer/MPS-802 (1525 mode)",
+                   (char *) 0, &menuCallback_Machine_PrtSetType, (void *) this);
   mainMenuBar->add("Machine/Printer/Write output to text file",
                    (char *) 0, &menuCallback_Machine_PrtWrtFile, (void *) this);
   mainMenuBar->add("Machine/Printer/Text file ASCII format",
@@ -739,11 +751,9 @@ void Plus4EmuGUI::createMenus()
   // "File/Record video/Stop"
   getMenuItem(2).deactivate();
   // "Machine/Speed/No limit (Alt+W)"
-  // "Machine/Printer/Enable printer"
-  // "Machine/Printer/1525 mode"
+  mainMenuBar->mode(getMenuItemIndex(3), FL_MENU_TOGGLE);
   // "Machine/Enable light pen"
-  for (int i = 3; i <= 6; i++)
-    mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_TOGGLE);
+  mainMenuBar->mode(getMenuItemIndex(6), FL_MENU_TOGGLE);
   // "Options/Process priority/Idle"
   // "Options/Process priority/Below normal"
   // "Options/Process priority/Normal"
@@ -761,6 +771,13 @@ void Plus4EmuGUI::createMenus()
   for (int i = 12; i <= 13; i++)
     mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_TOGGLE);
   getMenuItem(12).deactivate();
+  // "Machine/Printer/Disable printer"
+  // "Machine/Printer/MPS-801 (IEC level)"
+  // "Machine/Printer/MPS-802 (hardware level)"
+  // "Machine/Printer/MPS-802 (1525 mode)"
+  for (int i = 14; i <= 17; i++)
+    mainMenuBar->mode(getMenuItemIndex(i), FL_MENU_RADIO);
+  getMenuItem(14).setonly();
   updateMenu();
 }
 
@@ -897,8 +914,10 @@ int Plus4EmuGUI::handleMouseEvent(int event)
       else if (event == FL_PUSH && (displayMode & 1) == 0 &&
                (xPos >= 256 && xPos < 65280 && yPos >= 256 && yPos < 65280)) {
         if (Fl::event_button1()) {
-          // left click: set cursor position
-          vmThread.setCursorPosition(xPos, yPos);
+          if (!Fl::event_shift()) {
+            // left click: set cursor position
+            vmThread.setCursorPosition(xPos, yPos);
+          }
         }
         else if (Fl::event_button3()) {
           // right click: copy text to clipboard
@@ -2390,57 +2409,53 @@ void Plus4EmuGUI::menuCallback_Machine_PrtShowWin(Fl_Widget *o, void *v)
   gui_.printerWindow->show();
 }
 
-void Plus4EmuGUI::menuCallback_Machine_PrtEnable(Fl_Widget *o, void *v)
+void Plus4EmuGUI::menuCallback_Machine_PrtSetType(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
+  int     newPrinterType = 0;
+  for (int i = 14; i <= 17; i++) {
+    if (gui_.getMenuItem(i).value() != 0)
+      newPrinterType = i - 14;
+  }
+  if (newPrinterType == gui_.printerType)
+    return;
   try {
-    // "Machine/Printer/Enable printer"
-    bool    printerEnabled = (gui_.getMenuItem(4).value() != 0);
-    if (!printerEnabled) {
-      // "Machine/Printer/Write output to text file"
-      gui_.getMenuItem(12).clear();
-      gui_.getMenuItem(12).deactivate();
-      // "Machine/Printer/Text file ASCII format"
-      gui_.getMenuItem(13).activate();
-    }
     if (gui_.lockVMThread()) {
+      if (gui_.printerType < 2 || newPrinterType < 2) {
+        // "Machine/Printer/Write output to text file"
+        gui_.getMenuItem(12).clear();
+        gui_.menuCallback_Machine_PrtWrtFile((Fl_Widget *) 0, (void *) &gui_);
+      }
+      if (newPrinterType == 0) {
+        gui_.getMenuItem(12).deactivate();
+        // "Machine/Printer/Text file ASCII format"
+        gui_.getMenuItem(13).activate();
+      }
       try {
-        gui_.vm.setEnablePrinter(printerEnabled);
+        gui_.vm.setPrinterType(newPrinterType);
       }
       catch (...) {
+        gui_.vm.setPrinterType(0);
         gui_.unlockVMThread();
         throw;
       }
       gui_.unlockVMThread();
-      if (printerEnabled)
+      gui_.printerType = newPrinterType;
+      if (gui_.printerType != 0)
         gui_.getMenuItem(12).activate();
     }
-  }
-  catch (std::exception& e) {
-    gui_.getMenuItem(4).clear();
-    gui_.errorMessage(e.what());
-  }
-}
-
-void Plus4EmuGUI::menuCallback_Machine_PrtMode(Fl_Widget *o, void *v)
-{
-  (void) o;
-  Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  try {
-    if (gui_.lockVMThread()) {
-      try {
-        // "Machine/Printer/1525 mode"
-        gui_.vm.setPrinter1525Mode(gui_.getMenuItem(5).value() != 0);
-      }
-      catch (...) {
-        gui_.unlockVMThread();
-        throw;
-      }
-      gui_.unlockVMThread();
+    else {
+      gui_.getMenuItem(14 + gui_.printerType).setonly();
     }
   }
   catch (std::exception& e) {
+    gui_.printerType = 0;
+    // "Machine/Printer/Disable printer"
+    gui_.getMenuItem(14).setonly();
+    gui_.getMenuItem(12).clear();
+    gui_.getMenuItem(12).deactivate();
+    gui_.getMenuItem(13).activate();
     gui_.errorMessage(e.what());
   }
 }
@@ -2450,23 +2465,22 @@ void Plus4EmuGUI::menuCallback_Machine_PrtWrtFile(Fl_Widget *o, void *v)
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
   try {
-    // "Machine/Printer/Enable printer"
-    if (gui_.getMenuItem(4).value() == 0)
+    if (gui_.printerType == 0)
       return;           // printer emulation is not enabled
     // "Machine/Printer/Text file ASCII format"
     gui_.getMenuItem(13).activate();
+    bool    asciiMode = (gui_.getMenuItem(13).value() != 0);
     std::string fileName("");
     // "Machine/Printer/Write output to text file"
     if (gui_.getMenuItem(12).value() != 0) {
       if (!gui_.browseFile(fileName, gui_.screenshotDirectory,
-                           "Text files\t*.txt",
+                           (asciiMode ? "Text files\t*.txt" : "All files\t*"),
                            Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                            "Save printer output to text file")) {
         gui_.getMenuItem(12).clear();
         return;
       }
     }
-    bool    asciiMode = (gui_.getMenuItem(13).value() != 0);
     if (gui_.lockVMThread()) {
       try {
         gui_.vm.setPrinterTextOutputFile(fileName.c_str(), asciiMode);

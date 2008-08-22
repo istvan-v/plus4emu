@@ -23,7 +23,7 @@ class Plus4EmuGUI_PrinterDisplay {open : {public Fl_Box}
     code {{
 }} {}
   }
-  Function {draw()} {open return_type {virtual void}
+  Function {draw()} {open protected return_type {virtual void}
   } {
     code {{
   if (window)
@@ -202,34 +202,54 @@ class Plus4EmuGUI_PrinterWindow {open
       int     headPosX = -1;
       int     headPosY = -1;
       gui.vm.getPrinterHeadPosition(headPosX, headPosY);
-      int     x0 = printerDisplay->x();
-      int     y0 = 12;
-      int     x1 = x0 + printerDisplay->w();
-      int     y1 = 508;
-      int     y2 = 12 - printerDisplay->y();
-      if ((y2 + 496) > pageHeight)
-        y1 = y1 - ((y2 + 496) - pageHeight);
-      if (y1 < y0)
-        y1 = y0;
-      if (y1 > y0) {
-        fl_draw_image_mono((const unsigned char *) &(pageBuf[y2 * pageWidth]),
-                           x0, y0, (x1 - x0), (y1 - y0));
-      }
-      if (y1 < 508) {
+      if (pageWidth <= 0 || pageHeight <= 0) {
+        // printer emulation is not enabled
         fl_color(Fl_Color(47));
-        fl_rectf(x0, y1, (x1 - x0), (508 - y1));
+        fl_rectf(printerDisplay->x(), printerDisplay->y(),
+                 printerDisplay->w(), printerDisplay->h());
       }
-      if (headPosX >= 0 && headPosX < pageWidth &&
-          headPosY >= 0 && headPosY < pageHeight) {
-        y0 = headPosY + printerDisplay->y();
-        y1 = y0 + 8;
-        if (y0 < 12)
-          y0 = 12;
-        if (y1 > 508)
-          y1 = 508;
+      else {
+        int     x0 =
+            printerDisplay->x() + ((printerDisplay->w() - pageWidth) / 2);
+        int     y0 = 12;
+        int     x1 = x0 + pageWidth;
+        int     y1 = 508;
+        int     y2 = 12 - printerDisplay->y();
+        if ((y2 + 496) > pageHeight)
+          y1 = y1 - ((y2 + 496) - pageHeight);
+        if (y1 < y0)
+          y1 = y0;
         if (y1 > y0) {
-          fl_color(FL_BLUE);
-          fl_line(x0 + headPosX, y0, x0 + headPosX, y1 - 1);
+          if (x0 > printerDisplay->x()) {
+            fl_color(Fl_Color(47));
+            fl_rectf(printerDisplay->x(), y0,
+                     (x0 - printerDisplay->x()), (y1 - y0));
+          }
+          if (x1 < (printerDisplay->x() + printerDisplay->w())) {
+            fl_color(Fl_Color(47));
+            fl_rectf(x1, y0,
+                     ((printerDisplay->x() + printerDisplay->w()) - x1),
+                     (y1 - y0));
+          }
+          fl_draw_image_mono((const unsigned char *) &(pageBuf[y2 * pageWidth]),
+                             x0, y0, (x1 - x0), (y1 - y0));
+        }
+        if (y1 < 508) {
+          fl_color(Fl_Color(47));
+          fl_rectf(printerDisplay->x(), y1, printerDisplay->w(), (508 - y1));
+        }
+        if (headPosX >= 0 && headPosX < pageWidth &&
+            headPosY >= 0 && headPosY < pageHeight) {
+          y0 = headPosY + printerDisplay->y();
+          y1 = y0 + 8;
+          if (y0 < 12)
+            y0 = 12;
+          if (y1 > 508)
+            y1 = 508;
+          if (y1 > y0) {
+            fl_color(FL_BLUE);
+            fl_line(x0 + headPosX, y0, x0 + headPosX, y1 - 1);
+          }
         }
       }
       prvHeadPosX = headPosX;
