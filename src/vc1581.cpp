@@ -278,8 +278,8 @@ namespace Plus4 {
     vc1581.timeRemaining += vc1581.serialBus.timesliceLength;
     while (vc1581.timeRemaining >= 0) {
       vc1581.timeRemaining -= (int64_t(1) << 32);
-      vc1581.cpu.runOneCycle();
-      vc1581.cpu.runOneCycle();
+      vc1581.cpu.runOneCycle_RDYHigh();
+      vc1581.cpu.runOneCycle_RDYHigh();
       if (vc1581.diskChangeCnt) {
         vc1581.diskChangeCnt--;
         if (!vc1581.diskChangeCnt) {

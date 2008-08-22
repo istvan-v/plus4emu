@@ -46,7 +46,7 @@ namespace Plus4 {
         p->func(p->userData);
         p = nxt;
       }
-      M7501::run(cpu_clock_multiplier);
+      M7501::run_RDYHigh(cpu_clock_multiplier);
       if (incrementingDMAPosition)
         dmaPosition = (dmaPosition + 1) & 0x03FF;
       render_blank(*this, horizontalScroll);
@@ -60,7 +60,7 @@ namespace Plus4 {
         p = nxt;
       }
       if (!singleClockModeFlags)
-        M7501::run(cpu_clock_multiplier);
+        M7501::run_RDYHigh(cpu_clock_multiplier);
       else
         idleMemoryRead();
       render_blank(*this, int(horizontalScroll) - 4);
@@ -249,15 +249,18 @@ namespace Plus4 {
           p = nxt;
         }
       }
-      // run CPU
-      if (!cpuHaltedFlag)
-        M7501::run(cpu_clock_multiplier);
-      // perform DMA fetches on even cycle counts
-      if (!(M7501::getIsCPURunning())) {
+      if (M7501::getIsCPURunning()) {
+        M7501::run_RDYHigh(cpu_clock_multiplier);       // run CPU
+      }
+      else {
+        // perform DMA fetches on even cycle counts
         if (cpuHaltedFlag) {
           memoryReadMap = tedDMAReadMap;
           (void) readMemory(uint16_t(dmaBaseAddr | dmaPosition));
           memoryReadMap = cpuMemoryReadMap;
+        }
+        else {
+          M7501::run_RDYLow(cpu_clock_multiplier);      // run CPU
         }
         if (characterColumn < 40) {
           if (dmaFlags & 0x01)
@@ -339,7 +342,8 @@ namespace Plus4 {
       }
       // run CPU
       if (!singleClockModeFlags) {
-        M7501::run(cpu_clock_multiplier);
+        // NOTE: this assumes that single clock mode is always on during DMA
+        M7501::run_RDYHigh(cpu_clock_multiplier);
       }
       else {
         // bitmap fetches are done on odd cycle counts

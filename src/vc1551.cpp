@@ -293,7 +293,7 @@ namespace Plus4 {
       syncFlag(false),
       motorUpdateCnt(0),
       shiftRegisterBitCnt(0),
-      shiftRegisterBitCntFrac(0xFFFF),
+      shiftRegisterBitCntFrac(0),
       interruptTimer(8324),
       headPosition(0),
       currentTrackFrac(0),
@@ -375,18 +375,18 @@ namespace Plus4 {
           vc1551.cpu.clearInterruptRequest();
         }
       }
-      vc1551.cpu.runOneCycle();
-      vc1551.cpu.runOneCycle();
-      if (!vc1551.motorUpdateCnt) {
-        vc1551.headLoadedFlag = vc1551.updateMotors();
-        vc1551.motorUpdateCnt = 15;
-      }
-      else {
-        vc1551.motorUpdateCnt--;
-      }
-      vc1551.shiftRegisterBitCntFrac -= vc1551.currentTrackSpeed;
+      vc1551.cpu.runOneCycle_RDYHigh();
+      vc1551.cpu.runOneCycle_RDYHigh();
+      vc1551.shiftRegisterBitCntFrac -= 4;
       if (vc1551.shiftRegisterBitCntFrac < 0) {
-        vc1551.shiftRegisterBitCntFrac += 65536;
+        int8_t  currentTrackSpeed =
+            int8_t(vc1551.trackSpeedTable[vc1551.currentTrack]);
+        vc1551.shiftRegisterBitCntFrac += currentTrackSpeed;
+        vc1551.motorUpdateCnt -= currentTrackSpeed;
+        if (vc1551.motorUpdateCnt < 0) {
+          vc1551.motorUpdateCnt += 64;
+          vc1551.headLoadedFlag = vc1551.updateMotors();
+        }
         if (vc1551.shiftRegisterBitCnt >= 7) {
           vc1551.shiftRegisterBitCnt = 0;
           // read/write next byte
