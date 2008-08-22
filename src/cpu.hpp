@@ -204,12 +204,33 @@ namespace Plus4 {
     {
       return memoryWriteCallbacks[addr_];
     }
-    void runOneCycle();
-    inline void run(int nCycles = 1)
+    void runOneCycle_RDYHigh();
+    void runOneCycle_RDYLow();
+    inline void runOneCycle()
+    {
+      if (!haltFlag)
+        runOneCycle_RDYHigh();
+      else
+        runOneCycle_RDYLow();
+    }
+    inline void run_RDYHigh(int nCycles = 1)
     {
       do {
-        this->runOneCycle();
+        this->runOneCycle_RDYHigh();
       } while (--nCycles);
+    }
+    inline void run_RDYLow(int nCycles = 1)
+    {
+      do {
+        this->runOneCycle_RDYLow();
+      } while (--nCycles);
+    }
+    inline void run(int nCycles = 1)
+    {
+      if (!haltFlag)
+        run_RDYHigh(nCycles);
+      else
+        run_RDYLow(nCycles);
     }
     inline void interruptRequest()
     {
@@ -253,8 +274,9 @@ namespace Plus4 {
     // 'mode_' can be one of the following values:
     //   0: normal mode
     //   1: single step (break on every instruction, disable breakpoints)
-    //   2: step over
+    //   2: step over (skip JSR or branch instruction)
     //   3: trace (break on every instruction, breakpoints are not disabled)
+    //   4: step into (break after branch instruction only if branch is taken)
     void setSingleStepMode(int mode_);
     inline void setBreakOnInvalidOpcode(bool isEnabled)
     {
