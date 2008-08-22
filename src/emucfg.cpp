@@ -122,12 +122,13 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "memory.ram.size",
                                 memory.ram.size, 64,
                                 memoryConfigurationChanged, 16.0, 1024.0, 16.0);
+    (*this)["memory.ram.size"].setRequirePowerOfTwo(true);
     defineConfigurationVariable(
         *this, "memory.ram.startupPattern", memory.ram.startupPattern,
         std::string(VirtualMachine::defaultRAMPatternString),
         memoryConfigurationChanged);
     for (size_t i = 0; i < 50; i++) {
-      if (i >= 8 && i < 48 && (i != 12 && i != 16 && i != 32))
+      if (i >= 8 && i < 48 && (i != 10 && i != 12 && i != 16 && i != 32))
         continue;
       char  tmpBuf[24];
       char  *s = &(tmpBuf[0]);
@@ -433,7 +434,7 @@ namespace Plus4Emu {
       }
       vm_.resetMemoryConfiguration(memory.ram.size, ramPattern);
       for (size_t i = 0; i < 50; i++) {
-        if (i >= 8 && i < 48 && (i != 12 && i != 16 && i != 32))
+        if (i >= 8 && i < 48 && (i != 10 && i != 12 && i != 16 && i != 32))
           continue;
         try {
           vm_.loadROMSegment(uint8_t(i),
