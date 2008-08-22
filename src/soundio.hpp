@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -21,10 +21,8 @@
 #define PLUS4EMU_SOUNDIO_HPP
 
 #include "plus4emu.hpp"
-#include "system.hpp"
 
 #include <sndfile.h>
-#include <portaudio.h>
 #include <vector>
 
 namespace Plus4Emu {
@@ -62,53 +60,6 @@ namespace Plus4Emu {
     virtual void closeDevice();
     // returns an array of the available audio device names,
     // indexed by the device number (starting from zero)
-    virtual std::vector< std::string > getDeviceList();
-   protected:
-    virtual void openDevice();
-  };
-
-  class AudioOutput_PortAudio : public AudioOutput {
-   private:
-    struct Buffer {
-      ThreadLock  paLock;
-      ThreadLock  epLock;
-      std::vector< int16_t >    audioData;
-      size_t      writePos;
-      Buffer()
-        : paLock(true), epLock(false), writePos(0)
-      {
-      }
-      ~Buffer()
-      {
-      }
-    };
-    bool          paInitialized;
-    bool          disableRingBuffer;
-    bool          usingBlockingInterface;
-    unsigned int  paLockTimeout;
-    std::vector< Buffer >   buffers;
-    size_t        writeBufIndex;
-    size_t        readBufIndex;
-    PaStream      *paStream;
-    Timer         timer_;
-    double        nextTime;
-    ThreadLock    closeDeviceLock;
-#ifndef USING_OLD_PORTAUDIO_API
-    static int portAudioCallback(const void *input, void *output,
-                                 unsigned long frameCount,
-                                 const PaStreamCallbackTimeInfo *timeInfo,
-                                 PaStreamCallbackFlags statusFlags,
-                                 void *userData);
-#else
-    static int portAudioCallback(void *input, void *output,
-                                 unsigned long frameCount,
-                                 PaTimestamp outTime, void *userData);
-#endif
-   public:
-    AudioOutput_PortAudio();
-    virtual ~AudioOutput_PortAudio();
-    virtual void sendAudioData(const int16_t *buf, size_t nFrames);
-    virtual void closeDevice();
     virtual std::vector< std::string > getDeviceList();
    protected:
     virtual void openDevice();
