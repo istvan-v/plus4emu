@@ -45,8 +45,8 @@ static const float brightnessToYTable[9] = {
 };
 
 static const float colorPhaseTablePAL[16] = {
-    0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  241.0f,  347.0f,  167.0f,
-  129.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    3.0f,  213.0f
+    0.0f,    0.0f,  103.0f,  283.0f,   53.0f,  240.0f,  347.0f,  167.0f,
+  130.0f,  148.0f,  195.0f,   83.0f,  265.0f,  323.0f,    3.0f,  213.0f
 };
 
 static void defaultProgressMessageCb(void *userData, const char *msg)
