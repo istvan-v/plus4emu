@@ -196,6 +196,9 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "display.blue.gamma",
                                 display.blue.gamma, 1.0,
                                 displaySettingsChanged, 0.25, 4.0);
+    defineConfigurationVariable(*this, "display.palPhaseError",
+                                display.palPhaseError, 8.0,
+                                displaySettingsChanged, -30.0, 30.0);
     defineConfigurationVariable(*this, "display.lineShade",
                                 display.lineShade, 0.8,
                                 displaySettingsChanged, 0.0, 1.0);
@@ -472,6 +475,7 @@ namespace Plus4Emu {
       dp.blueBrightness = float(display.blue.brightness);
       dp.blueContrast = float(display.blue.contrast);
       dp.blueGamma = float(display.blue.gamma);
+      dp.palPhaseError = float(display.palPhaseError);
       dp.lineShade = float(display.lineShade);
       dp.blendScale = float(display.blendScale);
       dp.motionBlur = float(display.motionBlur);

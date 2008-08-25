@@ -37,10 +37,12 @@ namespace Plus4Emu {
     void disableShader();
     void displayFrame();
     void initializeGLDisplay();
+    void setColormap_quality3(const VideoDisplay::DisplayParameters& dp);
     void decodeLine_quality0(uint16_t *outBuf,
                              Message_LineData **lineBuffers_, size_t lineNum);
     void decodeLine_quality3(uint32_t *outBuf,
-                             Message_LineData **lineBuffers_, int lineNum);
+                             Message_LineData **lineBuffers_, int lineNum,
+                             const VideoDisplayColormap<uint32_t>& colormap);
     void drawFrame_quality0(Message_LineData **lineBuffers_,
                             double x0, double y0, double x1, double y1);
     void drawFrame_quality1(Message_LineData **lineBuffers_,
@@ -52,7 +54,8 @@ namespace Plus4Emu {
     static void fltkIdleCallback(void *userData_);
     // ----------------
     VideoDisplayColormap<uint16_t>  colormap16;
-    VideoDisplayColormap<uint32_t>  colormap32;
+    VideoDisplayColormap<uint32_t>  colormap32_0;
+    VideoDisplayColormap<uint32_t>  colormap32_1;
     bool          *linesChanged;
     // 1024x16 texture in 16-bit (R5G6B5) or 32-bit (R8G8B8) format
     unsigned char *textureSpace;

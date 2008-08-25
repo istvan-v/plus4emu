@@ -163,46 +163,57 @@ static bool queryGLShaderFunctions()
 static const char *shaderSourcePAL[1] = {
   "uniform sampler2D textureHandle;\n"
   "uniform float lineShade;\n"
-  "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.2062, -0.7010,\n"
-  "                                 0.5000, -0.0506, -0.1050,  0.5291,\n"
-  "                                 0.5000,  0.2606,  0.0000, -0.8860,\n"
-  "                                 0.0000,  0.0000,  0.0000,  0.0000);\n"
+  "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.19205, -0.70100,\n"
+  "                                 0.50000, -0.04714, -0.09783,  0.52914,\n"
+  "                                 0.50000,  0.24274,  0.00000, -0.88600,\n"
+  "                                 0.00000,  0.00000,  0.00000,  0.00000);\n"
   "void main()\n"
   "{\n"
-  "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
-  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.0032, 0.015625));\n"
-  "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.00085, 0.015625));\n"
-  "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.00085, 0.015625));\n"
-  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.0032, 0.015625));\n"
-  "  vec4 p10 = texture2D(textureHandle, c0 + vec2(0.0032, -0.046875));\n"
-  "  vec4 p11 = texture2D(textureHandle, c0 + vec2(0.00085, -0.046875));\n"
-  "  vec4 p12 = texture2D(textureHandle, c0 + vec2(-0.00085, -0.046875));\n"
-  "  vec4 p13 = texture2D(textureHandle, c0 + vec2(-0.0032, -0.046875));\n"
-  "  p01 = p01 + p02;\n"
-  "  vec4 tmp = ((p00 + p03 + p10 + p13) * 0.7) + (p01 + p11 + p12);\n"
-  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
-  "  gl_FragColor = (vec4(p01[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
+  "  float txc = gl_TexCoord[0][0];\n"
+  "  float tyc = gl_TexCoord[0][1];\n"
+  "  float txcm1 = txc - 0.00299;\n"
+  "  float txcm0 = txc - 0.00085;\n"
+  "  float txcp0 = txc + 0.00085;\n"
+  "  float txcp1 = txc + 0.00299;\n"
+  "  float tyc0 = tyc + 0.015625;\n"
+  "  float tyc1 = tyc - 0.046875;\n"
+  "  vec4 p00 =   texture2D(textureHandle, vec2(txcm0, tyc0))\n"
+  "             + texture2D(textureHandle, vec2(txcp0, tyc0));\n"
+  "  vec4 p10 =   texture2D(textureHandle, vec2(txcm0, tyc1))\n"
+  "             + texture2D(textureHandle, vec2(txcp0, tyc1));\n"
+  "  vec4 p01 =   texture2D(textureHandle, vec2(txcm1, tyc0))\n"
+  "             + texture2D(textureHandle, vec2(txcp1, tyc0))\n"
+  "             + texture2D(textureHandle, vec2(txcm1, tyc1))\n"
+  "             + texture2D(textureHandle, vec2(txcp1, tyc1));\n"
+  "  float f = mix(sin(tyc * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
+  "  vec4 tmp = (p00 + p10) + (p01 * 0.825);\n"
+  "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
   "}\n"
 };
 
 static const char *shaderSourceNTSC[1] = {
   "uniform sampler2D textureHandle;\n"
   "uniform float lineShade;\n"
-  "const mat4 yuv2rgbMatrix = mat4( 0.5000,  0.0000,  0.4124, -0.7010,\n"
-  "                                 0.5000, -0.1012, -0.2100,  0.5291,\n"
-  "                                 0.5000,  0.5212,  0.0000, -0.8860,\n"
-  "                                 0.0000,  0.0000,  0.0000,  0.0000);\n"
+  "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.39493, -0.70100,\n"
+  "                                 0.50000, -0.09694, -0.20117,  0.52914,\n"
+  "                                 0.50000,  0.49915,  0.00000, -0.88600,\n"
+  "                                 0.00000,  0.00000,  0.00000,  0.00000);\n"
   "void main()\n"
   "{\n"
-  "  vec2 c0 = vec2(gl_TexCoord[0][0], gl_TexCoord[0][1]);\n"
-  "  vec4 p00 = texture2D(textureHandle, c0 + vec2(0.0036, 0.015625));\n"
-  "  vec4 p01 = texture2D(textureHandle, c0 + vec2(0.00095, 0.015625));\n"
-  "  vec4 p02 = texture2D(textureHandle, c0 + vec2(-0.00095, 0.015625));\n"
-  "  vec4 p03 = texture2D(textureHandle, c0 + vec2(-0.0036, 0.015625));\n"
-  "  p01 = p01 + p02;\n"
-  "  vec4 tmp = ((p00 + p03) * 0.7) + p01;\n"
-  "  float f = mix(sin(c0[1] * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
-  "  gl_FragColor = (vec4(p01[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
+  "  float txc = gl_TexCoord[0][0];\n"
+  "  float tyc = gl_TexCoord[0][1];\n"
+  "  float txcm1 = txc - 0.00317;\n"
+  "  float txcm0 = txc - 0.00095;\n"
+  "  float txcp0 = txc + 0.00095;\n"
+  "  float txcp1 = txc + 0.00317;\n"
+  "  float tyc0 = tyc + 0.015625;\n"
+  "  vec4 p00 =   texture2D(textureHandle, vec2(txcm0, tyc0))\n"
+  "             + texture2D(textureHandle, vec2(txcp0, tyc0));\n"
+  "  vec4 p01 =   texture2D(textureHandle, vec2(txcm1, tyc0))\n"
+  "             + texture2D(textureHandle, vec2(txcp1, tyc0));\n"
+  "  float f = mix(sin(tyc * 100.531) * 0.5 + 0.5, 1.0, lineShade);\n"
+  "  vec4 tmp = p00 + (p01 * 0.775);\n"
+  "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
   "}\n"
 };
 
@@ -366,7 +377,8 @@ namespace Plus4Emu {
     : Fl_Gl_Window(xx, yy, ww, hh, lbl),
       FLTKDisplay_(),
       colormap16(),
-      colormap32(),
+      colormap32_0(),
+      colormap32_1(),
       linesChanged((bool *) 0),
       textureSpace((unsigned char *) 0),
       textureBuffer16((uint16_t *) 0),
@@ -441,6 +453,27 @@ namespace Plus4Emu {
     }
   }
 
+  void OpenGLDisplay::setColormap_quality3(
+      const VideoDisplay::DisplayParameters& dp)
+  {
+    VideoDisplay::DisplayParameters dp0(dp);
+    VideoDisplay::DisplayParameters dp1(dp);
+    if (yuvTextureMode && !dp.ntscMode) {
+      dp0.hueShift -= dp.palPhaseError;
+      dp0.hueShift =
+          (dp0.hueShift >= -180.0f ?
+           (dp0.hueShift < 180.0f ? dp0.hueShift : (dp0.hueShift - 360.0f))
+           : (dp0.hueShift + 360.0f));
+      dp1.hueShift += dp.palPhaseError;
+      dp1.hueShift =
+          (dp1.hueShift >= -180.0f ?
+           (dp1.hueShift < 180.0f ? dp1.hueShift : (dp1.hueShift - 360.0f))
+           : (dp1.hueShift + 360.0f));
+    }
+    colormap32_0.setDisplayParameters(dp0, yuvTextureMode);
+    colormap32_1.setDisplayParameters(dp1, yuvTextureMode);
+  }
+
   void OpenGLDisplay::decodeLine_quality0(uint16_t *outBuf,
                                           Message_LineData **lineBuffers_,
                                           size_t lineNum)
@@ -499,9 +532,9 @@ namespace Plus4Emu {
     }
   }
 
-  void OpenGLDisplay::decodeLine_quality3(uint32_t *outBuf,
-                                          Message_LineData **lineBuffers_,
-                                          int lineNum)
+  void OpenGLDisplay::decodeLine_quality3(
+      uint32_t *outBuf, Message_LineData **lineBuffers_, int lineNum,
+      const VideoDisplayColormap<uint32_t>& colormap)
   {
     Message_LineData  *l = (Message_LineData *) 0;
     if (lineNum >= 0 && lineNum < 578) {
@@ -533,9 +566,9 @@ namespace Plus4Emu {
     if (pixelSample2 == (displayParameters.ntscMode ? 392 : 490) &&
         !(l->flags & 0x01)) {
       do {
-        size_t  n = colormap32.convertFourToEightPixels(&(outBuf[xc]),
-                                                        &(bufp[bufPos]),
-                                                        videoFlags);
+        size_t  n = colormap.convertFourToEightPixels(&(outBuf[xc]),
+                                                      &(bufp[bufPos]),
+                                                      videoFlags);
         bufPos = bufPos + n;
         xc = xc + 8;
       } while (xc < 768);
@@ -549,8 +582,8 @@ namespace Plus4Emu {
         if (readPos >= 4) {
           readPos = readPos & 3;
           pixelSample1 = ((bufp[bufPos] & 0x01) ? 784 : 980);
-          size_t  n = colormap32.convertFourPixels(&(tmpBuf[0]),
-                                                   &(bufp[bufPos]), videoFlags);
+          size_t  n = colormap.convertFourPixels(&(tmpBuf[0]),
+                                                 &(bufp[bufPos]), videoFlags);
           bufPos += n;
         }
         outBuf[xc] = tmpBuf[readPos];
@@ -664,7 +697,7 @@ namespace Plus4Emu {
       // decode video data, and build 32-bit texture
       for (size_t offs = (yc > 0 ? 4 : 0); offs < 32; offs += 2) {
         decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
-                            lineBuffers_, yc + offs);
+                            lineBuffers_, yc + offs, colormap32_0);
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
@@ -697,7 +730,7 @@ namespace Plus4Emu {
       compileShader(displayParameters.ntscMode ? 2 : 1);
     if (enableShader() != yuvTextureMode) {
       yuvTextureMode = !yuvTextureMode;
-      colormap32.setDisplayParameters(displayParameters, yuvTextureMode);
+      setColormap_quality3(displayParameters);
     }
     double  yOffs = (y1 - y0) * (-1.0 / 576.0);
     // interlace
@@ -714,7 +747,8 @@ namespace Plus4Emu {
       // decode video data, and build 32-bit texture
       for (int offs = (yc > 0 ? 6 : 0); offs < 32; offs += 2) {
         decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
-                            lineBuffers_, yc + offs);
+                            lineBuffers_, yc + offs,
+                            (((yc + offs) & 2) ? colormap32_1 : colormap32_0));
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
@@ -1154,9 +1188,13 @@ namespace Plus4Emu {
           yuvTextureMode = false;
           colormap16.setDisplayParameters(msg->dp, false);
         }
+        else if (msg->dp.displayQuality == 2) {
+          yuvTextureMode = false;
+          colormap32_0.setDisplayParameters(msg->dp, false);
+        }
         else {
-          yuvTextureMode = (msg->dp.displayQuality >= 3);
-          colormap32.setDisplayParameters(msg->dp, yuvTextureMode);
+          yuvTextureMode = true;
+          setColormap_quality3(msg->dp);
         }
         if (displayParameters.displayQuality != msg->dp.displayQuality ||
             displayParameters.bufferingMode != msg->dp.bufferingMode) {

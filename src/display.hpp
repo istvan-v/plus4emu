@@ -74,6 +74,8 @@ namespace Plus4Emu {
       float   blueContrast;
       // gamma for blue channel
       float   blueGamma;
+      // PAL color phase error in degrees (-30.0 to 30.0, default: 8.0)
+      float   palPhaseError;
       // controls vertical filtering of textures (0.0 to 1.0)
       float   lineShade;
       // scale applied to pixels written to the frame buffer

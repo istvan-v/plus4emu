@@ -106,6 +106,7 @@ namespace Plus4Emu {
         double    contrast;
         double    gamma;
       } blue;
+      double      palPhaseError;
       double      lineShade;
       double      blendScale;
       double      motionBlur;

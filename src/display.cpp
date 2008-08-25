@@ -126,6 +126,9 @@ namespace Plus4Emu {
     blueGamma = (src.blueGamma > 0.25f ?
                  (src.blueGamma < 4.0f ? src.blueGamma : 4.0f)
                  : 0.25f);
+    palPhaseError = (src.palPhaseError > -30.0f ?
+                     (src.palPhaseError < 30.0f ? src.palPhaseError : 30.0f)
+                     : -30.0f);
     lineShade = (src.lineShade > 0.0f ?
                  (src.lineShade < 1.0f ? src.lineShade : 1.0f) : 0.0f);
     blendScale = (src.blendScale > 0.5f ?
@@ -147,6 +150,7 @@ namespace Plus4Emu {
       redBrightness(0.0f), redContrast(1.0f), redGamma(1.0f),
       greenBrightness(0.0f), greenContrast(1.0f), greenGamma(1.0f),
       blueBrightness(0.0f), blueContrast(1.0f), blueGamma(1.0f),
+      palPhaseError(8.0f),
       lineShade(0.8f),
       blendScale(1.0f),
       motionBlur(0.25f),
@@ -186,15 +190,21 @@ namespace Plus4Emu {
     r = r + (brightness + redBrightness);
     g = g + (brightness + greenBrightness);
     b = b + (brightness + blueBrightness);
-    r = (r > 0.0f ? r : 0.0f);
-    g = (g > 0.0f ? g : 0.0f);
-    b = (b > 0.0f ? b : 0.0f);
-    r = float(std::pow(double(r), double(1.0f / (gamma * redGamma))));
-    g = float(std::pow(double(g), double(1.0f / (gamma * greenGamma))));
-    b = float(std::pow(double(b), double(1.0f / (gamma * blueGamma))));
-    red = (r < 1.0f ? r : 1.0f);
-    green = (g < 1.0f ? g : 1.0f);
-    blue = (b < 1.0f ? b : 1.0f);
+    if (std::fabs(double((gamma * redGamma) - 1.0f)) > 0.01) {
+      r = (r > 0.0f ? r : 0.0f);
+      r = float(std::pow(double(r), double(1.0f / (gamma * redGamma))));
+    }
+    if (std::fabs(double((gamma * greenGamma) - 1.0f)) > 0.01) {
+      g = (g > 0.0f ? g : 0.0f);
+      g = float(std::pow(double(g), double(1.0f / (gamma * greenGamma))));
+    }
+    if (std::fabs(double((gamma * blueGamma) - 1.0f)) > 0.01) {
+      b = (b > 0.0f ? b : 0.0f);
+      b = float(std::pow(double(b), double(1.0f / (gamma * blueGamma))));
+    }
+    red = r;
+    green = g;
+    blue = b;
   }
 
   VideoDisplay::~VideoDisplay()
@@ -272,9 +282,12 @@ namespace Plus4Emu {
   uint32_t VideoDisplayColormap<uint32_t>::pixelConv(float r, float g, float b)
   {
     uint32_t  ri, gi, bi;
-    ri = uint32_t(r >= 0.0f ? (r < 1.0f ? (r * 255.0f + 0.5f) : 255.0f) : 0.0f);
-    gi = uint32_t(g >= 0.0f ? (g < 1.0f ? (g * 255.0f + 0.5f) : 255.0f) : 0.0f);
-    bi = uint32_t(b >= 0.0f ? (b < 1.0f ? (b * 255.0f + 0.5f) : 255.0f) : 0.0f);
+    ri = uint32_t(int(r >= 0.0f ? (r < 1.0f ? (r * 255.0f + 0.5f) : 255.0f)
+                                  : 0.0f));
+    gi = uint32_t(int(g >= 0.0f ? (g < 1.0f ? (g * 255.0f + 0.5f) : 255.0f)
+                                  : 0.0f));
+    bi = uint32_t(int(b >= 0.0f ? (b < 1.0f ? (b * 255.0f + 0.5f) : 255.0f)
+                                  : 0.0f));
     return ((bi << 16) | (gi << 8) | ri);
   }
 
@@ -347,8 +360,8 @@ namespace Plus4Emu {
           uTmp = uTmp - 0.179f;         // add NTSC burst (180 degrees)
         }
         if (c > 0.005f) {
-          uTmp *= 0.55f;
-          vTmp *= 0.55f;
+          uTmp *= 0.525f;
+          vTmp *= 0.525f;
         }
       }
       float   phaseShift = phaseShiftTable[k] * 0.01745329f;
@@ -362,9 +375,9 @@ namespace Plus4Emu {
         if (!yuvFormat) {
           float   r = 0.0f, g = 0.0f, b = 0.0f;
           displayParameters.yuvToRGBWithColorCorrection(r, g, b, y, u, v);
-          r = r * yScaleTable[k];
-          g = g * yScaleTable[k];
-          b = b * yScaleTable[k];
+          r *= yScaleTable[k];
+          g *= yScaleTable[k];
+          b *= yScaleTable[k];
           colormapData[i] = pixelConv(r, g, b);
         }
         else {
@@ -373,9 +386,9 @@ namespace Plus4Emu {
           y = (0.299f * r) + (0.587f * g) + (0.114f * b);
           u = 0.492f * (b - y);
           v = 0.877f * (r - y);
-          y = y * yScaleTable[k];
-          u = u * yScaleTable[k];
-          v = v * yScaleTable[k];
+          y *= yScaleTable[k];
+          u *= yScaleTable[k];
+          v *= yScaleTable[k];
           u = (u + 0.435912f) * 1.147020f;
           v = (v + 0.614777f) * 0.813303f;
           colormapData[i] = pixelConv(y, u, v);

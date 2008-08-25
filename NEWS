@@ -9,6 +9,8 @@ Changes in version 1.2.9
     previously existing hardware level MPS-802 emulation
   * added a new button to the debugger GUI that makes it possible to
     break only when a branch is taken (i.e. the opposite of 'Step over')
+  * more accurate PAL emulation in OpenGL mode when the display quality
+    is set to 3
   * LED display is now also implemented for IEC level drive emulation
   * the ROM images required by the emulator are included with the binary
     packages, and no longer need to be downloaded separately
