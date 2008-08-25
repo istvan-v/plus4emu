@@ -192,7 +192,7 @@ namespace Plus4 {
       }
       else if (secondaryAddress == 0x00) {
         secondaryAddress = n | 0x60;    // store secondary address
-        defaultLowerCaseMode = ((secondaryAddress & 0x0F) != 0);
+        defaultLowerCaseMode = ((secondaryAddress & 0x0F) == 7);
         lowerCaseMode = defaultLowerCaseMode;
       }
       else if (n == 0x3F) {
