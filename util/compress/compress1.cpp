@@ -868,6 +868,8 @@ namespace Plus4Compress {
             tmp.len = (unsigned short) k;
             tmp.nBits = (unsigned short) (k * 8 + literalSequenceMinLength);
             curMatchBitCnt += long(tmp.nBits);
+            if (curMatchBitCnt > (bestSize + long(literalSequenceMinLength)))
+              break;    // quit the loop earlier if the data can be compressed
             if (curMatchBitCnt <= bestSize) {
               bestSize = curMatchBitCnt;
               matchTable[i - offs] = tmp;
