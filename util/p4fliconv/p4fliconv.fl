@@ -69,7 +69,7 @@ class Plus4FLIConvGUI {open
   this->init_();
 }} {}
     Fl_Window mainWindow {
-      label {plus4emu FLI converter}
+      label p4fliconv
       callback {{
   if ((config.isFLIConfigurationChanged() && imageFileName.length() > 0) ||
       (fileNotSavedFlag && prgEndAddress != 0x1003U)) {

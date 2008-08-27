@@ -700,15 +700,6 @@ class Plus4EmuGUI_DebugWindow {open
         code0 {o->add("Main CPU|Unit 8|Unit 9|Unit 10|Unit 11|Printer");}
         code1 {o->value(gui.vm.getDebugContext());}
       } {}
-      Fl_Button stepButton {
-        label Step
-        callback {{
-  focusWidget = stepButton;
-  gui.vm.setSingleStepMode(1);
-  this->hide();
-}}
-        xywh {595 685 80 25} selection_color 50
-      }
       Fl_Button stepIntoButton {
         label {Step into}
         callback {{
@@ -716,13 +707,22 @@ class Plus4EmuGUI_DebugWindow {open
   gui.vm.setSingleStepMode(4);
   this->hide();
 }}
-        xywh {685 685 80 25} selection_color 50
+        xywh {595 685 80 25} selection_color 50
       }
       Fl_Button stepOverButton {
         label {Step over}
         callback {{
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(2);
+  this->hide();
+}}
+        xywh {685 685 80 25} selection_color 50
+      }
+      Fl_Button stepButton {
+        label Step
+        callback {{
+  focusWidget = stepButton;
+  gui.vm.setSingleStepMode(1);
   this->hide();
 }}
         xywh {775 685 80 25} selection_color 50
