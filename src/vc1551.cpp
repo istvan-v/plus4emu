@@ -172,9 +172,9 @@ namespace Plus4 {
   bool VC1551::updateMotors()
   {
     int     prvTrackPosFrac = currentTrackFrac;
-    // 16 * (65536 / 128) cycles / 1000000 Hz = ~8.2 ms seek time
-    currentTrackFrac = currentTrackFrac + (steppingDirection * 128);
-    currentTrackFrac = currentTrackFrac & (~(int(127)));
+    // 16 * (65536 / 256) cycles / 1000000 Hz = ~4.1 ms seek time
+    currentTrackFrac = currentTrackFrac + (steppingDirection * 256);
+    currentTrackFrac = currentTrackFrac & (~(int(255)));
     if (((currentTrackFrac ^ prvTrackPosFrac) & 0xC000) == 0x4000) {
       if (steppingDirection > 0)
         currentTrackStepperMotorPhase = (currentTrackStepperMotorPhase + 1) & 3;
