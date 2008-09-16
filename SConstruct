@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 0
-buildRelease = 1
+enableDebug = 1
+buildRelease = 0
 
 compilerFlags = ''
 if buildRelease:
@@ -251,38 +251,38 @@ def fluidCompile(flNames):
     return cppNames
 
 plus4emuLibSources = Split('''
-    src/acia6551.cpp
-    src/bplist.cpp
-    src/cia8520.cpp
     src/cpu.cpp
     src/cpuoptbl.cpp
-    src/d64image.cpp
-    src/disasm.cpp
-    src/display.cpp
-    src/fileio.cpp
-    src/iecdrive.cpp
     src/memory.cpp
-    src/mps801.cpp
-    src/plus4vm.cpp
     src/render.cpp
-    src/riot6532.cpp
-    src/snd_conv.cpp
-    src/soundio.cpp
-    src/system.cpp
-    src/tape.cpp
     src/ted_api.cpp
     src/ted_init.cpp
     src/ted_main.cpp
     src/ted_read.cpp
     src/ted_snd.cpp
     src/ted_write.cpp
-    src/vc1526.cpp
     src/vc1541.cpp
     src/vc1551.cpp
     src/vc1581.cpp
     src/via6522.cpp
-    src/videorec.cpp
+    src/plus4vm.cpp
     src/vm.cpp
+    src/acia6551.cpp
+    src/bplist.cpp
+    src/cia8520.cpp
+    src/d64image.cpp
+    src/disasm.cpp
+    src/display.cpp
+    src/fileio.cpp
+    src/iecdrive.cpp
+    src/mps801.cpp
+    src/riot6532.cpp
+    src/snd_conv.cpp
+    src/soundio.cpp
+    src/system.cpp
+    src/tape.cpp
+    src/vc1526.cpp
+    src/videorec.cpp
     src/wd177x.cpp
 ''')
 
@@ -347,6 +347,19 @@ if win32CrossCompile or sys.platform[:5] == 'linux':
         plus4emuDLLEnvironment['SHLIBSUFFIX'] = ''
         plus4emuDLL = plus4emuDLLEnvironment.SharedLibrary(
             'plus4lib/plus4emu.dll', ['plus4lib/plus4api.cpp'])
+        # add LIBRARY line to the .def file if needed
+        f = open('plus4lib/plus4emu.def', 'rb')
+        s = []
+        for tmp in f:
+            s = s + [tmp]
+        f.close()
+        if s.__len__() > 0:
+            if s[0][:7] != 'LIBRARY':
+                f = open('plus4lib/plus4emu.def', 'wb')
+                f.write('LIBRARY plus4emu.dll\r\n')
+                for tmp in s:
+                    f.write(tmp)
+                f.close()
     Depends(plus4emuDLL, plus4emuLib)
     Depends(plus4emuDLL, residLib)
 
