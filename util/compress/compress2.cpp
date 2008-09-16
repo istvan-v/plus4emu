@@ -288,11 +288,20 @@ namespace Plus4Compress {
 
   size_t Compressor_M2::compressData_(std::vector< unsigned int >& tmpOutBuf,
                                       const std::vector< unsigned char >& inBuf,
-                                      size_t offs, size_t nBytes)
+                                      size_t offs, size_t nBytes,
+                                      bool optimizeEncodeTables, bool fastMode)
   {
     size_t  endPos = offs + nBytes;
     size_t  nSymbols = 0;
     tmpOutBuf.resize(0);
+    if (optimizeEncodeTables) {
+      // generate optimal encode tables for offset values
+      offs1EncodeTable.updateTables(false);
+      offs2EncodeTable.updateTables(false);
+      offs3EncodeTable.updateTables(fastMode);
+      offs3NumSlots = offs3EncodeTable.getSlotCnt();
+      offs3PrefixSize = offs3EncodeTable.getSlotPrefixSize(0);
+    }
     // compress data by searching for repeated byte sequences,
     // and replacing them with length/distance codes
     std::vector< LZMatchParameters >  matchTable;
@@ -339,7 +348,7 @@ namespace Plus4Compress {
             long    nxtMatchBitCnt = bitCountTable[i + k - offs];
             long    curMatchBitCnt = nxtMatchBitCnt;
             curMatchBitCnt += long(tmp.nBits);
-            if (curMatchBitCnt < bestSize) {
+            if (curMatchBitCnt <= bestSize) {
               bestSize = curMatchBitCnt;
               matchTable[i - offs] = tmp;
               bitCountTable[i - offs] = curMatchBitCnt;
@@ -380,19 +389,21 @@ namespace Plus4Compress {
         }
       }
     }
-    // generate optimal encode tables for length and offset values
+    // generate optimal encode table for length values
     for (size_t i = offs; i < endPos; ) {
       LZMatchParameters&  tmp = matchTable[i - offs];
       if (tmp.d > 0) {
         long    unencodedCost = long(tmp.len) * 9L - 1L;
-        unencodedCost -= long(tmp.len > 1 ? offs2PrefixSize : offs1PrefixSize);
+        unencodedCost -=
+            (tmp.len > 1 ? long(offs2PrefixSize) : long(offs1PrefixSize));
         unencodedCost = (unencodedCost > 0L ? unencodedCost : 0L);
         lengthEncodeTable.addSymbol(tmp.len - minRepeatLen,
                                     size_t(unencodedCost));
       }
       i += size_t(tmp.len);
     }
-    lengthEncodeTable.updateTables();
+    lengthEncodeTable.updateTables(false);
+    // update LZ77 offset statistics for calculating encode tables later
     for (size_t i = offs; i < endPos; ) {
       LZMatchParameters&  tmp = matchTable[i - offs];
       if (tmp.d > 0) {
@@ -417,11 +428,9 @@ namespace Plus4Compress {
       }
       i += size_t(tmp.len);
     }
-    offs1EncodeTable.updateTables();
-    offs2EncodeTable.updateTables();
-    offs3EncodeTable.updateTables();
-    offs3NumSlots = offs3EncodeTable.getSlotCnt();
-    offs3PrefixSize = offs3EncodeTable.getSlotPrefixSize(0);
+    // first pass: there are no offset encode tables yet, so no data is written
+    if (!optimizeEncodeTables)
+      return 0;
     // write encode tables
     tmpOutBuf.push_back(0x02000000U | (unsigned int) (offs3PrefixSize - 2));
     for (size_t i = 0; i < lengthNumSlots; i++) {
@@ -446,8 +455,11 @@ namespace Plus4Compress {
       if (tmp.d > 0) {
         // check if this match needs to be replaced with literals:
         size_t  nBits = getRepeatCodeLength(tmp.d, tmp.len);
-        if (nBits > 64)                 // if the match cannot be encoded,
-          nBits = 0x7FFFFFFF;           // assume "infinite" size
+        if (nBits > 64 ||
+            lengthEncodeTable.getSymbolSize(tmp.len - minRepeatLen) > 64) {
+          // if the match cannot be encoded, assume "infinite" size
+          nBits = 0x7FFFFFFF;
+        }
         if ((size_t(tmp.len) >= literalSequenceMinLength &&
              nBits > (literalSequenceMinLength + (size_t(tmp.len) * 8))) ||
             nBits >= (size_t(tmp.len) * 9)) {
@@ -495,7 +507,7 @@ namespace Plus4Compress {
   bool Compressor_M2::compressData(std::vector< unsigned int >& tmpOutBuf,
                                    const std::vector< unsigned char >& inBuf,
                                    unsigned int startAddr, bool isLastBlock,
-                                   size_t offs, size_t nBytes)
+                                   size_t offs, size_t nBytes, bool fastMode)
   {
     // the 'offs' and 'nBytes' parameters allow compressing a buffer
     // as multiple chunks for possibly improved statistical compression
@@ -508,11 +520,7 @@ namespace Plus4Compress {
     offs1EncodeTable.clear();
     offs2EncodeTable.clear();
     offs3EncodeTable.clear();
-    std::vector< size_t >   bestEncodeTables;
-    bestEncodeTables.resize(lengthNumSlots
-                            + offs1NumSlots + offs2NumSlots + 33);
-    for (size_t i = 0; i < bestEncodeTables.size(); i++)
-      bestEncodeTables[i] = 0x7FFFFFFF;
+    std::vector< uint64_t >     hashTable;
     std::vector< unsigned int > bestBuf;
     std::vector< unsigned int > tmpBuf;
     const size_t  headerSize = 34;
@@ -525,58 +533,41 @@ namespace Plus4Compress {
           return false;
         progressCnt++;
       }
-      if (doneFlag)
-        continue;
+      if (doneFlag)     // if the compression cannot be optimized further,
+        continue;       // quit the loop earlier
       tmpBuf.resize(0);
-      size_t  tmp = compressData_(tmpBuf, inBuf, offs, nBytes);
-      size_t  compressedSize = headerSize;
-      for (size_t j = 0; j < tmpBuf.size(); j++)
+      size_t  tmp =
+          compressData_(tmpBuf, inBuf, offs, nBytes, (i != 0), fastMode);
+      if (i == 0)       // the first optimization pass writes no data
+        continue;
+      // calculate compressed size and hash value
+      size_t    compressedSize = headerSize;
+      uint64_t  h = 1UL;
+      for (size_t j = 0; j < tmpBuf.size(); j++) {
         compressedSize += size_t((tmpBuf[j] & 0x7F000000U) >> 24);
+        h = h ^ uint64_t(tmpBuf[j]);
+        h = uint32_t(h) * uint64_t(0xC2B0C3CCUL);
+        h = (h ^ (h >> 32)) & 0xFFFFFFFFUL;
+      }
+      h = h | (uint64_t(compressedSize) << 32);
       if (compressedSize < bestSize) {
+        // found a better compression, so save it
         nSymbols = tmp;
         bestSize = compressedSize;
         bestBuf.resize(tmpBuf.size());
         for (size_t j = 0; j < tmpBuf.size(); j++)
           bestBuf[j] = tmpBuf[j];
-        // save the new encode tables, so that if the exact same tables are
-        // generated later, the remaining optimize iterations can be skipped
-        size_t  j = 0;
-        for (size_t k = 0; k < lengthNumSlots; j++, k++)
-          bestEncodeTables[j] = lengthEncodeTable.getSlotSize(k);
-        for (size_t k = 0; k < offs1NumSlots; j++, k++)
-          bestEncodeTables[j] = offs1EncodeTable.getSlotSize(k);
-        for (size_t k = 0; k < offs2NumSlots; j++, k++)
-          bestEncodeTables[j] = offs2EncodeTable.getSlotSize(k);
-        bestEncodeTables[j] = offs3PrefixSize;
-        j++;
-        for (size_t k = 0; k < offs3NumSlots; j++, k++)
-          bestEncodeTables[j] = offs3EncodeTable.getSlotSize(k);
       }
-      else if (compressedSize == bestSize) {
-        // if the compression cannot be optimized further,
-        // quit the loop earlier
-        doneFlag = true;
-        size_t  j = 0;
-        for (size_t k = 0; k < lengthNumSlots; j++, k++) {
-          if (lengthEncodeTable.getSlotSize(k) != bestEncodeTables[j])
-            doneFlag = false;
-        }
-        for (size_t k = 0; k < offs1NumSlots; j++, k++) {
-          if (offs1EncodeTable.getSlotSize(k) != bestEncodeTables[j])
-            doneFlag = false;
-        }
-        for (size_t k = 0; k < offs2NumSlots; j++, k++) {
-          if (offs2EncodeTable.getSlotSize(k) != bestEncodeTables[j])
-            doneFlag = false;
-        }
-        if (offs3PrefixSize != bestEncodeTables[j])
-          doneFlag = false;
-        j++;
-        for (size_t k = 0; k < offs3NumSlots; j++, k++) {
-          if (offs3EncodeTable.getSlotSize(k) != bestEncodeTables[j])
-            doneFlag = false;
+      for (size_t j = 0; j < hashTable.size(); j++) {
+        if (hashTable[j] == h) {
+          // if the exact same compressed data was already generated earlier,
+          // the remaining optimize iterations can be skipped
+          doneFlag = true;
+          break;
         }
       }
+      if (!doneFlag)
+        hashTable.push_back(h);         // save hash value
     }
     size_t  uncompressedSize = headerSize + (nBytes * 8);
     tmpOutBuf.push_back(0x10000000U | (startAddr + (unsigned int) offs));
@@ -689,15 +680,17 @@ namespace Plus4Compress {
       std::list< SplitOptimizationBlock >   splitPositions;
       std::map< uint64_t, bool >    splitOptimizationCache;
       size_t  prvPos = 0;
-      size_t  splitCnt = size_t(1) << (config.splitOptimizationDepth - 1);
+      size_t  splitDepth = config.splitOptimizationDepth - 1;
+      size_t  splitCnt = size_t(1) << splitDepth;
       if (splitCnt > inBuf.size())
         splitCnt = inBuf.size();
       progressCnt = 0;
       progressMax = config.optimizeIterations
                     * ((splitCnt * 2)
-                       + size_t(((int(config.splitOptimizationDepth) - 1)
-                                 * (int(config.splitOptimizationDepth) - 2))
-                                / 2) - 1);
+                       + size_t((int(splitDepth) * (int(splitDepth) - 1)) / 2)
+                       - 1);
+      progressMax =
+          progressMax * ((splitDepth / 3) + 2) / ((splitDepth / 3) + 1);
       for (size_t i = 0; i <= splitCnt; i++) {
         size_t  tmp = inBuf.size() * i / splitCnt;
         if (tmp > prvPos) {
@@ -709,7 +702,7 @@ namespace Plus4Compress {
           tmpBlock.buf.resize(0);
           if (!compressData(tmpBlock.buf, inBuf, startAddr,
                             tmpBlock.isLastBlock,
-                            tmpBlock.startPos, tmpBlock.nBytes)) {
+                            tmpBlock.startPos, tmpBlock.nBytes, true)) {
             delete searchTable;
             searchTable = (SearchTable *) 0;
             if (progressDisplayEnabled)
@@ -752,7 +745,7 @@ namespace Plus4Compress {
           tmpBlock.buf.resize(0);
           if (!compressData(tmpBlock.buf, inBuf, startAddr,
                             tmpBlock.isLastBlock,
-                            tmpBlock.startPos, tmpBlock.nBytes)) {
+                            tmpBlock.startPos, tmpBlock.nBytes, true)) {
             delete searchTable;
             searchTable = (SearchTable *) 0;
             if (progressDisplayEnabled)
@@ -780,6 +773,26 @@ namespace Plus4Compress {
         }
         if (!mergeFlag)
           break;
+      }
+      {
+        // compress all blocks again with full optimization
+        progressMax = config.optimizeIterations * splitPositions.size();
+        progressCnt = progressMax * ((splitDepth / 3) + 1);
+        progressMax = progressMax + progressCnt;
+        std::list< SplitOptimizationBlock >::iterator i_ =
+            splitPositions.begin();
+        while (i_ != splitPositions.end()) {
+          (*i_).buf.resize(0);
+          if (!compressData((*i_).buf, inBuf, startAddr, (*i_).isLastBlock,
+                            (*i_).startPos, (*i_).nBytes, false)) {
+            delete searchTable;
+            searchTable = (SearchTable *) 0;
+            if (progressDisplayEnabled)
+              progressMessage("");
+            return false;
+          }
+          i_++;
+        }
       }
       delete searchTable;
       searchTable = (SearchTable *) 0;

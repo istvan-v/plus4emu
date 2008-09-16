@@ -142,11 +142,13 @@ namespace Plus4Compress {
     inline void findBestMatch(LZMatchParameters& p, size_t i, size_t maxLen);
     size_t compressData_(std::vector< unsigned int >& tmpOutBuf,
                          const std::vector< unsigned char >& inBuf,
-                         size_t offs, size_t nBytes);
+                         size_t offs, size_t nBytes, bool optimizeEncodeTables,
+                         bool fastMode = false);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
                       unsigned int startAddr, bool isLastBlock,
-                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL);
+                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL,
+                      bool fastMode = false);
    public:
     Compressor_M2(std::vector< unsigned char >& outBuf_);
     virtual ~Compressor_M2();

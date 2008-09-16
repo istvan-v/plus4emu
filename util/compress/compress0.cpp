@@ -626,9 +626,9 @@ namespace Plus4Compress {
   void Compressor_M0::CompressionParameters::setCompressionLevel(int n)
   {
     n = (n > 1 ? (n < 9 ? n : 9) : 1);
-    optimizeIterations = size_t(n > 2 ? n : 2);
+    optimizeIterations = size_t(n + 7);
     splitOptimizationDepth = size_t(n);
-    optimalParsingEnabled = (n >= 2);
+    optimalParsingEnabled = true;
     optimizeMatchDistanceRepeats = (n >= 8);
   }
 
@@ -898,7 +898,7 @@ namespace Plus4Compress {
             tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
             curMatch.totalBits += long(tmp.nBits);
             long    nBits = curMatch.totalBits;
-            if (nBits < bestSize) {
+            if (nBits <= bestSize) {
               bestSize = nBits;
               matchTable[i - offs] = tmp;
               bitCountTable[i - offs] = curMatch;
@@ -925,7 +925,7 @@ namespace Plus4Compress {
           }
           size_t  nBits =
               tmpCharBitsTable[inBuf[i]] + bitCountTable[i + 1 - offs];
-          if (nBits < bestSize) {
+          if (nBits <= bestSize) {
             tmp.clear();
             tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
             matchTable[i - offs] = tmp;
@@ -966,6 +966,7 @@ namespace Plus4Compress {
     size_t  endPos = offs + nBytes;
     for (size_t i = 0; i < 512; i++)
       tmpCharBitsTable[i] = (i < 0x0180 ? 9 : 5);
+    std::vector< uint64_t >     hashTable;
     std::vector< unsigned int > bestBuf;
     std::vector< unsigned int > tmpBuf;
     size_t  bestSize = 0x7FFFFFFF;
@@ -976,32 +977,39 @@ namespace Plus4Compress {
           return false;
         progressCnt += nBytes;
       }
-      if (doneFlag)
-        continue;
+      if (doneFlag)     // if the compression cannot be optimized further,
+        continue;       // quit the loop earlier
       tmpBuf.resize(0);
       compressData_(tmpBuf, inBuf, startAddr, false, offs, nBytes);
       // apply statistical compression
       huffmanCompressBlock(tmpBuf);
-      size_t  compressedSize = 0;
-      for (size_t j = 0; j < tmpBuf.size(); j++)
+      // calculate compressed size and hash value
+      size_t    compressedSize = 0;
+      uint64_t  h = 1UL;
+      for (size_t j = 0; j < tmpBuf.size(); j++) {
         compressedSize += size_t(tmpBuf[j] >> 24);
+        h = h ^ uint64_t(tmpBuf[j]);
+        h = uint32_t(h) * uint64_t(0xC2B0C3CCUL);
+        h = (h ^ (h >> 32)) & 0xFFFFFFFFUL;
+      }
+      h = h | (uint64_t(compressedSize) << 32);
       if (compressedSize < bestSize) {
+        // found a better compression, so save it
+        bestSize = compressedSize;
         bestBuf.resize(tmpBuf.size());
         for (size_t j = 0; j < tmpBuf.size(); j++)
           bestBuf[j] = tmpBuf[j];
-        bestSize = compressedSize;
       }
-      else if (compressedSize == bestSize && tmpBuf.size() == bestBuf.size()) {
-        // if the compression cannot be improved further,
-        // quit the optimization loop earlier
-        doneFlag = true;
-        for (size_t j = 0; j < tmpBuf.size(); j++) {
-          if (tmpBuf[j] != bestBuf[j]) {
-            doneFlag = false;
-            break;
-          }
+      for (size_t j = 0; j < hashTable.size(); j++) {
+        if (hashTable[j] == h) {
+          // if the exact same compressed data was already generated earlier,
+          // the remaining optimize iterations can be skipped
+          doneFlag = true;
+          break;
         }
       }
+      if (!doneFlag)
+        hashTable.push_back(h);         // save hash value
     }
     size_t  uncompressedSize = ((nBytes + 4) * 8) + 2;
     size_t  outBufOffset = tmpOutBuf.size();

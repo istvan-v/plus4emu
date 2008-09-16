@@ -86,6 +86,10 @@ namespace Plus4Compress {
       std::vector< unsigned short > symbolSizeTable;
       void setPrefixSize(size_t n);
       inline size_t calculateEncodedSize() const;
+      inline size_t calculateEncodedSize(size_t firstSlot,
+                                         unsigned int firstSymbol,
+                                         size_t baseSize) const;
+      size_t optimizeSlotBitsTable_fast();
       size_t optimizeSlotBitsTable();
      public:
       // If 'slotPrefixSizeTable_' is non-NULL, a variable prefix length
@@ -152,7 +156,7 @@ namespace Plus4Compress {
       {
         return slotBitsTable[n];
       }
-      void updateTables();
+      void updateTables(bool fastMode = false);
       void clear();
     };
     // --------
@@ -277,11 +281,13 @@ namespace Plus4Compress {
     inline void findBestMatch(LZMatchParameters& p, size_t i, size_t maxLen);
     size_t compressData_(std::vector< unsigned int >& tmpOutBuf,
                          const std::vector< unsigned char >& inBuf,
-                         size_t offs, size_t nBytes);
+                         size_t offs, size_t nBytes, bool optimizeEncodeTables,
+                         bool fastMode = false);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
                       unsigned int startAddr, bool isLastBlock,
-                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL);
+                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL,
+                      bool fastMode = false);
    public:
     Compressor_M1(std::vector< unsigned char >& outBuf_);
     virtual ~Compressor_M1();
