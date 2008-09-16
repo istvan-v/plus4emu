@@ -181,9 +181,10 @@ namespace Plus4Emu {
     // R = (V / 0.877) + Y
     // B = (U / 0.492) + Y
     // G = (Y - ((R * 0.299) + (B * 0.114))) / 0.587
-    float   r = (tmpV / 0.877f) + y;
-    float   b = (tmpU / 0.492f) + y;
-    float   g = (y - ((r * 0.299f) + (b * 0.114f))) / 0.587f;
+    float   r = y + (tmpV * float(1.0 / 0.877));
+    float   g = y + (tmpU * float(-0.114 / (0.492 * 0.587)))
+                  + (tmpV * float(-0.299 / (0.877 * 0.587)));
+    float   b = y + (tmpU * float(1.0 / 0.492));
     r = (r - 0.5f) * (contrast * redContrast) + 0.5f;
     g = (g - 0.5f) * (contrast * greenContrast) + 0.5f;
     b = (b - 0.5f) * (contrast * blueContrast) + 0.5f;
@@ -389,6 +390,16 @@ namespace Plus4Emu {
           y *= yScaleTable[k];
           u *= yScaleTable[k];
           v *= yScaleTable[k];
+          if (y < 0.0f) {
+            u *= (0.25f / (0.25f - y));
+            v *= (0.25f / (0.25f - y));
+            y = 0.0f;
+          }
+          else if (y > 1.0f) {
+            u *= (0.25f / (y - 0.75f));
+            v *= (0.25f / (y - 0.75f));
+            y = 1.0f;
+          }
           u = (u + 0.435912f) * 1.147020f;
           v = (v + 0.614777f) * 0.813303f;
           colormapData[i] = pixelConv(y, u, v);
