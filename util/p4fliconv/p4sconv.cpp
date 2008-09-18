@@ -40,6 +40,7 @@ int main(int argc, char **argv)
       std::vector< std::string >    args;
       std::map< std::string, std::vector< std::string > >   optionTable;
       optionTable["-border"].push_back("i:borderColor");
+      optionTable["-nofx"].push_back("b:disableFLIEffects");
       optionTable["-outfmt"].push_back("i:outputFileFormat");
       optionTable["-compress"].push_back("i:prgCompressionLevel");
       bool    endOfOptions = false;
@@ -123,6 +124,10 @@ int main(int argc, char **argv)
       prgData.borderColor() =
           (unsigned char) ((int(config["borderColor"]) & 0x7F) | 0x80);
     }
+    if (prgData.getConversionType() < 6) {
+      prgData.lineBlankFXEnabled() =
+          (unsigned char) (bool(config["disableFLIEffects"]) ? 0 : 1);
+    }
     config.clearConfigurationChangeFlag();
     Plus4FLIConv::writeConvertedImageFile(outfileName.c_str(), prgData,
                                           prgEndAddr, -1,
@@ -137,10 +142,15 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "Options:\n");
       std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
       std::fprintf(stderr, "        set border color\n");
-      std::fprintf(stderr, "    -outfmt <N>         (0 to 3, default: 0)\n");
+      std::fprintf(stderr, "    -nofx <N>           (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        disable FLI image opening/closing "
+                           "effects\n");
+      std::fprintf(stderr, "    -outfmt <N>         (0 to 5, default: 0)\n");
       std::fprintf(stderr, "        output file format, 0: PRG with viewer, "
-                           "1: raw PRG,\n        2: PixelShop P4S, 3: FED "
-                           "160x200 multicolor FLI\n");
+                           "1: raw PRG (compression\n        type 0), 2: "
+                           "PixelShop P4S, 3: FED 160x200 multicolor FLI,\n"
+                           "        4: raw PRG (compression type 1), 5: raw "
+                           "PRG (compression type 2)\n");
       std::fprintf(stderr, "    -compress <N>       (0 to 9, default: 0)\n");
       std::fprintf(stderr, "        compress output file if N is not zero\n");
     }

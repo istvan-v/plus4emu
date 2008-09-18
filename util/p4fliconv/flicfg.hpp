@@ -50,7 +50,9 @@ namespace Plus4FLIConv {
     int         borderColor;
     int         verticalSize;
     bool        luminance1BitMode;
+    bool        disableInterpolation;
     bool        noLuminanceInterlace;
+    bool        disableFLIEffects;
     int         colorInterlaceMode;
     int         luminanceSearchMode;
     double      luminanceSearchModeParam;

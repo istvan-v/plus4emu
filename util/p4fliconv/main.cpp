@@ -75,7 +75,9 @@ int main(int argc, char **argv)
       optionTable["-border"].push_back("i:borderColor");
       optionTable["-size"].push_back("i:verticalSize");
       optionTable["-y1bit"].push_back("b:luminance1BitMode");
+      optionTable["-nointerp"].push_back("b:disableInterpolation");
       optionTable["-no_li"].push_back("b:noLuminanceInterlace");
+      optionTable["-nofx"].push_back("b:disableFLIEffects");
       optionTable["-ci"].push_back("i:colorInterlaceMode");
       optionTable["-searchmode"].push_back("i:luminanceSearchMode");
       optionTable["-searchmode"].push_back("f:luminanceSearchModeParam");
@@ -212,6 +214,7 @@ int main(int argc, char **argv)
                                     float(double(config["scaleY"])),
                                     float(double(config["offsetX"])),
                                     float(double(config["offsetY"])));
+        imgConv.setEnableInterpolation(!(bool(config["disableInterpolation"])));
         imgConv.setGammaCorrection(
             float(double(config["gammaCorrection"])),
             float(double(config["monitorGamma"]) * 0.625));
@@ -242,9 +245,10 @@ int main(int argc, char **argv)
         imgConv.setC64Color(14, int(config["c64Color14"]));
         imgConv.setC64Color(15, int(config["c64Color15"]));
         prgData.clear();
-        prgData.lineBlankFXEnabled() = 0x01;    // TODO: make this configurable
         prgData.borderColor() =
             (unsigned char) ((int(config["borderColor"]) & 0x7F) | 0x80);
+        prgData.lineBlankFXEnabled() =
+            (unsigned char) (bool(config["disableFLIEffects"]) ? 0 : 1);
         fliConv->processImage(prgData, prgEndAddr,
                               infileName.c_str(), imgConv, config);
         delete fliConv;
@@ -296,6 +300,9 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "        scale image size\n");
       std::fprintf(stderr, "    -offset <X> <Y>     (defaults: 0.0, 0.0)\n");
       std::fprintf(stderr, "        set image position offset\n");
+      std::fprintf(stderr, "    -nointerp <N>       (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        resize input image without interpolation "
+                           "and anti-aliasing\n");
       std::fprintf(stderr, "    -saturation <M> <P> (defaults: 1.0, 0.9)\n");
       std::fprintf(stderr, "        color saturation scale and power\n");
       std::fprintf(stderr, "    -gamma <G> <M>      (defaults: 1.0, 2.2)\n");
@@ -303,10 +310,10 @@ int main(int argc, char **argv)
                            "monitor gamma (M)\n");
       std::fprintf(stderr, "    -dither <M> <L> <S> (defaults: 1, 0.25, "
                            "0.95)\n");
-      std::fprintf(stderr, "        dither mode (0: ordered (Bayer), 1: "
-                           "ordered (randomized),\n        2: "
-                           "Floyd-Steinberg, 3: Jarvis, 4: Stucki, 5: "
-                           "Sierra2), limit,\n        and error diffusion "
+      std::fprintf(stderr, "        dither mode (-1: none, 0: ordered "
+                           "(Bayer), 1: ordered\n        (randomized), 2: "
+                           "Floyd-Steinberg, 3: Jarvis, 4: Stucki,\n"
+                           "        5: Sierra2), limit, and error diffusion "
                            "factor\n");
       std::fprintf(stderr, "    -pal <N>            (0 or 1, default: 1)\n");
       std::fprintf(stderr, "        assume PAL chrominance filtering "
@@ -317,6 +324,9 @@ int main(int argc, char **argv)
                            "random, -1 finds\n        optimal values)\n");
       std::fprintf(stderr, "    -border <N>         (0 to 255, default: 0)\n");
       std::fprintf(stderr, "        set border color\n");
+      std::fprintf(stderr, "    -nofx <N>           (0 or 1, default: 0)\n");
+      std::fprintf(stderr, "        disable FLI image opening/closing "
+                           "effects\n");
       std::fprintf(stderr, "    -size <N>           "
                            "(128 to 496, default: 464)\n");
       std::fprintf(stderr, "        set vertical resolution (< 256 implies "
@@ -342,10 +352,12 @@ int main(int argc, char **argv)
                            "(N: 0 to 15, C: 0 to 255)\n");
       std::fprintf(stderr, "        map C64 color N to Plus/4 color C when "
                            "reading C64 image files\n");
-      std::fprintf(stderr, "    -outfmt <N>         (0 to 3, default: 0)\n");
+      std::fprintf(stderr, "    -outfmt <N>         (0 to 5, default: 0)\n");
       std::fprintf(stderr, "        output file format, 0: PRG with viewer, "
-                           "1: raw PRG,\n        2: PixelShop P4S, 3: FED "
-                           "160x200 multicolor FLI\n");
+                           "1: raw PRG (compression\n        type 0), 2: "
+                           "PixelShop P4S, 3: FED 160x200 multicolor FLI,\n"
+                           "        4: raw PRG (compression type 1), 5: raw "
+                           "PRG (compression type 2)\n");
       std::fprintf(stderr, "    -compress <N>       (0 to 9, default: 0)\n");
       std::fprintf(stderr, "        compress output file if N is not zero\n");
     }

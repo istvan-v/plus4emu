@@ -384,16 +384,17 @@ class Plus4FLIConvGUI {open
               callback {{
   try {
     if (o->value() >= 0) {
-      config["ditherMode"] = int(o->value());
-      o->value(int(config["ditherMode"]));
+      config["ditherMode"] = int(o->value()) - 1;
+      o->value(int(config["ditherMode"]) + 1);
     }
   }
   catch (std::exception& e) {
     errorMessage(e.what());
   }
+  updateConfigWindow();
 }} open
               xywh {225 260 170 25} down_box BORDER_BOX
-              code0 {o->add("Ordered (Bayer)|Ordered (randomized)|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)|Diffuse (Sierra2)");}
+              code0 {o->add("None|Ordered (Bayer)|Ordered (randomized)|Diffuse (Floyd-Steinberg)|Diffuse (Jarvis)|Diffuse (Stucki)|Diffuse (Sierra2)");}
             } {}
             Fl_Value_Input ditherLimitValuator {
               label Limit
@@ -486,14 +487,17 @@ class Plus4FLIConvGUI {open
     if (o->value() >= 0) {
       config["outputFileFormat"] = int(o->value());
       o->value(int(config["outputFileFormat"]));
+      if (prgEndAddress > 0x1003U)
+        fileNotSavedFlag = true;
     }
   }
   catch (std::exception& e) {
     errorMessage(e.what());
   }
+  updateConfigWindow();
 }} open
               xywh {225 365 140 25} down_box BORDER_BOX
-              code0 {o->add("PRG with viewer|Raw PRG|PixelShop P4S|FED 1.5");}
+              code0 {o->add("PRG with viewer|Raw PRG, -m0 compression|PixelShop P4S|FED 1.5|Raw PRG, -m1 compression|Raw PRG, -m2 compression");}
             } {}
             Fl_Value_Slider prgCompressionLevelValuator {
               label {Comp.}
@@ -501,6 +505,8 @@ class Plus4FLIConvGUI {open
   try {
     config["prgCompressionLevel"] = int(o->value() + 0.5);
     o->value(double(int(config["prgCompressionLevel"])));
+    if (prgEndAddress > 0x1003U)
+      fileNotSavedFlag = true;
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -534,6 +540,22 @@ class Plus4FLIConvGUI {open
               xywh {285 50 25 25} down_box DOWN_BOX
             }
             Fl_Box {} {
+              label {Disable interpolation}
+              tooltip {If this option is checked, sinc interpolation and anti-aliasing are disabled when resizing the input image} xywh {320 50 220 25} align 20
+            }
+            Fl_Check_Button disableInterpolationValuator {
+              callback {{
+  try {
+    config["disableInterpolation"] = bool(o->value());
+    o->value(int(bool(config["disableInterpolation"])));
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+              xywh {550 50 25 25} down_box DOWN_BOX
+            }
+            Fl_Box {} {
               label {Optimize for PAL color filtering}
               xywh {25 85 250 25} align 20
             }
@@ -548,6 +570,24 @@ class Plus4FLIConvGUI {open
   }
 }}
               xywh {285 85 25 25} down_box DOWN_BOX value 1
+            }
+            Fl_Box {} {
+              label {Disable FLI image effects}
+              tooltip {If checked, FLI images are shown by the viewer without the opening/closing effects} xywh {320 85 220 25} align 20
+            }
+            Fl_Check_Button disableFLIEffectsValuator {
+              callback {{
+  try {
+    config["disableFLIEffects"] = bool(o->value());
+    o->value(int(bool(config["disableFLIEffects"])));
+    if (prgEndAddress > 0x1003U)
+      fileNotSavedFlag = true;
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+}}
+              xywh {550 85 25 25} down_box DOWN_BOX
             }
             Fl_Box {} {
               label {Do not interlace luminance attributes}

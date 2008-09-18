@@ -120,7 +120,7 @@ namespace Plus4FLIConv {
     (*this)["monitorGamma"].setCallback(&configChangeCallbackFloat,
                                         (void *) this, true);
     createKey("ditherMode", ditherMode);
-    (*this)["ditherMode"].setRange(0.0, 5.0);
+    (*this)["ditherMode"].setRange(-1.0, 5.0);
     (*this)["ditherMode"].setCallback(&configChangeCallbackInteger,
                                       (void *) this, true);
     createKey("ditherLimit", ditherLimit);
@@ -153,9 +153,13 @@ namespace Plus4FLIConv {
     createKey("luminance1BitMode", luminance1BitMode);
     (*this)["luminance1BitMode"].setCallback(&configChangeCallbackBoolean,
                                              (void *) this, true);
+    createKey("disableInterpolation", disableInterpolation);
+    (*this)["disableInterpolation"].setCallback(&configChangeCallbackBoolean,
+                                                (void *) this, true);
     createKey("noLuminanceInterlace", noLuminanceInterlace);
     (*this)["noLuminanceInterlace"].setCallback(&configChangeCallbackBoolean,
                                                 (void *) this, true);
+    createKey("disableFLIEffects", disableFLIEffects);
     createKey("colorInterlaceMode", colorInterlaceMode);
     (*this)["colorInterlaceMode"].setRange(0.0, 2.0);
     (*this)["colorInterlaceMode"].setCallback(&configChangeCallbackInteger,
@@ -243,7 +247,7 @@ namespace Plus4FLIConv {
     createKey("prgCompressionLevel", prgCompressionLevel);
     (*this)["prgCompressionLevel"].setRange(0.0, 9.0);
     createKey("outputFileFormat", outputFileFormat);
-    (*this)["outputFileFormat"].setRange(0.0, 3.0);
+    (*this)["outputFileFormat"].setRange(0.0, 5.0);
   }
 
   FLIConfiguration::~FLIConfiguration()
@@ -272,7 +276,9 @@ namespace Plus4FLIConv {
     borderColor = 0x00;
     verticalSize = 464;
     luminance1BitMode = false;
+    disableInterpolation = false;
     noLuminanceInterlace = false;
+    disableFLIEffects = false;
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
     luminanceSearchModeParam = 4.0;

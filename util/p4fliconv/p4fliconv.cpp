@@ -364,6 +364,8 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
                                       float(double(config["scaleY"])),
                                       float(double(config["offsetX"])),
                                       float(double(config["offsetY"])));
+          imgConv.setEnableInterpolation(
+              !(bool(config["disableInterpolation"])));
           imgConv.setGammaCorrection(
               float(double(config["gammaCorrection"])),
               float(double(config["monitorGamma"]) * 0.625));
@@ -402,9 +404,10 @@ void Plus4FLIConvGUI::applyConfigurationChanges()
           fliConv->setProgressPercentageCallback(&progressPercentageCallback,
                                                  (void *) this);
           prgData.clear();
-          prgData.lineBlankFXEnabled() = 0x01;  // TODO: make this configurable
           prgData.borderColor() =
               (unsigned char) ((int(config["borderColor"]) & 0x7F) | 0x80);
+          prgData.lineBlankFXEnabled() =
+              (unsigned char) (bool(config["disableFLIEffects"]) ? 0 : 1);
           doneConversion = fliConv->processImage(prgData, prgEndAddress,
                                                  imageFileName.c_str(),
                                                  imgConv, config);
@@ -507,10 +510,12 @@ void Plus4FLIConvGUI::updateConfigWindow()
     if (conversionType < 6) {
       verticalSizeValuator->activate();
       xShift0Valuator->activate();
+      disableFLIEffectsValuator->activate();
     }
     else {
       verticalSizeValuator->deactivate();
       xShift0Valuator->deactivate();
+      disableFLIEffectsValuator->deactivate();
     }
     if (conversionType < 2)
       xShift1Valuator->activate();
@@ -531,7 +536,7 @@ void Plus4FLIConvGUI::updateConfigWindow()
       }
       else {
         monitorGammaValuator->deactivate();
-        if (int(config["ditherMode"]) < 2)
+        if (int(config["ditherMode"]) >= 0 && int(config["ditherMode"]) < 2)
           config["ditherMode"] = int(2);
         multiColorQualityValuator->activate();
         if (conversionType < 6) {
@@ -587,6 +592,17 @@ void Plus4FLIConvGUI::updateConfigWindow()
       lumSearchModeParamValuator->deactivate();
       break;
     }
+    if (int(config["ditherMode"]) < 0) {
+      enablePALValuator->deactivate();
+      colorInterlaceModeValuator->deactivate();
+    }
+    if (int(config["outputFileFormat"]) == 2 ||
+        int(config["outputFileFormat"]) == 3) {
+      prgCompressionLevelValuator->deactivate();
+    }
+    else {
+      prgCompressionLevelValuator->activate();
+    }
     conversionTypeValuator->value(conversionType);
     verticalSizeValuator->value(int(config["verticalSize"]));
     borderColorValuator->value(int(config["borderColor"]));
@@ -601,7 +617,7 @@ void Plus4FLIConvGUI::updateConfigWindow()
     saturationPowValuator->value(double(config["saturationPow"]));
     gammaCorrectionValuator->value(double(config["gammaCorrection"]));
     monitorGammaValuator->value(double(config["monitorGamma"]));
-    ditherModeValuator->value(int(config["ditherMode"]));
+    ditherModeValuator->value(int(config["ditherMode"]) + 1);
     ditherLimitValuator->value(double(config["ditherLimit"]));
     ditherDiffusionValuator->value(double(config["ditherDiffusion"]));
     multiColorQualityValuator->value(double(int(config["multiColorQuality"])));
@@ -611,7 +627,10 @@ void Plus4FLIConvGUI::updateConfigWindow()
     prgCompressionLevelValuator->value(
         double(int(config["prgCompressionLevel"])));
     luminance1BitModeValuator->value(int(bool(config["luminance1BitMode"])));
+    disableInterpolationValuator->value(
+        int(bool(config["disableInterpolation"])));
     enablePALValuator->value(int(bool(config["enablePAL"])));
+    disableFLIEffectsValuator->value(int(bool(config["disableFLIEffects"])));
     noLuminanceInterlaceValuator->value(
         int(bool(config["noLuminanceInterlace"])));
     colorInterlaceModeValuator->value(int(config["colorInterlaceMode"]));
@@ -742,6 +761,7 @@ void Plus4FLIConvGUI::updateImageDisplay()
 void Plus4FLIConvGUI::savePRGFile()
 {
   if (!busyFlag) {
+    int     convType = int(config["conversionType"]);
     applyConfigurationChanges();
     if (prgEndAddress <= 0x1003U) {
       fileNotSavedFlag = false;
@@ -793,9 +813,12 @@ void Plus4FLIConvGUI::savePRGFile()
       }
       if (prgFileName != "") {
         setBusyFlag(true);
+        if (convType < 6) {
+          prgData.lineBlankFXEnabled() =
+              (unsigned char) (bool(config["disableFLIEffects"]) ? 0 : 1);
+        }
         Plus4FLIConv::writeConvertedImageFile(
-            prgFileName.c_str(), prgData, prgEndAddress,
-            int(config["conversionType"]),
+            prgFileName.c_str(), prgData, prgEndAddress, convType,
             int(config["outputFileFormat"]), int(config["prgCompressionLevel"]),
             &progressMessageCallback, &progressPercentageCallback,
             (void *) this);
