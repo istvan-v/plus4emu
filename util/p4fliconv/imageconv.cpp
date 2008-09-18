@@ -286,7 +286,8 @@ namespace Plus4FLIConv {
       progressMessageUserData((void *) 0),
       progressPercentageCallback(&defaultProgressPercentageCb),
       progressPercentageUserData((void *) 0),
-      prvProgressPercentage(-1)
+      prvProgressPercentage(-1),
+      interpolationEnabled(true)
   {
     c64ColorTable[0] = 0x00;
     c64ColorTable[1] = 0x71;
@@ -690,7 +691,8 @@ namespace Plus4FLIConv {
       float   borderV = borderColorV;
       float   yGamma = monitorGamma / gammaCorrection;
       for (size_t yc = 0; yc < h; yc++) {
-        if (!setProgressPercentage(int(yc) * 50 / int(h))) {
+        if (!setProgressPercentage(int(yc) * (interpolationEnabled ? 50 : 90)
+                                   / int(h))) {
           for (int tmpY = 0; tmpY < height; tmpY++) {
             for (int tmpX = 0; tmpX < width; tmpX++) {
               storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
@@ -779,7 +781,7 @@ namespace Plus4FLIConv {
         f->release();
         f = (Fl_Shared_Image *) 0;
       }
-      // initialize interpolation window
+      // calculate X and Y scale
       float   aspectScale = (float(width) * pixelAspectRatio / float(height))
                             / (float(int(w)) / float(int(h)));
       float   xScale = float(int(w)) / float(width);
@@ -790,130 +792,184 @@ namespace Plus4FLIConv {
         xScale = xScale * aspectScale;
       xScale = xScale / scaleX;
       yScale = yScale / scaleY;
-      float   xOffs = (float(int(w)) * 0.5f) - (float(width) * 0.5f * xScale);
-      float   yOffs = (float(int(h)) * 0.5f) - (float(height) * 0.5f * yScale);
-      xOffs = xOffs - (offsetX * xScale);
-      yOffs = yOffs - (offsetY * yScale);
-      windowX = new float[1025];
-      windowY = new float[1025];
-      for (int x = 0; x < 1025; x++) {
-        double  xf = double(x - 512) * (3.14159265 / 1024.0);
-        double  wx = std::cos(xf);
-        wx = wx * wx;
-        float   xs = (xScale <= 1.0f ? 1.0f : (1.0f / xScale));
-        xs = (xs > 0.2f ? xs : 0.2f);
-        xf = xf * 16.0 * xs;
-        if (xf < -0.000001 || xf > 0.000001)
-          wx = wx * std::sin(xf) / xf;
-        windowX[x] = float(wx * xs);
-      }
-      for (int y = 0; y < 1025; y++) {
-        double  yf = double(y - 512) * (3.14159265 / 1024.0);
-        double  wy = std::cos(yf);
-        wy = wy * wy;
-        float   ys = (yScale <= 1.0f ? 1.0f : (1.0f / yScale));
-        ys = (ys > 0.2f ? ys : 0.2f);
-        yf = yf * 16.0 * ys;
-        if (yf < -0.000001 || yf > 0.000001)
-          wy = wy * std::sin(yf) / yf;
-        windowY[y] = float(wy * ys);
-      }
-      // scale image to the specified width and height
-      for (int yc = 0; yc < height; yc++) {
-        if (!setProgressPercentage((yc * 50 / height) + 50)) {
-          for (int tmpY = 0; tmpY < height; tmpY++) {
-            for (int tmpX = 0; tmpX < width; tmpX++) {
-              storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
-                             borderY, borderU, borderV);
-            }
-          }
-          delete[] windowX;
-          delete[] windowY;
-          delete[] inputImage;
-          progressMessage("");
-          return false;
-        }
-        double  yf = double(yc) * yScale + yOffs;
-        int     yi = int(yf);
-        yf = yf - double(yi);
-        if (yf < 0.0) {
-          yf += 1.0;
-          yi--;
-        }
-        for (int xc = 0; xc < width; xc++) {
-          double  xf = double(xc) * xScale + xOffs;
-          int     xi = int(xf);
-          xf = xf - double(xi);
-          if (xf < 0.0) {
-            xf += 1.0;
-            xi--;
-          }
-          double  wxf = 63.999999 * (1.0 - xf);
-          double  wyf = 63.999999 * (1.0 - yf);
-          int     wxi = int(wxf);
-          wxf = wxf - double(wxi);
-          int     wyi = int(wyf);
-          wyf = wyf - double(wyi);
-          float   xs0 = float(1.0 - wxf);
-          float   xs1 = float(wxf);
-          float   ys0 = float(1.0 - wyf);
-          float   ys1 = float(wyf);
-          float   y = 0.0f;
-          float   u = 0.0f;
-          float   v = 0.0f;
-          if (xi >= 7 && xi < int(w - 8) && yi >= 7 && yi < int(h - 8)) {
-            // faster code for the case when no pixels are clipped
-            float   *ptr = &(inputImage[(((yi - 7) * int(w)) + (xi - 7)) * 3]);
-            for (int wy = -7; wy <= 8; wy++) {
-              float   wsy = (windowY[wyi] * ys0) + (windowY[wyi + 1] * ys1);
-              for (int wx = -7; wx <= 8; wx++) {
-                float   wsx = (windowX[wxi] * xs0) + (windowX[wxi + 1] * xs1);
-                float   w_ = wsx * wsy;
-                y += (ptr[0] * w_);
-                u += (ptr[1] * w_);
-                v += (ptr[2] * w_);
-                wxi = wxi + 64;
-                ptr = ptr + 3;
+      if (!interpolationEnabled) {
+        // ---- resize image by integer ratio without interpolation ----
+        int     xScale_i = int((1.0f / xScale) + 0.5f);
+        int     yScale_i = int((1.0f / yScale) + 0.5f);
+        xScale_i = (xScale_i > 1 ? xScale_i : 1);
+        yScale_i = (yScale_i > 1 ? yScale_i : 1);
+        xScale = 1.0f / float(xScale_i);
+        yScale = 1.0f / float(yScale_i);
+        float   xOffs =
+            (float(int(w)) * 0.5f) - (float(width) * 0.5f * xScale);
+        float   yOffs =
+            (float(int(h)) * 0.5f) - (float(height) * 0.5f * yScale);
+        xOffs = xOffs - (offsetX * xScale);
+        yOffs = yOffs - (offsetY * yScale);
+        int     xOffs_i = int(xOffs + (xOffs >= 0.0f ? 0.5f : -0.5f));
+        int     yOffs_i = int(yOffs + (yOffs >= 0.0f ? 0.5f : -0.5f));
+        // scale image to the specified width and height
+        for (int yc = 0; yc < height; yc++) {
+          if (!setProgressPercentage((yc * 10 / height) + 90)) {
+            for (int tmpY = 0; tmpY < height; tmpY++) {
+              for (int tmpX = 0; tmpX < width; tmpX++) {
+                storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
+                               borderY, borderU, borderV);
               }
-              wxi = wxi - 1024;
-              wyi = wyi + 64;
-              ptr = ptr + ((int(w) - 16) * 3);
             }
+            progressMessage("");
+            return false;
           }
-          else if (xi < -1 || xi > int(w) || yi < -1 || yi > int(h)) {
-            y = borderY;
-            u = borderU;
-            v = borderV;
+          int     yi = (yc / yScale_i) + yOffs_i;
+          for (int xc = 0; xc < width; xc++) {
+            int     xi = (xc / xScale_i) + xOffs_i;
+            float   y = borderY;
+            float   u = borderU;
+            float   v = borderV;
+            if (xi >= 0 && xi < int(w) && yi >= 0 && yi < int(h)) {
+              float   *ptr = &(inputImage[(yi * int(w) + xi) * 3]);
+              y = ptr[0];
+              u = ptr[1];
+              v = ptr[2];
+            }
+            y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+            u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
+            v = (v > -0.615f ? (v < 0.615f ? v : 0.615f) : -0.615f);
+            storePixelFunc(storePixelFuncUserData, xc, yc, y, u, v);
           }
-          else {
-            for (int wy = -7; wy <= 8; wy++) {
-              float   wsy = (windowY[wyi] * ys0) + (windowY[wyi + 1] * ys1);
-              for (int wx = -7; wx <= 8; wx++) {
-                int     x_ = xi + wx;
-                int     y_ = yi + wy;
-                float   wsx = (windowX[wxi] * xs0) + (windowX[wxi + 1] * xs1);
-                float   w_ = wsx * wsy;
-                if (x_ < 0 || x_ >= int(w) || y_ < 0 || y_ >= int(h)) {
-                  y += (borderY * w_);
-                  u += (borderU * w_);
-                  v += (borderV * w_);
-                }
-                else {
-                  float   *ptr = &(inputImage[((y_ * int(w)) + x_) * 3]);
+        }
+      }
+      else {
+        // ---- resize image with interpolation and anti-aliasing ----
+        float   xOffs =
+            (float(int(w)) * 0.5f) - (float(width) * 0.5f * xScale);
+        float   yOffs =
+            (float(int(h)) * 0.5f) - (float(height) * 0.5f * yScale);
+        xOffs = xOffs - (offsetX * xScale);
+        yOffs = yOffs - (offsetY * yScale);
+        // initialize interpolation window
+        windowX = new float[1025];
+        windowY = new float[1025];
+        for (int x = 0; x < 1025; x++) {
+          double  xf = double(x - 512) * (3.14159265 / 1024.0);
+          double  wx = std::cos(xf);
+          wx = wx * wx;
+          float   xs = (xScale <= 1.0f ? 1.0f : (1.0f / xScale));
+          xs = (xs > 0.2f ? xs : 0.2f);
+          xf = xf * 16.0 * xs;
+          if (xf < -0.000001 || xf > 0.000001)
+            wx = wx * std::sin(xf) / xf;
+          windowX[x] = float(wx * xs);
+        }
+        for (int y = 0; y < 1025; y++) {
+          double  yf = double(y - 512) * (3.14159265 / 1024.0);
+          double  wy = std::cos(yf);
+          wy = wy * wy;
+          float   ys = (yScale <= 1.0f ? 1.0f : (1.0f / yScale));
+          ys = (ys > 0.2f ? ys : 0.2f);
+          yf = yf * 16.0 * ys;
+          if (yf < -0.000001 || yf > 0.000001)
+            wy = wy * std::sin(yf) / yf;
+          windowY[y] = float(wy * ys);
+        }
+        // scale image to the specified width and height
+        for (int yc = 0; yc < height; yc++) {
+          if (!setProgressPercentage((yc * 50 / height) + 50)) {
+            for (int tmpY = 0; tmpY < height; tmpY++) {
+              for (int tmpX = 0; tmpX < width; tmpX++) {
+                storePixelFunc(storePixelFuncUserData, tmpX, tmpY,
+                               borderY, borderU, borderV);
+              }
+            }
+            delete[] windowX;
+            delete[] windowY;
+            delete[] inputImage;
+            progressMessage("");
+            return false;
+          }
+          double  yf = double(yc) * yScale + yOffs;
+          int     yi = int(yf);
+          yf = yf - double(yi);
+          if (yf < 0.0) {
+            yf += 1.0;
+            yi--;
+          }
+          for (int xc = 0; xc < width; xc++) {
+            double  xf = double(xc) * xScale + xOffs;
+            int     xi = int(xf);
+            xf = xf - double(xi);
+            if (xf < 0.0) {
+              xf += 1.0;
+              xi--;
+            }
+            double  wxf = 63.999999 * (1.0 - xf);
+            double  wyf = 63.999999 * (1.0 - yf);
+            int     wxi = int(wxf);
+            wxf = wxf - double(wxi);
+            int     wyi = int(wyf);
+            wyf = wyf - double(wyi);
+            float   xs0 = float(1.0 - wxf);
+            float   xs1 = float(wxf);
+            float   ys0 = float(1.0 - wyf);
+            float   ys1 = float(wyf);
+            float   y = 0.0f;
+            float   u = 0.0f;
+            float   v = 0.0f;
+            if (xi >= 7 && xi < int(w - 8) && yi >= 7 && yi < int(h - 8)) {
+              // faster code for the case when no pixels are clipped
+              float   *ptr =
+                  &(inputImage[(((yi - 7) * int(w)) + (xi - 7)) * 3]);
+              for (int wy = -7; wy <= 8; wy++) {
+                float   wsy = (windowY[wyi] * ys0) + (windowY[wyi + 1] * ys1);
+                for (int wx = -7; wx <= 8; wx++) {
+                  float   wsx = (windowX[wxi] * xs0) + (windowX[wxi + 1] * xs1);
+                  float   w_ = wsx * wsy;
                   y += (ptr[0] * w_);
                   u += (ptr[1] * w_);
                   v += (ptr[2] * w_);
+                  wxi = wxi + 64;
+                  ptr = ptr + 3;
                 }
-                wxi = wxi + 64;
+                wxi = wxi - 1024;
+                wyi = wyi + 64;
+                ptr = ptr + ((int(w) - 16) * 3);
               }
-              wxi = wxi - 1024;
-              wyi = wyi + 64;
             }
+            else if (xi < -1 || xi > int(w) || yi < -1 || yi > int(h)) {
+              y = borderY;
+              u = borderU;
+              v = borderV;
+            }
+            else {
+              for (int wy = -7; wy <= 8; wy++) {
+                float   wsy = (windowY[wyi] * ys0) + (windowY[wyi + 1] * ys1);
+                for (int wx = -7; wx <= 8; wx++) {
+                  int     x_ = xi + wx;
+                  int     y_ = yi + wy;
+                  float   wsx = (windowX[wxi] * xs0) + (windowX[wxi + 1] * xs1);
+                  float   w_ = wsx * wsy;
+                  if (x_ < 0 || x_ >= int(w) || y_ < 0 || y_ >= int(h)) {
+                    y += (borderY * w_);
+                    u += (borderU * w_);
+                    v += (borderV * w_);
+                  }
+                  else {
+                    float   *ptr = &(inputImage[((y_ * int(w)) + x_) * 3]);
+                    y += (ptr[0] * w_);
+                    u += (ptr[1] * w_);
+                    v += (ptr[2] * w_);
+                  }
+                  wxi = wxi + 64;
+                }
+                wxi = wxi - 1024;
+                wyi = wyi + 64;
+              }
+            }
+            y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
+            u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
+            v = (v > -0.615f ? (v < 0.615f ? v : 0.615f) : -0.615f);
+            storePixelFunc(storePixelFuncUserData, xc, yc, y, u, v);
           }
-          y = (y > 0.0f ? (y < 1.0f ? y : 1.0f) : 0.0f);
-          u = (u > -0.436f ? (u < 0.436f ? u : 0.436f) : -0.436f);
-          v = (v > -0.615f ? (v < 0.615f ? v : 0.615f) : -0.615f);
-          storePixelFunc(storePixelFuncUserData, xc, yc, y, u, v);
         }
       }
       delete[] windowX;

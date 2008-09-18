@@ -54,6 +54,7 @@ namespace Plus4FLIConv {
     bool    (*progressPercentageCallback)(void *userData, int n);
     void    *progressPercentageUserData;
     int     prvProgressPercentage;
+    bool    interpolationEnabled;
     static void defaultStorePixelFunc(void *userData, int xc, int yc,
                                       float y, float u, float v);
     static bool isC64ImageFile(const char *fileName);
@@ -82,6 +83,10 @@ namespace Plus4FLIConv {
       scaleY = ys;
       offsetX = xo;
       offsetY = yo;
+    }
+    inline void setEnableInterpolation(bool isEnabled)
+    {
+      interpolationEnabled = isEnabled;
     }
     inline void setGammaCorrection(float gammaCorrection_, float monitorGamma_)
     {
