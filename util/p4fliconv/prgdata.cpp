@@ -404,7 +404,17 @@ namespace Plus4FLIConv {
                   c11Cnt++;
               }
             }
-            if (((c01Cnt - c00Cnt) + (c10Cnt - c11Cnt)) > 0) {
+            if (c_0 == c_1 && !mcFlag) {
+              // foreground and background color are the same, clear bitmaps
+              for (int yOffs = 0; yOffs < 8; yOffs++) {
+                for (int xOffs = 0; xOffs < 8; xOffs++) {
+                  int     xc_ = (xc * 8) + xOffs;
+                  int     yc_ = ((yc * 8) + yOffs) * 2;
+                  setPixel(xc_, yc_, true);
+                }
+              }
+            }
+            else if (((c01Cnt - c00Cnt) + (c10Cnt - c11Cnt)) > 0) {
               // swap colors
               int     tmp = l0_;
               l0_ = l1_;
@@ -450,7 +460,21 @@ namespace Plus4FLIConv {
           int&    c1_ = colorCodeTable[((yc | 2) * 40) + xc];
           int     c_0 = convertColorCode(l0_, c0_);
           int     c_1 = convertColorCode(l1_, c1_);
-          if ((mcFlag ? c_1 : c_0) > (mcFlag ? c_0 : c_1)) {
+          if (c_0 == c_1 && !mcFlag) {
+            // foreground and background color are the same, clear bitmaps
+            for (int yOffs = 0; yOffs < 4; yOffs++) {
+              if ((yOffs & 1) != 0 &&
+                  !(conversionType >= 2 && conversionType < 4)) {
+                continue;
+              }
+              for (int xOffs = 0; xOffs < 8; xOffs++) {
+                int     xc_ = (xc * 8) + xOffs;
+                int     yc_ = yc + yOffs;
+                setPixel(xc_, yc_, true);
+              }
+            }
+          }
+          else if ((mcFlag ? c_1 : c_0) > (mcFlag ? c_0 : c_1)) {
             // swap colors
             int     tmp = l0_;
             l0_ = l1_;
