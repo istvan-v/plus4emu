@@ -59,7 +59,7 @@ namespace Plus4FLIConv {
       throw Plus4Emu::Exception("invalid file name");
     if (convType < -1 || convType > 8)
       throw Plus4Emu::Exception("invalid conversion type");
-    if (outputFormat < 0 || outputFormat > 3)
+    if (outputFormat < 0 || outputFormat > 5)
       throw Plus4Emu::Exception("invalid output file format");
     if (compressionLevel < 0 || compressionLevel > 9)
       throw Plus4Emu::Exception("invalid compression level");
@@ -159,9 +159,13 @@ namespace Plus4FLIConv {
         if (compressionLevel > 0) {
           std::vector< unsigned char >  compressInBuf;
           std::vector< unsigned char >  compressOutBuf;
+          int     compressionType = 0;
+          if (outputFormat >= 4)
+            compressionType = outputFormat - 3;
+          else if (convType >= 4 && !rawMode)
+            compressionType = 2;
           compress_ =
-              Plus4Compress::createCompressor(((rawMode || convType < 4) ?
-                                               0 : 2), compressOutBuf);
+              Plus4Compress::createCompressor(compressionType, compressOutBuf);
           compress_->setCompressionLevel(compressionLevel);
           compress_->setProgressMessageCallback(progressMessageCallback,
                                                 progressCallbackUserData);
