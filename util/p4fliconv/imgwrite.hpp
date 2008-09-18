@@ -47,6 +47,8 @@ namespace Plus4FLIConv {
    *   1: "raw" Plus/4 PRG file, no viewer or decompressor is included
    *   2: PixelShop P4S format, interlaced FLI and X shift are not supported
    *   3: FED 1.5, 160x200 non-interlaced multicolor FLI with zero X shift only
+   *   4: same as format 1 (raw PRG), but uses compression type 1 instead of 0
+   *   5: same as format 1 (raw PRG), but uses compression type 2 instead of 0
    * If 'compressionLevel' is greater than zero (1 to 9), the output is
    * compressed; this parameter is ignored when writing PixelShop or FED
    * formats.
