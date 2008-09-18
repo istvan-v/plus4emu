@@ -175,7 +175,7 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 5);
+    limitValue(ditherMode, -1, 5);
     borderColor = (borderColor & 0x7F) | 0x80;
     limitValue(conversionQuality, 1, 30);
   }
@@ -331,6 +331,20 @@ namespace Plus4FLIConv {
 
   void P4FLI_MultiColorNoFLI::ditherLine(long yc)
   {
+    if (ditherMode < 0) {
+      // no dithering
+      for (long xc = 0L; xc < 160L; xc++) {
+        // find the palette color nearest the original pixel
+        float   y0 = resizedImage.y()[yc].getPixel(xc);
+        float   y0_ = float(std::pow(double(y0), 0.704));
+        float   u0 = resizedImage.u()[yc].getPixel(xc);
+        float   v0 = resizedImage.v()[yc].getPixel(xc);
+        ditheredImage[yc * 160L + xc] =
+            findNearestColor(y0_, u0, v0,
+                             errorPaletteY, errorPaletteU, errorPaletteV);
+      }
+      return;
+    }
     if (ditherMode < 2) {
       // ordered dithering
       float   luminanceTable[9];

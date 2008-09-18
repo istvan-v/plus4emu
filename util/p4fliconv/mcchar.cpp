@@ -130,11 +130,29 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 5);
+    limitValue(ditherMode, -1, 5);
   }
 
   void P4FLI_MultiColorChar::ditherLine(long yc)
   {
+    if (ditherMode < 0) {
+      // no dithering
+      for (long xc = 0L; xc < 128L; xc++) {
+        // find the palette color nearest the original pixel
+        float   y0_ = resizedImage[yc].getPixel(xc);
+        int     c0 = 0;
+        double  minErr = 1000000.0;
+        for (int i = 0; i < 4; i++) {
+          double  err = calculateErrorSqr(errorYTable[colorTable[i]], y0_);
+          if (err < minErr) {
+            c0 = i;
+            minErr = err;
+          }
+        }
+        ditheredImage[yc * 128L + xc] = c0;
+      }
+      return;
+    }
     if (ditherMode < 2) {
       // ordered dithering
       const int *ditherTable_ = &(ditherTable[0]);
@@ -284,75 +302,123 @@ namespace Plus4FLIConv {
       int     l1 = 0;
       int     l2 = 0;
       int     l3 = 0;
-      for (int yc = 0; yc < 64; yc++) {
-        for (int xc = 0; xc < 128; xc++) {
-          float   y = resizedImage[yc].getPixel(xc);
-          while (y < errorYTable[l0] && l0 > 0)
-            l0--;
-          while (y > errorYTable[l3] && l3 < 8)
-            l3++;
-        }
-      }
-      double  bestErr = 1000000.0;
-      int     bestL1 = (l0 < l3 ? (l0 + 1) : l0);
-      int     bestL2 = (bestL1 < l3 ? (bestL1 + 1) : bestL1);
-      for (l1 = l0 + 1; l1 < l3; l1++) {
-        for (l2 = l1 + 1; l2 < l3; l2++) {
-          float   yTable_1[4];
-          float   yTable_2[13];
-          yTable_1[0] = errorYTable[l0];
-          yTable_1[1] = errorYTable[l1];
-          yTable_1[2] = errorYTable[l2];
-          yTable_1[3] = errorYTable[l3];
-          for (int i = 0; i < 12; i++) {
-            float   f = float(i & 3) * 0.25f;
-            yTable_2[i] = yTable_1[i >> 2]
-                          + ((yTable_1[(i >> 2) + 1] - yTable_1[i >> 2]) * f);
-          }
-          yTable_2[12] = yTable_1[3];
-          double  err = 0.0;
-          for (int yc = 0; yc < 64; yc++) {
-            for (int xc = 0; xc < 128; xc++) {
-              float   y = resizedImage[yc].getPixel(xc);
-              double  minErr2 = 1000000.0;
-              for (int i = 0; i < 4; i++) {
-                double  err2 = calculateErrorSqr(yTable_1[i], y);
-                if (err2 < minErr2)
-                  minErr2 = err2;
-              }
-              err += minErr2;
-            }
-          }
-          for (int yc = 0; yc < 64; yc += 2) {
-            for (int xc = 0; xc < 128; xc += 2) {
-              float   y = resizedImage[yc].getPixel(xc);
-              y = y + resizedImage[yc].getPixel(xc + 1);
-              y = y + resizedImage[yc + 1].getPixel(xc);
-              y = y + resizedImage[yc + 1].getPixel(xc + 1);
-              y = y * 0.25f;
-              double  minErr2 = 1000000.0;
-              for (int i = 0; i < 13; i++) {
-                double  err2 = calculateErrorSqr(yTable_2[i], y);
-                if (err2 < minErr2)
-                  minErr2 = err2;
-              }
-              err += (minErr2 * 2.0);
-            }
-          }
-          if (err < bestErr) {
-            bestL1 = l1;
-            bestL2 = l2;
-            bestErr = err;
-          }
-        }
-      }
-      l1 = bestL1;
-      l2 = bestL2;
       if (luminance1BitMode) {
         l0 = 0;
         l1 = 8;
         l2 = 8;
         l3 = 8;
+      }
+      else if (ditherMode >= 0) {
+        // dithering enabled
+        for (int yc = 0; yc < 64; yc++) {
+          for (int xc = 0; xc < 128; xc++) {
+            float   y = resizedImage[yc].getPixel(xc);
+            while (y < errorYTable[l0] && l0 > 0)
+              l0--;
+            while (y > errorYTable[l3] && l3 < 8)
+              l3++;
+          }
+        }
+        double  bestErr = 1000000.0;
+        int     bestL1 = (l0 < l3 ? (l0 + 1) : l0);
+        int     bestL2 = (bestL1 < l3 ? (bestL1 + 1) : bestL1);
+        for (l1 = l0 + 1; l1 < l3; l1++) {
+          for (l2 = l1 + 1; l2 < l3; l2++) {
+            float   yTable_1[4];
+            float   yTable_2[13];
+            yTable_1[0] = errorYTable[l0];
+            yTable_1[1] = errorYTable[l1];
+            yTable_1[2] = errorYTable[l2];
+            yTable_1[3] = errorYTable[l3];
+            for (int i = 0; i < 12; i++) {
+              float   f = float(i & 3) * 0.25f;
+              yTable_2[i] = yTable_1[i >> 2]
+                            + ((yTable_1[(i >> 2) + 1] - yTable_1[i >> 2]) * f);
+            }
+            yTable_2[12] = yTable_1[3];
+            double  err = 0.0;
+            for (int yc = 0; yc < 64; yc++) {
+              for (int xc = 0; xc < 128; xc++) {
+                float   y = resizedImage[yc].getPixel(xc);
+                double  minErr2 = 1000000.0;
+                for (int i = 0; i < 4; i++) {
+                  double  err2 = calculateErrorSqr(yTable_1[i], y);
+                  if (err2 < minErr2)
+                    minErr2 = err2;
+                }
+                err += minErr2;
+              }
+            }
+            for (int yc = 0; yc < 64; yc += 2) {
+              for (int xc = 0; xc < 128; xc += 2) {
+                float   y = resizedImage[yc].getPixel(xc);
+                y = y + resizedImage[yc].getPixel(xc + 1);
+                y = y + resizedImage[yc + 1].getPixel(xc);
+                y = y + resizedImage[yc + 1].getPixel(xc + 1);
+                y = y * 0.25f;
+                double  minErr2 = 1000000.0;
+                for (int i = 0; i < 13; i++) {
+                  double  err2 = calculateErrorSqr(yTable_2[i], y);
+                  if (err2 < minErr2)
+                    minErr2 = err2;
+                }
+                err += (minErr2 * 2.0);
+              }
+            }
+            if (err < bestErr) {
+              bestL1 = l1;
+              bestL2 = l2;
+              bestErr = err;
+            }
+          }
+        }
+        l1 = bestL1;
+        l2 = bestL2;
+      }
+      else {
+        // dithering disabled
+        double  bestErr = 1000000.0;
+        int     bestL0 = 0;
+        int     bestL1 = 0;
+        int     bestL2 = 0;
+        int     bestL3 = 0;
+        float   yTable_1[4];
+        for (l0 = 0; l0 <= 5; l0++) {
+          yTable_1[0] = errorYTable[l0];
+          for (l1 = l0 + 1; l1 <= 6; l1++) {
+            yTable_1[1] = errorYTable[l1];
+            for (l2 = l1 + 1; l2 <= 7; l2++) {
+              yTable_1[2] = errorYTable[l2];
+              for (l3 = l2 + 1; l3 <= 8; l3++) {
+                yTable_1[3] = errorYTable[l3];
+                double  err = 0.0;
+                for (int yc = 0; yc < 64; yc++) {
+                  for (int xc = 0; xc < 128; xc++) {
+                    float   y = resizedImage[yc].getPixel(xc);
+                    double  minErr2 = 1000000.0;
+                    for (int i = 0; i < 4; i++) {
+                      double  err2 = calculateErrorSqr(yTable_1[i], y);
+                      if (err2 < minErr2)
+                        minErr2 = err2;
+                    }
+                    err += minErr2;
+                  }
+                }
+                if (err < bestErr) {
+                  bestL0 = l0;
+                  bestL1 = l1;
+                  bestL2 = l2;
+                  bestL3 = l3;
+                  bestErr = err;
+                }
+              }
+            }
+          }
+        }
+        l0 = bestL0;
+        l1 = bestL1;
+        l2 = bestL2;
+        l3 = bestL3;
       }
       colorTable[0] = l0;
       colorTable[1] = l1;

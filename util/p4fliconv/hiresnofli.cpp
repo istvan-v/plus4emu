@@ -214,8 +214,10 @@ namespace Plus4FLIConv {
     limitValue(monitorGamma, 1.0, 4.0);
     limitValue(ditherLimit, 0.0, 2.0);
     limitValue(ditherScale, 0.0, 1.0);
-    limitValue(ditherMode, 0, 5);
+    limitValue(ditherMode, -1, 5);
     limitValue(luminanceSearchMode, 0, 6);
+    if (ditherMode < 0)
+      disablePAL = true;
     switch (luminanceSearchMode) {
     case 2:
       limitValue(luminanceSearchModeParam, 1.0, 16.0);
@@ -228,7 +230,7 @@ namespace Plus4FLIConv {
       break;
     case 6:
       limitValue(luminanceSearchModeParam, 1.0, 16.0);
-      if (ditherMode < 2) {
+      if (ditherMode >= 0 && ditherMode < 2) {
         throw Plus4Emu::Exception("-searchmode 6 does not support "
                                   "ordered dither types");
       }
@@ -258,7 +260,7 @@ namespace Plus4FLIConv {
     float   pixelValue0_ = errorYTable[l0];
     float   pixelValue1_ = errorYTable[l1];
     bool    bitValue = false;
-    if (ditherMode < 2 && pixelValue1 > pixelValue0) {
+    if (ditherMode >= 0 && ditherMode < 2 && pixelValue1 > pixelValue0) {
       // ordered dithering
       float   tmp = pixelValueOriginal;
       if (tmp < pixelValue0)
@@ -581,11 +583,13 @@ namespace Plus4FLIConv {
             }
             double  totalError = 0.0;
             // 1x1 downsample
-            double  errScaleL = 0.0;
-            double  errScaleC = 0.0;
-            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 1,
-                                            luminanceSearchModeParam,
-                                            colorErrorScale);
+            double  errScaleL = 1.0;
+            double  errScaleC = colorErrorScale;
+            if (ditherMode >= 0) {
+              getDownsampledErrorScaleFactors(errScaleL, errScaleC, 1,
+                                              luminanceSearchModeParam,
+                                              colorErrorScale);
+            }
             for (int j = 0; j < 64; j++) {
               double  minErr2 = 1000000.0;
               float   y = tmpBufY_1x1[j];
@@ -602,71 +606,73 @@ namespace Plus4FLIConv {
               }
               totalError += minErr2;
             }
-            if (totalError > (minErr * 1.000001))
-              continue;
-            // 2x2 downsample
-            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 2,
-                                            luminanceSearchModeParam,
-                                            colorErrorScale);
-            for (int j = 0; j < 16; j++) {
-              double  minErr2 = 1000000.0;
-              float   y = tmpBufY_2x2[j];
-              float   u = tmpBufU_2x2[j];
-              float   v = tmpBufV_2x2[j];
-              for (int k = 0; k < 5; k++) {
-                double  err =
-                    calculateYUVErrorSqr(tmpPaletteY[k],
-                                         tmpPaletteU[k],
-                                         tmpPaletteV[k],
-                                         y, u, v, errScaleL, errScaleC);
-                if (err < minErr2)
-                  minErr2 = err;
+            if (ditherMode >= 0) {
+              if (totalError > (minErr * 1.000001))
+                continue;
+              // 2x2 downsample
+              getDownsampledErrorScaleFactors(errScaleL, errScaleC, 2,
+                                              luminanceSearchModeParam,
+                                              colorErrorScale);
+              for (int j = 0; j < 16; j++) {
+                double  minErr2 = 1000000.0;
+                float   y = tmpBufY_2x2[j];
+                float   u = tmpBufU_2x2[j];
+                float   v = tmpBufV_2x2[j];
+                for (int k = 0; k < 5; k++) {
+                  double  err =
+                      calculateYUVErrorSqr(tmpPaletteY[k],
+                                           tmpPaletteU[k],
+                                           tmpPaletteV[k],
+                                           y, u, v, errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+                totalError += minErr2;
               }
-              totalError += minErr2;
-            }
-            if (totalError > (minErr * 1.000001))
-              continue;
-            // 4x4 downsample
-            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 4,
-                                            luminanceSearchModeParam,
-                                            colorErrorScale);
-            for (int j = 0; j < 4; j++) {
-              double  minErr2 = 1000000.0;
-              float   y = tmpBufY_4x4[j];
-              float   u = tmpBufU_4x4[j];
-              float   v = tmpBufV_4x4[j];
-              for (int k = 0; k < 17; k++) {
-                double  err =
-                    calculateYUVErrorSqr(tmpPaletteY[k],
-                                         tmpPaletteU[k],
-                                         tmpPaletteV[k],
-                                         y, u, v, errScaleL, errScaleC);
-                if (err < minErr2)
-                  minErr2 = err;
+              if (totalError > (minErr * 1.000001))
+                continue;
+              // 4x4 downsample
+              getDownsampledErrorScaleFactors(errScaleL, errScaleC, 4,
+                                              luminanceSearchModeParam,
+                                              colorErrorScale);
+              for (int j = 0; j < 4; j++) {
+                double  minErr2 = 1000000.0;
+                float   y = tmpBufY_4x4[j];
+                float   u = tmpBufU_4x4[j];
+                float   v = tmpBufV_4x4[j];
+                for (int k = 0; k < 17; k++) {
+                  double  err =
+                      calculateYUVErrorSqr(tmpPaletteY[k],
+                                           tmpPaletteU[k],
+                                           tmpPaletteV[k],
+                                           y, u, v, errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+                totalError += minErr2;
               }
-              totalError += minErr2;
-            }
-            if (totalError > (minErr * 1.000001))
-              continue;
-            // 8x8 downsample
-            getDownsampledErrorScaleFactors(errScaleL, errScaleC, 8,
-                                            luminanceSearchModeParam,
-                                            colorErrorScale);
-            for (int j = 0; j < 1; j++) {
-              double  minErr2 = 1000000.0;
-              float   y = tmpBufY_8x8[j];
-              float   u = tmpBufU_8x8[j];
-              float   v = tmpBufV_8x8[j];
-              for (int k = 0; k < 65; k++) {
-                double  err =
-                    calculateYUVErrorSqr(tmpPaletteY[k],
-                                         tmpPaletteU[k],
-                                         tmpPaletteV[k],
-                                         y, u, v, errScaleL, errScaleC);
-                if (err < minErr2)
-                  minErr2 = err;
+              if (totalError > (minErr * 1.000001))
+                continue;
+              // 8x8 downsample
+              getDownsampledErrorScaleFactors(errScaleL, errScaleC, 8,
+                                              luminanceSearchModeParam,
+                                              colorErrorScale);
+              for (int j = 0; j < 1; j++) {
+                double  minErr2 = 1000000.0;
+                float   y = tmpBufY_8x8[j];
+                float   u = tmpBufU_8x8[j];
+                float   v = tmpBufV_8x8[j];
+                for (int k = 0; k < 65; k++) {
+                  double  err =
+                      calculateYUVErrorSqr(tmpPaletteY[k],
+                                           tmpPaletteU[k],
+                                           tmpPaletteV[k],
+                                           y, u, v, errScaleL, errScaleC);
+                  if (err < minErr2)
+                    minErr2 = err;
+                }
+                totalError += minErr2;
               }
-              totalError += minErr2;
             }
             if (totalError < (minErr * 0.999999)) {
               bestColor = colorValue;
@@ -744,7 +750,7 @@ namespace Plus4FLIConv {
   {
     // error diffusion dithering
     for (long xc = 0L; xc < 320L; xc++) {
-      if (yc & 1L)
+      if ((yc & 1L) != 0L && ditherMode >= 0)
         xc = 319L - xc;
       int     color0 = (prgData.l0(xc, (yc & (~(long(7)))) << 1) << 4)
                        | prgData.c0(xc, (yc & (~(long(7)))) << 1);
@@ -830,6 +836,8 @@ namespace Plus4FLIConv {
       prgData.setPixel(xc, yc << 1,
                        ((calculateError(err, err0) < ditherLimit ? c : c0)
                         != color0));
+      if (ditherMode < 0)
+        continue;
       y = y0 + ((y - y0) * float(ditherScale));
       u = u0 + ((u - u0) * float(ditherScale));
       v = v0 + ((v - v0) * float(ditherScale));
@@ -1013,7 +1021,8 @@ namespace Plus4FLIConv {
       disablePAL = !(bool(config["enablePAL"]));
       luminance1BitMode = config["luminance1BitMode"];
       checkParameters();
-      colorErrorScale = colorErrorScale * (disablePAL ? 0.707107 : 0.5);
+      if (luminanceSearchMode == 6 && ditherMode >= 0)
+        colorErrorScale = colorErrorScale * (disablePAL ? 0.707107 : 0.5);
       createYTable();
       createUVTables();
       float   borderY = 0.0f;
