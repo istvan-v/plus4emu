@@ -260,6 +260,10 @@ namespace Plus4Compress {
         seqDiff = 0x00;
       }
     };
+    struct SplitOptimizationBlock {
+      size_t  startPos;
+      size_t  nBytes;
+    };
     // --------
     CompressionParameters config;
     EncodeTable   lengthEncodeTable;

@@ -124,6 +124,10 @@ namespace Plus4Compress {
         nBits = 9;
       }
     };
+    struct SplitOptimizationBlock {
+      size_t  startPos;
+      size_t  nBytes;
+    };
     // --------
     Compressor_M1::CompressionParameters  config;
     Compressor_M1::EncodeTable  lengthEncodeTable;

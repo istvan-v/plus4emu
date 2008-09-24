@@ -267,14 +267,8 @@ namespace Plus4Compress {
     bool    doneFlag = false;
     do {
       doneFlag = true;
-      for (size_t i = nSlots; i > 0; ) {
-        i--;
-        int     bestOffsets[4];
-        bestOffsets[0] = 0;
-        bestOffsets[1] = 0;
-        bestOffsets[2] = 0;
-        bestOffsets[3] = 0;
-        size_t  firstSlot = (i > 3 ? (i - 3) : 0);
+      for (size_t i = 0; (i + 1) < nSlots; i++) {
+        size_t  firstSlot = i;
         size_t  baseSize = 0;
         unsigned int  firstSymbol = 0U;
         if (firstSlot > 0) {
@@ -290,42 +284,74 @@ namespace Plus4Compress {
           if (size_t(firstSymbol) >= nSymbolsUsed)
             continue;
         }
-        for (int offs3 = (i >= 3 ? -2 : 2); offs3 <= 2; offs3++) {
-          if (i >= 3) {
-            int     tmp = int(bestEncodeTable[i - 3]) + offs3;
+        for (size_t j = i + 1; j < nSlots; j++) {
+          if (bestEncodeTable[i] == bestEncodeTable[j])
+            continue;
+          slotBitsTable[i] = bestEncodeTable[j];
+          slotBitsTable[j] = bestEncodeTable[i];
+          size_t  newSize =
+              calculateEncodedSize(firstSlot, firstSymbol, baseSize);
+          if (newSize < bestSize) {
+            bestSize = newSize;
+            doneFlag = false;
+            bestEncodeTable[i] = slotBitsTable[i];
+            bestEncodeTable[j] = slotBitsTable[j];
+          }
+          else {
+            slotBitsTable[i] = bestEncodeTable[i];
+            slotBitsTable[j] = bestEncodeTable[j];
+          }
+        }
+      }
+      for (size_t i = nSlots; i > 0; ) {
+        i--;
+        int     bestOffsets[3];
+        bestOffsets[0] = 0;
+        bestOffsets[1] = 0;
+        bestOffsets[2] = 0;
+        size_t  firstSlot = (i > 2 ? (i - 2) : 0);
+        size_t  baseSize = 0;
+        unsigned int  firstSymbol = 0U;
+        if (firstSlot > 0) {
+          for (size_t j = 0; j < firstSlot; j++) {
+            size_t  symbolCnt = size_t(symbolCntTable[firstSymbol]);
+            firstSymbol = firstSymbol + (1U << (unsigned int) slotBitsTable[j]);
+            size_t  symbolSize = slotPrefixSizeTable[j] + slotBitsTable[j];
+            if (size_t(firstSymbol) >= nSymbolsUsed)
+              break;
+            baseSize += ((size_t(symbolCntTable[firstSymbol]) - symbolCnt)
+                         * symbolSize);
+          }
+          if (size_t(firstSymbol) >= nSymbolsUsed)
+            continue;
+        }
+        for (int offs2 = (i >= 2 ? -1 : 1); offs2 <= 1; offs2++) {
+          if (i >= 2) {
+            int     tmp = int(bestEncodeTable[i - 2]) + offs2;
             if (tmp < 0 || tmp > 15)
               continue;
-            slotBitsTable[i - 3] = size_t(tmp);
+            slotBitsTable[i - 2] = size_t(tmp);
           }
-          for (int offs2 = (i >= 2 ? -2 : 2); offs2 <= 2; offs2++) {
-            if (i >= 2) {
-              int     tmp = int(bestEncodeTable[i - 2]) + offs2;
+          for (int offs1 = (i >= 1 ? -1 : 1); offs1 <= 1; offs1++) {
+            if (i >= 1) {
+              int     tmp = int(bestEncodeTable[i - 1]) + offs1;
               if (tmp < 0 || tmp > 15)
                 continue;
-              slotBitsTable[i - 2] = size_t(tmp);
+              slotBitsTable[i - 1] = size_t(tmp);
             }
-            for (int offs1 = (i >= 1 ? -2 : 2); offs1 <= 2; offs1++) {
-              if (i >= 1) {
-                int     tmp = int(bestEncodeTable[i - 1]) + offs1;
-                if (tmp < 0 || tmp > 15)
-                  continue;
-                slotBitsTable[i - 1] = size_t(tmp);
-              }
-              for (int offs0 = -2; offs0 <= 2; offs0++) {
-                int     tmp = int(bestEncodeTable[i]) + offs0;
-                if (tmp < 0 || tmp > 15)
-                  continue;
-                slotBitsTable[i] = size_t(tmp);
-                size_t  newSize =
-                    calculateEncodedSize(firstSlot, firstSymbol, baseSize);
-                if (newSize < bestSize) {
-                  bestSize = newSize;
-                  doneFlag = false;
-                  bestOffsets[0] = offs0;
-                  bestOffsets[1] = offs1;
-                  bestOffsets[2] = offs2;
-                  bestOffsets[3] = offs3;
-                }
+            for (int offs0 = -1; offs0 <= 1; offs0++) {
+              int     tmp = int(bestEncodeTable[i]) + offs0;
+              if (tmp < 0 || tmp > 15)
+                continue;
+              slotBitsTable[i] = size_t(tmp);
+              size_t  newSize =
+                  calculateEncodedSize(firstSlot, firstSymbol, baseSize);
+              if (newSize < bestSize) {
+                bestSize = newSize;
+                doneFlag = false;
+                bestOffsets[0] = offs0;
+                bestOffsets[1] = offs1;
+                bestOffsets[2] = offs2;
               }
             }
           }
@@ -343,11 +369,6 @@ namespace Plus4Compress {
           slotBitsTable[i - 2] = size_t(tmp);
           bestEncodeTable[i - 2] = size_t(tmp);
         }
-        if (i >= 3) {
-          tmp = int(bestEncodeTable[i - 3]) + bestOffsets[3];
-          slotBitsTable[i - 3] = size_t(tmp);
-          bestEncodeTable[i - 3] = size_t(tmp);
-        }
       }
     } while (!doneFlag);
     for (size_t i = nSlots; i-- > 0; ) {
@@ -355,9 +376,13 @@ namespace Plus4Compress {
         if (slotBitsTable[i] < 1)
           break;
         slotBitsTable[i] = slotBitsTable[i] - 1;
-        if (calculateEncodedSize() != bestSize) {
+        size_t  newSize = calculateEncodedSize();
+        if (newSize > bestSize) {
           slotBitsTable[i] = slotBitsTable[i] + 1;
           break;
+        }
+        else {
+          bestSize = newSize;
         }
       }
     }
@@ -389,11 +414,16 @@ namespace Plus4Compress {
       }
       minSlotSizeTable[i] = uint8_t(j);
     }
-    for (size_t slotNum = nSlots; slotNum-- > 0; ) {
+    for (size_t slotNum = (nSlots < nSymbolsUsed ? nSlots : nSymbolsUsed);
+         slotNum-- > 0; ) {
       size_t  maxSlotSize = 0;
       while ((size_t(1) << maxSlotSize) < nSymbolsUsed && maxSlotSize < 15)
         maxSlotSize++;
       size_t  maxPos = nSymbolsUsed - ((size_t(1) << maxSlotSize) >> 1);
+      while (slotNum >= maxPos) {
+        maxSlotSize--;
+        maxPos = nSymbolsUsed - ((nSymbolsUsed - maxPos) >> 1);
+      }
       size_t  endPos = (slotNum > 0 ? nSymbolsUsed : 1);
       for (size_t i = slotNum; true; i++) {
         if (i >= maxPos) {
@@ -1409,14 +1439,6 @@ namespace Plus4Compress {
     compressData(tmpBuf, 0x009DU, isLastBlock, false);
   }
 
-  struct SplitOptimizationBlock {
-    std::vector< unsigned int > buf;
-    size_t  startPos;
-    size_t  nBytes;
-    size_t  compressedSize;
-    bool    isLastBlock;
-  };
-
   bool Compressor_M1::compressData(const std::vector< unsigned char >& inBuf,
                                    unsigned int startAddr, bool isLastBlock,
                                    bool enableProgressDisplay)
@@ -1438,132 +1460,134 @@ namespace Plus4Compress {
       searchTable = new SearchTable(inBuf);
       // split large files to improve statistical compression
       std::list< SplitOptimizationBlock >   splitPositions;
-      std::map< uint64_t, bool >    splitOptimizationCache;
-      size_t  prvPos = 0;
+      std::map< uint64_t, size_t >          splitOptimizationCache;
       size_t  splitDepth = config.splitOptimizationDepth - 1;
       size_t  splitCnt = size_t(1) << splitDepth;
       if (splitCnt > inBuf.size())
         splitCnt = inBuf.size();
       progressCnt = 0;
-      progressMax = config.optimizeIterations
-                    * ((splitCnt * 2)
-                       + size_t((int(splitDepth) * (int(splitDepth) - 1)) / 2)
-                       - 1);
+      progressMax = splitCnt
+                    + (splitCnt > 1 ? (splitCnt - 1) : 0)
+                    + (splitCnt > 2 ? (splitCnt - 2) : 0)
+                    + (splitCnt > 3 ? (splitCnt - 3) : 0);
+      progressMax = progressMax * config.optimizeIterations;
       progressMax =
-          progressMax * ((splitDepth / 3) + 2) / ((splitDepth / 3) + 1);
-      for (size_t i = 0; i <= splitCnt; i++) {
-        size_t  tmp = inBuf.size() * i / splitCnt;
-        if (tmp > prvPos) {
-          SplitOptimizationBlock  tmpBlock;
-          tmpBlock.startPos = prvPos;
-          tmpBlock.nBytes = tmp - prvPos;
-          tmpBlock.compressedSize = 0;
-          tmpBlock.isLastBlock = (i == splitCnt) && isLastBlock;
-          tmpBlock.buf.resize(0);
-          if (!compressData(tmpBlock.buf, inBuf, startAddr,
-                            tmpBlock.isLastBlock,
-                            tmpBlock.startPos, tmpBlock.nBytes, true)) {
-            delete searchTable;
-            searchTable = (SearchTable *) 0;
-            if (progressDisplayEnabled)
-              progressMessage("");
-            return false;
-          }
-          // calculate compressed size
-          for (size_t j = 0; j < tmpBlock.buf.size(); j++) {
-            tmpBlock.compressedSize +=
-                size_t((tmpBlock.buf[j] & 0x7F000000U) >> 24);
-          }
-          splitPositions.push_back(tmpBlock);
-          prvPos = tmp;
-        }
+          progressMax * ((splitDepth / 2) + 2) / ((splitDepth / 2) + 1);
+      // create initial block list
+      for (size_t i = 0; i < splitCnt; i++) {
+        SplitOptimizationBlock  tmpBlock;
+        tmpBlock.startPos = i * inBuf.size() / splitCnt;
+        tmpBlock.nBytes =
+            ((i + 1) * inBuf.size() / splitCnt) - tmpBlock.startPos;
+        splitPositions.push_back(tmpBlock);
       }
       while (true) {
-        bool    mergeFlag = false;
-        std::list< SplitOptimizationBlock >::iterator i_0 =
+        size_t  bestMergePos = 0;
+        long    bestMergeBits = 0x7FFFFFFFL;
+        // find the pair of blocks that reduce the total compressed size
+        // the most when merged
+        std::list< SplitOptimizationBlock >::iterator curBlock =
             splitPositions.begin();
-        while (i_0 != splitPositions.end()) {
-          std::list< SplitOptimizationBlock >::iterator i_1 = i_0;
-          i_1++;
-          if (i_1 == splitPositions.end())
+        while (curBlock != splitPositions.end()) {
+          std::list< SplitOptimizationBlock >::iterator nxtBlock = curBlock;
+          nxtBlock++;
+          if (nxtBlock == splitPositions.end())
             break;
-          uint64_t  cacheKey = uint64_t((*i_0).startPos)
-                               | (uint64_t((*i_1).startPos) << 20)
-                               | (uint64_t((*i_1).nBytes) << 40);
-          if (splitOptimizationCache.find(cacheKey)
-              != splitOptimizationCache.end()) {
-            // if this pair of blocks was already tested earlier,
-            // skip testing again
-            i_0 = i_1;
-            continue;
+          size_t  nBitsSplit = 0;
+          size_t  nBitsMerged = 0;
+          for (size_t i = 0; i < 3; i++) {
+            // i = 0: merged block, i = 1: first block, i = 2: second block
+            size_t  startPos = 0;
+            size_t  endPos = 0;
+            switch (i) {
+            case 0:
+              startPos = (*curBlock).startPos;
+              endPos = startPos + (*curBlock).nBytes + (*nxtBlock).nBytes;
+              break;
+            case 1:
+              startPos = (*curBlock).startPos;
+              endPos = startPos + (*curBlock).nBytes;
+              break;
+            case 2:
+              startPos = (*nxtBlock).startPos;
+              endPos = startPos + (*nxtBlock).nBytes;
+              break;
+            }
+            uint64_t  cacheKey = (uint64_t(startPos) << 32) | uint64_t(endPos);
+            if (splitOptimizationCache.find(cacheKey)
+                == splitOptimizationCache.end()) {
+              // if this block is not in the cache yet, compress it,
+              // and store the compressed size in the cache
+              std::vector< unsigned int > tmpBuf;
+              tmpBuf.resize(0);
+              if (!compressData(tmpBuf, inBuf, startAddr, false,
+                                startPos, endPos - startPos, true)) {
+                delete searchTable;
+                searchTable = (SearchTable *) 0;
+                if (progressDisplayEnabled)
+                  progressMessage("");
+                return false;
+              }
+              // calculate compressed size
+              size_t  nBits = 0;
+              for (size_t j = 0; j < tmpBuf.size(); j++)
+                nBits += size_t((tmpBuf[j] & 0x7F000000U) >> 24);
+              splitOptimizationCache[cacheKey] = nBits;
+            }
+            size_t  nBits = splitOptimizationCache[cacheKey];
+            switch (i) {
+            case 0:
+              nBitsMerged = nBits;
+              break;
+            default:
+              nBitsSplit += nBits;
+              break;
+            }
           }
-          SplitOptimizationBlock  tmpBlock;
-          tmpBlock.startPos = (*i_0).startPos;
-          tmpBlock.nBytes = (*i_0).nBytes + (*i_1).nBytes;
-          tmpBlock.compressedSize = 0;
-          tmpBlock.isLastBlock = (*i_1).isLastBlock;
-          tmpBlock.buf.resize(0);
-          if (!compressData(tmpBlock.buf, inBuf, startAddr,
-                            tmpBlock.isLastBlock,
-                            tmpBlock.startPos, tmpBlock.nBytes, true)) {
-            delete searchTable;
-            searchTable = (SearchTable *) 0;
-            if (progressDisplayEnabled)
-              progressMessage("");
-            return false;
+          // calculate size change when merging blocks
+          long    sizeDiff = long(nBitsMerged) - long(nBitsSplit);
+          if (sizeDiff < bestMergeBits) {
+            bestMergePos = (*curBlock).startPos;
+            bestMergeBits = sizeDiff;
           }
-          // calculate compressed size after merging blocks:
-          for (size_t j = 0; j < tmpBlock.buf.size(); j++) {
-            tmpBlock.compressedSize +=
-                size_t((tmpBlock.buf[j] & 0x7F000000U) >> 24);
-          }
-          if (tmpBlock.compressedSize
-              <= ((*i_0).compressedSize + (*i_1).compressedSize)) {
-            // splitting does not reduce size, so use merged block
-            (*i_0) = tmpBlock;
-            i_0 = splitPositions.erase(i_1);
-            mergeFlag = true;
-          }
-          else {
-            i_0 = i_1;
-            // blocks not merged: remember block positions and sizes, so that
-            // the same pair of blocks will not need to be tested again
-            splitOptimizationCache[cacheKey] = true;
-          }
+          curBlock++;
         }
-        if (!mergeFlag)
+        if (bestMergeBits > 0L)         // no more blocks can be merged
           break;
+        // merge the best pair of blocks and continue
+        curBlock = splitPositions.begin();
+        while ((*curBlock).startPos != bestMergePos)
+          curBlock++;
+        std::list< SplitOptimizationBlock >::iterator nxtBlock = curBlock;
+        nxtBlock++;
+        (*curBlock).nBytes = (*curBlock).nBytes + (*nxtBlock).nBytes;
+        splitPositions.erase(nxtBlock);
       }
-      {
-        // compress all blocks again with full optimization
-        progressMax = config.optimizeIterations * splitPositions.size();
-        progressCnt = progressMax * ((splitDepth / 3) + 1);
-        progressMax = progressMax + progressCnt;
-        std::list< SplitOptimizationBlock >::iterator i_ =
-            splitPositions.begin();
-        while (i_ != splitPositions.end()) {
-          (*i_).buf.resize(0);
-          if (!compressData((*i_).buf, inBuf, startAddr, (*i_).isLastBlock,
-                            (*i_).startPos, (*i_).nBytes, false)) {
-            delete searchTable;
-            searchTable = (SearchTable *) 0;
-            if (progressDisplayEnabled)
-              progressMessage("");
-            return false;
-          }
-          i_++;
+      // compress all blocks again with full optimization
+      std::vector< unsigned int >   outBufTmp;
+      progressMax = config.optimizeIterations * splitPositions.size();
+      progressCnt = progressMax * ((splitDepth / 2) + 1);
+      progressMax = progressMax + progressCnt;
+      outBufTmp.resize(0);
+      std::list< SplitOptimizationBlock >::iterator i_ = splitPositions.begin();
+      while (i_ != splitPositions.end()) {
+        std::vector< unsigned int > tmpBuf;
+        tmpBuf.resize(0);
+        if (!compressData(tmpBuf, inBuf, startAddr,
+                          (((*i_).startPos + (*i_).nBytes) >= inBuf.size()),
+                          (*i_).startPos, (*i_).nBytes, false)) {
+          delete searchTable;
+          searchTable = (SearchTable *) 0;
+          if (progressDisplayEnabled)
+            progressMessage("");
+          return false;
         }
+        for (size_t i = 0; i < tmpBuf.size(); i++)
+          outBufTmp.push_back(tmpBuf[i]);
+        i_++;
       }
       delete searchTable;
       searchTable = (SearchTable *) 0;
-      std::vector< unsigned int >   outBufTmp;
-      std::list< SplitOptimizationBlock >::iterator i_ = splitPositions.begin();
-      outBufTmp.resize(0);
-      while (i_ != splitPositions.end()) {
-        for (size_t i = 0; i < (*i_).buf.size(); i++)
-          outBufTmp.push_back((*i_).buf[i]);
-        i_ = splitPositions.erase(i_);
-      }
       if (progressDisplayEnabled) {
         setProgressPercentage(100);
         progressMessage("");

@@ -219,7 +219,7 @@ namespace Plus4Compress {
       crcValue = ((crcValue & 0x7F) << 1) | ((crcValue & 0x80) >> 7);
       crcValue = (crcValue + 0xAC) & 0xFF;
       if (crcValue == 0x80) {
-        if (i < 64 || (i >= 416 && i < 832))
+        if (i < 64 || (i >= 384 && i < 800))
           startPosTable[i] = true;
       }
     }

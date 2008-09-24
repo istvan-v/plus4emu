@@ -1122,14 +1122,6 @@ namespace Plus4Compress {
     compressData(tmpBuf, 0x09DDU, isLastBlock, false);
   }
 
-  struct SplitOptimizationBlock {
-    std::vector< unsigned int > buf;
-    size_t  startPos;
-    size_t  nBytes;
-    size_t  compressedSize;
-    bool    isLastBlock;
-  };
-
   bool Compressor_M0::compressData(const std::vector< unsigned char >& inBuf,
                                    unsigned int startAddr, bool isLastBlock,
                                    bool enableProgressDisplay)

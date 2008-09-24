@@ -199,6 +199,13 @@ namespace Plus4Compress {
         seqDiff = 0x00;
       }
     };
+    struct SplitOptimizationBlock {
+      std::vector< unsigned int > buf;
+      size_t  startPos;
+      size_t  nBytes;
+      size_t  compressedSize;
+      bool    isLastBlock;
+    };
     // --------
     CompressionParameters config;
     unsigned short  *lengthCodeTable;
