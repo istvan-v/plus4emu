@@ -1,6 +1,10 @@
 Changes in version 1.2.9.1
 --------------------------
 
+  * some improvements and optimizations in the p4fliconv and compress
+    utilities
+  * a few minor bugs have been fixed
+
 Changes in version 1.2.9
 ------------------------
 

@@ -7,8 +7,8 @@ linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
 disableLua = 0
 enableGLShaders = 1
-enableDebug = 1
-buildRelease = 0
+enableDebug = 0
+buildRelease = 1
 
 compilerFlags = ''
 if buildRelease:
@@ -329,6 +329,20 @@ residLib = residLibEnvironment.StaticLibrary('resid', residLibSources)
 
 # -----------------------------------------------------------------------------
 
+def fixDefFile(env, target, source):
+    f = open('plus4lib/plus4emu.def', 'rb')
+    s = []
+    for tmp in f:
+        s = s + [tmp]
+    f.close()
+    if s.__len__() > 0:
+        if s[0][:7] != 'LIBRARY':
+            f = open('plus4lib/plus4emu.def', 'wb')
+            f.write('LIBRARY plus4emu.dll\r\n')
+            for tmp in s:
+                f.write(tmp)
+            f.close()
+
 if win32CrossCompile or sys.platform[:5] == 'linux':
     plus4emuDLLEnvironment = plus4emuLibEnvironment.Clone()
     plus4emuDLLEnvironment.Append(CPPPATH = ['./plus4lib'])
@@ -348,18 +362,8 @@ if win32CrossCompile or sys.platform[:5] == 'linux':
         plus4emuDLL = plus4emuDLLEnvironment.SharedLibrary(
             'plus4lib/plus4emu.dll', ['plus4lib/plus4api.cpp'])
         # add LIBRARY line to the .def file if needed
-        f = open('plus4lib/plus4emu.def', 'rb')
-        s = []
-        for tmp in f:
-            s = s + [tmp]
-        f.close()
-        if s.__len__() > 0:
-            if s[0][:7] != 'LIBRARY':
-                f = open('plus4lib/plus4emu.def', 'wb')
-                f.write('LIBRARY plus4emu.dll\r\n')
-                for tmp in s:
-                    f.write(tmp)
-                f.close()
+        plus4emuDLLEnvironment.Command('__fix_plus4emu_def_file__', plus4emuDLL,
+                                       fixDefFile)
     Depends(plus4emuDLL, plus4emuLib)
     Depends(plus4emuDLL, residLib)
 
