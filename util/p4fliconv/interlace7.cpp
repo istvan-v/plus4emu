@@ -675,7 +675,6 @@ namespace Plus4FLIConv {
                                               colorErrorScale);
             }
             for (int j = 0; j < 32; j++) {
-              double  minErr2 = 1000000.0;
               float   y = tmpBufY_1x1[j];
               float   u = tmpBufU_1x1[j];
               float   v = tmpBufV_1x1[j];
@@ -685,16 +684,17 @@ namespace Plus4FLIConv {
                   ((j & 8) == 0 ? &(tmpPalette0U[0]) : &(tmpPalette1U[0]));
               float   *tmpPaletteV =
                   ((j & 8) == 0 ? &(tmpPalette0V[0]) : &(tmpPalette1V[0]));
-              for (int k = 0; k < 2; k++) {
-                double  err =
-                    calculateYUVErrorSqr(tmpPaletteY[k],
-                                         tmpPaletteU[k],
-                                         tmpPaletteV[k],
-                                         y, u, v, errScaleL, errScaleC);
-                if (err < minErr2)
-                  minErr2 = err;
-              }
-              totalError += minErr2;
+              double  err0 =
+                  calculateYUVErrorSqr(tmpPaletteY[0],
+                                       tmpPaletteU[0],
+                                       tmpPaletteV[0],
+                                       y, u, v, errScaleL, errScaleC);
+              double  err1 =
+                  calculateYUVErrorSqr(tmpPaletteY[1],
+                                       tmpPaletteU[1],
+                                       tmpPaletteV[1],
+                                       y, u, v, errScaleL, errScaleC);
+              totalError += (err1 < err0 ? err1 : err0);
             }
             if (ditherMode >= 0) {
               if (totalError > (minErr * 1.000001))

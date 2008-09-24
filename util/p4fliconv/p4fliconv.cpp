@@ -592,9 +592,22 @@ void Plus4FLIConvGUI::updateConfigWindow()
       lumSearchModeParamValuator->deactivate();
       break;
     }
-    if (int(config["ditherMode"]) < 0) {
+    switch (int(config["ditherMode"])) {
+    case -1:
+      ditherLimitValuator->deactivate();
+      ditherDiffusionValuator->deactivate();
       enablePALValuator->deactivate();
       colorInterlaceModeValuator->deactivate();
+      break;
+    case 0:
+    case 1:
+      ditherLimitValuator->activate();
+      ditherDiffusionValuator->deactivate();
+      break;
+    default:
+      ditherLimitValuator->activate();
+      ditherDiffusionValuator->activate();
+      break;
     }
     if (int(config["outputFileFormat"]) == 2 ||
         int(config["outputFileFormat"]) == 3) {
