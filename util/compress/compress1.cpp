@@ -1574,7 +1574,8 @@ namespace Plus4Compress {
         std::vector< unsigned int > tmpBuf;
         tmpBuf.resize(0);
         if (!compressData(tmpBuf, inBuf, startAddr,
-                          (((*i_).startPos + (*i_).nBytes) >= inBuf.size()),
+                          (isLastBlock &&
+                           ((*i_).startPos + (*i_).nBytes) >= inBuf.size()),
                           (*i_).startPos, (*i_).nBytes, false)) {
           delete searchTable;
           searchTable = (SearchTable *) 0;
