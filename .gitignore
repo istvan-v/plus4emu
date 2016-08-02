@@ -1,0 +1,7 @@
+.sconf_temp
+.sconsign.dblite
+config.log
+*.o
+*.a
+*.exe
+plus4emu
