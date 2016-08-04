@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -807,7 +807,7 @@ namespace Plus4 {
       hdrData[5] = 0x6C;                // 'l'
       hdrData[6] = 0x65;                // 'e'
       hdrData[7] = 0x00;                // '\0'
-      for (int i = 8; i < 28; i++)
+      for (int i = 8; i < 26; i++)
         hdrData[i] = 0x00;
       for (int i = 0; i < fileName.fileNameLen; i++)
         hdrData[i + 8] = fileName.fileName[i];
@@ -1084,7 +1084,7 @@ namespace Plus4 {
         nameOffs = 2;
       else if (fileName.fileNameLen >= 3 && fileName.fileName[2] == 0x3A)
         nameOffs = 3;                   // skip drive number
-      for (int i = nameOffs; i < fileName.fileNameLen; i++) {
+      for (int i = nameOffs; i < fileName.fileNameLen && i < 16; i++) {
         filesOpened[channelNum].fileName.appendPlus4Character(
             fileName.fileName[i]);
       }
@@ -1729,7 +1729,7 @@ namespace Plus4 {
       if (directoryIterator == fileDB.begin()) {
         for (int i = 0; i < 32; i++)
           buf[bufBytes++] = directoryStartLine[i];
-        for (int i = 0; i < diskName.fileNameLen; i++)
+        for (int i = 0; i < diskName.fileNameLen && i < 16; i++)
           buf[i + 8] = diskName.fileName[i];
         buf[0x1A] = diskID[0];
         buf[0x1B] = diskID[1];

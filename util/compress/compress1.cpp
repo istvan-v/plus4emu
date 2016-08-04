@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -924,7 +924,7 @@ namespace Plus4Compress {
       splitOptimizationDepth = 9;
   }
 
-  Compressor_M1::CompressionParameters::CompressionParameters&
+  Compressor_M1::CompressionParameters&
       Compressor_M1::CompressionParameters::operator=(
           const CompressionParameters& r)
   {
