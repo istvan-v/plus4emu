@@ -1,5 +1,5 @@
-plus4emu 1.2.9.2
-================
+plus4emu 1.2.9.3 beta
+=====================
 
 plus4emu is an open source, portable emulator of the Commodore Plus/4
 computer, written in C++, and supporting Windows and POSIX platforms
@@ -164,8 +164,8 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
   * dotconf (http://www.azzit.de/dotconf/) (optional, but recommended as
     it is used for reading ASCII format configuration files)
   * SDL (http://www.libsdl.org/) 1.2 for joystick input (optional);
-    NOTE: on Linux, version 1.2.10 and newer do not work, so using 1.2.9
-    is recommended
+    NOTE: on Linux, version 1.2.10 does not work, so using 1.2.9 or the
+    latest version (currently 1.2.15) is recommended
   * Lua (http://www.lua.org/) for scripting in the debugger (optional)
 
 Once these are installed, you can edit the file 'SConstruct' in the top

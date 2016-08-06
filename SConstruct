@@ -42,14 +42,14 @@ else:
 plus4emuLibEnvironment.Append(LINKFLAGS = Split(linkFlags))
 if win32CrossCompile:
     plus4emuLibEnvironment['AR'] = 'wine C:/MinGW/bin/ar.exe'
-    plus4emuLibEnvironment['CC'] = 'wine C:/MinGW/bin/gcc-sjlj.exe'
-    plus4emuLibEnvironment['CPP'] = 'wine C:/MinGW/bin/cpp-sjlj.exe'
-    plus4emuLibEnvironment['CXX'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
-    plus4emuLibEnvironment['LINK'] = 'wine C:/MinGW/bin/g++-sjlj.exe'
+    plus4emuLibEnvironment['CC'] = 'wine C:/MinGW/bin/gcc.exe'
+    plus4emuLibEnvironment['CPP'] = 'wine C:/MinGW/bin/cpp.exe'
+    plus4emuLibEnvironment['CXX'] = 'wine C:/MinGW/bin/g++.exe'
+    plus4emuLibEnvironment['LINK'] = 'wine C:/MinGW/bin/g++.exe'
     plus4emuLibEnvironment['RANLIB'] = 'wine C:/MinGW/bin/ranlib.exe'
-    plus4emuLibEnvironment.Append(LIBS = ['comdlg32', 'ole32', 'uuid',
-                                          'ws2_32', 'gdi32', 'user32',
-                                          'kernel32'])
+    plus4emuLibEnvironment.Append(LIBS = ['comdlg32', 'comctl32', 'ole32',
+                                          'uuid', 'ws2_32', 'gdi32',
+                                          'user32', 'kernel32'])
     plus4emuLibEnvironment.Prepend(CCFLAGS = ['-mthreads'])
     plus4emuLibEnvironment.Prepend(LINKFLAGS = ['-mthreads'])
 
@@ -76,12 +76,14 @@ else:
         if not plus4emuGLGUIEnvironment.ParseConfig(
             '%s --use-gl --use-images --cxxflags --ldflags' % fltkConfig):
             raise Exception()
+        if not "GL" in plus4emuGLGUIEnvironment["LIBS"]:
+            plus4emuGLGUIEnvironment.Append(LIBS = ['GL'])
     except:
         print 'WARNING: could not run fltk-config'
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk_gl'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk', 'fltk_jpeg'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_png', 'fltk_z', 'GL'])
-        plus4emuGLGUIEnvironment.Append(LIBS = ['X11'])
+        plus4emuGLGUIEnvironment.Append(LIBS = ['X11','GL'])
 
 plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
 
@@ -405,7 +407,7 @@ if win32CrossCompile:
          'resource/Plus4Mon4.ico', 'resource/Plus4i.ico',
          'resource/CbmFile.ico'],
         'wine C:/MinGW/bin/windres.exe -v --use-temp-file '
-        + '--preprocessor="C:/MinGW/bin/gcc-sjlj.exe -E -xc -DRC_INVOKED" '
+        + '--preprocessor="C:/MinGW/bin/gcc.exe -E -xc -DRC_INVOKED" '
         + '-o $TARGET resource/plus4emu.rc')
     plus4emuSources += [plus4emuResourceObject]
 plus4emu = plus4emuEnvironment.Program('plus4emu', plus4emuSources)
