@@ -252,6 +252,8 @@ Section "Source code" SecSrc
   File "..\resource\Read_me.txt"
   File "..\resource\plus4emu.rc"
   File "..\resource\*.ico"
+  File "..\resource\*.png"
+  File "..\resource\*.desktop"
 
   SetOutPath "$INSTDIR\src\roms"
 

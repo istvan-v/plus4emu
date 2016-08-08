@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_DIR="$HOME/Library/Application Support/plus4emu"
-MAKECFG="`dirname \"$0\"`/plus4emu.app/Contents/MacOS/makecfg"
+MAKECFG="`dirname \"$0\"`/plus4emu.app/Contents/MacOS/p4makecfg"
 
 if ( ! [ -e "$BASE_DIR/plus4cfg.dat" ] ) ; then
   "$MAKECFG" -f "$BASE_DIR" ;

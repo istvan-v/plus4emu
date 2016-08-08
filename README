@@ -119,10 +119,10 @@ General
 
 The emulator package also includes some utilities:
 
-  * compress - compresses Plus/4 .PRG and .P00 files with very good
+  * (p4)compress - compresses Plus/4 .PRG and .P00 files with very good
     compression ratio (CA65 assembler source code for the decompressor
     is available)
-  * makecfg - reinstalls the configuration files of the emulator
+  * (p4)makecfg - reinstalls the configuration files of the emulator
   * p4fliconv - converts JPEG and other format images to various Plus/4
     video modes (hires/multicolor, FLI, interlace, etc.); it can be used
     both from the command line, and as a GUI program which uses the
@@ -130,7 +130,7 @@ The emulator package also includes some utilities:
     viewer are also available.
   * p4sconv - converts PixelShop .P4S images to any of the output
     formats supported by p4fliconv
-  * tapconv - converts MTAP format tape files to the native plus4emu
+  * (p4)tapconv - converts MTAP format tape files to the native plus4emu
     tape format
 
 Installation
@@ -183,7 +183,7 @@ files and ROM images:
     and data files, and if configuration files should be installed
 
 It is possible to reinstall configuration files later by running the
-'makecfg' utility.
+'p4makecfg' utility.
 
 Windows
 -------

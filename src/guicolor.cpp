@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,21 @@
 
 #include <cmath>
 #include <FL/Fl.H>
+#include <FL/Enumerations.H>
 #include <FL/Fl_Window.H>
+
+#ifdef HAVE_FLTK_1_3_3
+#  undef HAVE_FLTK_1_3_3
+#endif
+#if defined(FL_MAJOR_VERSION) && defined(FL_MINOR_VERSION) &&   \
+    defined(FL_PATCH_VERSION)
+#  if (FL_MAJOR_VERSION > 1) ||                                 \
+      ((FL_MAJOR_VERSION == 1) &&                               \
+       ((FL_MINOR_VERSION > 3) ||                               \
+        ((FL_MINOR_VERSION == 3) && (FL_PATCH_VERSION >= 3))))
+#    define HAVE_FLTK_1_3_3     1
+#  endif
+#endif
 
 #if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
 
@@ -46,7 +60,261 @@ static const char *windowClassTable[14] = {
   "P4EError"
 };
 
-#endif  // WIN32
+#elif defined(HAVE_FLTK_1_3_3)
+
+#include <FL/Fl_Pixmap.H>
+#include <FL/Fl_RGB_Image.H>
+
+static const char * const iconPixmapData_0[] = {        // Cbm4.ico
+  /* columns rows colors chars-per-pixel */
+  "32 32 4 1 ",
+  "  c red",
+  ". c navy",
+  "X c blue",
+  "o c None",
+  /* pixels */
+  "oooooooooooooooooooooooooooooooo",
+  "oooooooooooooooooooooooooooooooo",
+  "ooooooooooo..XXXXX.ooooooooooooo",
+  "ooooooooo.XXXXXXXXXooooooooooooo",
+  "ooooooo.XXXXXXXXXXXooooooooooooo",
+  "ooooooXXXXXXXXXXXXXooooooooooooo",
+  "oooooXXXXXXXXXXXXXXooooooooooooo",
+  "oooo.XXXXXXXXXXXXXXooooooooooooo",
+  "ooooXXXXXXXXXXXXXXXooooooooooooo",
+  "ooo.XXXXXXXX.ooooooXXXXXXXXXXXXo",
+  "oooXXXXXXXXooooooooXXXXXXXXXXXoo",
+  "oo.XXXXXXXoooooooooXXXXXXXXXXooo",
+  "oo.XXXXXX.oooooooooXXXXXXXXXoooo",
+  "ooXXXXXXXooooooooooXXXXXXXXooooo",
+  "ooXXXXXXXooooooooooXXXXXXXoooooo",
+  "ooXXXXXXXooooooooooooooooooooooo",
+  "ooXXXXXXXoooooooooo       oooooo",
+  "ooXXXXXXXoooooooooo        ooooo",
+  "oo.XXXXXX.ooooooooo         oooo",
+  "oo.XXXXXXXooooooooo          ooo",
+  "oooXXXXXXXXoooooooo           oo",
+  "ooo.XXXXXXXX.oooooo            o",
+  "ooooXXXXXXXXXXXXXXXooooooooooooo",
+  "oooo.XXXXXXXXXXXXXXooooooooooooo",
+  "oooooXXXXXXXXXXXXXXooooooooooooo",
+  "ooooooXXXXXXXXXXXXXooooooooooooo",
+  "ooooooo.XXXXXXXXXXXooooooooooooo",
+  "ooooooooo.XXXXXXXXXooooooooooooo",
+  "ooooooooooo..XXXXX.ooooooooooooo",
+  "oooooooooooooooooooooooooooooooo",
+  "oooooooooooooooooooooooooooooooo",
+  "oooooooooooooooooooooooooooooooo"
+};
+
+static const char * const iconPixmapData_1[] = {        // 1551.ico
+  /* columns rows colors chars-per-pixel */
+  "32 32 9 1 ",
+  "  c black",
+  ". c red",
+  "X c green",
+  "o c yellow",
+  "O c blue",
+  "+ c #808080",
+  "@ c #C0C0C0",
+  "# c white",
+  "$ c None",
+  /* pixels */
+  "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+  "$$$$$$$$$$$$$$$$OOOOOOOOOOOOOOO$",
+  "$$$$$$$$$$$$$$$$OOOO@@@@@@@@@OO$",
+  "$$$$$$$$$$$$$$$$OOOO@@@@@@@@@O$$",
+  "$$$$$$$$$$$$$$$$OOOO@@@@@@@@@O$$",
+  "$$$$$$$$$$$$$$$$OOOOOOOOOOOOOOO$",
+  "$$$$$$$$$$$$$$$$OOOOOOO$$OOOOOO$",
+  "$$$$$$$$$$$$$$$$OOOOOO$$$$OOOOO$",
+  "$$$$$$$$$$$$$$$$OOOOOO$$$$OOOOO$",
+  "$$$$$$$$$$$$$$$$OOOOOO    OOOOO$",
+  "$$$$$$$$$$$$$$$$OOOOOOO  OOOOOO$",
+  "$$$$$$$$        OOOOOOOOOOOOOOO ",
+  "$$$$$$          OOOOOOOOOOOOOOO+",
+  "$$$$$           OOOOOOOOOOOOOOO ",
+  "$$$$            OOOOOOOOOOOOOOO ",
+  "$$$             OOOOOOOOOOOOOOO ",
+  "$$                          +   ",
+  "$                          +    ",
+  "                          +     ",
+  "  @ @@ @ @+   O X+o+.+#@# +     ",
+  "                          +     ",
+  "    ++ @@@@@@+++++++++++  +     ",
+  "    +  +@    @    +    +  +     ",
+  "    +++++++++@    ++++++  +    $",
+  "  X          @    +       +   $$",
+  " XX   ..     @@@@@@       +  $$$",
+  "                          + $$$$",
+  "$                         $$$$$$",
+  "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+  "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+  "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+  "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+};
+
+static const char * const iconPixmapData_2[] = {        // Plus4Mon4.ico
+  /* columns rows colors chars-per-pixel */
+  "32 32 14 1 ",
+  "  c black",
+  ". c red",
+  "X c #807460",
+  "o c #008000",
+  "O c green",
+  "+ c #FF8000",
+  "@ c #80FF00",
+  "# c yellow",
+  "$ c #808080",
+  "% c #C0B090",
+  "& c #B0A0FF",
+  "* c #C0C0C0",
+  "= c white",
+  "- c None",
+  /* pixels */
+  "------XXXXXXXXXXXXXXXXXXXX%%----",
+  "-----X&&&&&&&&&&&&&&&&&&&&X%%---",
+  "----X&&&&&&&&&&&&&&&&&&&&&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&     = =  =    ===&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&& =  =   = ========&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&  ================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&==================&&X%%--",
+  "----X&&&&&&&&&&&&&&&&&&&&&&X%---",
+  "----XX&&&&&&&&&&&&&&&&&&&&XX%---",
+  "-----XXXXXXXXXXXXXXXXXX##XX%----",
+  "----------                 -----",
+  "---------%%%%%%%%%%%%% %%-------",
+  "--  - - - % % %  %  % % % - - - ",
+  "--  $**$*$*$oO@#+.$             ",
+  "-                               ",
+  "-  ========= ====== === ======  ",
+  "-  = = = = == == ==== ==== =    ",
+  "   ==== === == == = ==== ==     ",
+  "  === === === ======== ==   *   ",
+  "  == =  = = = = = = = ==  ** *  ",
+  "                           ***  ",
+  "  ..  ================      *  -",
+  "                               -",
+  "--------------------------------"
+};
+
+static const char * const iconPixmapData_3[] = {        // Plus4i.ico
+  /* columns rows colors chars-per-pixel */
+  "32 32 8 1 ",
+  "  c black",
+  ". c red",
+  "X c green",
+  "o c yellow",
+  "O c #808080",
+  "+ c #C0C0C0",
+  "@ c white",
+  "# c None",
+  /* pixels */
+  "################################",
+  "################################",
+  "################################",
+  "################################",
+  "################### ############",
+  "##################    ##########",
+  "################        ########",
+  "###############     @     ######",
+  "##############     @@@     #####",
+  "############   O @@O@@@      ###",
+  "###########  .O @O@@O@@  + +   #",
+  "##########  o  @@@@@@@    +     ",
+  "#########  O  @@O@O@@@   + +   #",
+  "#######  OX @@O@@@@@O@@       ##",
+  "######  O  @@@@O@O@@@@  @   ####",
+  "#####  O  @@O@@@@@O@@  @   #####",
+  "###  OO  @@@@O@@O@@@  @   ######",
+  "##  O  @@@O@@@O@@@@  @   #######",
+  "#  O  @@O@@O@@O@O@  @   ########",
+  "#    @@@@@@@O@@@  @@  ##########",
+  "    @@OO@O@@@@@  @   ###########",
+  "     @@@@@@OO@  @   ############",
+  "      @O@O@@@  @   #############",
+  "#     O@@@@@  @  ###############",
+  "##     @@O   @  ################",
+  "###     @      #################",
+  "#####     .   ##################",
+  "######   ..  ###################",
+  "#######    #####################",
+  "########  ######################",
+  "################################",
+  "################################"
+};
+
+static const char * const iconPixmapData_4[] = {        // CbmFile.ico
+  /* columns rows colors chars-per-pixel */
+  "32 32 16 1 ",
+  "  c #202020",
+  ". c red",
+  "X c #FF7F7F",
+  "o c #0000C0",
+  "O c #0000DF",
+  "+ c blue",
+  "@ c #4040DF",
+  "# c #7F7FDF",
+  "$ c #4040FF",
+  "% c #7F7FFF",
+  "& c #FFBFBF",
+  "* c #BFBFDF",
+  "= c #BFBFFF",
+  "- c #D8D8D8",
+  "; c white",
+  ": c None",
+  /* pixels */
+  "::::::::::::::::::::::::::::::::",
+  ":::::                 ::::::::::",
+  "::::: ;;;;;;;;;;;;;;;  :::::::::",
+  "::::: ;;;;;;;;;;;;;;; - ::::::::",
+  "::::: ;;;;;;;;;;;;;;; -- :::::::",
+  "::::: ;;;;;;;;;;;;;;; --- ::::::",
+  "::::: ;;;;;;;;;;;;;;;      :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;*@O++#;;;;;;;; :::::",
+  "::::: ;;;;;@+++++%;;;;;;;; :::::",
+  "::::: ;;;;@++++++%;;;;;;;; :::::",
+  "::::: ;;;*++++@%%%%%%%%=;; :::::",
+  "::::: ;;;@+++=;;;%++++$;;; :::::",
+  "::::: ;;;O++@;;;;%+++$;;;; :::::",
+  "::::: ;;;+++%;;;;=%%%;;;;; :::::",
+  "::::: ;;;+++%;;;;X...&;;;; :::::",
+  "::::: ;;;o++O;;;;X....&;;; :::::",
+  "::::: ;;;#+++$*;;X.....&;; :::::",
+  "::::: ;;;;O++++++%;;;;;;;; :::::",
+  "::::: ;;;;=++++++%;;;;;;;; :::::",
+  "::::: ;;;;;*@++++%;;;;;;;; :::::",
+  "::::: ;;;;;;;*#%%*;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  "::::: ;;;;;;;;;;;;;;;;;;;; :::::",
+  ":::::                      :::::",
+  "::::::::::::::::::::::::::::::::"
+};
+
+static const char * const * const iconPixmapData[5] = {
+  iconPixmapData_0,                                     // Cbm4.ico
+  iconPixmapData_1,                                     // 1551.ico
+  iconPixmapData_2,                                     // Plus4Mon4.ico
+  iconPixmapData_3,                                     // Plus4i.ico
+  iconPixmapData_4                                      // CbmFile.ico
+};
+
+#endif                  // HAVE_FLTK_1_3_3 && !WIN32
 
 static const unsigned char colorTable[24] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -175,8 +443,28 @@ namespace Plus4Emu {
       }
     }
     w->icon(reinterpret_cast<char *>(iconHandle));
+#elif defined(HAVE_FLTK_1_3_3)
+    if (iconNum >= 0 &&
+        size_t(iconNum)
+        < (sizeof(iconPixmapData) / sizeof(const char * const *))) {
+      // ignore invalid icon numbers
+      Fl_Pixmap     *p = (Fl_Pixmap *) 0;
+      Fl_RGB_Image  *img = (Fl_RGB_Image *) 0;
+      try {
+        p = new Fl_Pixmap(iconPixmapData[iconNum]);
+        img = new Fl_RGB_Image(p);
+        w->icon(img);
+      }
+      catch (...) {
+        // FIXME: errors are ignored
+      }
+      if (img)
+        delete img;
+      if (p)
+        delete p;
+    }
 #else
-    // TODO: implement window icons for non-Windows platforms
+    // TODO: implement window icons for non-Windows platforms with FLTK < 1.3.3
     (void) w;
     (void) iconNum;
 #endif

@@ -1,6 +1,6 @@
 # vim: syntax=python
 
-import sys
+import sys, os
 
 win32CrossCompile = 0
 linux32CrossCompile = 0
@@ -26,12 +26,22 @@ fltkConfig = 'fltk-config'
 
 # -----------------------------------------------------------------------------
 
+programNamePrefix = ""
+if not win32CrossCompile:
+    instPrefix = os.environ["HOME"]
+    instBinDir = instPrefix + "/bin"
+    instShareDir = instPrefix + "/.local/share"
+    instDataDir = instShareDir + "/plus4emu"
+    instPixmapDir = instShareDir + "/pixmaps"
+    instDesktopDir = instShareDir + "/applications"
+    instROMDir = instDataDir + "/roms"
+    programNamePrefix = "p4"
+
 plus4emuLibEnvironment = Environment()
 if linux32CrossCompile:
     compilerFlags = ' -m32 ' + compilerFlags
 plus4emuLibEnvironment.Append(CCFLAGS = Split(compilerFlags))
 plus4emuLibEnvironment.Append(CPPPATH = ['.', './src'])
-plus4emuLibEnvironment.Append(CPPPATH = ['./Fl_Native_File_Chooser'])
 plus4emuLibEnvironment.Append(CPPPATH = ['/usr/local/include'])
 if sys.platform[:6] == 'darwin':
     plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
@@ -90,10 +100,13 @@ plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
 imageLibTestProgram = '''
     #include <FL/Fl.H>
     #include <FL/Fl_Shared_Image.H>
+    #include <FL/Fl_PNG_Image.H>
     int main()
     {
       Fl_Shared_Image *tmp = Fl_Shared_Image::get("foo");
       tmp->release();
+      Fl_PNG_Image  *tmp2 = new Fl_PNG_Image("foo");
+      delete tmp2;
       return 0;
     }
 '''
@@ -200,6 +213,17 @@ if not configure.CheckCXXHeader('FL/Fl.H'):
     else:
         print ' *** error: FLTK 1.1 is not found'
     Exit(-1)
+fltkVersion13 = 0
+if configure.CheckCXXHeader('FL/Fl_Cairo.H'):
+    fltkVersion13 = 1
+    if sys.platform[:5] == 'linux':
+        plus4emuGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
+        plus4emuGLGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
+    # print 'WARNING: using FLTK 1.3.x - this may not work reliably yet'
+else:
+    plus4emuLibEnvironment.Append(CPPPATH = ['./Fl_Native_File_Chooser'])
+    plus4emuGUIEnvironment.Append(CPPPATH = ['./Fl_Native_File_Chooser'])
+    plus4emuGLGUIEnvironment.Append(CPPPATH = ['./Fl_Native_File_Chooser'])
 if not configure.CheckCHeader('GL/gl.h'):
     print ' *** error: OpenGL is not found'
     Exit(-1)
@@ -234,7 +258,8 @@ if haveLua:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_LUA_H'])
 if enableGLShaders:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DENABLE_GL_SHADERS'])
-plus4emuLibEnvironment.Append(CCFLAGS = ['-DFLTK1'])
+if not fltkVersion13:
+    plus4emuLibEnvironment.Append(CCFLAGS = ['-DFLTK1'])
 
 plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
@@ -288,20 +313,22 @@ plus4emuLibSources = Split('''
     src/wd177x.cpp
 ''')
 
+plus4emuLibSources2 = []
+if not fltkVersion13:
+    plus4emuLibSources2 += ['Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx']
+plus4emuLibSources2 += Split('''
+    src/cfg_db.cpp
+    src/emucfg.cpp
+    src/fldisp.cpp
+    src/gldisp.cpp
+    src/guicolor.cpp
+    src/joystick.cpp
+    src/script.cpp
+    src/sndio_pa.cpp
+    src/vmthread.cpp
+''')
 plus4emuLib = plus4emuLibEnvironment.StaticLibrary(
-    'plus4emu',
-    plus4emuLibSources + Split('''
-        Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx
-        src/cfg_db.cpp
-        src/emucfg.cpp
-        src/fldisp.cpp
-        src/gldisp.cpp
-        src/guicolor.cpp
-        src/joystick.cpp
-        src/script.cpp
-        src/sndio_pa.cpp
-        src/vmthread.cpp
-    '''))
+    'plus4emu', plus4emuLibSources + plus4emuLibSources2)
 
 # -----------------------------------------------------------------------------
 
@@ -423,7 +450,8 @@ if sys.platform[:6] == 'darwin':
 tapconvEnvironment = plus4emuLibEnvironment.Clone()
 tapconvEnvironment.Prepend(LIBS = ['plus4emu'])
 tapconvEnvironment.Append(LIBS = ['sndfile'])
-tapconv = tapconvEnvironment.Program('tapconv', ['util/tapconv.cpp'])
+tapconv = tapconvEnvironment.Program(programNamePrefix + 'tapconv',
+                                     ['util/tapconv.cpp'])
 Depends(tapconv, plus4emuLib)
 
 # -----------------------------------------------------------------------------
@@ -445,12 +473,13 @@ if not win32CrossCompile:
 else:
     makecfgEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
 
-makecfg = makecfgEnvironment.Program('makecfg',
+makecfg = makecfgEnvironment.Program(programNamePrefix + 'makecfg',
     ['installer/makecfg.cpp'] + fluidCompile(['installer/mkcfg.fl']))
 Depends(makecfg, plus4emuLib)
 
 if sys.platform[:6] == 'darwin':
-    Command('plus4emu.app/Contents/MacOS/makecfg', 'makecfg',
+    Command('plus4emu.app/Contents/MacOS/' + programNamePrefix + 'makecfg',
+            programNamePrefix + 'makecfg',
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
 # -----------------------------------------------------------------------------
@@ -568,6 +597,31 @@ Depends(p4sconv, plus4emuLib)
 
 compressEnvironment = compressLibEnvironment.Clone()
 compressEnvironment.Prepend(LIBS = ['compress'])
-compress = compressEnvironment.Program('compress', ['util/compress/main.cpp'])
+compress = compressEnvironment.Program(programNamePrefix + 'compress',
+                                       ['util/compress/main.cpp'])
 Depends(compress, compressLib)
+
+# -----------------------------------------------------------------------------
+
+if not win32CrossCompile:
+    plus4emuGLGUIEnvironment.Install(instBinDir,
+                                     [plus4emu, tapconv, makecfg, p4fliconv,
+                                      p4sconv, compress])
+    plus4emuGLGUIEnvironment.Install(instPixmapDir,
+                                     ["resource/Cbm4.png"])
+    plus4emuGLGUIEnvironment.Install(instDesktopDir,
+                                     ["resource/plus4emu.desktop"])
+    makecfgEnvironment.Command(
+        instDataDir, makecfg,
+        ['./' + programNamePrefix + 'makecfg -f "' + instDataDir + '"'])
+    plus4emuGLGUIEnvironment.Install(instROMDir,
+                                     ["roms/1526_07c.rom", "roms/3plus1.rom",
+                                      "roms/dos15412.rom", "roms/dos1541.rom",
+                                      "roms/dos1551.rom", "roms/dos1581.rom",
+                                      "roms/mps801.rom", "roms/p4_basic.rom",
+                                      "roms/p4fileio.rom", "roms/p4kernal.rom",
+                                      "roms/p4_ntsc.rom"])
+    plus4emuGLGUIEnvironment.Alias("install",
+                                   [instBinDir, instPixmapDir, instDesktopDir,
+                                    instDataDir, instROMDir])
 
