@@ -14,3 +14,6 @@
 /p4fliconv
 /p4sconv
 /tapconv
+/p4compress
+/p4makecfg
+/p4tapconv
