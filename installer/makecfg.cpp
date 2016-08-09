@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -404,6 +404,21 @@ int main(int argc, char **argv)
 #ifndef WIN32
     tmp = Plus4Emu::getPlus4EmuHomeDirectory();
 #endif
+#if defined(__linux) || defined(__linux__)
+    // use FLTK file chooser to work around bugs in the new 1.3.3 GTK chooser
+    Fl_File_Chooser *w =
+        new Fl_File_Chooser(
+                tmp.c_str(), "*",
+                Fl_File_Chooser::CREATE | Fl_File_Chooser::DIRECTORY,
+                "Select installation directory for plus4emu data files");
+    w->show();
+    do {
+      Fl::wait(0.05);
+    } while (w->shown());
+    if (w->value() && w->value()[0] != '\0')
+      installDirectory = w->value();
+    delete w;
+#else
     Fl_Native_File_Chooser  *w = new Fl_Native_File_Chooser();
     w->type(Fl_Native_File_Chooser::BROWSE_SAVE_DIRECTORY);
     w->title("Select installation directory for plus4emu data files");
@@ -414,6 +429,7 @@ int main(int argc, char **argv)
         installDirectory = w->filename();
     }
     delete w;
+#endif
   }
   Plus4Emu::stripString(installDirectory);
   if (installDirectory.length() == 0)

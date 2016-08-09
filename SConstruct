@@ -239,10 +239,22 @@ if not disableSDL:
     haveSDL = configure.CheckCHeader('SDL/SDL.h')
 else:
     haveSDL = 0
+luaPkgName = ''
 if not disableLua:
     haveLua = configure.CheckCHeader('lua.h')
     haveLua = haveLua and configure.CheckCHeader('lauxlib.h')
     haveLua = haveLua and configure.CheckCHeader('lualib.h')
+    if not haveLua and sys.platform[:5] == 'linux' and not win32CrossCompile:
+        for pkgName in ['lua-5.1', 'lua51', 'lua']:
+            try:
+                if not plus4emuLibEnvironment.ParseConfig(
+                           'pkg-config --cflags ' + pkgName):
+                    raise Exception()
+            except:
+                continue
+            luaPkgName = pkgName
+            haveLua = 1
+            break
 else:
     haveLua = 0
 haveZLib = configure.CheckCHeader('zlib.h')
@@ -406,7 +418,12 @@ if haveDotconf:
         # libdotconf.a
         plus4emuEnvironment.Append(LIBS = ['mingwex'])
     plus4emuEnvironment.Append(LIBS = ['dotconf'])
-if haveLua:
+if luaPkgName:
+    # using pkg-config
+    if not plus4emuEnvironment.ParseConfig('pkg-config --libs ' + luaPkgName):
+        print ' *** error: Lua library is not found'
+        Exit(-1)
+elif haveLua:
     plus4emuEnvironment.Append(LIBS = ['lua'])
 if haveSDL:
     plus4emuEnvironment.Append(LIBS = ['SDL'])
