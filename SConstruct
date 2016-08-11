@@ -4,7 +4,7 @@ import sys, os
 
 win32CrossCompile = 0
 linux32CrossCompile = 0
-disableSDL = 0          # set this to 1 on Linux with SDL version >= 1.2.10
+disableSDL = 0          # set this to 1 on Linux with SDL version 1.2.10
 disableLua = 0
 enableGLShaders = 1
 enableDebug = 0
@@ -27,17 +27,32 @@ fltkConfig = 'fltk-config'
 # -----------------------------------------------------------------------------
 
 programNamePrefix = ""
+buildingLinuxPackage = 0
 if not win32CrossCompile:
-    instPrefix = os.environ["HOME"]
+    if sys.platform[:5] == 'linux':
+        try:
+            instPrefix = os.environ["UB_INSTALLDIR"]
+            if instPrefix:
+                instPrefix += "/usr"
+                buildingLinuxPackage = 1
+        except:
+            pass
+    if not buildingLinuxPackage:
+        instPrefix = os.environ["HOME"]
+        instShareDir = instPrefix + "/.local/share"
+    else:
+        instShareDir = instPrefix + "/share"
     instBinDir = instPrefix + "/bin"
-    instShareDir = instPrefix + "/.local/share"
     instDataDir = instShareDir + "/plus4emu"
     instPixmapDir = instShareDir + "/pixmaps"
     instDesktopDir = instShareDir + "/applications"
     instROMDir = instDataDir + "/roms"
+    instConfDir = instDataDir + "/config"
+    instDiskDir = instDataDir + "/disk"
     programNamePrefix = "p4"
 
-plus4emuLibEnvironment = Environment()
+plus4emuLibEnvironment = Environment(ENV = { 'PATH' : os.environ['PATH'],
+                                             'HOME' : os.environ['HOME'] })
 if linux32CrossCompile:
     compilerFlags = ' -m32 ' + compilerFlags
 plus4emuLibEnvironment.Append(CCFLAGS = Split(compilerFlags))
@@ -246,9 +261,10 @@ if not disableLua:
     haveLua = haveLua and configure.CheckCHeader('lualib.h')
     if not haveLua and sys.platform[:5] == 'linux' and not win32CrossCompile:
         for pkgName in ['lua-5.1', 'lua51', 'lua']:
+            print 'Checking for Lua package ' + pkgName + '...'
             try:
                 if not plus4emuLibEnvironment.ParseConfig(
-                           'pkg-config --cflags ' + pkgName):
+                           'pkg-config --silence-errors --cflags ' + pkgName):
                     raise Exception()
             except:
                 continue
@@ -274,11 +290,15 @@ if not fltkVersion13:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DFLTK1'])
 
 plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
+plus4emuGUIEnvironment['CPPPATH'] = plus4emuLibEnvironment['CPPPATH']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
 plus4emuGLGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
-plus4emuGLGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
-plus4emuGUIEnvironment['CPPPATH'] = plus4emuLibEnvironment['CPPPATH']
 plus4emuGLGUIEnvironment['CPPPATH'] = plus4emuLibEnvironment['CPPPATH']
+plus4emuGLGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
+
+if buildRelease:
+    plus4emuGUIEnvironment.Append(LINKFLAGS = ['-s'])
+    plus4emuGLGUIEnvironment.Append(LINKFLAGS = ['-s'])
 
 def fluidCompile(flNames):
     cppNames = []
@@ -623,24 +643,33 @@ Depends(compress, compressLib)
 # -----------------------------------------------------------------------------
 
 if not win32CrossCompile:
-    plus4emuGLGUIEnvironment.Install(instBinDir,
-                                     [plus4emu, tapconv, makecfg, p4fliconv,
-                                      p4sconv, compress])
-    plus4emuGLGUIEnvironment.Install(instPixmapDir,
-                                     ["resource/Cbm4.png"])
-    plus4emuGLGUIEnvironment.Install(instDesktopDir,
-                                     ["resource/plus4emu.desktop"])
-    makecfgEnvironment.Command(
-        instDataDir, makecfg,
-        ['./' + programNamePrefix + 'makecfg -f "' + instDataDir + '"'])
-    plus4emuGLGUIEnvironment.Install(instROMDir,
-                                     ["roms/1526_07c.rom", "roms/3plus1.rom",
-                                      "roms/dos15412.rom", "roms/dos1541.rom",
-                                      "roms/dos1551.rom", "roms/dos1581.rom",
-                                      "roms/mps801.rom", "roms/p4_basic.rom",
-                                      "roms/p4fileio.rom", "roms/p4kernal.rom",
-                                      "roms/p4_ntsc.rom"])
-    plus4emuGLGUIEnvironment.Alias("install",
-                                   [instBinDir, instPixmapDir, instDesktopDir,
-                                    instDataDir, instROMDir])
+    if buildingLinuxPackage:
+        makecfgEnvironment.InstallAs([instBinDir + "/plus4emu.bin",
+                                      instBinDir + "/plus4emu"],
+                                     [plus4emu, "installer/plus4emu"])
+    else:
+        makecfgEnvironment.Install(instBinDir, plus4emu)
+    makecfgEnvironment.Install(instBinDir,
+                               [tapconv, makecfg, p4fliconv, p4sconv, compress])
+    makecfgEnvironment.Install(instPixmapDir, ["resource/Cbm4.png"])
+    makecfgEnvironment.Install(instDesktopDir, ["resource/plus4emu.desktop"])
+    if not buildingLinuxPackage:
+        makecfgEnvironment.Command(
+            instDataDir, makecfg,
+            ['./' + programNamePrefix + 'makecfg -f "' + instDataDir + '"'])
+    makecfgEnvironment.Install(instROMDir,
+                               ["roms/1526_07c.rom", "roms/3plus1.rom",
+                                "roms/dos15412.rom", "roms/dos1541.rom",
+                                "roms/dos1551.rom", "roms/dos1581.rom",
+                                "roms/mps801.rom", "roms/p4_basic.rom",
+                                "roms/p4fileio.rom", "roms/p4kernal.rom",
+                                "roms/p4_ntsc.rom"])
+    makecfgEnvironment.Install(instConfDir,
+                               ["config/clearkbd.cfg", "config/p4_keys.cfg",
+                                "config/p4keyshu.cfg"])
+    makecfgEnvironment.Install(instDiskDir, ["disk/disk.zip"])
+    makecfgEnvironment.Alias("install",
+                             [instBinDir, instPixmapDir, instDesktopDir,
+                              instDataDir, instROMDir, instConfDir,
+                              instDiskDir])
 

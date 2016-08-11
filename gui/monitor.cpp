@@ -55,7 +55,7 @@ void Plus4EmuGUIMonitor::tokenizeString(std::vector<std::string>& args,
     if (mode == 1) {
       if (args.size() == 0 && curToken.length() > 0) {
         // allow no space between command and first hexadecimal argument
-        if ((*s >= '0' && *s <= '9') ||
+        if ((*s >= '0' && *s <= '9') || *s == '%' ||
             (*s >= 'A' && *s <= 'F') || (*s >= 'a' && *s <= 'f')) {
           args.push_back(curToken);
           curToken = "";
@@ -63,7 +63,7 @@ void Plus4EmuGUIMonitor::tokenizeString(std::vector<std::string>& args,
         }
       }
       if ((*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') ||
-          *s == '_' || *s == '?') {
+          *s == '_' || (*s == '%' && curToken.empty()) || *s == '?') {
         curToken += (*s);
         s++;
         continue;

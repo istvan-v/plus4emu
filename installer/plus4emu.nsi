@@ -209,6 +209,7 @@ Section "Source code" SecSrc
   File "..\installer\*.nsi"
   File "..\installer\*.fl"
   File "..\installer\makecfg.cpp"
+  File "..\installer\plus4emu"
 
   SetOutPath "$INSTDIR\src\msvc"
 
