@@ -1,6 +1,14 @@
 Changes in version 1.2.9.3
 --------------------------
 
+  * the debugger window is hidden only after a short delay when it is
+    closed, this fixes the flickering while using the step buttons
+  * the editor buffer in the monitor has been increased from 120 to 160
+    lines
+  * memory dump is now also shown in ASCII format
+  * in addition to the default hexadecimal format, it is also possible
+    to specify numbers in the monitor in binary (e.g. %1010), octal
+    (12o), and decimal (10l) format
   * window icons have been implemented on non-Windows platforms if the
     emulator is built with FLTK 1.3.3 or newer
   * added support for building with FLTK 1.3.x

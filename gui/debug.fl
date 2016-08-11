@@ -47,14 +47,21 @@ class Plus4EmuGUI_DebugWindow {open
   }
   decl {void show();} {public
   }
-  decl {bool shown();} {public
+  decl {bool shown() const;} {public
   }
   decl {void hide();} {public
+  }
+  decl {void activate();} {public
+  }
+  decl {bool active() const;} {public
+  }
+  decl {void deactivate(double tt = 0.1);} {public
   }
   decl {bool breakPoint(int debugContext_, int type, uint16_t addr, uint8_t value);} {public
   }
   decl {void updateWindow();} {public
   }
+  decl {char * printHexNumber(char *bufp, uint32_t n, size_t spaceCnt1, size_t nDigits, size_t spaceCnt2);} {}
   decl {void dumpMemory(std::string& buf, uint32_t startAddr, uint32_t endAddr, uint32_t cursorAddr, bool showCursor, bool isCPUAddress);} {}
   decl {void updateMemoryDumpDisplay();} {}
   decl {long parseHexNumber(uint32_t& value, const char *s);} {}
@@ -65,10 +72,15 @@ class Plus4EmuGUI_DebugWindow {open
   decl {void setDebugContext(int n);} {}
   decl {static void breakPointCallback(void *userData, int debugContext_, int type, uint16_t addr, uint8_t value);} {public
   }
+  decl {static void hideWindowCallback(void *userData);} {}
   Function {createDebugWindow()} {open private return_type void
   } {
     Fl_Window window {
       callback {{
+  if (breakPointEditor->changed()) {
+    breakPointEditor->clear_changed();
+    breakPointEditor->do_callback();
+  }
   focusWidget = (Fl_Widget *) 0;
   gui.vm.setSingleStepMode(0);
   this->hide();
@@ -705,7 +717,7 @@ class Plus4EmuGUI_DebugWindow {open
         callback {{
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(4);
-  this->hide();
+  this->deactivate();
 }}
         xywh {595 685 80 25} selection_color 50
       }
@@ -714,7 +726,7 @@ class Plus4EmuGUI_DebugWindow {open
         callback {{
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(2);
-  this->hide();
+  this->deactivate();
 }}
         xywh {685 685 80 25} selection_color 50
       }
@@ -723,7 +735,7 @@ class Plus4EmuGUI_DebugWindow {open
         callback {{
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(1);
-  this->hide();
+  this->deactivate();
 }}
         xywh {775 685 80 25} selection_color 50
       }
@@ -732,7 +744,7 @@ class Plus4EmuGUI_DebugWindow {open
         callback {{
   focusWidget = continueButton;
   gui.vm.setSingleStepMode(0);
-  this->hide();
+  this->deactivate();
 }}
         xywh {865 685 80 25} selection_color 50
       }

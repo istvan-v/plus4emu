@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 
 #include <vector>
 
-#define MONITOR_MAX_LINES   (120)
+#define MONITOR_MAX_LINES   (160)
 
 static const char *fileOpenErrorMessages[6] = {
   "Error opening file",
@@ -112,21 +112,55 @@ void Plus4EmuGUIMonitor::tokenizeString(std::vector<std::string>& args,
 
 static bool parseHexNumber(uint32_t& n, const char *s)
 {
-  if (*s == '\0')
-    return false;
   n = 0U;
-  do {
-    n = n << 4;
-    if (*s >= '0' && *s <= '9')
-      n = n | uint32_t(*s - '0');
-    else if (*s >= 'A' && *s <= 'F')
-      n = n | uint32_t((*s - 'A') + 10);
-    else if (*s >= 'a' && *s <= 'f')
-      n = n | uint32_t((*s - 'a') + 10);
-    else
-      return false;
+  if (!s)
+    return false;
+  while ((*s) == ' ' || (*s) == '\t' || (*s) == '\r' || (*s) == '\n')
     s++;
-  } while (*s != '\0');
+  uint32_t  k = 16U;            // assume hexadecimal format by default
+  if ((*s) == '%') {
+    k = 2U;
+    s++;
+  }
+  else if ((*s) == 'O' || (*s) == 'o') {
+    k = 8U;
+    s++;
+  }
+  size_t  len = 0;
+  while ((s[len] >= '0' && s[len] <= '9') ||
+         (s[len] >= 'A' && s[len] <= 'F') ||
+         (s[len] >= 'a' && s[len] <= 'f')) {
+    len++;
+  }
+  if (len < 1)
+    return false;
+  if (s[len] != '\0') {
+    const char  *t = &(s[len]);
+    if (k == 16U) {
+      if ((*t) == 'O' || (*t) == 'o') {
+        k = 8U;
+        t++;
+      }
+      else if ((*t) == 'L' || (*t) == 'l') {
+        k = 10U;
+        t++;
+      }
+      else if ((*t) == 'H' || (*t) == 'h') {
+        t++;
+      }
+    }
+    while ((*t) == ' ' || (*t) == '\t' || (*t) == '\r' || (*t) == '\n')
+      t++;
+    if ((*t) != '\0')
+      return false;
+  }
+  for (size_t i = 0; i < len; i++) {
+    uint32_t  tmp =
+        uint32_t(s[i] - (s[i] <= '9' ? '0' : (s[i] <= 'Z' ? '7' : 'W')));
+    if (tmp >= k)
+      return false;
+    n = (n * k) + tmp;
+  }
   return true;
 }
 
@@ -134,7 +168,7 @@ static uint32_t parseHexNumberEx(const char *s, uint32_t mask_ = 0xFFFFFFFFU)
 {
   uint32_t  n = 0U;
   if (!parseHexNumber(n, s))
-    throw Plus4Emu::Exception("invalid hexadecimal number format");
+    throw Plus4Emu::Exception("invalid number format");
   return (n & mask_);
 }
 
@@ -683,7 +717,7 @@ void Plus4EmuGUIMonitor::command_go(const std::vector<std::string>& args)
   }
   debugWindow->focusWidget = this;
   gui->vm.setSingleStepMode(0);
-  debugWindow->hide();
+  debugWindow->deactivate();
 }
 
 void Plus4EmuGUIMonitor::command_searchPattern(const std::vector<std::string>&
@@ -1004,7 +1038,7 @@ void Plus4EmuGUIMonitor::command_continue(const std::vector<std::string>& args)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
   gui->vm.setSingleStepMode(0);
-  debugWindow->hide();
+  debugWindow->deactivate();
 }
 
 void Plus4EmuGUIMonitor::command_step(const std::vector<std::string>& args)
@@ -1013,7 +1047,7 @@ void Plus4EmuGUIMonitor::command_step(const std::vector<std::string>& args)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
   gui->vm.setSingleStepMode(1);
-  debugWindow->hide();
+  debugWindow->deactivate();
 }
 
 void Plus4EmuGUIMonitor::command_stepOver(const std::vector<std::string>& args)
@@ -1022,7 +1056,7 @@ void Plus4EmuGUIMonitor::command_stepOver(const std::vector<std::string>& args)
     throw Plus4Emu::Exception("too many arguments");
   debugWindow->focusWidget = this;
   gui->vm.setSingleStepMode(2);
-  debugWindow->hide();
+  debugWindow->deactivate();
 }
 
 void Plus4EmuGUIMonitor::command_trace(const std::vector<std::string>& args)
@@ -1067,7 +1101,7 @@ void Plus4EmuGUIMonitor::command_trace(const std::vector<std::string>& args)
   }
   debugWindow->focusWidget = this;
   gui->vm.setSingleStepMode(3);
-  debugWindow->hide();
+  debugWindow->deactivate();
 }
 
 void Plus4EmuGUIMonitor::command_setDebugContext(

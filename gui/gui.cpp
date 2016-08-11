@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -3100,7 +3100,7 @@ void Plus4EmuGUI::menuCallback_Debug_OpenDebugger(Fl_Widget *o, void *v)
 {
   (void) o;
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(v));
-  if (!gui_.debugWindow->shown()) {
+  if (!gui_.debugWindow->active()) {
     if (gui_.debugWindowShowFlag)
       return;
     if (!gui_.lockVMThread())

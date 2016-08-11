@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -107,6 +107,7 @@ Plus4EmuGUI_DebugWindow::~Plus4EmuGUI_DebugWindow()
 
 void Plus4EmuGUI_DebugWindow::show()
 {
+  this->activate();
   monitor_->closeTraceFile();
   updateWindow();
   if (!window->shown()) {
@@ -116,27 +117,65 @@ void Plus4EmuGUI_DebugWindow::show()
     else
       stepButton->take_focus();
   }
+  window->label(&(windowTitle[0]));
   window->show();
 }
 
-bool Plus4EmuGUI_DebugWindow::shown()
+bool Plus4EmuGUI_DebugWindow::shown() const
 {
   return bool(window->shown());
 }
 
 void Plus4EmuGUI_DebugWindow::hide()
 {
+  this->deactivate(1000000.0);
   if (window->shown()) {
     savedWindowPositionX = window->x();
     savedWindowPositionY = window->y();
   }
   window->hide();
+  std::strcpy(&(windowTitle[0]), "plus4emu debugger");
+}
+
+void Plus4EmuGUI_DebugWindow::activate()
+{
+  Fl::remove_timeout(&hideWindowCallback, (void *) this);
+  debugTabs->clear_output();
+  mainTab->clear_output();
+  monitorTab->clear_output();
+  stepIntoButton->clear_output();
+  stepOverButton->clear_output();
+  stepButton->clear_output();
+  continueButton->clear_output();
+}
+
+bool Plus4EmuGUI_DebugWindow::active() const
+{
+  if (!window->shown())
+    return false;
+  return (!continueButton->output());
+}
+
+void Plus4EmuGUI_DebugWindow::deactivate(double tt)
+{
+  Fl::remove_timeout(&hideWindowCallback, (void *) this);
+  if (tt <= 0.0) {
+    this->hide();
+    return;
+  }
+  mainTab->set_output();
+  monitorTab->set_output();
+  debugTabs->set_output();
+  stepIntoButton->set_output();
+  stepOverButton->set_output();
+  stepButton->set_output();
+  continueButton->set_output();
   if (gui.debugWindowOpenFlag) {
     gui.debugWindowOpenFlag = false;
     gui.unlockVMThread();
   }
-  std::strcpy(&(windowTitle[0]), "plus4emu debugger");
-  window->label(&(windowTitle[0]));
+  if (tt < 1000.0)
+    Fl::add_timeout(tt, &hideWindowCallback, (void *) this);
 }
 
 bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
@@ -183,7 +222,6 @@ bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
   default:
     std::sprintf(&(windowTitle[0]), "Break");
   }
-  window->label(&(windowTitle[0]));
   disassemblyViewAddress = uint32_t(gui.vm.getProgramCounter() & 0xFFFF);
   if (focusWidget == monitor_)
     monitor_->breakMessage(&(windowTitle[0]));
@@ -207,7 +245,7 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
                    (unsigned int) gui.vm.getMemoryPage(2),
                    (unsigned int) gui.vm.getMemoryPage(3));
       memoryPagingDisplay->value(s);
-      dumpMemory(buf, 0x0010FF00U, 0x0010FF1FU, 0x0010FF00U, false, false);
+      dumpMemory(buf, 0x0010FF00U, 0x0010FF1FU, 0x0010FFFFU, true, false);
       buf[0] = ' ';
       buf[1] = ' ';
       buf[41] = ' ';
@@ -254,61 +292,85 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
   }
 }
 
+char * Plus4EmuGUI_DebugWindow::printHexNumber(char *bufp, uint32_t n,
+                                               size_t spaceCnt1, size_t nDigits,
+                                               size_t spaceCnt2)
+{
+  char    *s = bufp + (spaceCnt1 + nDigits);
+  bufp = s;
+  while (spaceCnt2-- > 0)
+    *(bufp++) = ' ';
+  *bufp = '\0';
+  while (nDigits-- > 0) {
+    char    c = char(n & 0x0FU);
+    *(--s) = c + (c < char(10) ? '0' : ('A' - char(10)));
+    n = n >> 4;
+  }
+  while (spaceCnt1-- > 0) {
+    if (n > 0U) {
+      char    c = char(n & 0x0FU);
+      *(--s) = c + (c < char(10) ? '0' : ('A' - char(10)));
+      n = n >> 4;
+    }
+    else {
+      *(--s) = ' ';
+    }
+  }
+  return bufp;
+}
+
 void Plus4EmuGUI_DebugWindow::dumpMemory(std::string& buf,
                                          uint32_t startAddr, uint32_t endAddr,
                                          uint32_t cursorAddr, bool showCursor,
                                          bool isCPUAddress)
 {
   try {
-    char      tmpBuf[8];
-    buf = "";
-    int       cnt = 0;
+    char      tmpBuf[48];
+    uint8_t   tmpBuf2[8];
+    buf.clear();
     uint32_t  addrMask = uint32_t(isCPUAddress ? 0x0000FFFFU : 0x003FFFFFU);
+    int       cnt;
+    startAddr &= addrMask;
     endAddr &= addrMask;
     cursorAddr &= addrMask;
-    while (true) {
-      startAddr &= addrMask;
-      if (cnt == 8) {
-        cnt = 0;
-        buf += '\n';
-      }
-      if (!cnt) {
-        if (isCPUAddress)
-          std::sprintf(&(tmpBuf[0]), "  %04X", (unsigned int) startAddr);
-        else
-          std::sprintf(&(tmpBuf[0]), "%06X", (unsigned int) startAddr);
-        buf += &(tmpBuf[0]);
-      }
-      if (!(cnt & 3)) {
-        if (showCursor && startAddr == cursorAddr) {
-          std::sprintf(&(tmpBuf[0]), "  *%02X",
-                       (unsigned int) gui.vm.readMemory(startAddr,
-                                                        isCPUAddress));
+    do {
+      char    *bufp =
+          printHexNumber(&(tmpBuf[0]), startAddr, (isCPUAddress ? 2 : 0),
+                         (isCPUAddress ? 4 : 6), (showCursor ? 0 : 1));
+      cnt = 0;
+      while (true) {
+        tmpBuf2[cnt] = gui.vm.readMemory(startAddr, isCPUAddress);
+        if (showCursor) {
+          bufp = printHexNumber(bufp, tmpBuf2[cnt], ((cnt & 3) == 0 ? 3 : 2),
+                                2, 0);
+          if (startAddr == cursorAddr)
+            *(bufp - 3) = '*';
         }
         else {
-          std::sprintf(&(tmpBuf[0]), "   %02X",
-                       (unsigned int) gui.vm.readMemory(startAddr,
-                                                        isCPUAddress));
+          bufp = printHexNumber(bufp, tmpBuf2[cnt], 1, 2, 0);
+          if (cnt >= 7) {
+            bufp[0] = ' ';
+            bufp[1] = ':';
+            for (int i = 2; i < 10; i++) {
+              bufp[i] = char(tmpBuf2[i - 2] & 0x7F);
+              if (bufp[i] < char(0x20) || bufp[i] == char(0x7F))
+                bufp[i] = '.';
+            }
+            bufp[10] = '\0';
+            bufp = bufp + 10;
+          }
         }
-      }
-      else {
-        if (showCursor && startAddr == cursorAddr) {
-          std::sprintf(&(tmpBuf[0]), " *%02X",
-                       (unsigned int) gui.vm.readMemory(startAddr,
-                                                        isCPUAddress));
-        }
-        else {
-          std::sprintf(&(tmpBuf[0]), "  %02X",
-                       (unsigned int) gui.vm.readMemory(startAddr,
-                                                        isCPUAddress));
+        if (startAddr == endAddr)
+          break;
+        startAddr = (startAddr + 1U) & addrMask;
+        if (++cnt >= 8) {
+          bufp[0] = '\n';
+          bufp[1] = '\0';
+          break;
         }
       }
       buf += &(tmpBuf[0]);
-      if (startAddr == endAddr)
-        break;
-      startAddr++;
-      cnt++;
-    }
+    } while (cnt >= 8);
   }
   catch (std::exception& e) {
     buf.clear();
@@ -369,7 +431,7 @@ long Plus4EmuGUI_DebugWindow::parseHexNumber(uint32_t& value, const char *s)
     else if (c >= 'a' && c <= 'f')
       tmpVal += uint32_t((c - 'a') + 10);
     else {
-      gui.errorMessage("invalid hexadecimal number format");
+      gui.errorMessage("invalid number format");
       return 0L;
     }
     s++;
@@ -546,7 +608,7 @@ void Plus4EmuGUI_DebugWindow::breakPointCallback(void *userData,
     Fl::unlock();
     return;             // do not show debugger window if tracing
   }
-  if (!debugWindow.shown()) {
+  if (!debugWindow.active()) {
     gui_.debugWindowShowFlag = true;
     Fl::awake();
   }
@@ -556,12 +618,17 @@ void Plus4EmuGUI_DebugWindow::breakPointCallback(void *userData,
     Fl::lock();
   }
   while (true) {
-    bool  tmp = debugWindow.shown();
+    bool  tmp = debugWindow.active();
     Fl::unlock();
     if (!tmp)
       break;
     gui_.updateDisplay();
     Fl::lock();
   }
+}
+
+void Plus4EmuGUI_DebugWindow::hideWindowCallback(void *userData)
+{
+  reinterpret_cast< Plus4EmuGUI_DebugWindow * >(userData)->hide();
 }
 
