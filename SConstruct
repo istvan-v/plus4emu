@@ -277,6 +277,8 @@ plus4emuGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
 plus4emuGLGUIEnvironment['CCFLAGS'] = plus4emuLibEnvironment['CCFLAGS']
 plus4emuGLGUIEnvironment['CXXFLAGS'] = plus4emuLibEnvironment['CXXFLAGS']
+plus4emuGUIEnvironment['CPPPATH'] = plus4emuLibEnvironment['CPPPATH']
+plus4emuGLGUIEnvironment['CPPPATH'] = plus4emuLibEnvironment['CPPPATH']
 
 def fluidCompile(flNames):
     cppNames = []
