@@ -9,11 +9,8 @@
 *_fl.cpp
 *_fl.hpp
 /plus4emu
-/compress
-/makecfg
 /p4fliconv
 /p4sconv
-/tapconv
 /p4compress
 /p4makecfg
 /p4tapconv

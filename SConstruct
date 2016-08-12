@@ -655,7 +655,7 @@ if not win32CrossCompile:
     makecfgEnvironment.Install(instDesktopDir, ["resource/plus4emu.desktop"])
     if not buildingLinuxPackage:
         makecfgEnvironment.Command(
-            instDataDir, makecfg,
+            instConfDir + "/P4_64k_PAL_3PLUS1.cfg", makecfg,
             ['./' + programNamePrefix + 'makecfg -f "' + instDataDir + '"'])
     makecfgEnvironment.Install(instROMDir,
                                ["roms/1526_07c.rom", "roms/3plus1.rom",
