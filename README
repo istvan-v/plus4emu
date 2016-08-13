@@ -142,9 +142,9 @@ Linux
 On Linux and other POSIX platforms, the emulator is installed from the
 source code, available at the SourceForge download page
   http://sourceforge.net/project/showfiles.php?group_id=192837
-or the most recent state of the code can be downloaded from SVN with the
+or the most recent state of the code can be downloaded from Git with the
 following command:
-  svn co http://plus4emu.svn.sourceforge.net/svnroot/plus4emu plus4emu
+  git clone https://github.com/istvan-v/plus4emu.git
 In addition to the standard development tools (a recent version of the
 GNU C/C++ compiler, binutils, etc.), you need the following packages:
 
