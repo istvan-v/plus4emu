@@ -150,7 +150,8 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
 
   * SCons (http://www.scons.org/)
   * Python interpreter for running SCons
-  * FLTK 1.1.x (http://www.fltk.org/software.php?VERSION=1.1.9)
+  * FLTK 1.3.x (http://www.fltk.org/software.php?VERSION=1.3.3) or
+    1.1.x (http://www.fltk.org/software.php?VERSION=1.1.10)
     NOTES:
       * this library should be compiled with the --enable-threads
         'configure' option - many Linux distributions include binaries
@@ -166,7 +167,8 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
   * SDL (http://www.libsdl.org/) 1.2 for joystick input (optional);
     NOTE: on Linux, version 1.2.10 does not work, so using 1.2.9 or the
     latest version (currently 1.2.15) is recommended
-  * Lua (http://www.lua.org/) for scripting in the debugger (optional)
+  * Lua (http://www.lua.org/ or http://www.luajit.org/) 5.1 or 5.2 for
+    scripting in the debugger (optional)
 
 Once these are installed, you can edit the file 'SConstruct' in the top
 level source directory for setting compiler flags etc., and run the

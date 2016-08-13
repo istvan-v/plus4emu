@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -648,7 +648,7 @@ namespace Plus4Emu {
   {
     lua_pushlightuserdata(luaState, (void *) this);
     lua_pushcclosure(luaState, f, 1);
-    lua_setfield(luaState, LUA_GLOBALSINDEX, name);
+    lua_setglobal(luaState, name);
   }
 
   bool LuaScript::runBreakPointCallback_(int debugContext_, int type,
@@ -768,7 +768,7 @@ namespace Plus4Emu {
         errorCallback("error running Lua script");
       return;
     }
-    lua_getfield(luaState, LUA_GLOBALSINDEX, "breakPointCallback");
+    lua_getglobal(luaState, "breakPointCallback");
     if (!lua_isfunction(luaState, -1))
       lua_pop(luaState, 1);
     else
