@@ -231,7 +231,7 @@ if not configure.CheckCXXHeader('FL/Fl.H'):
 fltkVersion13 = 0
 if configure.CheckCXXHeader('FL/Fl_Cairo.H'):
     fltkVersion13 = 1
-    if sys.platform[:5] == 'linux':
+    if sys.platform[:5] == 'linux' and not win32CrossCompile:
         plus4emuGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
     # print 'WARNING: using FLTK 1.3.x - this may not work reliably yet'
