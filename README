@@ -162,8 +162,6 @@ GNU C/C++ compiler, binutils, etc.), you need the following packages:
   * PortAudio (http://www.portaudio.com/download.html), version 18 and
     19 are supported, but v19 is recommended
   * libsndfile (http://www.mega-nerd.com/libsndfile/#Download)
-  * dotconf (http://www.azzit.de/dotconf/) (optional, but recommended as
-    it is used for reading ASCII format configuration files)
   * SDL (http://www.libsdl.org/) 1.2 for joystick input (optional);
     NOTE: on Linux, version 1.2.10 does not work, so using 1.2.9 or the
     latest version (currently 1.2.15) is recommended
@@ -862,6 +860,7 @@ plus4emu is copyright (C) 2003-2008 by Istvan Varga
 <istvanv@users.sourceforge.net>.
 reSID 0.16 copyright (C) 2004 by Dag Lem.
 Fl_Native_File_Chooser 0.84 copyright (C) 2004 by Greg Ercolano.
+dotconf 1.3 copyright (C) by Lukas Schröder and William Hubbs.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

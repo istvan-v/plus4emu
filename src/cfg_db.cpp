@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -26,10 +26,8 @@
 #include <cmath>
 #include <typeinfo>
 
-#ifdef HAVE_DOTCONF_H
-#  include <stdio.h>
-#  include <dotconf.h>
-#endif
+#include <stdio.h>
+#include "dotconf.h"
 
 namespace Plus4Emu {
 
@@ -395,8 +393,6 @@ namespace Plus4Emu {
 
 }       // namespace Plus4Emu
 
-#ifdef HAVE_DOTCONF_H
-
 static const char * dotconfCommandCallback(command_t *cmd, context_t *context_)
 {
   (void) context_;
@@ -427,8 +423,6 @@ static const char * dotconfCommandCallback(command_t *cmd, context_t *context_)
   }
   return (char *) 0;
 }
-
-#endif
 
 namespace Plus4Emu {
 
@@ -759,7 +753,6 @@ namespace Plus4Emu {
 
   void ConfigurationDB::loadState(const char *fileName, bool useHomeDirectory)
   {
-#ifdef HAVE_DOTCONF_H
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Exception("invalid file name");
     std::string fullName;
@@ -802,12 +795,6 @@ namespace Plus4Emu {
       // FIXME: should include more information in the error message
       throw Exception("error reading configuration file");
     }
-#else
-    (void) fileName;
-    (void) useHomeDirectory;
-    throw Exception("loading ASCII format configuration files "
-                    "is not supported");
-#endif
   }
 
   // --------------------------------------------------------------------------

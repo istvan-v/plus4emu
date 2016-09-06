@@ -41,6 +41,7 @@ class Plus4EmuGUI_AboutWindow {open
   buf->append("  http://sourceforge.net/projects/plus4emu/\\n");
   buf->append("reSID 0.16 copyright (C) 2004 by Dag Lem\\n");
   buf->append("Fl_Native_File_Chooser 0.84 copyright (C) 2004 by Greg Ercolano.\\n");
+  buf->append("dotconf 1.3 copyright (C) by Lukas Schr\\366der and William Hubbs.\\n");
   buf->append("\\n");
   buf->append("This program is free software; you can redistribute it and/or modify\\n");
   buf->append("it under the terms of the GNU General Public License as published by\\n");

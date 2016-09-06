@@ -268,7 +268,9 @@ Section "Source code" SecSrc
 
   SetOutPath "$INSTDIR\src\src"
 
+  File "..\src\*.c"
   File "..\src\*.cpp"
+  File "..\src\*.h"
   File "..\src\*.hpp"
   File "..\src\*.py"
 

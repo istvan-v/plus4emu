@@ -247,7 +247,6 @@ if enableGLShaders:
                                '#include <GL/gl.h>\n#include <GL/glext.h>'):
         enableGLShaders = 0
         print 'WARNING: disabling GL shader support'
-haveDotconf = configure.CheckCHeader('dotconf.h')
 if configure.CheckCHeader('stdint.h'):
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_STDINT_H'])
 if not disableSDL:
@@ -278,8 +277,6 @@ configure.Finish()
 
 if not havePortAudioV19:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DUSING_OLD_PORTAUDIO_API'])
-if haveDotconf:
-    plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_DOTCONF_H'])
 if haveSDL:
     plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_SDL_H'])
 if haveLua:
@@ -334,6 +331,7 @@ plus4emuLibSources = Split('''
     src/d64image.cpp
     src/disasm.cpp
     src/display.cpp
+    src/dotconf.c
     src/fileio.cpp
     src/iecdrive.cpp
     src/mps801.cpp
@@ -434,12 +432,6 @@ if win32CrossCompile or sys.platform[:5] == 'linux':
 
 plus4emuEnvironment = plus4emuGLGUIEnvironment.Clone()
 plus4emuEnvironment.Append(CPPPATH = ['./gui'])
-if haveDotconf:
-    if win32CrossCompile:
-        # hack to work around binary incompatible dirent functions in
-        # libdotconf.a
-        plus4emuEnvironment.Append(LIBS = ['mingwex'])
-    plus4emuEnvironment.Append(LIBS = ['dotconf'])
 if luaPkgName:
     # using pkg-config
     if not plus4emuEnvironment.ParseConfig('pkg-config --libs ' + luaPkgName):
@@ -498,12 +490,6 @@ Depends(tapconv, plus4emuLib)
 makecfgEnvironment = plus4emuGUIEnvironment.Clone()
 makecfgEnvironment.Append(CPPPATH = ['./installer'])
 makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
-if haveDotconf:
-    if win32CrossCompile:
-        # hack to work around binary incompatible dirent functions in
-        # libdotconf.a
-        makecfgEnvironment.Append(LIBS = ['mingwex'])
-    makecfgEnvironment.Append(LIBS = ['dotconf'])
 if haveSDL:
     makecfgEnvironment.Append(LIBS = ['SDL'])
 makecfgEnvironment.Append(LIBS = ['sndfile'])
@@ -582,12 +568,6 @@ if win32CrossCompile:
     p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
-if haveDotconf:
-    if win32CrossCompile:
-        # hack to work around binary incompatible dirent functions in
-        # libdotconf.a
-        p4fliconvEnvironment.Append(LIBS = ['mingwex'])
-    p4fliconvEnvironment.Append(LIBS = ['dotconf'])
 if not win32CrossCompile:
     p4fliconvEnvironment.Append(LIBS = ['pthread'])
 
@@ -617,12 +597,6 @@ if win32CrossCompile:
     p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
-if haveDotconf:
-    if win32CrossCompile:
-        # hack to work around binary incompatible dirent functions in
-        # libdotconf.a
-        p4sconvEnvironment.Append(LIBS = ['mingwex'])
-    p4sconvEnvironment.Append(LIBS = ['dotconf'])
 if win32CrossCompile:
     p4sconvEnvironment.Prepend(LINKFLAGS = ['-mconsole'])
 else:
