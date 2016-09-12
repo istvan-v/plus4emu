@@ -88,7 +88,7 @@ if mingwCrossCompile:
     plus4emuLibEnvironment['CXX'] = toolNamePrefix + 'g++'
     plus4emuLibEnvironment['LINK'] = toolNamePrefix + 'g++'
     plus4emuLibEnvironment['RANLIB'] = toolNamePrefix + 'ranlib'
-    if not disbleLua:
+    if not disableLua:
         if useLuaJIT:
             plus4emuLibEnvironment.Append(
                 CPPPATH = [mingwPrefix + '/include/lua5.1'])
@@ -568,7 +568,7 @@ p4fliconvLibEnvironment.Append(CPPPATH = ['./util/compress',
 if not haveZLib:
     print 'WARNING: zlib is not found, building p4fliconv without P4S support'
     p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
-elif not mingwCrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
+elif not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
     if not 'z' in p4fliconvLibEnvironment['LIBS']:
         p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
@@ -596,7 +596,7 @@ p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
 p4fliconvEnvironment = p4fliconvLibEnvironment.Clone()
 if mingwCrossCompile:
     p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
-    p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+    p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png'])
 p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
 if not mingwCrossCompile:
     p4fliconvEnvironment.Append(LIBS = ['pthread'])
@@ -625,7 +625,7 @@ if sys.platform[:6] == 'darwin':
 p4sconvEnvironment = p4fliconvLibEnvironment.Clone()
 if mingwCrossCompile:
     p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
-    p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
+    p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png'])
 p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
 if mingwCrossCompile:
     p4sconvEnvironment.Prepend(LINKFLAGS = ['-mconsole'])
