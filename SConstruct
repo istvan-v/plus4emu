@@ -2,17 +2,19 @@
 
 import sys, os
 
-win32CrossCompile = 0
+win64CrossCompile = ARGUMENTS.get('win64', 0)
+mingwCrossCompile = win64CrossCompile or ARGUMENTS.get('win32', 0)
 linux32CrossCompile = 0
 disableSDL = 0          # set this to 1 on Linux with SDL version 1.2.10
 disableLua = 0
 enableGLShaders = 1
 enableDebug = 0
 buildRelease = 1
+useLuaJIT = 0           # for mingwCrossCompile, use LuaJIT instead of Lua 5.3
 
 compilerFlags = ''
 if buildRelease:
-    if linux32CrossCompile or win32CrossCompile:
+    if linux32CrossCompile or (mingwCrossCompile and not win64CrossCompile):
         compilerFlags = ' -march=pentium2 -mtune=generic '
 if enableDebug and not buildRelease:
     compilerFlags = ' -Wno-long-long -Wshadow -g -O2 ' + compilerFlags
@@ -28,7 +30,7 @@ fltkConfig = 'fltk-config'
 
 programNamePrefix = ""
 buildingLinuxPackage = 0
-if not win32CrossCompile:
+if not mingwCrossCompile:
     if sys.platform[:5] == 'linux':
         try:
             instPrefix = os.environ["UB_INSTALLDIR"]
@@ -57,7 +59,8 @@ if linux32CrossCompile:
     compilerFlags = ' -m32 ' + compilerFlags
 plus4emuLibEnvironment.Append(CCFLAGS = Split(compilerFlags))
 plus4emuLibEnvironment.Append(CPPPATH = ['.', './src'])
-plus4emuLibEnvironment.Append(CPPPATH = ['/usr/local/include'])
+if not mingwCrossCompile:
+    plus4emuLibEnvironment.Append(CPPPATH = ['/usr/local/include'])
 if sys.platform[:6] == 'darwin':
     plus4emuLibEnvironment.Append(CPPPATH = ['/usr/X11R6/include'])
 if not linux32CrossCompile:
@@ -65,13 +68,33 @@ if not linux32CrossCompile:
 else:
     linkFlags = ' -m32 -L. -L/usr/X11R6/lib '
 plus4emuLibEnvironment.Append(LINKFLAGS = Split(linkFlags))
-if win32CrossCompile:
-    plus4emuLibEnvironment['AR'] = 'wine C:/MinGW/bin/ar.exe'
-    plus4emuLibEnvironment['CC'] = 'wine C:/MinGW/bin/gcc.exe'
-    plus4emuLibEnvironment['CPP'] = 'wine C:/MinGW/bin/cpp.exe'
-    plus4emuLibEnvironment['CXX'] = 'wine C:/MinGW/bin/g++.exe'
-    plus4emuLibEnvironment['LINK'] = 'wine C:/MinGW/bin/g++.exe'
-    plus4emuLibEnvironment['RANLIB'] = 'wine C:/MinGW/bin/ranlib.exe'
+if mingwCrossCompile:
+    if not win64CrossCompile:
+        mingwPrefix = 'C:/mingw32'
+        plus4emuLibEnvironment.Prepend(CCFLAGS = ['-m32'])
+    else:
+        mingwPrefix = 'C:/mingw64'
+        plus4emuLibEnvironment.Prepend(CCFLAGS = ['-m64'])
+    plus4emuLibEnvironment.Append(CPPPATH = [mingwPrefix + '/include'])
+    if sys.platform[:3] == 'win':
+        toolNamePrefix = ''
+    elif win64CrossCompile:
+        toolNamePrefix = 'x86_64-w64-mingw32-'
+    else:
+        toolNamePrefix = 'i686-w64-mingw32-'
+    plus4emuLibEnvironment['AR'] = toolNamePrefix + 'ar'
+    plus4emuLibEnvironment['CC'] = toolNamePrefix + 'gcc'
+    plus4emuLibEnvironment['CPP'] = toolNamePrefix + 'cpp'
+    plus4emuLibEnvironment['CXX'] = toolNamePrefix + 'g++'
+    plus4emuLibEnvironment['LINK'] = toolNamePrefix + 'g++'
+    plus4emuLibEnvironment['RANLIB'] = toolNamePrefix + 'ranlib'
+    if not disbleLua:
+        if useLuaJIT:
+            plus4emuLibEnvironment.Append(
+                CPPPATH = [mingwPrefix + '/include/lua5.1'])
+        else:
+            plus4emuLibEnvironment.Append(
+                CPPPATH = [mingwPrefix + '/include/lua5.3'])
     plus4emuLibEnvironment.Append(LIBS = ['comdlg32', 'comctl32', 'ole32',
                                           'uuid', 'ws2_32', 'gdi32',
                                           'user32', 'kernel32'])
@@ -79,7 +102,7 @@ if win32CrossCompile:
     plus4emuLibEnvironment.Prepend(LINKFLAGS = ['-mthreads'])
 
 plus4emuGUIEnvironment = plus4emuLibEnvironment.Clone()
-if win32CrossCompile:
+if mingwCrossCompile:
     plus4emuGUIEnvironment.Prepend(LIBS = ['fltk'])
 else:
     try:
@@ -93,7 +116,7 @@ else:
         plus4emuGUIEnvironment.Append(LIBS = ['fltk_z', 'X11'])
 
 plus4emuGLGUIEnvironment = plus4emuLibEnvironment.Clone()
-if win32CrossCompile:
+if mingwCrossCompile:
     plus4emuGLGUIEnvironment.Prepend(LIBS = ['fltk_gl', 'fltk',
                                              'glu32', 'opengl32'])
 else:
@@ -108,7 +131,8 @@ else:
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_images', 'fltk_gl'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk', 'fltk_jpeg'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['fltk_png', 'fltk_z', 'GL'])
-        plus4emuGLGUIEnvironment.Append(LIBS = ['X11','GL'])
+    if sys.platform[:5] == 'linux':
+        plus4emuGLGUIEnvironment.Append(LIBS = ['X11', 'GL'])
 
 plus4emuLibEnvironment['CPPPATH'] = plus4emuGLGUIEnvironment['CPPPATH']
 
@@ -231,7 +255,7 @@ if not configure.CheckCXXHeader('FL/Fl.H'):
 fltkVersion13 = 0
 if configure.CheckCXXHeader('FL/Fl_Cairo.H'):
     fltkVersion13 = 1
-    if sys.platform[:5] == 'linux' and not win32CrossCompile:
+    if sys.platform[:5] == 'linux' and not mingwCrossCompile:
         plus4emuGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
         plus4emuGLGUIEnvironment.Append(LIBS = ['Xinerama', 'Xft'])
     # print 'WARNING: using FLTK 1.3.x - this may not work reliably yet'
@@ -258,7 +282,7 @@ if not disableLua:
     haveLua = configure.CheckCHeader('lua.h')
     haveLua = haveLua and configure.CheckCHeader('lauxlib.h')
     haveLua = haveLua and configure.CheckCHeader('lualib.h')
-    if not haveLua and sys.platform[:5] == 'linux' and not win32CrossCompile:
+    if not haveLua and sys.platform[:5] == 'linux' and not mingwCrossCompile:
         for pkgName in ['lua-5.1', 'lua51', 'lua-5.3', 'lua53',
                         'lua-5.2', 'lua52', 'lua']:
             print 'Checking for Lua package ' + pkgName + '...'
@@ -405,11 +429,11 @@ def fixDefFile(env, target, source):
                 f.write(tmp)
             f.close()
 
-if win32CrossCompile or sys.platform[:5] == 'linux':
+if mingwCrossCompile or sys.platform[:5] == 'linux':
     plus4emuDLLEnvironment = plus4emuLibEnvironment.Clone()
     plus4emuDLLEnvironment.Append(CPPPATH = ['./plus4lib'])
     plus4emuDLLEnvironment.Append(LIBS = ['sndfile'])
-    if not win32CrossCompile:
+    if not mingwCrossCompile:
         plus4emuDLLEnvironment.Append(CCFLAGS = ['-fvisibility=hidden'])
         plus4emuDLLEnvironment.Append(LIBS = ['pthread'])
         plus4emuDLL = plus4emuDLLEnvironment.SharedLibrary(
@@ -439,11 +463,16 @@ if luaPkgName:
         print ' *** error: Lua library is not found'
         Exit(-1)
 elif haveLua:
-    plus4emuEnvironment.Append(LIBS = ['lua'])
+    if not mingwCrossCompile:
+        plus4emuEnvironment.Append(LIBS = ['lua'])
+    elif not useLuaJIT:
+        plus4emuEnvironment.Append(LIBS = ['lua53'])
+    else:
+        plus4emuEnvironment.Append(LIBS = ['lua51'])
 if haveSDL:
     plus4emuEnvironment.Append(LIBS = ['SDL'])
 plus4emuEnvironment.Append(LIBS = ['portaudio', 'sndfile'])
-if not win32CrossCompile:
+if not mingwCrossCompile:
     checkPortAudioLib(plus4emuEnvironment)
     plus4emuEnvironment.Append(LIBS = ['pthread'])
     if sys.platform[:5] == 'linux':
@@ -459,14 +488,14 @@ plus4emuSources += fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl',
                                  'gui/debug.fl', 'gui/printer.fl',
                                  'gui/about.fl'])
 plus4emuSources += ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp']
-if win32CrossCompile:
+if mingwCrossCompile:
     plus4emuResourceObject = plus4emuEnvironment.Command(
         'resource/resource.o',
         ['resource/plus4emu.rc', 'resource/Cbm4.ico', 'resource/1551.ico',
          'resource/Plus4Mon4.ico', 'resource/Plus4i.ico',
          'resource/CbmFile.ico'],
-        'wine C:/MinGW/bin/windres.exe -v --use-temp-file '
-        + '--preprocessor="C:/MinGW/bin/gcc.exe -E -xc -DRC_INVOKED" '
+        toolNamePrefix + 'windres -v --use-temp-file '
+        + '--preprocessor="gcc -E -xc -DRC_INVOKED" '
         + '-o $TARGET resource/plus4emu.rc')
     plus4emuSources += [plus4emuResourceObject]
 plus4emu = plus4emuEnvironment.Program('plus4emu', plus4emuSources)
@@ -494,7 +523,7 @@ makecfgEnvironment.Prepend(LIBS = ['plus4emu'])
 if haveSDL:
     makecfgEnvironment.Append(LIBS = ['SDL'])
 makecfgEnvironment.Append(LIBS = ['sndfile'])
-if not win32CrossCompile:
+if not mingwCrossCompile:
     makecfgEnvironment.Append(LIBS = ['pthread'])
 else:
     makecfgEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
@@ -539,7 +568,7 @@ p4fliconvLibEnvironment.Append(CPPPATH = ['./util/compress',
 if not haveZLib:
     print 'WARNING: zlib is not found, building p4fliconv without P4S support'
     p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
-elif not win32CrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
+elif not mingwCrossCompile and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
     if not 'z' in p4fliconvLibEnvironment['LIBS']:
         p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
@@ -565,11 +594,11 @@ p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
                                                      p4fliconvLibSources)
 
 p4fliconvEnvironment = p4fliconvLibEnvironment.Clone()
-if win32CrossCompile:
+if mingwCrossCompile:
     p4fliconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4fliconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 p4fliconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
-if not win32CrossCompile:
+if not mingwCrossCompile:
     p4fliconvEnvironment.Append(LIBS = ['pthread'])
 
 p4fliconv = p4fliconvEnvironment.Program(
@@ -578,7 +607,7 @@ Depends(p4fliconv, p4fliconvLib)
 Depends(p4fliconv, compressLib)
 Depends(p4fliconv, plus4emuLib)
 
-if win32CrossCompile:
+if mingwCrossCompile:
     p4fliconvGUIEnvironment = p4fliconvEnvironment.Clone()
     p4fliconvGUIEnvironment.Prepend(LINKFLAGS = ['-mwindows'])
     p4fliconvGUIMain = p4fliconvGUIEnvironment.Object(
@@ -594,11 +623,11 @@ if sys.platform[:6] == 'darwin':
             'mkdir -p plus4emu.app/Contents/MacOS ; cp -pf $SOURCES $TARGET')
 
 p4sconvEnvironment = p4fliconvLibEnvironment.Clone()
-if win32CrossCompile:
+if mingwCrossCompile:
     p4sconvEnvironment.Prepend(LIBS = ['fltk_images'])
     p4sconvEnvironment.Append(LIBS = ['fltk_jpeg', 'fltk_png', 'fltk_z'])
 p4sconvEnvironment.Prepend(LIBS = ['p4fliconv', 'compress', 'plus4emu'])
-if win32CrossCompile:
+if mingwCrossCompile:
     p4sconvEnvironment.Prepend(LINKFLAGS = ['-mconsole'])
 else:
     p4sconvEnvironment.Append(LIBS = ['pthread'])
@@ -617,7 +646,7 @@ Depends(compress, compressLib)
 
 # -----------------------------------------------------------------------------
 
-if not win32CrossCompile:
+if not mingwCrossCompile:
     if buildingLinuxPackage:
         makecfgEnvironment.InstallAs([instBinDir + "/plus4emu.bin",
                                       instBinDir + "/plus4emu"],
