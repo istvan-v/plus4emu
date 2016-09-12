@@ -14,3 +14,5 @@
 /p4compress
 /p4makecfg
 /p4tapconv
+/plus4lib/*.def
+/plus4lib/*.dll
