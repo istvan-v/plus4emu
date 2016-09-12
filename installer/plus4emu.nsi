@@ -12,15 +12,23 @@
 ;--------------------------------
 ;General
 
+  ;Use "makensis.exe /DWIN64" to create x64 installer
+  !ifndef WIN64
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.9.3-beta.exe"
-
+  OutFile "plus4emu-1.2.9.3-x86-beta.exe"
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
+  !else
+  Name "plus4emu (x64)"
+  OutFile "plus4emu-1.2.9.3-x64-beta.exe"
+  InstallDir "$PROGRAMFILES64\plus4emu"
+  !endif
+
+  RequestExecutionLevel admin
 
   ;Get installation folder from registry if available
-  InstallDirRegKey HKCU "Software\plus4emu\InstallDirectory" ""
+  InstallDirRegKey HKLM "Software\plus4emu\InstallDirectory" ""
 
 ;--------------------------------
 ;Variables
@@ -40,7 +48,7 @@
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   ;Start Menu Folder Page Configuration
-  !define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKCU"
+  !define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKLM"
   !define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\plus4emu"
   !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "Start Menu Folder"
   !insertmacro MUI_PAGE_STARTMENU Application $STARTMENU_FOLDER
@@ -64,25 +72,34 @@ Section "plus4emu" SecMain
   SetOutPath "$INSTDIR"
 
   File "..\COPYING"
-  File /nonfatal "..\LICENSE.FLTK"
-  File /nonfatal "..\LICENSE.Lua"
-  File /nonfatal "..\LICENSE.PortAudio"
-  File /nonfatal "..\LICENSE.SDL"
-  File /nonfatal "..\LICENSE.dotconf"
-  File /nonfatal "..\LICENSE.libsndfile"
+  File "..\licenses\LICENSE.FLTK"
+  File "..\licenses\LICENSE.Lua"
+  File "..\licenses\LICENSE.PortAudio"
+  File "..\licenses\LICENSE.SDL"
+  File "..\licenses\LICENSE.dotconf"
+  File "..\licenses\LICENSE.libsndfile"
   File "/oname=news.txt" "..\NEWS"
   File "/oname=readme.txt" "..\README"
   File "..\plus4emu.exe"
-  File "C:\MinGW\bin\libgcc_s_dw2-1.dll"
-  File "C:\MinGW\bin\libsndfile-1.dll"
-  File "C:\MinGW\bin\libstdc++-6.dll"
-  File "C:\MinGW\bin\lua51-2.dll"
-  File "C:\MinGW\bin\lua51.dll"
-  File "C:\MinGW\bin\mingwm10.dll"
-  File "C:\MinGW\bin\portaudio.dll.0.0.19"
-  File "C:\MinGW\bin\SDL.dll"
   File "..\makecfg.exe"
   File "..\tapconv.exe"
+  !ifndef WIN64
+  File "C:\mingw32\bin\libgcc_s_dw2-1.dll"
+  File "C:\mingw32\bin\libsndfile-1.dll"
+  File "C:\mingw32\bin\libstdc++-6.dll"
+  File "C:\mingw32\bin\lua51.dll"
+  File "C:\mingw32\bin\lua53.dll"
+  File "C:\mingw32\bin\portaudio_x86.dll"
+  File "C:\mingw32\bin\SDL.dll"
+  !else
+  File "C:\mingw64\bin\libgcc_s_seh-1.dll"
+  File "C:\mingw64\bin\libsndfile-1.dll"
+  File "C:\mingw64\bin\libstdc++-6.dll"
+  File "C:\mingw64\bin\lua51.dll"
+  File "C:\mingw64\bin\lua53.dll"
+  File "C:\mingw64\bin\portaudio_x64.dll"
+  File "C:\mingw64\bin\SDL.dll"
+  !endif
 
   SetOutPath "$INSTDIR\config"
 
@@ -111,12 +128,14 @@ Section "plus4emu" SecMain
   SetOutPath "$INSTDIR\tape"
 
   ;Store installation folder
-  WriteRegStr HKCU "Software\plus4emu\InstallDirectory" "" $INSTDIR
+  WriteRegStr HKLM "Software\plus4emu\InstallDirectory" "" $INSTDIR
 
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+
+    SetShellVarContext all
 
     ;Create shortcuts
     CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
@@ -151,6 +170,8 @@ Section "Utilities" SecUtils
 
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
+    SetShellVarContext all
+
     ;Create shortcuts
     SetOutPath "$INSTDIR"
     CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Image converter utility.lnk" "$INSTDIR\p4fliconv_gui.exe"
@@ -167,10 +188,15 @@ Section "Development library" SecPlus4Library
   File "..\plus4lib\plus4emu.dll"
   File "..\plus4lib\plus4emu.h"
   File "..\plus4lib\sample.c"
-  File "C:\MinGW\bin\libgcc_s_dw2-1.dll"
-  File "C:\MinGW\bin\libsndfile-1.dll"
-  File "C:\MinGW\bin\libstdc++-6.dll"
-  File "C:\MinGW\bin\mingwm10.dll"
+  !ifndef WIN64
+  File "C:\mingw32\bin\libgcc_s_dw2-1.dll"
+  File "C:\mingw32\bin\libsndfile-1.dll"
+  File "C:\mingw32\bin\libstdc++-6.dll"
+  !else
+  File "C:\mingw64\bin\libgcc_s_seh-1.dll"
+  File "C:\mingw64\bin\libsndfile-1.dll"
+  File "C:\mingw64\bin\libstdc++-6.dll"
+  !endif
 
 SectionEnd
 
@@ -216,11 +242,19 @@ Section "Source code" SecSrc
   File "..\installer\makecfg.cpp"
   File "..\installer\plus4emu"
 
+  SetOutPath "$INSTDIR\src\licenses"
+
+  File "..\licenses\LICENSE.*"
+
   SetOutPath "$INSTDIR\src\msvc"
 
   SetOutPath "$INSTDIR\src\msvc\include"
 
   File "..\msvc\include\*.h"
+
+  SetOutPath "$INSTDIR\src\patches"
+
+  File "..\patches\*.patch"
 
   SetOutPath "$INSTDIR\src\plus4emu.app"
 
@@ -355,6 +389,8 @@ SectionEnd
 
 Section "Uninstall"
 
+  SetShellVarContext all
+
   Delete "$INSTDIR\COPYING"
   Delete "$INSTDIR\LICENSE.FLTK"
   Delete "$INSTDIR\LICENSE.Lua"
@@ -370,13 +406,14 @@ Section "Uninstall"
   Delete "$INSTDIR\p4sconv.exe"
   Delete "$INSTDIR\plus4emu.exe"
   Delete "$INSTDIR\libgcc_s_dw2-1.dll"
+  Delete "$INSTDIR\libgcc_s_seh-1.dll"
   Delete "$INSTDIR\libsndfile-1.dll"
   Delete "$INSTDIR\libstdc++-6.dll"
-  Delete "$INSTDIR\lua51-2.dll"
   Delete "$INSTDIR\lua51.dll"
+  Delete "$INSTDIR\lua53.dll"
   Delete "$INSTDIR\makecfg.exe"
-  Delete "$INSTDIR\mingwm10.dll"
-  Delete "$INSTDIR\portaudio.dll.0.0.19"
+  Delete "$INSTDIR\portaudio_x64.dll"
+  Delete "$INSTDIR\portaudio_x86.dll"
   Delete "$INSTDIR\SDL.dll"
   Delete "$INSTDIR\tapconv.exe"
   Delete "$INSTDIR\config\P4_Keyboard_US.cfg"
@@ -466,8 +503,8 @@ Section "Uninstall"
     StrCmp $MUI_TEMP $SMPROGRAMS startMenuDeleteLoopDone startMenuDeleteLoop
   startMenuDeleteLoopDone:
 
-  DeleteRegKey /ifempty HKCU "Software\plus4emu\InstallDirectory"
-  DeleteRegKey /ifempty HKCU "Software\plus4emu"
+  DeleteRegKey /ifempty HKLM "Software\plus4emu\InstallDirectory"
+  DeleteRegKey /ifempty HKLM "Software\plus4emu"
 
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
