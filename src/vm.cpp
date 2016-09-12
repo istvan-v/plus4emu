@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -913,9 +913,7 @@ namespace Plus4Emu {
     f = (std::FILE *) 0;
     try {
       std::string fullName;
-      bool        haveFileName = false;
       if (baseName_.length() > 0) {
-        haveFileName = true;
         // convert file name to lower case, replace invalid characters with '_'
         std::string baseName(baseName_);
         stringToLowerCase(baseName);
@@ -932,14 +930,19 @@ namespace Plus4Emu {
           fileNameCallback(fileNameCallbackUserData, fullName);
         if (fullName.length() == 0)
           return -2;                    // error: invalid file name
+#ifdef WIN32
         baseName_ = fullName;
+#endif
       }
       // attempt to stat() file
 #ifndef WIN32
       struct stat   st;
       std::memset(&st, 0, sizeof(struct stat));
       int   err = stat(fullName.c_str(), &st);
-      if (err != 0 && haveFileName) {
+      if (baseName_.empty()) {
+        baseName_ = fullName;
+      }
+      else if (err != 0) {
         // not found, try case insensitive file search
         std::string tmpName(fullName);
         tmpName[0] = tmpName.c_str()[0];    // unshare string
