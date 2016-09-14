@@ -56,11 +56,8 @@ namespace Plus4Emu {
   void FLTKDisplay_::deleteMessage(Message *m)
   {
     m->~Message();
-    m->prv = (Message *) 0;
     messageQueueMutex.lock();
     m->nxt = freeMessageStack;
-    if (freeMessageStack)
-      freeMessageStack->prv = m;
     freeMessageStack = m;
     messageQueueMutex.unlock();
   }
@@ -74,7 +71,6 @@ namespace Plus4Emu {
       std::free(m);
       return;
     }
-    m->prv = lastMessage;
     m->nxt = (Message *) 0;
     if (lastMessage)
       lastMessage->nxt = m;
@@ -152,15 +148,11 @@ namespace Plus4Emu {
     while (freeMessageStack) {
       Message *m = freeMessageStack;
       freeMessageStack = m->nxt;
-      if (freeMessageStack)
-        freeMessageStack->prv = (Message *) 0;
       std::free(m);
     }
     while (messageQueue) {
       Message *m = messageQueue;
       messageQueue = m->nxt;
-      if (messageQueue)
-        messageQueue->prv = (Message *) 0;
       m->~Message();
       std::free(m);
     }
@@ -844,7 +836,6 @@ namespace Plus4Emu {
       if (m) {
         messageQueue = m->nxt;
         if (messageQueue) {
-          messageQueue->prv = (Message *) 0;
           if (!messageQueue->nxt)
             lastMessage = messageQueue;
         }
