@@ -701,6 +701,11 @@ namespace Plus4Emu {
     (void) mode_;
   }
 
+  void VirtualMachine::setSingleStepModeNextAddress(int32_t addr)
+  {
+    (void) addr;
+  }
+
   void VirtualMachine::setBreakOnInvalidOpcode(bool isEnabled)
   {
     (void) isEnabled;

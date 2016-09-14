@@ -2043,6 +2043,13 @@ namespace Plus4 {
       p->setSingleStepMode(mode_);
   }
 
+  void Plus4VM::setSingleStepModeNextAddress(int32_t addr)
+  {
+    M7501   *p = getDebugCPU();
+    if (p)
+      p->setSingleStepModeNextAddress(addr);
+  }
+
   void Plus4VM::setBreakOnInvalidOpcode(bool isEnabled)
   {
     ted->setBreakOnInvalidOpcode(isEnabled);

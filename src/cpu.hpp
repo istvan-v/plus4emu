@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -278,6 +278,12 @@ namespace Plus4 {
     //   3: trace (break on every instruction, breakpoints are not disabled)
     //   4: step into (break after branch instruction only if branch is taken)
     void setSingleStepMode(int mode_);
+    // Set the next address where single step mode will stop, ignoring any
+    // other instructions. If 'addr' is negative, then a break is triggered
+    // immediately at the next instruction.
+    // Note: setSingleStepMode() must be called first with a mode parameter
+    // of 2 or 4.
+    void setSingleStepModeNextAddress(int32_t addr);
     inline void setBreakOnInvalidOpcode(bool isEnabled)
     {
       this->breakOnInvalidOpcode = isEnabled;

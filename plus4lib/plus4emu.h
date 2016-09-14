@@ -1,6 +1,6 @@
 /*
    plus4emu -- portable Commodore Plus/4 emulator
-   Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+   Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
    http://sourceforge.net/projects/plus4emu/
 
    This program is free software; you can redistribute it and/or modify
@@ -613,6 +613,15 @@ PLUS4EMU_EXPORT void Plus4VM_SetNoBreakOnDataRead(Plus4VM *vm, int n);
  *   4: step into mode (break at target of branch instruction)
  */
 PLUS4EMU_EXPORT void Plus4VM_SetSingleStepMode(Plus4VM *vm, int mode);
+/*!
+ * Set the next address where single step mode will stop, ignoring any
+ * other instructions. If 'addr' is negative, then a break is triggered
+ * immediately at the next instruction.
+ * Note: Plus4VM_SetSingleStepMode() must be called first with a mode
+ * parameter of 2 or 4.
+ */
+PLUS4EMU_EXPORT void Plus4VM_SetSingleStepModeNextAddress(
+    Plus4VM *vm, int32_t addr);
 /*!
  * Set if invalid (jam) CPU opcodes should be interpreted as NOPs with a
  * breakpoint set (priority = 3).

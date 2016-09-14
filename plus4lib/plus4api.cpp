@@ -1,6 +1,6 @@
 /*
    plus4emu -- portable Commodore Plus/4 emulator
-   Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+   Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
    http://sourceforge.net/projects/plus4emu/
 
    This program is free software; you can redistribute it and/or modify
@@ -1095,6 +1095,12 @@ extern "C" PLUS4EMU_EXPORT void Plus4VM_SetNoBreakOnDataRead(Plus4VM *vm, int n)
 extern "C" PLUS4EMU_EXPORT void Plus4VM_SetSingleStepMode(Plus4VM *vm, int mode)
 {
   vm->getVM().setSingleStepMode(mode);
+}
+
+extern "C" PLUS4EMU_EXPORT void Plus4VM_SetSingleStepModeNextAddress(
+    Plus4VM *vm, int32_t addr)
+{
+  vm->getVM().setSingleStepModeNextAddress(addr);
 }
 
 extern "C" PLUS4EMU_EXPORT void Plus4VM_SetBreakOnInvalidOpcode(
