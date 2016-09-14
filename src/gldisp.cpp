@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -1115,7 +1115,6 @@ namespace Plus4Emu {
       if (m) {
         messageQueue = m->nxt;
         if (messageQueue) {
-          messageQueue->prv = (Message *) 0;
           if (!messageQueue->nxt)
             lastMessage = messageQueue;
         }
