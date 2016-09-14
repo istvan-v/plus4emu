@@ -44,13 +44,17 @@ namespace Plus4Emu {
                              Message_LineData **lineBuffers_, int lineNum,
                              const VideoDisplayColormap<uint32_t>& colormap);
     void drawFrame_quality0(Message_LineData **lineBuffers_,
-                            double x0, double y0, double x1, double y1);
+                            double x0, double y0, double x1, double y1,
+                            bool oddFrame_);
     void drawFrame_quality1(Message_LineData **lineBuffers_,
-                            double x0, double y0, double x1, double y1);
+                            double x0, double y0, double x1, double y1,
+                            bool oddFrame_);
     void drawFrame_quality2(Message_LineData **lineBuffers_,
-                            double x0, double y0, double x1, double y1);
+                            double x0, double y0, double x1, double y1,
+                            bool oddFrame_);
     void drawFrame_quality3(Message_LineData **lineBuffers_,
-                            double x0, double y0, double x1, double y1);
+                            double x0, double y0, double x1, double y1,
+                            bool oddFrame_);
     void copyFrameToRingBuffer();
     static void fltkIdleCallback(void *userData_);
     // ----------------

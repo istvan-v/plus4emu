@@ -227,6 +227,14 @@ namespace Plus4Emu {
         vsyncThreshold2 = 242;
         vsyncReload = 0;
         lineReload = 12;
+        curLine =
+            (curLine >= lineReload ? curLine : lineReload + (curLine & 1));
+        for (int yc = 0; yc < lineReload; yc++) {
+          if (lineBuffers[yc]) {
+            deleteMessage(lineBuffers[yc]);
+            lineBuffers[yc] = (Message_LineData *) 0;
+          }
+        }
       }
     }
     savedDisplayParameters = dp;
@@ -824,10 +832,9 @@ namespace Plus4Emu {
       if (!m)
         break;
       if (typeid(*m) == typeid(Message_LineData)) {
-        Message_LineData  *msg;
-        msg = static_cast<Message_LineData *>(m);
+        Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
-        if (lineNum >= 0 && lineNum < 578) {
+        if (lineNum >= lineReload && lineNum < 578) {
           lastLineNum = lineNum;
           if ((lineNum & 1) == int(prvFrameWasOdd) &&
               lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {

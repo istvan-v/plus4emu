@@ -600,16 +600,15 @@ namespace Plus4Emu {
 
   void OpenGLDisplay::drawFrame_quality0(Message_LineData **lineBuffers_,
                                          double x0, double y0,
-                                         double x1, double y1)
+                                         double x1, double y1, bool oddFrame_)
   {
     // half horizontal resolution, no interlace (384x288)
     // no texture filtering or effects
     for (size_t yc = 0; yc < 288; yc += 8) {
       for (size_t offs = 0; offs < 8; offs++) {
-        linesChanged[yc + offs + 1] = false;
         // decode video data, and build 16-bit texture
-        decodeLine_quality0(&(textureBuffer16[offs * 384]),
-                            lineBuffers_, (yc + offs + 1) << 1);
+        decodeLine_quality0(&(textureBuffer16[offs * 384]), lineBuffers_,
+                            ((yc + offs + 1) << 1) + size_t(oddFrame_));
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
@@ -634,12 +633,11 @@ namespace Plus4Emu {
 
   void OpenGLDisplay::drawFrame_quality1(Message_LineData **lineBuffers_,
                                          double x0, double y0,
-                                         double x1, double y1)
+                                         double x1, double y1, bool oddFrame_)
   {
     GLfloat txtycf0 = GLfloat(1.0 / 16.0);
     GLfloat txtycf1 = GLfloat(15.0 / 16.0);
-    if (lineBuffers_[100] == (Message_LineData *) 0 &&
-        lineBuffers_[101] != (Message_LineData *) 0) {
+    if (oddFrame_) {
       // interlace
       txtycf0 -= GLfloat(0.5 / 16.0);
       txtycf1 -= GLfloat(0.5 / 16.0);
@@ -651,7 +649,9 @@ namespace Plus4Emu {
                     sizeof(uint16_t) * size_t(2 * 384));
       }
       // decode video data, and build 16-bit texture
-      for (size_t offs = (yc > 0 ? 4 : 0); offs < 32; offs += 2) {
+      for (size_t offs = size_t(oddFrame_) + (yc > 0 ? 4 : 0);
+           offs < 32;
+           offs += 2) {
         decodeLine_quality0(&(textureBuffer16[(offs >> 1) * 384]),
                             lineBuffers_, yc + offs);
       }
@@ -680,12 +680,11 @@ namespace Plus4Emu {
 
   void OpenGLDisplay::drawFrame_quality2(Message_LineData **lineBuffers_,
                                          double x0, double y0,
-                                         double x1, double y1)
+                                         double x1, double y1, bool oddFrame_)
   {
     GLfloat txtycf0 = GLfloat(1.0 / 16.0);
     GLfloat txtycf1 = GLfloat(15.0 / 16.0);
-    if (lineBuffers_[100] == (Message_LineData *) 0 &&
-        lineBuffers_[101] != (Message_LineData *) 0) {
+    if (oddFrame_) {
       // interlace
       txtycf0 -= GLfloat(0.5 / 16.0);
       txtycf1 -= GLfloat(0.5 / 16.0);
@@ -697,7 +696,9 @@ namespace Plus4Emu {
                     sizeof(uint32_t) * size_t(2 * 768));
       }
       // decode video data, and build 32-bit texture
-      for (size_t offs = (yc > 0 ? 4 : 0); offs < 32; offs += 2) {
+      for (size_t offs = size_t(oddFrame_) + (yc > 0 ? 4 : 0);
+           offs < 32;
+           offs += 2) {
         decodeLine_quality3(&(textureBuffer32[(offs >> 1) * 768]),
                             lineBuffers_, yc + offs, colormap32_0);
       }
@@ -726,7 +727,7 @@ namespace Plus4Emu {
 
   void OpenGLDisplay::drawFrame_quality3(Message_LineData **lineBuffers_,
                                          double x0, double y0,
-                                         double x1, double y1)
+                                         double x1, double y1, bool oddFrame_)
   {
     if (shaderMode != (displayParameters.ntscMode ? 2 : 1))
       compileShader(displayParameters.ntscMode ? 2 : 1);
@@ -734,14 +735,9 @@ namespace Plus4Emu {
       yuvTextureMode = !yuvTextureMode;
       setColormap_quality3(displayParameters);
     }
-    double  yOffs = (y1 - y0) * (-1.0 / 576.0);
-    // interlace
-    if (lineBuffers_[100] != (Message_LineData *) 0 ||
-        lineBuffers_[101] == (Message_LineData *) 0) {
-      yOffs = yOffs * 2.0;
-    }
+    double  yOffs = (y1 - y0) * (-2.0 / 576.0);
     // full horizontal resolution, interlace (768x576), TV emulation
-    for (int yc = -4; yc < 594; yc += 26) {
+    for (int yc = int(oddFrame_) - 4; yc < 594; yc += 26) {
       if (yc > 0) {
         std::memcpy(&(textureBuffer32[0]), &(textureBuffer32[13 * 768]),
                     sizeof(uint32_t) * size_t(3 * 768));
@@ -880,8 +876,8 @@ namespace Plus4Emu {
         for (offs = 0; offs < 8; offs++) {
           linesChanged[yc + offs + 1] = false;
           // decode video data, and build 16-bit texture
-          decodeLine_quality0(&(textureBuffer16[offs * 384]),
-                              lineBuffers, (yc + offs + 1) << 1);
+          decodeLine_quality0(&(textureBuffer16[offs * 384]), lineBuffers,
+                              ((yc + offs + 1) << 1) + size_t(prvFrameWasOdd));
         }
         // load texture
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 384, 8,
@@ -926,19 +922,19 @@ namespace Plus4Emu {
       case 0:
         // half horizontal resolution, no interlace (384x288)
         // no texture filtering or effects
-        drawFrame_quality0(lineBuffers, x0, y0, x1, y1);
+        drawFrame_quality0(lineBuffers, x0, y0, x1, y1, prvFrameWasOdd);
         break;
       case 1:
         // half horizontal resolution, no interlace (384x288)
-        drawFrame_quality1(lineBuffers, x0, y0, x1, y1);
+        drawFrame_quality1(lineBuffers, x0, y0, x1, y1, prvFrameWasOdd);
         break;
       case 2:
         // full horizontal resolution, no interlace (768x288)
-        drawFrame_quality2(lineBuffers, x0, y0, x1, y1);
+        drawFrame_quality2(lineBuffers, x0, y0, x1, y1, prvFrameWasOdd);
         break;
       case 3:
         // full horizontal resolution, interlace (768x576), TV emulation
-        drawFrame_quality3(lineBuffers, x0, y0, x1, y1);
+        drawFrame_quality3(lineBuffers, x0, y0, x1, y1, prvFrameWasOdd);
         break;
       }
       // clean up
@@ -972,23 +968,26 @@ namespace Plus4Emu {
         ringBufferReadPos -= 4.0;
       if (readPosFrac <= 0.998) {
         glDisable(GL_BLEND);
+        Message_LineData  **lineBuffers_ = frameRingBuffer[readPosInt & 3];
+        bool    oddFrame_ = (lineBuffers_[100] == (Message_LineData *) 0 &&
+                             lineBuffers_[101] != (Message_LineData *) 0);
         switch (displayParameters.displayQuality) {
         case 0:
           // half horizontal resolution, no interlace (384x288)
           // no texture filtering or effects
-          drawFrame_quality0(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
+          drawFrame_quality0(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 1:
           // half horizontal resolution, no interlace (384x288)
-          drawFrame_quality1(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
+          drawFrame_quality1(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 2:
           // full horizontal resolution, no interlace (768x288)
-          drawFrame_quality2(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
+          drawFrame_quality2(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 3:
           // full horizontal resolution, interlace (768x576), TV emulation
-          drawFrame_quality3(frameRingBuffer[readPosInt & 3], x0, y0, x1, y1);
+          drawFrame_quality3(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         }
       }
@@ -1001,27 +1000,27 @@ namespace Plus4Emu {
         }
         else
           glDisable(GL_BLEND);
+        Message_LineData  **lineBuffers_ =
+            frameRingBuffer[(readPosInt + 1) & 3];
+        bool    oddFrame_ = (lineBuffers_[100] == (Message_LineData *) 0 &&
+                             lineBuffers_[101] != (Message_LineData *) 0);
         switch (displayParameters.displayQuality) {
         case 0:
           // half horizontal resolution, no interlace (384x288)
           // no texture filtering or effects
-          drawFrame_quality0(frameRingBuffer[(readPosInt + 1) & 3],
-                             x0, y0, x1, y1);
+          drawFrame_quality0(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 1:
           // half horizontal resolution, no interlace (384x288)
-          drawFrame_quality1(frameRingBuffer[(readPosInt + 1) & 3],
-                             x0, y0, x1, y1);
+          drawFrame_quality1(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 2:
           // full horizontal resolution, no interlace (768x288)
-          drawFrame_quality2(frameRingBuffer[(readPosInt + 1) & 3],
-                             x0, y0, x1, y1);
+          drawFrame_quality2(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         case 3:
           // full horizontal resolution, interlace (768x576), TV emulation
-          drawFrame_quality3(frameRingBuffer[(readPosInt + 1) & 3],
-                             x0, y0, x1, y1);
+          drawFrame_quality3(lineBuffers_, x0, y0, x1, y1, oddFrame_);
           break;
         }
       }
@@ -1132,10 +1131,9 @@ namespace Plus4Emu {
       if (!m)
         break;
       if (typeid(*m) == typeid(Message_LineData)) {
-        Message_LineData  *msg;
-        msg = static_cast<Message_LineData *>(m);
+        Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
-        if (lineNum >= 0 && lineNum < 578) {
+        if (lineNum >= lineReload && lineNum < 578) {
           lastLineNum = lineNum;
           if ((lineNum & 1) == int(prvFrameWasOdd) &&
               lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {
