@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -51,6 +51,7 @@ namespace Plus4Emu {
                             double x0, double y0, double x1, double y1);
     void drawFrame_quality3(Message_LineData **lineBuffers_,
                             double x0, double y0, double x1, double y1);
+    void copyFrameToRingBuffer();
     static void fltkIdleCallback(void *userData_);
     // ----------------
     VideoDisplayColormap<uint16_t>  colormap16;
@@ -66,6 +67,8 @@ namespace Plus4Emu {
     uint8_t       forceUpdateLineMask;
     bool          redrawFlag;
     bool          yuvTextureMode;
+    bool          prvFrameWasOdd;
+    int           lastLineNum;
     Timer         noInputTimer;
     Timer         forceUpdateTimer;
     Timer         displayFrameRateTimer;
@@ -85,8 +88,10 @@ namespace Plus4Emu {
 #ifndef ENABLE_GL_SHADERS
     virtual void setDisplayParameters(const DisplayParameters& dp);
 #endif
-    // Read and process messages sent by the child thread. Returns true if
-    // redraw() needs to be called to update the display.
+    /*!
+     * Read and process messages sent by the child thread. Returns true if
+     * redraw() needs to be called to update the display.
+     */
     virtual bool checkEvents();
    protected:
     virtual void draw();

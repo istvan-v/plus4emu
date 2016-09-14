@@ -1,6 +1,8 @@
 Changes in version 1.2.10
 -------------------------
 
+  * video display improvements and bug fixes; the screen is no longer
+    blanked while the emulator is paused
   * the debugger window is hidden only after a short delay when it is
     closed, this fixes the flickering while using the step buttons
   * the editor buffer in the monitor has been increased from 120 to 160

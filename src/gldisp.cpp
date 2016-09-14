@@ -388,6 +388,8 @@ namespace Plus4Emu {
       forceUpdateLineMask(0),
       redrawFlag(false),
       yuvTextureMode(false),
+      prvFrameWasOdd(false),
+      lastLineNum(-2),
       displayFrameRate(60.0),
       inputFrameRate(50.0),
       ringBufferReadPos(0.0),
@@ -764,7 +766,7 @@ namespace Plus4Emu {
         txtycf0 -= ((ycf0 - y0) * (288.0 / 16.0) / (y1 - y0));
         ycf0 = y0;
       }
-      if (yc == 568) {
+      if (yc >= 568) {
         ycf1 -= ((y1 - y0) * (20.0 / 576.0));
         txtycf1 -= (10.0 / 16.0);
       }
@@ -856,6 +858,14 @@ namespace Plus4Emu {
         displayParameters.bufferingMode == 0) {
       // half horizontal resolution, no interlace (384x288)
       // no texture filtering or effects
+      if (forceUpdateLineMask) {
+        // make sure that all lines are updated at a slow rate
+        for (size_t yc = 0; yc < 289; yc++) {
+          if (forceUpdateLineMask & (uint8_t(1) << uint8_t((yc >> 3) & 7)))
+            linesChanged[yc] = true;
+        }
+        forceUpdateLineMask = 0;
+      }
       glDisable(GL_BLEND);
       for (size_t yc = 0; yc < 288; yc += 8) {
         size_t  offs;
@@ -896,24 +906,6 @@ namespace Plus4Emu {
       glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
       glPopMatrix();
       glFlush();
-      // make sure that all lines are updated at a slow rate
-      if (forceUpdateLineMask) {
-        if (!screenshotCallbackCnt) {
-          for (size_t yc = 0; yc < 289; yc++) {
-            if (!(forceUpdateLineMask & (uint8_t(1) << uint8_t((yc >> 3) & 7))))
-              continue;
-            for (size_t tmp = (yc << 1); tmp < ((yc + 1) << 1); tmp++) {
-              if (lineBuffers[tmp] != (Message_LineData *) 0) {
-                Message *m = lineBuffers[tmp];
-                lineBuffers[tmp] = (Message_LineData *) 0;
-                deleteMessage(m);
-              }
-            }
-            linesChanged[yc] = true;
-          }
-          forceUpdateLineMask = 0;
-        }
-      }
     }
     else if (displayParameters.bufferingMode != 2) {
       float   blendScale3 = displayParameters.motionBlur;
@@ -953,15 +945,6 @@ namespace Plus4Emu {
       glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
       glPopMatrix();
       glFlush();
-      if (!screenshotCallbackCnt) {
-        for (size_t n = 0; n < 578; n++) {
-          if (lineBuffers[n] != (Message_LineData *) 0) {
-            Message *m = lineBuffers[n];
-            lineBuffers[n] = (Message_LineData *) 0;
-            deleteMessage(m);
-          }
-        }
-      }
     }
     else {
       // resample video input to monitor refresh rate
@@ -1047,10 +1030,6 @@ namespace Plus4Emu {
       glPopMatrix();
       glFlush();
     }
-
-    messageQueueMutex.lock();
-    framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-    messageQueueMutex.unlock();
   }
 
   void OpenGLDisplay::initializeGLDisplay()
@@ -1082,18 +1061,46 @@ namespace Plus4Emu {
     glPopMatrix();
   }
 
+  void OpenGLDisplay::copyFrameToRingBuffer()
+  {
+    Message_LineData  **lineBuffers_ = frameRingBuffer[ringBufferWritePos];
+    try {
+      for (size_t yc = 0; yc < 578; yc++) {
+        Message_LineData  *m = lineBuffers_[yc];
+        lineBuffers_[yc] = (Message_LineData *) 0;
+        if ((yc & 1) == size_t(prvFrameWasOdd) &&
+            lineBuffers[yc] != (Message_LineData *) 0) {
+          if (!m)
+            m = allocateMessage< Message_LineData >();
+          *m = *(lineBuffers[yc]);
+          lineBuffers_[yc] = m;
+          m = (Message_LineData *) 0;
+        }
+        if (m)
+          deleteMessage(m);
+      }
+    }
+    catch (std::exception) {
+      for (size_t yc = 0; yc < 578; yc++) {
+        if (lineBuffers_[yc]) {
+          deleteMessage(lineBuffers_[yc]);
+          lineBuffers_[yc] = (Message_LineData *) 0;
+        }
+      }
+    }
+    ringBufferWritePos = (ringBufferWritePos + 1) & 3;
+  }
+
   void OpenGLDisplay::draw()
   {
     if (!textureID)
       initializeGLDisplay();
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-    // damage() only seems to work when called from draw() on Windows
     if (this->damage() & FL_DAMAGE_EXPOSE) {
       forceUpdateLineMask = 0xFF;
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
+      redrawFlag = true;
     }
-#endif
     if (redrawFlag || videoResampleEnabled) {
       redrawFlag = false;
       displayFrame();
@@ -1127,54 +1134,71 @@ namespace Plus4Emu {
       if (typeid(*m) == typeid(Message_LineData)) {
         Message_LineData  *msg;
         msg = static_cast<Message_LineData *>(m);
-        if (msg->lineNum >= 0 && msg->lineNum < 578) {
+        int     lineNum = msg->lineNum;
+        if (lineNum >= 0 && lineNum < 578) {
+          lastLineNum = lineNum;
+          if ((lineNum & 1) == int(prvFrameWasOdd) &&
+              lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {
+            // non-interlaced mode: clear any old lines in the other field
+            deleteMessage(lineBuffers[lineNum ^ 1]);
+            lineBuffers[lineNum ^ 1] = (Message_LineData *) 0;
+          }
           if (displayParameters.displayQuality == 0) {
-            msg->lineNum = msg->lineNum & (~(int(1)));
             if (!displayParameters.bufferingMode) {
               // check if this line has changed
-              if (lineBuffers[msg->lineNum] != (Message_LineData *) 0) {
-                if (*(lineBuffers[msg->lineNum]) == *msg) {
+              int     lineNum_ = (lineNum & (~(int(1)))) | int(prvFrameWasOdd);
+              if (lineBuffers[lineNum_] != (Message_LineData *) 0 &&
+                  *(lineBuffers[lineNum_]) == *msg) {
+                if (lineNum == lineNum_) {
                   deleteMessage(m);
                   continue;
                 }
               }
-              linesChanged[msg->lineNum >> 1] = true;
+              else {
+                linesChanged[lineNum >> 1] = true;
+              }
             }
           }
-          if (lineBuffers[msg->lineNum] != (Message_LineData *) 0)
-            deleteMessage(lineBuffers[msg->lineNum]);
-          lineBuffers[msg->lineNum] = msg;
+          if (lineBuffers[lineNum])
+            deleteMessage(lineBuffers[lineNum]);
+          lineBuffers[lineNum] = msg;
           continue;
         }
       }
       else if (typeid(*m) == typeid(Message_FrameDone)) {
         // need to update display
-        if (redrawFlag) {
-          // lost a frame
-          messageQueueMutex.lock();
-          framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-          messageQueueMutex.unlock();
-        }
+        messageQueueMutex.lock();
+        framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
+        framesPendingFlag = (framesPending > 0);
+        messageQueueMutex.unlock();
         redrawFlag = true;
         deleteMessage(m);
-        noInputTimer.reset();
-        if (screenshotCallbackCnt) {
-          checkScreenshotCallback();
+        int     yc = lastLineNum;
+        prvFrameWasOdd = bool(yc & 1);
+        lastLineNum = (yc & 1) - 2;
+        if (yc < 576) {
+          // clear any remaining lines
+          yc = yc | 1;
+          do {
+            yc++;
+            if (lineBuffers[yc]) {
+              linesChanged[yc >> 1] = true;
+              deleteMessage(lineBuffers[yc]);
+              lineBuffers[yc] = (Message_LineData *) 0;
+            }
+          } while (yc < 577);
         }
-        else if (videoResampleEnabled) {
+        noInputTimer.reset();
+        if (screenshotCallbackFlag)
+          checkScreenshotCallback();
+        if (videoResampleEnabled) {
           double  t = inputFrameRateTimer.getRealTime();
           inputFrameRateTimer.reset();
           t = (t > 0.002 ? (t < 0.25 ? t : 0.25) : 0.002);
           inputFrameRate = 1.0 / ((0.97 / inputFrameRate) + (0.03 * t));
           if (ringBufferWritePos != int(ringBufferReadPos)) {
             // if buffer is not already full, copy current frame
-            for (size_t yc = 0; yc < 578; yc++) {
-              if (frameRingBuffer[ringBufferWritePos][yc])
-                deleteMessage(frameRingBuffer[ringBufferWritePos][yc]);
-              frameRingBuffer[ringBufferWritePos][yc] = lineBuffers[yc];
-              lineBuffers[yc] = (Message_LineData *) 0;
-            }
-            ringBufferWritePos = (ringBufferWritePos + 1) & 3;
+            copyFrameToRingBuffer();
             continue;
           }
         }
@@ -1268,38 +1292,15 @@ namespace Plus4Emu {
       }
       deleteMessage(m);
     }
-    if (noInputTimer.getRealTime() > 0.6) {
-      noInputTimer.reset(0.4);
-      if (redrawFlag) {
-        // lost a frame
-        messageQueueMutex.lock();
-        framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-        messageQueueMutex.unlock();
-      }
-      if (videoResampleEnabled) {
-        for (size_t yc = 0; yc < 578; yc++) {
-          Message *m = frameRingBuffer[ringBufferWritePos][yc];
-          if (m) {
-            frameRingBuffer[ringBufferWritePos][yc] = (Message_LineData *) 0;
-            deleteMessage(m);
-          }
-        }
-        ringBufferWritePos = (ringBufferWritePos + 1) & 3;
-      }
+    if (noInputTimer.getRealTime() > 0.5) {
+      noInputTimer.reset(0.25);
+      if (videoResampleEnabled)
+        copyFrameToRingBuffer();
       redrawFlag = true;
-      if (screenshotCallbackCnt)
+      if (screenshotCallbackFlag)
         checkScreenshotCallback();
     }
-#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER))
-    // damage() only seems to work when called from draw() on Windows
-    if (this->damage() & FL_DAMAGE_EXPOSE) {
-      forceUpdateLineMask = 0xFF;
-      forceUpdateLineCnt = 0;
-      forceUpdateTimer.reset();
-    }
-    else
-#endif
-    if (forceUpdateTimer.getRealTime() >= 0.085) {
+    if (forceUpdateTimer.getRealTime() >= 0.15) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);

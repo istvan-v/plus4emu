@@ -299,6 +299,8 @@ void Plus4EmuGUI::updateDisplay(double t)
     windowToShow->show();
     windowToShow = (Fl_Window *) 0;
   }
+  if (flDisplay->haveFramesPending())
+    t = t * 0.5;
   if (updateDisplayEntered) {
     // if re-entering this function:
     Fl::wait(t);

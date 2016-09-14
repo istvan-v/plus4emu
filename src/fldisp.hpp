@@ -152,6 +152,7 @@ namespace Plus4Emu {
     int           vsyncCnt;
     int           framesPending;
     bool          skippingFrame;
+    bool          framesPendingFlag;
     bool          oddFrame;
     uint8_t       burstValue;
     unsigned int  syncLengthCnt;
@@ -181,13 +182,13 @@ namespace Plus4Emu {
     void          (*screenshotCallback)(void *,
                                         const unsigned char *, int, int);
     void          *screenshotCallbackUserData;
-    int           screenshotCallbackCnt;
+    bool          screenshotCallbackFlag;
    public:
     FLTKDisplay_();
     virtual ~FLTKDisplay_();
     /*!
-     * Set color correction and other display parameters.
-     * (see 'struct DisplayParameters' above for more information)
+     * Set color correction and other display parameters
+     * (see 'struct DisplayParameters' above for more information).
      */
     virtual void setDisplayParameters(const DisplayParameters& dp);
     virtual const DisplayParameters& getDisplayParameters() const;
@@ -211,6 +212,14 @@ namespace Plus4Emu {
      * redraw() needs to be called to update the display.
      */
     virtual bool checkEvents() = 0;
+    /*!
+     * Returns true if there are any video frames in the message queue,
+     * so the next call to checkEvents() would return true.
+     */
+    inline bool haveFramesPending() const
+    {
+      return framesPendingFlag;
+    }
     /*!
      * Set function to be called once by checkEvents() after video data for
      * a complete frame has been received. 'buf' contains 'w_' * 'h_' * 3
@@ -243,13 +252,15 @@ namespace Plus4Emu {
     void displayFrame();
     // ----------------
     VideoDisplayColormap<uint32_t>  colormap;
-    // linesChanged[n] & 0x01 is non-zero if video data for line n has been
-    // received in the current frame; linesChanged[n] & 0x80 is non-zero if
-    // line n has changed in the current frame
-    uint8_t       *linesChanged;
+    /*!
+     * linesChanged[n / 2] is true if line n has changed in the current frame
+     */
+    bool          *linesChanged;
     uint8_t       forceUpdateLineCnt;
     uint8_t       forceUpdateLineMask;
     bool          redrawFlag;
+    bool          prvFrameWasOdd;
+    int           lastLineNum;
     Timer         noInputTimer;
     Timer         forceUpdateTimer;
    public:
@@ -257,8 +268,8 @@ namespace Plus4Emu {
                 const char *lbl = (char *) 0);
     virtual ~FLTKDisplay();
     /*!
-     * Set color correction and other display parameters.
-     * (see 'struct DisplayParameters' above for more information)
+     * Set color correction and other display parameters
+     * (see 'struct DisplayParameters' above for more information).
      */
     virtual void setDisplayParameters(const DisplayParameters& dp);
     /*!

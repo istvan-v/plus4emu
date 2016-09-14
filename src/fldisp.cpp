@@ -100,6 +100,7 @@ namespace Plus4Emu {
       vsyncCnt(0),
       framesPending(0),
       skippingFrame(false),
+      framesPendingFlag(false),
       oddFrame(false),
       burstValue(0x08),
       syncLengthCnt(0U),
@@ -126,7 +127,7 @@ namespace Plus4Emu {
       fltkEventCallbackUserData((void *) 0),
       screenshotCallback((void (*)(void *, const unsigned char *, int, int)) 0),
       screenshotCallbackUserData((void *) 0),
-      screenshotCallbackCnt(0)
+      screenshotCallbackFlag(false)
   {
     try {
       lineBuffers = new Message_LineData*[578];
@@ -350,11 +351,11 @@ namespace Plus4Emu {
       screenshotCallback = func;
       if (func) {
         screenshotCallbackUserData = userData_;
-        screenshotCallbackCnt = 3;
+        screenshotCallbackFlag = true;
       }
       else {
         screenshotCallbackUserData = (void *) 0;
-        screenshotCallbackCnt = 0;
+        screenshotCallbackFlag = false;
       }
     }
   }
@@ -377,11 +378,9 @@ namespace Plus4Emu {
 
   void FLTKDisplay_::checkScreenshotCallback()
   {
-    if (!screenshotCallbackCnt)
+    if (!screenshotCallbackFlag)
       return;
-    screenshotCallbackCnt--;
-    if (screenshotCallbackCnt)
-      return;
+    screenshotCallbackFlag = false;
     void    (*func)(void *, const unsigned char *, int, int);
     void    *userData_ = screenshotCallbackUserData;
     func = screenshotCallback;
@@ -488,19 +487,21 @@ namespace Plus4Emu {
     : Fl_Window(xx, yy, ww, hh, lbl),
       FLTKDisplay_(),
       colormap(),
-      linesChanged((uint8_t *) 0),
+      linesChanged((bool *) 0),
       forceUpdateLineCnt(0),
       forceUpdateLineMask(0),
-      redrawFlag(false)
+      redrawFlag(false),
+      prvFrameWasOdd(false),
+      lastLineNum(-2)
   {
     displayParameters.displayQuality = 0;
     displayParameters.bufferingMode = 0;
     savedDisplayParameters.displayQuality = 0;
     savedDisplayParameters.bufferingMode = 0;
     try {
-      linesChanged = new uint8_t[578];
-      for (size_t n = 0; n < 578; n++)
-        linesChanged[n] = 0x00;
+      linesChanged = new bool[289];
+      for (size_t n = 0; n < 289; n++)
+        linesChanged[n] = false;
     }
     catch (...) {
       if (linesChanged)
@@ -561,6 +562,14 @@ namespace Plus4Emu {
     if (displayWidth_ <= 0 || displayHeight_ <= 0)
       return;
 
+    if (forceUpdateLineMask) {
+      // make sure that all lines are updated at a slow rate
+      for (size_t yc = 0; yc < 289; yc++) {
+        if (forceUpdateLineMask & (uint8_t(1) << uint8_t((yc >> 2) & 7)))
+          linesChanged[yc] = true;
+      }
+      forceUpdateLineMask = 0;
+    }
     unsigned char *pixelBuf_ =
         (unsigned char *) std::calloc(size_t(displayWidth_ * 4 * 3),
                                       sizeof(unsigned char));
@@ -579,14 +588,17 @@ namespace Plus4Emu {
           lineNumbers_[4] = lineNumbers_[3];
         }
         int   l0 = curLine_;
-        int   l1 = curLine_ ^ 1;
-        if (lineBuffers[l0] != (Message_LineData *) 0)
+        if (lineBuffers[l0]) {
           lineNumbers_[ycAnd3] = l0;
-        else if (lineBuffers[l1] != (Message_LineData *) 0)
-          lineNumbers_[ycAnd3] = l1;
-        else
+        }
+        else if (lineBuffers[l0 - 1]) {
+          l0 = l0 - 1;
+          lineNumbers_[ycAnd3] = l0;
+        }
+        else {
           lineNumbers_[ycAnd3] = -1;
-        if ((linesChanged[l0] | linesChanged[l1]) & 0x80)
+        }
+        if (linesChanged[l0 >> 1])
           skippingLines_ = false;
         if (ycAnd3 == 3 || yc == (displayHeight_ - 1)) {
           if (!skippingLines_) {
@@ -774,53 +786,19 @@ namespace Plus4Emu {
         }
       }
       std::free(pixelBuf_);
+      for (size_t yc = 0; yc < 289; yc++)
+        linesChanged[yc] = false;
     }
-
-    // make sure that all lines are updated at a slow rate
-    if (!screenshotCallbackCnt) {
-      if (forceUpdateLineMask) {
-        for (size_t yc = 0; yc < 578; yc++) {
-          if (linesChanged[yc] & 0x01) {
-            linesChanged[yc] = 0x00;
-            continue;
-          }
-          if (!(forceUpdateLineMask & (uint8_t(1) << uint8_t((yc >> 3) & 7)))) {
-            linesChanged[yc] = 0x00;
-            continue;
-          }
-          if (lineBuffers[yc] != (Message_LineData *) 0) {
-            Message *m = lineBuffers[yc];
-            lineBuffers[yc] = (Message_LineData *) 0;
-            deleteMessage(m);
-          }
-          linesChanged[yc] = 0x80;
-        }
-        forceUpdateLineMask = 0;
-      }
-      else {
-        std::memset(linesChanged, 0x00, 578);
-      }
-    }
-    else {
-      std::memset(linesChanged, 0x00, 578);
-      checkScreenshotCallback();
-    }
-
-    messageQueueMutex.lock();
-    framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-    messageQueueMutex.unlock();
   }
 
   void FLTKDisplay::draw()
   {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-    // damage() only seems to work when called from draw() on Windows
     if (this->damage() & FL_DAMAGE_EXPOSE) {
       forceUpdateLineMask = 0xFF;
       forceUpdateLineCnt = 0;
       forceUpdateTimer.reset();
+      redrawFlag = true;
     }
-#endif
     if (redrawFlag) {
       redrawFlag = false;
       displayFrame();
@@ -848,34 +826,55 @@ namespace Plus4Emu {
       if (typeid(*m) == typeid(Message_LineData)) {
         Message_LineData  *msg;
         msg = static_cast<Message_LineData *>(m);
-        if (msg->lineNum >= 0 && msg->lineNum < 578) {
+        int     lineNum = msg->lineNum;
+        if (lineNum >= 0 && lineNum < 578) {
+          lastLineNum = lineNum;
+          if ((lineNum & 1) == int(prvFrameWasOdd) &&
+              lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {
+            // non-interlaced mode: clear any old lines in the other field
+            linesChanged[lineNum >> 1] = true;
+            deleteMessage(lineBuffers[lineNum ^ 1]);
+            lineBuffers[lineNum ^ 1] = (Message_LineData *) 0;
+          }
           // check if this line has changed
-          if (lineBuffers[msg->lineNum] != (Message_LineData *) 0) {
-            if (*(lineBuffers[msg->lineNum]) == *msg) {
-              linesChanged[msg->lineNum] = 0x01;
+          if (lineBuffers[lineNum]) {
+            if (*(lineBuffers[lineNum]) == *msg) {
               deleteMessage(m);
               continue;
             }
           }
-          linesChanged[msg->lineNum] = 0x81;
-          if (lineBuffers[msg->lineNum] != (Message_LineData *) 0)
-            deleteMessage(lineBuffers[msg->lineNum]);
-          lineBuffers[msg->lineNum] = msg;
+          linesChanged[lineNum >> 1] = true;
+          if (lineBuffers[lineNum])
+            deleteMessage(lineBuffers[lineNum]);
+          lineBuffers[lineNum] = msg;
           continue;
         }
       }
       else if (typeid(*m) == typeid(Message_FrameDone)) {
         // need to update display
-        if (redrawFlag) {
-          // lost a frame
-          messageQueueMutex.lock();
-          framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-          messageQueueMutex.unlock();
-        }
+        messageQueueMutex.lock();
+        framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
+        framesPendingFlag = (framesPending > 0);
+        messageQueueMutex.unlock();
         redrawFlag = true;
         deleteMessage(m);
+        int     n = lastLineNum;
+        prvFrameWasOdd = bool(n & 1);
+        lastLineNum = (n & 1) - 2;
+        if (n < 576) {
+          // clear any remaining lines
+          n = n | 1;
+          do {
+            n++;
+            if (lineBuffers[n]) {
+              linesChanged[n >> 1] = true;
+              deleteMessage(lineBuffers[n]);
+              lineBuffers[n] = (Message_LineData *) 0;
+            }
+          } while (n < 577);
+        }
         noInputTimer.reset();
-        if (screenshotCallbackCnt)
+        if (screenshotCallbackFlag)
           checkScreenshotCallback();
         break;
       }
@@ -885,33 +884,18 @@ namespace Plus4Emu {
         displayParameters = msg->dp;
         DisplayParameters tmp_dp(displayParameters);
         colormap.setDisplayParameters(tmp_dp);
-        for (size_t n = 0; n < 578; n++)
-          linesChanged[n] |= uint8_t(0x80);
+        for (size_t n = 0; n < 289; n++)
+          linesChanged[n] = true;
       }
       deleteMessage(m);
     }
-    if (noInputTimer.getRealTime() > 0.6) {
-      noInputTimer.reset(0.4);
-      if (redrawFlag) {
-        // lost a frame
-        messageQueueMutex.lock();
-        framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
-        messageQueueMutex.unlock();
-      }
+    if (noInputTimer.getRealTime() > 0.5) {
+      noInputTimer.reset(0.25);
       redrawFlag = true;
-      if (screenshotCallbackCnt)
+      if (screenshotCallbackFlag)
         checkScreenshotCallback();
     }
-#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER))
-    // damage() only seems to work when called from draw() on Windows
-    if (this->damage() & FL_DAMAGE_EXPOSE) {
-      forceUpdateLineMask = 0xFF;
-      forceUpdateLineCnt = 0;
-      forceUpdateTimer.reset();
-    }
-    else
-#endif
-    if (forceUpdateTimer.getRealTime() >= 0.085) {
+    if (forceUpdateTimer.getRealTime() >= 0.15) {
       forceUpdateLineMask |= (uint8_t(1) << forceUpdateLineCnt);
       forceUpdateLineCnt++;
       forceUpdateLineCnt &= uint8_t(7);
