@@ -9,6 +9,9 @@ Changes in version 1.2.10
   * in addition to the default hexadecimal format, it is also possible
     to specify numbers in the monitor in binary (e.g. %1010), octal
     (12o), and decimal (10l) format
+  * new "step" buttons for stepping to the 16-bit address at the top of
+    the stack ('Return') or any 16-bit address specified by the user
+    ('Step to')
   * the debugger prints more detailed information about syntax and
     runtime errors in Lua scripts, and there is a new button to insert
     an empty breakpoint callback function
@@ -19,6 +22,8 @@ Changes in version 1.2.10
 
 Changes in version 1.2.9.2
 --------------------------
+
+  * minor bug fixes
 
 Changes in version 1.2.9.1
 --------------------------
