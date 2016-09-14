@@ -742,10 +742,9 @@ class Plus4EmuGUI_DebugWindow {open
   focusWidget = stepButton;
   gui.vm.setSingleStepMode(2);
   uint16_t  tmp = gui.vm.getStackPointer();
-  uint32_t  tmp2 = gui.vm.readMemory(tmp, true);
-  tmp = (tmp + 1) & 0xFFFF;
-  tmp2 = tmp2 | (uint32_t(gui.vm.readMemory(tmp, true)) << 8);
-  gui.vm.setSingleStepModeNextAddress(int32_t(tmp2));
+  uint32_t  tmp2 = gui.vm.readMemory(tmp, true)
+                   | (uint32_t(gui.vm.readMemory(tmp + 1, true)) << 8);
+  gui.vm.setSingleStepModeNextAddress(int32_t(tmp2 + 1U));
   this->deactivate();
 }}
         xywh {420 685 80 25} selection_color 50
