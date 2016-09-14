@@ -35,21 +35,6 @@ namespace Plus4Emu {
 
 #ifdef HAVE_LUA_H
 
-  void * LuaScript::allocFunc(void *userData,
-                              void *ptr, size_t oldSize, size_t newSize)
-  {
-    (void) userData;
-    (void) oldSize;
-    if (newSize == 0) {
-      if (ptr)
-        std::free(ptr);
-      return (void *) 0;
-    }
-    if (!ptr)
-      return std::malloc(newSize);
-    return std::realloc(ptr, newSize);
-  }
-
   int LuaScript::luaFunc_AND(lua_State *lst)
   {
     lua_Integer result = (~(lua_Integer(0)));
@@ -661,6 +646,7 @@ namespace Plus4Emu {
     lua_pushinteger(luaState, lua_Integer(value));
     int     err = lua_pcall(luaState, 4, 1, 0);
     if (err != 0) {
+      messageCallback(lua_tolstring(luaState, -1, (size_t *) 0));
       closeScript();
       if (errorMessage) {
         const char  *msg = errorMessage;
@@ -692,8 +678,7 @@ namespace Plus4Emu {
     if (!msg)
       msg = "unknown error in Lua script";
     errorMessage = msg;
-    lua_pushstring(luaState, msg);
-    lua_error(luaState);
+    (void) luaL_error(luaState, "%s", msg);
   }
 
 #endif  // HAVE_LUA_H
@@ -704,14 +689,15 @@ namespace Plus4Emu {
     if (s == (char *) 0 || s[0] == '\0')
       return;
 #ifdef HAVE_LUA_H
-    luaState = lua_newstate(&allocFunc, (void *) this);
+    luaState = luaL_newstate();
     if (!luaState) {
       errorCallback("error allocating Lua state");
       return;
     }
     luaL_openlibs(luaState);
-    int     err = luaL_loadstring(luaState, s);
+    int     err = luaL_loadbuffer(luaState, s, std::strlen(s), "");
     if (err != 0) {
+      messageCallback(lua_tolstring(luaState, -1, (size_t *) 0));
       closeScript();
       if (err == LUA_ERRSYNTAX)
         errorCallback("syntax error in Lua script");
@@ -752,6 +738,7 @@ namespace Plus4Emu {
     registerLuaFunction(&luaFunc_mprint, "mprint");
     err = lua_pcall(luaState, 0, 0, 0);
     if (err != 0) {
+      messageCallback(lua_tolstring(luaState, -1, (size_t *) 0));
       closeScript();
       if (errorMessage) {
         const char  *msg = errorMessage;
