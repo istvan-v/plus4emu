@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0109 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -34,7 +34,7 @@ class Plus4EmuGUI_AboutWindow {open
       }
     }
     code {{
-  buf->append("                    plus4emu version 1.2.9.3 beta\\n");
+  buf->append("                    plus4emu version 1.2.10 beta\\n");
   buf->append("\\n");
   buf->append("Portable Commodore Plus/4 emulator\\n");
   buf->append("Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>\\n");

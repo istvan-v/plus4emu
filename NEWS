@@ -1,5 +1,5 @@
-Changes in version 1.2.9.3
---------------------------
+Changes in version 1.2.10
+-------------------------
 
   * the debugger window is hidden only after a short delay when it is
     closed, this fixes the flickering while using the step buttons

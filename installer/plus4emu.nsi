@@ -16,12 +16,12 @@
   !ifndef WIN64
   ;Name and file
   Name "plus4emu"
-  OutFile "plus4emu-1.2.9.3-x86-beta.exe"
+  OutFile "plus4emu-1.2.10-x86-beta.exe"
   ;Default installation folder
   InstallDir "$PROGRAMFILES\plus4emu"
   !else
   Name "plus4emu (x64)"
-  OutFile "plus4emu-1.2.9.3-x64-beta.exe"
+  OutFile "plus4emu-1.2.10-x64-beta.exe"
   InstallDir "$PROGRAMFILES64\plus4emu"
   !endif
 
