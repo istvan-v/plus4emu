@@ -834,7 +834,7 @@ namespace Plus4Emu {
       if (typeid(*m) == typeid(Message_LineData)) {
         Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
-        if (lineNum >= lineReload && lineNum < 578) {
+        if (lineNum >= lineReload) {
           lastLineNum = lineNum;
           if ((lineNum & 1) == int(prvFrameWasOdd) &&
               lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {
@@ -849,11 +849,10 @@ namespace Plus4Emu {
               deleteMessage(m);
               continue;
             }
-          }
-          linesChanged[lineNum >> 1] = true;
-          if (lineBuffers[lineNum])
             deleteMessage(lineBuffers[lineNum]);
+          }
           lineBuffers[lineNum] = msg;
+          linesChanged[lineNum >> 1] = true;
           continue;
         }
       }

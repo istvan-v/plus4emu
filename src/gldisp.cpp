@@ -1133,7 +1133,7 @@ namespace Plus4Emu {
       if (typeid(*m) == typeid(Message_LineData)) {
         Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
-        if (lineNum >= lineReload && lineNum < 578) {
+        if (lineNum >= lineReload) {
           lastLineNum = lineNum;
           if ((lineNum & 1) == int(prvFrameWasOdd) &&
               lineBuffers[lineNum ^ 1] != (Message_LineData *) 0) {
