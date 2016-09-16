@@ -208,7 +208,6 @@ Section "Source code" SecSrc
   File "..\NEWS"
   File "..\README"
   File "..\SConstruct"
-  File "..\*.patch"
   File "..\*.sh"
 
   SetOutPath "$INSTDIR\src\Fl_Native_File_Chooser"
