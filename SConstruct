@@ -511,6 +511,8 @@ if sys.platform[:6] == 'darwin':
 tapconvEnvironment = plus4emuLibEnvironment.Clone()
 tapconvEnvironment.Prepend(LIBS = ['plus4emu'])
 tapconvEnvironment.Append(LIBS = ['sndfile'])
+if buildRelease:
+    tapconvEnvironment.Append(LINKFLAGS = ['-s'])
 tapconv = tapconvEnvironment.Program(programNamePrefix + 'tapconv',
                                      ['util/tapconv.cpp'])
 Depends(tapconv, plus4emuLib)
@@ -640,6 +642,8 @@ Depends(p4sconv, plus4emuLib)
 
 compressEnvironment = compressLibEnvironment.Clone()
 compressEnvironment.Prepend(LIBS = ['compress'])
+if buildRelease:
+    compressEnvironment.Append(LINKFLAGS = ['-s'])
 compress = compressEnvironment.Program(programNamePrefix + 'compress',
                                        ['util/compress/main.cpp'])
 Depends(compress, compressLib)
