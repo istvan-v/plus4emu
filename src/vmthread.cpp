@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -22,12 +22,10 @@
 #include "vm.hpp"
 #include "vmthread.hpp"
 
-#include <iostream>
-
 static void defaultErrorCallback(void *userData_, const char *msg)
 {
   (void) userData_;
-  std::cerr << "ERROR: " << msg << std::endl;
+  std::fprintf(stderr, "ERROR: %s\n", msg);
 }
 
 static void dummyErrorCallback(void *userData_, const char *msg)
