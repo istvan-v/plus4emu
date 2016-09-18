@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ Plus4EmuGUI_DebugWindow::Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_)
   disassemblyNextAddress = 0x00000000U;
   for (int i = 0; i < 6; i++)
     breakPointLists[i] = "";
+  tmpBuffer.reserve(896);
   bpEditBuffer = new Fl_Text_Buffer();
   scriptEditBuffer = new Fl_Text_Buffer();
   createDebugWindow();
@@ -144,6 +145,9 @@ void Plus4EmuGUI_DebugWindow::activate()
   mainTab->clear_output();
   monitorTab->clear_output();
   stepIntoButton->clear_output();
+  returnButton->clear_output();
+  stepToButton->clear_output();
+  stepToAddressValuator->clear_output();
   stepOverButton->clear_output();
   stepButton->clear_output();
   continueButton->clear_output();
@@ -167,6 +171,9 @@ void Plus4EmuGUI_DebugWindow::deactivate(double tt)
   monitorTab->set_output();
   debugTabs->set_output();
   stepIntoButton->set_output();
+  returnButton->set_output();
+  stepToButton->set_output();
+  stepToAddressValuator->set_output();
   stepOverButton->set_output();
   stepButton->set_output();
   continueButton->set_output();
@@ -192,17 +199,17 @@ bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
   case 0:
   case 3:
     try {
-      std::string tmpBuf;
-      tmpBuf.reserve(40);
-      gui.vm.disassembleInstruction(tmpBuf, addr, true);
-      if (tmpBuf.length() > 21 && tmpBuf.length() <= 40) {
+      gui.vm.disassembleInstruction(tmpBuffer, addr, true);
+      if (tmpBuffer.length() > 21 && tmpBuffer.length() <= 40) {
         std::sprintf(&(windowTitle[0]), "Break at PC=%04X: %s",
-                     (unsigned int) (addr & 0xFFFF), (tmpBuf.c_str() + 21));
+                     (unsigned int) (addr & 0xFFFF), (tmpBuffer.c_str() + 21));
+        tmpBuffer.clear();
         break;
       }
     }
     catch (...) {
     }
+    tmpBuffer.clear();
   case 1:
     std::sprintf(&(windowTitle[0]),
                  "Break on reading %02X from memory address %04X",
@@ -231,10 +238,9 @@ bool Plus4EmuGUI_DebugWindow::breakPoint(int debugContext_,
 void Plus4EmuGUI_DebugWindow::updateWindow()
 {
   try {
-    std::string buf;
-    buf.reserve(320);
-    gui.vm.listCPURegisters(buf);
-    cpuRegisterDisplay->value(buf.c_str());
+    gui.vm.listCPURegisters(tmpBuffer);
+    cpuRegisterDisplay->value(tmpBuffer.c_str());
+    tmpBuffer.clear();
     {
       char    tmpBuf[64];
       char    *s = &(tmpBuf[0]);
@@ -245,21 +251,21 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
                    (unsigned int) gui.vm.getMemoryPage(2),
                    (unsigned int) gui.vm.getMemoryPage(3));
       memoryPagingDisplay->value(s);
-      dumpMemory(buf, 0x0010FF00U, 0x0010FF1FU, 0x0010FFFFU, true, false);
-      buf[0] = ' ';
-      buf[1] = ' ';
-      buf[41] = ' ';
-      buf[42] = ' ';
-      buf[82] = ' ';
-      buf[83] = ' ';
-      buf[123] = ' ';
-      buf[124] = ' ';
+      dumpMemory(tmpBuffer, 0x0010FF00U, 0x0010FF1FU, 0x0010FFFFU, true, false);
+      tmpBuffer[0] = ' ';
+      tmpBuffer[1] = ' ';
+      tmpBuffer[41] = ' ';
+      tmpBuffer[42] = ' ';
+      tmpBuffer[82] = ' ';
+      tmpBuffer[83] = ' ';
+      tmpBuffer[123] = ' ';
+      tmpBuffer[124] = ' ';
       for (int i = 0; i < 32; i++) {
         uint8_t tmp = gui.vm.readMemory(0x0010FF00U | (unsigned int) i, false);
         if (tmp != prvTEDRegisterState[i]) {
           if (prvTEDRegisterState[0x1F] != 0x00) {
-            buf[((i >> 3) * 41) + (((i & 4) >> 2) * 17) + ((i & 3) << 2) + 8] =
-                '*';
+            tmpBuffer[((i >> 3) * 41) + (((i & 4) >> 2) * 17) + ((i & 3) << 2)
+                      + 8] = '*';
           }
           prvTEDRegisterState[i] = tmp;
         }
@@ -270,14 +276,16 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
       std::sprintf(s, "\n\n  Horizontal position:  %04X\n"
                       "  Vertical position:    %04X",
                    (unsigned int) xPos, (unsigned int) yPos);
-      buf += s;
-      tedRegisterDisplay->value(buf.c_str());
+      tmpBuffer += s;
+      tedRegisterDisplay->value(tmpBuffer.c_str());
+      tmpBuffer.clear();
     }
     uint32_t  tmp = gui.vm.getStackPointer();
     uint32_t  startAddr = (tmp + 0xFFF4U) & 0xFFF8U;
     uint32_t  endAddr = (startAddr + 0x002FU) & 0xFFFFU;
-    dumpMemory(buf, startAddr, endAddr, tmp, true, true);
-    stackMemoryDumpDisplay->value(buf.c_str());
+    dumpMemory(tmpBuffer, startAddr, endAddr, tmp, true, true);
+    stackMemoryDumpDisplay->value(tmpBuffer.c_str());
+    tmpBuffer.clear();
     updateMemoryDumpDisplay();
     updateDisassemblyDisplay();
     noBreakOnDataReadValuator->value(
@@ -392,11 +400,10 @@ void Plus4EmuGUI_DebugWindow::updateMemoryDumpDisplay()
     memoryDumpStartAddressValuator->value(&(tmpBuf[0]));
     std::sprintf(&(tmpBuf[0]), fmt, (unsigned int) memoryDumpEndAddress);
     memoryDumpEndAddressValuator->value(&(tmpBuf[0]));
-    std::string buf;
-    buf.reserve(720);
-    dumpMemory(buf, memoryDumpViewAddress, memoryDumpViewAddress + 0x87U,
+    dumpMemory(tmpBuffer, memoryDumpViewAddress, memoryDumpViewAddress + 0x87U,
                0U, false, memoryDumpCPUAddressMode);
-    memoryDumpDisplay->value(buf.c_str());
+    memoryDumpDisplay->value(tmpBuffer.c_str());
+    tmpBuffer.clear();
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());
@@ -483,26 +490,26 @@ void Plus4EmuGUI_DebugWindow::updateDisassemblyDisplay()
     char  tmpBuf[8];
     std::sprintf(&(tmpBuf[0]), "%04X", (unsigned int) disassemblyStartAddress);
     disassemblyStartAddressValuator->value(&(tmpBuf[0]));
-    std::string tmp1;
-    std::string tmp2;
-    tmp1.reserve(48);
-    tmp2.reserve(864);
+    std::string tmp;
+    tmp.reserve(48);
+    tmpBuffer.clear();
     uint32_t  addr = disassemblySearchBack(2);
     uint32_t  pcAddr = uint32_t(gui.vm.getProgramCounter()) & 0xFFFFU;
     for (int i = 0; i < 23; i++) {
       if (i == 22)
         disassemblyNextAddress = addr;
-      uint32_t  nxtAddr = gui.vm.disassembleInstruction(tmp1, addr, true, 0);
+      uint32_t  nxtAddr = gui.vm.disassembleInstruction(tmp, addr, true, 0);
       while (addr != nxtAddr) {
         if (addr == pcAddr)
-          tmp1[1] = '*';
+          tmp[1] = '*';
         addr = (addr + 1U) & 0xFFFFU;
       }
-      tmp2 += tmp1;
+      tmpBuffer += tmp;
       if (i != 22)
-        tmp2 += '\n';
+        tmpBuffer += '\n';
     }
-    disassemblyDisplay->value(tmp2.c_str());
+    disassemblyDisplay->value(tmpBuffer.c_str());
+    tmpBuffer.clear();
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());

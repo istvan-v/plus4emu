@@ -39,6 +39,7 @@ class Plus4EmuGUI_DebugWindow {open
   decl {Fl_Text_Buffer *bpEditBuffer;} {}
   decl {Fl_Text_Buffer *scriptEditBuffer;} {}
   decl {std::string breakPointLists[6];} {}
+  decl {std::string tmpBuffer;} {}
   decl {Plus4EmuGUI_LuaScript luaScript;} {}
   decl {uint8_t prvTEDRegisterState[32];} {}
   decl {Plus4EmuGUI_DebugWindow(Plus4EmuGUI& gui_);} {public
