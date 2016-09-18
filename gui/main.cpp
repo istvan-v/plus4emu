@@ -69,6 +69,8 @@ int main(int argc, char **argv)
   int       colorScheme = 0;
   int8_t    retval = 0;
   bool      glEnabled = true;
+  bool      glCanDoSingleBuf = false;
+  bool      glCanDoDoubleBuf = false;
   bool      configLoaded = false;
 
 #ifdef WIN32
@@ -196,9 +198,15 @@ int main(int argc, char **argv)
     Fl::lock();
     Plus4Emu::setGUIColorScheme(colorScheme);
     audioOutput = new Plus4Emu::AudioOutput_PortAudio();
-    if (glEnabled)
-      w = new Plus4Emu::OpenGLDisplay(32, 32, 384, 288, "");
-    else
+    if (glEnabled) {
+      glCanDoSingleBuf = bool(Fl_Gl_Window::can_do(FL_RGB | FL_SINGLE));
+      glCanDoDoubleBuf = bool(Fl_Gl_Window::can_do(FL_RGB | FL_DOUBLE));
+      if (glCanDoSingleBuf | glCanDoDoubleBuf)
+        w = new Plus4Emu::OpenGLDisplay(32, 32, 384, 288, "");
+      else
+        glEnabled = false;
+    }
+    if (!glEnabled)
       w = new Plus4Emu::FLTKDisplay(32, 32, 384, 288, "");
     w->end();
     vm = new Plus4::Plus4VM(*(dynamic_cast<Plus4Emu::VideoDisplay *>(w)),
@@ -287,6 +295,16 @@ int main(int argc, char **argv)
           p++;
           (*config)[optName] = p;
         }
+      }
+    }
+    if (glEnabled) {
+      if (config->display.bufferingMode == 0 && !glCanDoSingleBuf) {
+        config->display.bufferingMode = 1;
+        config->displaySettingsChanged = true;
+      }
+      if (config->display.bufferingMode != 0 && !glCanDoDoubleBuf) {
+        config->display.bufferingMode = 0;
+        config->displaySettingsChanged = true;
       }
     }
     config->applySettings();
