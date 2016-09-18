@@ -1,7 +1,7 @@
 /*
    sample.c -- simple example program for the plus4emu C interface library
-   Copyright (C) 2008 Istvan Varga <istvanv@users.sourceforge.net>
-   http://sourceforge.net/projects/plus4emu/
+   Copyright (C) 2008-2016 Istvan Varga <istvanv@users.sourceforge.net>
+   https://github.com/istvan-v/plus4emu/
 
    To compile this program on Linux with GCC, use the following command:
      gcc -Wall -O2 -I. -L. sample.c -o sample -lSDL -lplus4emu -lm

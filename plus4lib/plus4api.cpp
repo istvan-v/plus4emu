@@ -1,7 +1,7 @@
 /*
    plus4emu -- portable Commodore Plus/4 emulator
    Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-   http://sourceforge.net/projects/plus4emu/
+   https://github.com/istvan-v/plus4emu/
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

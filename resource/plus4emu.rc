@@ -14,7 +14,7 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "Comments", "Home page: http://plus4emu.sourceforge.net/"
+      VALUE "Comments", "Home page: https://github.com/istvan-v/plus4emu/"
       VALUE "CompanyName", "Istvan Varga"
       VALUE "FileDescription", "plus4emu - Commodore Plus/4 and C16 emulator"
       VALUE "FileVersion", "1.2.10.0"
