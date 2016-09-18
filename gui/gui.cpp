@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,13 +19,6 @@
 
 #include "gui.hpp"
 #include "guicolor.hpp"
-
-#ifdef WIN32
-#  undef WIN32
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-#  define WIN32 1
-#endif
 
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1
@@ -1284,8 +1277,7 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
       std::string tmp;
       std::string tmp2;
       Plus4Emu::splitPath(fileName, tmp2, tmp);
-#if !(defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER) ||    \
-      defined(__APPLE__))
+#if !(defined(WIN32) || defined(__APPLE__))
       if (dirName.length() > 0) {
         tmp2 = dirName;
         if (dirName[dirName.length() - 1] != '/' &&
@@ -1423,7 +1415,7 @@ void Plus4EmuGUI::fileNameCallback(void *userData, std::string& fileName)
   try {
     std::string tmp(gui_.config.fileio.workingDirectory);
     gui_.browseFile(fileName, tmp, "All files\t*",
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
                     Fl_Native_File_Chooser::BROWSE_FILE,
 #else
                     Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
@@ -1751,7 +1743,7 @@ void Plus4EmuGUI::menuCallback_File_QSFileName(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.snapshotDirectory, "Snapshot files\t*",
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
                         Fl_Native_File_Chooser::BROWSE_FILE,
 #else
                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
@@ -2181,7 +2173,7 @@ void Plus4EmuGUI::menuCallback_Machine_OpenTape(Fl_Widget *o, void *v)
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.tapeImageDirectory,
                         "Tape files\t*.{tap,wav,aif,aiff,au,snd}",
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
                         Fl_Native_File_Chooser::BROWSE_FILE,
 #else
                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,

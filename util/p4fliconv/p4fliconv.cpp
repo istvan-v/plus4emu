@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -285,7 +285,7 @@ bool Plus4FLIConvGUI::browseFile(std::string& fileName, std::string& dirName,
     std::string tmp = dirName;
     if (tmp.length() < 1 ||
         (tmp[tmp.length() - 1] != '/' && tmp[tmp.length() - 1] != '\\')) {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
       tmp += '\\';
 #else
       tmp += '/';

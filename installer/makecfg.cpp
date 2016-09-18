@@ -28,12 +28,8 @@
 #include <FL/Fl_Native_File_Chooser.H>
 
 #ifdef WIN32
-#  undef WIN32
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
 #  include <windows.h>
 #  include <direct.h>
-#  define WIN32 1
 #else
 #  include <sys/types.h>
 #  include <sys/stat.h>

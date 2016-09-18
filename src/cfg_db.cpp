@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -682,7 +682,7 @@ namespace Plus4Emu {
     std::string fullName;
     if (useHomeDirectory) {
       fullName = getPlus4EmuHomeDirectory();
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
       fullName += '\\';
 #else
       fullName += '/';
@@ -758,7 +758,7 @@ namespace Plus4Emu {
     std::string fullName;
     if (useHomeDirectory) {
       fullName = getPlus4EmuHomeDirectory();
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
       fullName += '\\';
 #else
       fullName += '/';

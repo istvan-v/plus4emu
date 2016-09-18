@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 #  endif
 #endif
 
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
 
 #include <windows.h>
 #include <FL/x.H>
@@ -405,7 +405,7 @@ namespace Plus4Emu {
 
   void setWindowIcon(Fl_Window *w, int iconNum)
   {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
     if (!((iconNum >= 0 && iconNum <= 4) || (iconNum >= 10 && iconNum <= 13)))
       return;                   // ignore invalid icon numbers
     // FIXME: according to the FLTK documentation, Fl_Window::show(int, char**)

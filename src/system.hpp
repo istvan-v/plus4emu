@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "plus4emu.hpp"
 
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1
 #  include <windows.h>
 #else
@@ -34,7 +34,7 @@ namespace Plus4Emu {
   class ThreadLock {
    private:
     struct ThreadLock_ {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
       HANDLE          evt;
 #else
       pthread_mutex_t m;
@@ -59,7 +59,7 @@ namespace Plus4Emu {
 
   class Thread {
    private:
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
     HANDLE    thread_;
     static unsigned int __stdcall threadRoutine_(void *userData);
 #else
@@ -99,7 +99,7 @@ namespace Plus4Emu {
   class Mutex {
    private:
     struct Mutex_ {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
       CRITICAL_SECTION  mutex_;
 #else
       pthread_mutex_t   mutex_;

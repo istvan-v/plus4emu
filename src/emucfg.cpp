@@ -101,7 +101,7 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.processPriority",
                                 vm.processPriority, int(0),
                                 vmProcessPriorityChanged,
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
                                 -2.0, 3.0
 #else
                                 // TODO: implement process priority setting

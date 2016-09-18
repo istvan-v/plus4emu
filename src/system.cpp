@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,13 +19,6 @@
 
 #include "plus4emu.hpp"
 #include "system.hpp"
-
-#ifdef WIN32
-#  undef WIN32
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-#  define WIN32 1
-#endif
 
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1

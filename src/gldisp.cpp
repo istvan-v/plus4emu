@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,13 +32,6 @@
 
 #include "fldisp.hpp"
 #include "gldisp.hpp"
-
-#ifdef WIN32
-#  undef WIN32
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-#  define WIN32 1
-#endif
 
 #ifdef WIN32
 #  include <wingdi.h>

@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -386,7 +386,7 @@ namespace Plus4 {
   {
     fileDBUpdateFlag = true;
     currentWorkingDirectory = dirName_;
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
     if (currentWorkingDirectory.length() > 0) {
       size_t  len = currentWorkingDirectory.length();
       // convert forward slashes to backslash characters
@@ -728,7 +728,7 @@ namespace Plus4 {
         std::string   fullName = currentWorkingDirectory;
         if (fullName[fullName.length() - 1] != '/' &&
             fullName[fullName.length() - 1] != '\\') {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
           fullName += '\\';
 #else
           fullName += '/';
@@ -816,7 +816,7 @@ namespace Plus4 {
       std::string     fullName = currentWorkingDirectory;
       if (fullName[fullName.length() - 1] != '/' &&
           fullName[fullName.length() - 1] != '\\') {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#ifdef WIN32
         fullName += '\\';
 #else
         fullName += '/';
