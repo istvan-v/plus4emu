@@ -22,13 +22,19 @@
 #include "sndio_pa.hpp"
 #include "guicolor.hpp"
 
-#include <iostream>
-#include <cmath>
+#ifdef WIN32
+#  include <windows.h>
+#endif
 
 static void cfgErrorFunc(void *userData, const char *msg)
 {
   (void) userData;
-  std::cerr << "WARNING: " << msg << std::endl;
+#ifndef WIN32
+  std::fprintf(stderr, "WARNING: %s\n", msg);
+#else
+  (void) MessageBoxA((HWND) 0, (LPCSTR) msg, (LPCSTR) "plus4emu error",
+                     MB_OK | MB_ICONWARNING);
+#endif
 }
 
 static void writeKeyboardBuffer(Plus4Emu::VirtualMachine& vm, const char *s)
@@ -61,10 +67,13 @@ int main(int argc, char **argv)
   int       snapshotNameIndex = 0;
   int       pasteTextIndex = 0;
   int       colorScheme = 0;
-  int       retval = 0;
+  int8_t    retval = 0;
   bool      glEnabled = true;
   bool      configLoaded = false;
 
+#ifdef WIN32
+  timeBeginPeriod(1U);
+#endif
   try {
     // find out machine type to be emulated
     for (int i = 1; i < argc; i++) {
@@ -114,41 +123,51 @@ int main(int argc, char **argv)
       else if (std::strcmp(argv[i], "-h") == 0 ||
                std::strcmp(argv[i], "-help") == 0 ||
                std::strcmp(argv[i], "--help") == 0) {
-        std::cerr << "Usage: " << argv[0] << " [OPTIONS...]" << std::endl;
-        std::cerr << "The allowed options are:" << std::endl;
-        std::cerr << "    -h | -help | --help "
-                     "print this message" << std::endl;
-        std::cerr << "    -cfg <FILENAME>     "
-                     "load ASCII format configuration file" << std::endl;
-        std::cerr << "    -prg <FILENAME>     "
-                     "load program file on startup" << std::endl;
-        std::cerr << "    -disk <FILENAME>    "
-                     "load and automatically start disk image on startup"
-                  << std::endl;
-        std::cerr << "    -tape <FILENAME>    "
-                     "load and automatically start tape image on startup"
-                  << std::endl;
-        std::cerr << "    -snapshot <FNAME>   "
-                     "load snapshot or demo file on startup" << std::endl;
-        std::cerr << "    -keybuf <TEXT>      "
-                     "type TEXT on startup (can be any length, or @FILENAME)"
-                  << std::endl;
-        std::cerr << "    -opengl             "
-                     "use OpenGL video driver (this is the default)"
-                  << std::endl;
-        std::cerr << "    -no-opengl          "
-                     "use software video driver" << std::endl;
-        std::cerr << "    -colorscheme <N>    "
-                     "use GUI color scheme N (0, 1, 2, or 3)" << std::endl;
-        std::cerr << "    OPTION=VALUE        "
-                     "set configuration variable 'OPTION' to 'VALUE'"
-                  << std::endl;
-        std::cerr << "    OPTION              "
-                     "set boolean configuration variable 'OPTION' to true"
-                  << std::endl;
-        std::cerr << "    FILENAME            "
-                     "load and start .prg, .p00, .d64, .d81, or .tap file"
-                  << std::endl;
+        std::fprintf(stderr, "Usage: %s [OPTIONS...]\n", argv[0]);
+        std::fprintf(stderr, "The allowed options are:\n");
+        std::fprintf(stderr,
+                     "    -h | -help | --help "
+                     "print this message\n");
+        std::fprintf(stderr,
+                     "    -cfg <FILENAME>     "
+                     "load ASCII format configuration file\n");
+        std::fprintf(stderr,
+                     "    -prg <FILENAME>     "
+                     "load program file on startup\n");
+        std::fprintf(stderr,
+                     "    -disk <FILENAME>    "
+                     "load and automatically start disk image on startup\n");
+        std::fprintf(stderr,
+                     "    -tape <FILENAME>    "
+                     "load and automatically start tape image on startup\n");
+        std::fprintf(stderr,
+                     "    -snapshot <FNAME>   "
+                     "load snapshot or demo file on startup\n");
+        std::fprintf(stderr,
+                     "    -keybuf <TEXT>      "
+                     "type TEXT on startup (can be any length, "
+                     "or @FILENAME)\n");
+        std::fprintf(stderr,
+                     "    -opengl             "
+                     "use OpenGL video driver (this is the default)\n");
+        std::fprintf(stderr,
+                     "    -no-opengl          "
+                     "use software video driver\n");
+        std::fprintf(stderr,
+                     "    -colorscheme <N>    "
+                     "use GUI color scheme N (0, 1, 2, or 3)\n");
+        std::fprintf(stderr,
+                     "    OPTION=VALUE        "
+                     "set configuration variable 'OPTION' to 'VALUE'\n");
+        std::fprintf(stderr,
+                     "    OPTION              "
+                     "set boolean configuration variable 'OPTION' to true\n");
+        std::fprintf(stderr,
+                     "    FILENAME            "
+                     "load and start .prg, .p00, .d64, .d81, or .tap file\n");
+#ifdef WIN32
+        timeEndPeriod(1U);
+#endif
         return 0;
       }
       else {
@@ -206,10 +225,10 @@ int main(int argc, char **argv)
             }
           }
           cmdLine.resize(i);
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-          cmdLine += "makecfg\"";
-#else
+#ifndef WIN32
           cmdLine += "p4makecfg\"";
+#else
+          cmdLine += "makecfg\"";
 #endif
 #ifdef __APPLE__
           cmdLine += " -f";
@@ -370,11 +389,18 @@ int main(int argc, char **argv)
     gui_->run();
   }
   catch (std::exception& e) {
-    if (gui_)
+    if (gui_) {
       gui_->errorMessage(e.what());
-    else
-      std::cerr << " *** error: " << e.what() << std::endl;
-    retval = -1;
+    }
+    else {
+#ifndef WIN32
+      std::fprintf(stderr, " *** error: %s\n", e.what());
+#else
+      (void) MessageBoxA((HWND) 0, (LPCSTR) e.what(), (LPCSTR) "plus4emu error",
+                         MB_OK | MB_ICONWARNING);
+#endif
+    }
+    retval = int8_t(-1);
   }
   if (gui_)
     delete gui_;
@@ -398,6 +424,9 @@ int main(int argc, char **argv)
     delete w;
   if (audioOutput)
     delete audioOutput;
-  return retval;
+#ifdef WIN32
+  timeEndPeriod(1U);
+#endif
+  return int(retval);
 }
 
