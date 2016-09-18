@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -27,6 +27,13 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifdef WIN32
+#  undef WIN32
+#endif
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#  define WIN32 1
+#endif
+
 #if defined(HAVE_STDINT_H) || defined(__GNUC__)
 #  include <stdint.h>
 #else
@@ -36,12 +43,19 @@ typedef short               int16_t;
 typedef unsigned short      uint16_t;
 typedef int                 int32_t;
 typedef unsigned int        uint32_t;
-#  if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#  ifdef WIN32
 typedef __int64             int64_t;
 typedef unsigned __int64    uint64_t;
 #  else
 typedef long long           int64_t;
 typedef unsigned long long  uint64_t;
+#  endif
+#  ifdef _WIN64
+typedef __int64             intptr_t;
+typedef unsigned __int64    uintptr_t;
+#  else
+typedef long                intptr_t;
+typedef unsigned long       uintptr_t;
 #  endif
 #endif
 
@@ -89,6 +103,15 @@ namespace Plus4Emu {
 #  define PLUS4EMU_REGPARM1
 #  define PLUS4EMU_REGPARM2
 #  define PLUS4EMU_REGPARM3
+#endif
+#if defined(__GNUC__) && (__GNUC__ >= 3) && !defined(__ICC)
+#  define PLUS4EMU_INLINE         __attribute__ ((__always_inline__)) inline
+#  define PLUS4EMU_EXPECT(x__)    __builtin_expect((x__), 1)
+#  define PLUS4EMU_UNLIKELY(x__)  __builtin_expect((x__), 0)
+#else
+#  define PLUS4EMU_INLINE         inline
+#  define PLUS4EMU_EXPECT(x__)    x__
+#  define PLUS4EMU_UNLIKELY(x__)  x__
 #endif
 
 #include "fileio.hpp"
