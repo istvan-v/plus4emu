@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ namespace Plus4 {
 
   void TED7360::runOneCycle()
   {
-    if (video_buf_pos >= 450) {
+    if (PLUS4EMU_UNLIKELY(video_buf_pos >= 450)) {
       videoOutputCallback(&(video_buf[0]), video_buf_pos);
       video_buf_pos = 0;
     }
@@ -79,7 +79,7 @@ namespace Plus4 {
       savedCharacterPosition = (savedCharacterPosition + 1) & 0x03FF;
       characterPosition = savedCharacterPosition;
     }
-    if (!ted_disabled) {
+    if (PLUS4EMU_EXPECT(!ted_disabled)) {
       // -------- EVEN HALF-CYCLE (FF1E bit 1 == 1) --------
       DelayedEventsMask delayedEvents(delayedEvents0);
       delayedEvents0 = 0U;
@@ -238,7 +238,7 @@ namespace Plus4 {
           videoShiftRegisterEnabled = true;
         break;
       }
-      if (delayedEvents)
+      if (PLUS4EMU_UNLIKELY(delayedEvents))
         processDelayedEvents(delayedEvents);
       // run external callbacks
       {
@@ -249,12 +249,12 @@ namespace Plus4 {
           p = nxt;
         }
       }
-      if (M7501::getIsCPURunning()) {
+      if (PLUS4EMU_EXPECT(M7501::getIsCPURunning())) {
         M7501::run_RDYHigh(cpu_clock_multiplier);       // run CPU
       }
       else {
         // perform DMA fetches on even cycle counts
-        if (cpuHaltedFlag) {
+        if (PLUS4EMU_EXPECT(cpuHaltedFlag)) {
           memoryReadMap = tedDMAReadMap;
           (void) readMemory(uint16_t(dmaBaseAddr | dmaPosition));
           memoryReadMap = cpuMemoryReadMap;
@@ -305,12 +305,12 @@ namespace Plus4 {
     videoColumn |= uint8_t(0x01);
 
     // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
-    if (delayedEvents1) {
+    if (PLUS4EMU_UNLIKELY(delayedEvents1)) {
       DelayedEventsMask delayedEvents(delayedEvents1);
       delayedEvents1 = 0U;
       processDelayedEvents(delayedEvents);
     }
-    if (!ted_disabled) {
+    if (PLUS4EMU_EXPECT(!ted_disabled)) {
       switch (videoColumn) {
       case 43:                          // equalization pulse 1 end
         if (vsyncFlags) {

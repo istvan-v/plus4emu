@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ namespace Plus4 {
       unsigned char n = *(currentOpcode++);
       switch (n) {
       case CPU_OP_RD_OPCODE:
-        if (!(interruptFlag | resetFlag)) {
+        if (PLUS4EMU_EXPECT(!(interruptFlag | resetFlag))) {
           uint8_t opNum = readMemory(reg_PC);
           if (uint8_t(haveBreakPoints) | singleStepMode)
             checkOpcodeReadBreakPoint(reg_PC, opNum);
@@ -112,7 +112,7 @@ namespace Plus4 {
           currentOpcode = &(opcodeTable[size_t(opNum) << 4]);
         }
         else {
-          if (resetFlag) {
+          if (PLUS4EMU_UNLIKELY(resetFlag)) {
             if (newPCAddress >= 0) {
               // set new PC if requested
               reg_PC = uint16_t(newPCAddress & 0xFFFF);
@@ -922,12 +922,12 @@ namespace Plus4 {
       unsigned char n = *(currentOpcode++);
       switch (n) {
       case CPU_OP_RD_OPCODE:
-        if (!(interruptFlag | resetFlag)) {
+        if (PLUS4EMU_EXPECT(!(interruptFlag | resetFlag))) {
           (void) readMemory(reg_PC);
           currentOpcode--;
         }
         else {
-          if (resetFlag) {
+          if (PLUS4EMU_UNLIKELY(resetFlag)) {
             if (newPCAddress >= 0) {
               // set new PC if requested
               reg_PC = uint16_t(newPCAddress & 0xFFFF);

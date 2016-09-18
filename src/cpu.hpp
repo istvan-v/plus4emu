@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -208,7 +208,7 @@ namespace Plus4 {
     void runOneCycle_RDYLow();
     inline void runOneCycle()
     {
-      if (!haltFlag)
+      if (PLUS4EMU_EXPECT(!haltFlag))
         runOneCycle_RDYHigh();
       else
         runOneCycle_RDYLow();
@@ -227,7 +227,7 @@ namespace Plus4 {
     }
     inline void run(int nCycles = 1)
     {
-      if (!haltFlag)
+      if (PLUS4EMU_EXPECT(!haltFlag))
         run_RDYHigh(nCycles);
       else
         run_RDYLow(nCycles);
