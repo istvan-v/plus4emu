@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -314,11 +314,7 @@ class Plus4EmuDisplaySndConfiguration {
   Plus4EmuDisplaySndConfiguration(Plus4Emu::ConfigurationDB& config)
   {
     display.quality = 1;
-#ifndef WIN32
-    sound.latency = 0.05;
-#else
-    sound.latency = 0.1;
-#endif
+    sound.latency = 0.07;
     sound.hwPeriods = 16;
     config.createKey("display.quality", display.quality);
     config.createKey("sound.latency", sound.latency);

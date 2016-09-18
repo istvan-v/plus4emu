@@ -19,7 +19,10 @@ Changes in version 1.2.10
     an empty breakpoint callback function
   * window icons have been implemented on non-Windows platforms if the
     emulator is built with FLTK 1.3.3 or newer
-  * added support for building with FLTK 1.3.x and Lua 5.2/5.3
+  * audio output fixes and improvements, WASAPI is now supported on
+    Windows
+  * added support for building with FLTK 1.3.x and Lua 5.2/5.3, and for
+    building 64-bit Windows binaries
   * minor bug fixes
 
 Changes in version 1.2.9.2

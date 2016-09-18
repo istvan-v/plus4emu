@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ namespace Plus4Emu {
     size_t        writeBufIndex;
     size_t        readBufIndex;
     PaStream      *paStream;
+    long          latencyFramesHW;
     Timer         timer_;
     double        nextTime;
     ThreadLock    closeDeviceLock;

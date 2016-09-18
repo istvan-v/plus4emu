@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,24 +23,23 @@
 #include "sndio_pa.hpp"
 
 #include <portaudio.h>
-#include <iostream>
 #include <vector>
 
 #ifdef ENABLE_SOUND_DEBUG
 
 static bool isPortAudioError(const char *msg, PaError paError)
 {
-  std::cerr << " === " << msg << std::endl;
+  std::fprintf(stderr, " === %s\n", msg);
   if (paError == paNoError)
     return false;
-  std::cerr << " *** PortAudio error (error code = " << int(paError) << ")"
-            << std::endl;
-  std::cerr << " ***   " << Pa_GetErrorText(paError) << std::endl;
+  std::fprintf(stderr,
+               " *** PortAudio error (error code = %d)\n", int(paError));
+  std::fprintf(stderr, " ***   %s\n", Pa_GetErrorText(paError));
 #  ifndef USING_OLD_PORTAUDIO_API
   if (paError == paUnanticipatedHostError) {
     const PaHostErrorInfo   *errInfo = Pa_GetLastHostErrorInfo();
-    std::cerr << " *** host API error:" << std::endl;
-    std::cerr << " ***   " << errInfo->errorText << std::endl;
+    std::fprintf(stderr, " *** host API error:\n");
+    std::fprintf(stderr, " ***   %s\n", errInfo->errorText);
   }
 #  endif
   return true;
@@ -67,6 +66,7 @@ namespace Plus4Emu {
       writeBufIndex(0),
       readBufIndex(0),
       paStream((PaStream *) 0),
+      latencyFramesHW(4096L),
       nextTime(0.0),
       closeDeviceLock(true)
   {
@@ -104,15 +104,11 @@ namespace Plus4Emu {
     if (paStream) {
 #ifndef USING_OLD_PORTAUDIO_API
       if (usingBlockingInterface) {
-        // ring buffer is not used for blocking I/O,
-        // so assume nPeriodsSW == 1
-#  if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-        // reduce timing jitter on Win32
+        // reduce timing jitter
         double  t = nextTime - timer_.getRealTime();
         double  periodTime = double(long(nFrames)) / double(sampleRate);
         long    framesToWrite = Pa_GetStreamWriteAvailable(paStream);
-        switch (int((framesToWrite << 3)
-                    / (long(buffers[0].audioData.size() >> 1) * nPeriodsHW))) {
+        switch (int((framesToWrite << 3) / latencyFramesHW)) {
         case 0:
           periodTime = periodTime * 2.0;
           break;
@@ -145,7 +141,7 @@ namespace Plus4Emu {
           timer_.reset();
           nextTime = 0.0;
         }
-#  endif
+        // ring buffer is not used for blocking I/O, so assume nPeriodsSW == 1
         for (size_t i = 0; i < nFrames; i++) {
           Buffer& buf_ = buffers[0];
           buf_.audioData[buf_.writePos++] = buf[i];
@@ -334,28 +330,45 @@ namespace Plus4Emu {
     if (devIndex >= devCnt)
       throw Exception("device number is out of range");
     usingBlockingInterface = false;
+    int     nPeriodsHW_ = nPeriodsHW;
 #ifndef USING_OLD_PORTAUDIO_API
+    int     nPeriodsSW_ = nPeriodsSW;
     const PaDeviceInfo  *devInfo = Pa_GetDeviceInfo(PaDeviceIndex(devIndex));
     if (devInfo) {
       const PaHostApiInfo *hostApiInfo = Pa_GetHostApiInfo(devInfo->hostApi);
       if (hostApiInfo) {
-        if (hostApiInfo->type == paDirectSound ||
-            hostApiInfo->type == paMME ||
-            hostApiInfo->type == paOSS ||
-            hostApiInfo->type == paALSA) {
-          disableRingBuffer = true;
-          if (hostApiInfo->type != paDirectSound)
-            usingBlockingInterface = true;
+        if ((1UL << uint8_t(hostApiInfo->type))
+            & ((1UL << uint8_t(paMME)) | (1UL << uint8_t(paOSS))
+               | (1UL << uint8_t(paALSA)) | (1UL << uint8_t(paWASAPI)))) {
+          nPeriodsHW_++;
+          nPeriodsSW_ = 1;
+          usingBlockingInterface = true;
         }
+#  ifdef WIN32
+        else if (hostApiInfo->type == paDirectSound) {
+          nPeriodsSW_ = 1;
+        }
+        else {
+          // ASIO or WDM-KS: force double buffering
+          nPeriodsHW_ = 2;
+          nPeriodsSW_ = (nPeriodsSW_ >= 2 ? nPeriodsSW_ : 2);
+        }
+#  else
+        else {
+          nPeriodsSW_ = (nPeriodsSW_ >= 2 ? nPeriodsSW_ : 2);
+        }
+#  endif
       }
     }
 #else
-    disableRingBuffer = true;
+    int     nPeriodsSW_ = 1;
 #endif
     // calculate buffer size
-    int   nPeriodsSW_ = (disableRingBuffer ? 1 : nPeriodsSW);
-    int   periodSize = int(totalLatency * sampleRate + 0.5)
-                       / (nPeriodsHW + nPeriodsSW_ - 2);
+    disableRingBuffer = (nPeriodsSW_ < 2);
+    int     periodSize =
+        int(totalLatency * (usingBlockingInterface ? 1.4142f : 0.7071f)
+            * sampleRate + 0.5f)
+        / (nPeriodsHW_ + nPeriodsSW_ - 2);
     for (int i = 16; i < 16384; i <<= 1) {
       if (i >= periodSize) {
         periodSize = i;
@@ -364,12 +377,14 @@ namespace Plus4Emu {
     }
     if (periodSize > 16384)
       periodSize = 16384;
-    if (disableRingBuffer)
-      paLockTimeout = (unsigned int) (double(periodSize) * double(nPeriodsHW)
-                                      * 1000.0 / double(sampleRate)
-                                      + 0.999);
-    else
+    latencyFramesHW = long(nPeriodsHW_ - 1) * long(periodSize);
+    if (disableRingBuffer) {
+      paLockTimeout = (unsigned int) (double(latencyFramesHW) * 1000.0
+                                      / double(sampleRate) + 0.999);
+    }
+    else {
       paLockTimeout = 0U;
+    }
     // initialize buffers
     buffers.resize(size_t(nPeriodsSW_));
     for (int i = 0; i < nPeriodsSW_; i++) {
@@ -384,8 +399,8 @@ namespace Plus4Emu {
     streamParams.device = PaDeviceIndex(devNum);
     streamParams.channelCount = 2;
     streamParams.sampleFormat = paInt16;
-    streamParams.suggestedLatency = PaTime(double(periodSize) * nPeriodsHW
-                                           / sampleRate);
+    streamParams.suggestedLatency =
+        PaTime(double(periodSize) * (nPeriodsHW_ - 1) / sampleRate);
     streamParams.hostApiSpecificStreamInfo = (void *) 0;
     PaError err = paNoError;
     if (usingBlockingInterface)
@@ -396,12 +411,22 @@ namespace Plus4Emu {
       err = Pa_OpenStream(&paStream, (PaStreamParameters *) 0, &streamParams,
                           sampleRate, unsigned(periodSize),
                           paNoFlag, &portAudioCallback, (void *) this);
+    if (err == paNoError) {
+      const PaStreamInfo  *streamInfo = Pa_GetStreamInfo(paStream);
+      if (streamInfo) {
+        // find out the actual buffer size
+        long    tmp = long(double(streamInfo->outputLatency)
+                           * streamInfo->sampleRate + 0.5);
+        if (tmp >= 16L && tmp <= 262144L)
+          latencyFramesHW = tmp;
+      }
+    }
 #else
     PaError err =
         Pa_OpenStream(&paStream,
                       paNoDevice, 0, paInt16, (void *) 0,
                       PaDeviceID(devNum), 2, paInt16, (void *) 0,
-                      sampleRate, unsigned(periodSize), unsigned(nPeriodsHW),
+                      sampleRate, unsigned(periodSize), unsigned(nPeriodsHW_),
                       paNoFlag, &portAudioCallback, (void *) this);
 #endif
     if (isPortAudioError("calling Pa_OpenStream()", err)) {
