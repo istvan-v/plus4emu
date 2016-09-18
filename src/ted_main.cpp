@@ -238,7 +238,7 @@ namespace Plus4 {
           videoShiftRegisterEnabled = true;
         break;
       }
-      if (PLUS4EMU_UNLIKELY(delayedEvents))
+      if (PLUS4EMU_UNLIKELY(bool(delayedEvents)))
         processDelayedEvents(delayedEvents);
       // run external callbacks
       {
@@ -305,7 +305,7 @@ namespace Plus4 {
     videoColumn |= uint8_t(0x01);
 
     // -------- ODD HALF-CYCLE (FF1E bit 1 == 0) --------
-    if (PLUS4EMU_UNLIKELY(delayedEvents1)) {
+    if (PLUS4EMU_UNLIKELY(bool(delayedEvents1))) {
       DelayedEventsMask delayedEvents(delayedEvents1);
       delayedEvents1 = 0U;
       processDelayedEvents(delayedEvents);
