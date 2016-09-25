@@ -96,7 +96,7 @@ if mingwCrossCompile:
             plus4emuLibEnvironment.Append(
                 CPPPATH = [mingwPrefix + '/include/lua5.3'])
     plus4emuLibEnvironment.Append(LIBS = ['comdlg32', 'comctl32', 'ole32',
-                                          'uuid', 'ws2_32', 'gdi32',
+                                          'uuid', 'ws2_32', 'winmm', 'gdi32',
                                           'user32', 'kernel32'])
     plus4emuLibEnvironment.Prepend(CCFLAGS = ['-mthreads'])
     plus4emuLibEnvironment.Prepend(LINKFLAGS = ['-mthreads'])
