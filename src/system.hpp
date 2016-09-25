@@ -23,8 +23,9 @@
 #include "plus4emu.hpp"
 
 #ifdef WIN32
-#  define WIN32_LEAN_AND_MEAN   1
-#  include <windows.h>
+#  include <stdarg.h>
+#  include <windef.h>
+#  include <winbase.h>
 #else
 #  include <pthread.h>
 #endif
