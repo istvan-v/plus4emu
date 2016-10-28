@@ -20,6 +20,7 @@
 #include "gui.hpp"
 #include "guicolor.hpp"
 #include "pngwrite.hpp"
+#include <map>
 
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1
@@ -1458,8 +1459,56 @@ void Plus4EmuGUI::screenshotCallback(void *userData,
       // should actually use Fl::flush() here, but only Fl::wait() does
       // correctly update the display
       Fl::wait(0.0);
-      // TODO: convert image to 256 colors when possible
-      Plus4Emu::writePNGImage(fName.c_str(), buf, w_, h_, 0, true, 32768);
+      {
+        // convert image to indexed format if the number of unique colors
+        // is 256 or less
+        size_t  dataSize = size_t(w_) * size_t(h_) * 3;
+        int     nColors = 0;
+        std::map< uint32_t, unsigned char > colorsUsed;
+        for (size_t i = 0; i < dataSize; i = i + 3) {
+          unsigned char r = buf[i];
+          unsigned char g = buf[i + 1];
+          unsigned char b = buf[i + 2];
+          uint32_t  c = uint32_t(b) | (uint32_t(g) << 8) | (uint32_t(r) << 16)
+                        | (uint32_t((r >> 2) + (g >> 1) + (b >> 3)) << 24);
+          if (PLUS4EMU_UNLIKELY(colorsUsed.find(c) == colorsUsed.end())) {
+            if (nColors >= 256) {
+              nColors = 0;
+              break;
+            }
+            colorsUsed.insert(std::pair< uint32_t, unsigned char >(c, 0x00));
+            nColors++;
+          }
+        }
+        if (nColors) {
+          dataSize = size_t(w_) * size_t(h_);
+          std::vector< unsigned char >  buf2(size_t(nColors * 3) + dataSize);
+          unsigned char *bufp = &(buf2.front());
+          nColors = 0;
+          for (std::map< uint32_t, unsigned char >::iterator
+                   i = colorsUsed.begin();
+               i != colorsUsed.end();
+               i++, nColors++, bufp = bufp + 3) {
+            bufp[0] = (unsigned char) ((i->first >> 16) & 0xFFU);
+            bufp[1] = (unsigned char) ((i->first >> 8) & 0xFFU);
+            bufp[2] = (unsigned char) (i->first & 0xFFU);
+            i->second = (unsigned char) nColors;
+          }
+          for (size_t i = 0; i < (dataSize * 3); i = i + 3, bufp++) {
+            unsigned char r = buf[i];
+            unsigned char g = buf[i + 1];
+            unsigned char b = buf[i + 2];
+            uint32_t  c = uint32_t(b) | (uint32_t(g) << 8) | (uint32_t(r) << 16)
+                          | (uint32_t((r >> 2) + (g >> 1) + (b >> 3)) << 24);
+            *bufp = colorsUsed[c];
+          }
+          Plus4Emu::writePNGImage(fName.c_str(), &(buf2.front()),
+                                  w_, h_, nColors, false, 32768);
+        }
+        else {
+          Plus4Emu::writePNGImage(fName.c_str(), buf, w_, h_, 0, false, 32768);
+        }
+      }
     }
     catch (...) {
       gui_.mainWindow->label(&(gui_.windowTitleBuf[0]));
