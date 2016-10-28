@@ -77,7 +77,7 @@ General
   * recording video and sound output to an AVI format video file, with
     RLE8 or uncompressed YV12 video at 24 to 60 frames per second, and
     48000 Hz 16-bit PCM audio
-  * saving screenshots as 768x576 24-bit RLE compressed TGA files
+  * saving screenshots as 768x576 PNG format files
   * saving and loading snapshots of the state of the emulated machine
   * demo recording (snapshot combined with stream of keyboard events
     which can be played back with accurate timing)
@@ -352,10 +352,10 @@ Record video / Stop
 
 Save screenshot (F6)
 
-  Save a screenshot in 24 bit RLE compressed TGA format. The video
-  output is captured immediately after activating this menu item, and
-  is saved at a resolution of 768x576 without any processing (color
-  correction, effects, etc.).
+  Save a screenshot in PNG format. The video output is captured
+  immediately after activating this menu item, and is saved at a
+  resolution of 768x576 without any processing (color correction,
+  effects, etc.).
 
 Quit (Shift + F12)
 
@@ -429,8 +429,8 @@ Printer / MPS-802 (1525 mode)
 Printer / View printer output
 
   Shows the printer output in real time in a window. It is also possible
-  to save the page as a 520x736 (MPS-801) or 700x990 (MPS-802) 8-bit RLE
-  compressed TGA file. When the printing reaches the bottom of the page,
+  to save the page as a 520x736 (MPS-801) or 700x990 (MPS-802) 8-bit PNG
+  format image file. When the printing reaches the bottom of the page,
   it stops, and the LED will flash; you can then save the page to a
   file, click the 'Clear' button, and turn on and then off 'Form feed'
   to continue printing.

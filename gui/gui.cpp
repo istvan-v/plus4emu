@@ -19,6 +19,7 @@
 
 #include "gui.hpp"
 #include "guicolor.hpp"
+#include "pngwrite.hpp"
 
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1
@@ -1443,119 +1444,36 @@ void Plus4EmuGUI::screenshotCallback(void *userData,
 {
   Plus4EmuGUI&  gui_ = *(reinterpret_cast<Plus4EmuGUI *>(userData));
   std::string   fName;
-  std::FILE     *f = (std::FILE *) 0;
   try {
     fName = gui_.screenshotFileName;
-    if (!gui_.browseFile(fName, gui_.screenshotDirectory, "TGA files\t*.tga",
+    if (!gui_.browseFile(fName, gui_.screenshotDirectory, "PNG files\t*.png",
                          Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                          "Save screenshot"))
       return;
     gui_.screenshotFileName = fName;
-    f = std::fopen(fName.c_str(), "wb");
-    if (!f)
-      throw Plus4Emu::Exception("error opening screenshot file");
-    unsigned char tgaHeader[24];
-    unsigned char lineBuf[3080];
-    tgaHeader[0] = 0;                   // ID length
-    tgaHeader[1] = 0;                   // no colormap
-    tgaHeader[2] = 10;                  // image type (RLE true color)
-    tgaHeader[3] = 0;                   // color map specification
-    tgaHeader[4] = 0;
-    tgaHeader[5] = 0;
-    tgaHeader[6] = 0;
-    tgaHeader[7] = 0;
-    tgaHeader[8] = 0;                   // X origin
-    tgaHeader[9] = 0;
-    tgaHeader[10] = 0;                  // Y origin
-    tgaHeader[11] = 0;
-    tgaHeader[12] = (unsigned char) (w_ & 0xFF);        // image width
-    tgaHeader[13] = (unsigned char) (w_ >> 8);
-    tgaHeader[14] = (unsigned char) (h_ & 0xFF);        // image height
-    tgaHeader[15] = (unsigned char) (h_ >> 8);
-    tgaHeader[16] = 24;                 // pixel depth
-    tgaHeader[17] = 0x20;               // image descriptor (origin: top/left)
-    if (std::fwrite(&(tgaHeader[0]), sizeof(unsigned char), 18, f) != 18)
-      throw Plus4Emu::Exception("error writing screenshot file "
-                                "- is the disk full ?");
-    for (int yc = 0; yc < h_; yc++) {
-      const unsigned char *rBuf = &(buf[(yc * w_ * 3) + 0]);
-      const unsigned char *gBuf = &(buf[(yc * w_ * 3) + 1]);
-      const unsigned char *bBuf = &(buf[(yc * w_ * 3) + 2]);
-      // RLE encode line
-      unsigned char   *p = &(lineBuf[0]);
-      int     xc = 0;
-      while (xc < w_) {
-        if (xc == (w_ - 1)) {
-          *(p++) = 0x00;
-          *(p++) = bBuf[xc * 3];
-          *(p++) = gBuf[xc * 3];
-          *(p++) = rBuf[xc * 3];
-          xc++;
-        }
-        else if (rBuf[xc * 3] == rBuf[(xc * 3) + 3] &&
-                 gBuf[xc * 3] == gBuf[(xc * 3) + 3] &&
-                 bBuf[xc * 3] == bBuf[(xc * 3) + 3]) {
-          int     tmp = xc + 2;
-          while (tmp < w_ && (tmp - xc) < 128) {
-            if (!(rBuf[tmp * 3] == rBuf[xc * 3] &&
-                  gBuf[tmp * 3] == gBuf[xc * 3] &&
-                  bBuf[tmp * 3] == bBuf[xc * 3]))
-              break;
-            tmp++;
-          }
-          *(p++) = (unsigned char) (((tmp - xc) - 1) | 0x80);
-          *(p++) = bBuf[xc * 3];
-          *(p++) = gBuf[xc * 3];
-          *(p++) = rBuf[xc * 3];
-          xc = tmp;
-        }
-        else {
-          int     tmp = xc + 2;
-          while (tmp < w_ && (tmp - xc) < 128) {
-            if (rBuf[tmp * 3] == rBuf[(tmp - 1) * 3] &&
-                gBuf[tmp * 3] == gBuf[(tmp - 1) * 3] &&
-                bBuf[tmp * 3] == bBuf[(tmp - 1) * 3]) {
-              tmp--;
-              break;
-            }
-            tmp++;
-          }
-          *(p++) = (unsigned char) ((tmp - xc) - 1);
-          while (xc < tmp) {
-            *(p++) = bBuf[xc * 3];
-            *(p++) = gBuf[xc * 3];
-            *(p++) = rBuf[xc * 3];
-            xc++;
-          }
-        }
-      }
-      size_t  nBytes = size_t(p - &(lineBuf[0]));
-      if (std::fwrite(&(lineBuf[0]), sizeof(unsigned char), nBytes, f)
-          != nBytes)
-        throw Plus4Emu::Exception("error writing screenshot file "
-                                  "- is the disk full ?");
+    try {
+      gui_.mainWindow->label("Saving screenshot...");
+      gui_.mainWindow->cursor(FL_CURSOR_WAIT);
+      Fl::redraw();
+      // should actually use Fl::flush() here, but only Fl::wait() does
+      // correctly update the display
+      Fl::wait(0.0);
+      // TODO: convert image to 256 colors when possible
+      Plus4Emu::writePNGImage(fName.c_str(), buf, w_, h_, 0, true, 32768);
     }
+    catch (...) {
+      gui_.mainWindow->label(&(gui_.windowTitleBuf[0]));
+      gui_.mainWindow->cursor(
+          !(gui_.displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
+      throw;
+    }
+    gui_.mainWindow->label(&(gui_.windowTitleBuf[0]));
+    gui_.mainWindow->cursor(
+        !(gui_.displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
   }
   catch (std::exception& e) {
-    if (f) {
-      std::fclose(f);
-      f = (std::FILE *) 0;
-      if (fName.length() > 0)
-        std::remove(fName.c_str());
-    }
     gui_.errorMessage(e.what());
   }
-  catch (...) {
-    if (f) {
-      std::fclose(f);
-      f = (std::FILE *) 0;
-      if (fName.length() > 0)
-        std::remove(fName.c_str());
-    }
-    throw;
-  }
-  if (f)
-    std::fclose(f);
 }
 
 void Plus4EmuGUI::pollJoystickInput(void *userData)

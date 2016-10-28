@@ -487,7 +487,8 @@ plus4emuSources += fluidCompile(['gui/gui.fl', 'gui/disk_cfg.fl',
                                  'gui/snd_cfg.fl', 'gui/vm_cfg.fl',
                                  'gui/debug.fl', 'gui/printer.fl',
                                  'gui/about.fl'])
-plus4emuSources += ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp']
+plus4emuSources += ['gui/debugger.cpp', 'gui/monitor.cpp', 'gui/main.cpp',
+                    'src/pngwrite.cpp']
 if mingwCrossCompile:
     plus4emuResourceObject = plus4emuEnvironment.Command(
         'resource/resource.o',

@@ -10,6 +10,8 @@ decl {\#include <FL/Fl_Box.H>} {}
 
 decl {\#include <FL/fl_draw.H>} {} 
 
+decl {\#include "pngwrite.hpp"} {} 
+
 class Plus4EmuGUI_PrinterDisplay {open : {public Fl_Box}
 } {
   decl {Plus4EmuGUI_PrinterWindow *window;} {}
@@ -272,12 +274,11 @@ class Plus4EmuGUI_PrinterWindow {open
     code {{
   try {
     std::string fName = gui.screenshotFileName;
-    if (!gui.browseFile(fName, gui.screenshotDirectory, "TGA files\\t*.tga",
+    if (!gui.browseFile(fName, gui.screenshotDirectory, "PNG files\\t*.png",
                         Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                         "Save printer output"))
       return;
     gui.screenshotFileName = fName;
-    std::FILE   *f = (std::FILE *) 0;
     if (gui.lockVMThread()) {
       try {
         const uint8_t *buf = (uint8_t *) 0;
@@ -286,95 +287,24 @@ class Plus4EmuGUI_PrinterWindow {open
         gui.vm.getPrinterOutput(buf, w_, h_);
         if (buf == (uint8_t *) 0 || w_ <= 0 || h_ <= 0)
           throw Plus4Emu::Exception("printer emulation is not enabled");
-        f = std::fopen(fName.c_str(), "wb");
-        if (!f)
-          throw Plus4Emu::Exception("error opening image file");
-        unsigned char tmpBuf[1032];
-        tmpBuf[0] = 0;                  // ID length
-        tmpBuf[1] = 1;                  // use colormap
-        tmpBuf[2] = 9;                  // image type (colormap/RLE)
-        tmpBuf[3] = 0;                  // color map specification
-        tmpBuf[4] = 0;                  // first entry index = 0
-        tmpBuf[5] = 0;
-        tmpBuf[6] = 1;                  // length = 256
-        tmpBuf[7] = 24;                 // colormap entry size
-        tmpBuf[8] = 0;                  // X origin
-        tmpBuf[9] = 0;
-        tmpBuf[10] = 0;                 // Y origin
-        tmpBuf[11] = 0;
-        tmpBuf[12] = (unsigned char) (w_ & 0xFF);   // image width
-        tmpBuf[13] = (unsigned char) (w_ >> 8);
-        tmpBuf[14] = (unsigned char) (h_ & 0xFF);   // image height
-        tmpBuf[15] = (unsigned char) (h_ >> 8);
-        tmpBuf[16] = 8;                 // bits per pixel
-        tmpBuf[17] = 0x20;              // image descriptor (origin: top/left)
-        for (int i = 0; i < 256; i++) {
-          tmpBuf[i * 3 + 18] = (unsigned char) i;
-          tmpBuf[i * 3 + 19] = (unsigned char) i;
-          tmpBuf[i * 3 + 20] = (unsigned char) i;
-        }
-        if (std::fwrite(&(tmpBuf[0]), sizeof(unsigned char), 786, f) != 786)
-          throw Plus4Emu::Exception("error writing image file "
-                                    "- is the disk full ?");
-        for (int yc = 0; yc < h_; yc++) {
-          const unsigned char *bufp = &(buf[yc * w_]);
-          // RLE encode line
-          unsigned char   *p = &(tmpBuf[0]);
-          int     xc = 0;
-          while (xc < w_) {
-            if (xc == (w_ - 1)) {
-              *(p++) = 0x00;
-              *(p++) = bufp[xc];
-              xc++;
-            }
-            else if (bufp[xc] == bufp[xc + 1]) {
-              int     tmp = xc + 2;
-              while (tmp < w_ && (tmp - xc) < 128) {
-                if (bufp[tmp] != bufp[xc])
-                  break;
-                tmp++;
-              }
-              *(p++) = (unsigned char) (((tmp - xc) - 1) | 0x80);
-              *(p++) = bufp[xc];
-              xc = tmp;
-            }
-            else {
-              int     tmp = xc + 2;
-              while (tmp < w_ && (tmp - xc) < 128) {
-                if (bufp[tmp] == bufp[tmp - 1] && bufp[tmp] == bufp[tmp - 2]) {
-                  tmp -= 2;
-                  break;
-                }
-                tmp++;
-              }
-              *(p++) = (unsigned char) ((tmp - xc) - 1);
-              while (xc < tmp) {
-                *(p++) = bufp[xc];
-                xc++;
-              }
-            }
-          }
-          size_t  nBytes = size_t(p - &(tmpBuf[0]));
-          if (std::fwrite(&(tmpBuf[0]), sizeof(unsigned char), nBytes, f)
-              != nBytes)
-            throw Plus4Emu::Exception("error writing image file "
-                                      "- is the disk full ?");
-        }
+        window->label("Saving PNG file...");
+        window->cursor(FL_CURSOR_WAIT);
+        Fl::redraw();
+        // should actually use Fl::flush() here, but only Fl::wait() does
+        // correctly update the display
+        Fl::wait(0.0);
+        Plus4Emu::writePNGImage(fName.c_str(), buf, w_, h_, 256, true, 32768);
       }
       catch (...) {
         gui.unlockVMThread();
-        if (f) {
-          std::fclose(f);
-          f = (std::FILE *) 0;
-          if (fName.length() > 0)
-            std::remove(fName.c_str());
-        }
+        window->label("Printer");
+        window->cursor(FL_CURSOR_DEFAULT);
         throw;
       }
       gui.unlockVMThread();
+      window->label("Printer");
+      window->cursor(FL_CURSOR_DEFAULT);
     }
-    if (f)
-      std::fclose(f);
   }
   catch (std::exception& e) {
     gui.errorMessage(e.what());
