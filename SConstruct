@@ -2,15 +2,17 @@
 
 import sys, os
 
-win64CrossCompile = ARGUMENTS.get('win64', 0)
-mingwCrossCompile = win64CrossCompile or ARGUMENTS.get('win32', 0)
-linux32CrossCompile = 0
-disableSDL = 0          # set this to 1 on Linux with SDL version 1.2.10
-disableLua = 0
-enableGLShaders = 1
-enableDebug = 0
-buildRelease = 1
-useLuaJIT = 0           # for mingwCrossCompile, use LuaJIT instead of Lua 5.3
+win64CrossCompile = int(ARGUMENTS.get('win64', 0))
+mingwCrossCompile = win64CrossCompile or int(ARGUMENTS.get('win32', 0))
+linux32CrossCompile = int(ARGUMENTS.get('linux32', 0))
+# set this to 1 on Linux with SDL version 1.2.10
+disableSDL = int(ARGUMENTS.get('nosdl', 0))
+disableLua = int(ARGUMENTS.get('nolua', 0))
+enableGLShaders = int(ARGUMENTS.get('glshaders', 1))
+enableDebug = int(ARGUMENTS.get('debug', 0))
+buildRelease = not enableDebug and int(ARGUMENTS.get('release', 1))
+# for mingwCrossCompile, use LuaJIT instead of Lua 5.3
+useLuaJIT = int(ARGUMENTS.get('luajit', 0))
 
 compilerFlags = ''
 if buildRelease:
