@@ -328,13 +328,11 @@ namespace Plus4Emu {
           size_t  nBits = nBitsBase
                           + size_t(lengthCodeLengthTable[len - minMatchLen])
                           + bitCountTable[i + len];
-          if (nBits > bestSize)
-            continue;
-          if (nBits == bestSize && d >= bestOffs)
-            continue;
-          bestSize = nBits;
-          bestOffs = d;
-          bestLen = len;
+          if (nBits <= bestSize) {
+            bestSize = nBits;
+            bestOffs = d;
+            bestLen = len;
+          }
         } while (--len >= nxtLen);
       }
       // and literal byte:
