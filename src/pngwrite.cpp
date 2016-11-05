@@ -338,7 +338,7 @@ namespace Plus4Emu {
       // and literal byte:
       size_t  nBits = bitCountTable[i + 1]
                       + huffmanEncoderL.getSymbolSize(inBuf[offs + i]);
-      if (nBits <= bestSize) {
+      if (nBits < bestSize) {
         bestSize = nBits;
         bestOffs = 0;
         bestLen = 1;

@@ -23,14 +23,18 @@ namespace Plus4Compress {
 
   class HuffmanNode {
    private:
-    // bits 40 to 63: weight
-    // bits 30 to 39: value
-    // bits 15 to 29: buffer position + 1 of next node in package (0 = none)
-    // bits  0 to 14: buffer position + 1 of this node
-    uint64_t    nodeData;
+    // bits 10 to 31: weight
+    // bits  0 to  9: value
+    uint32_t    nodeData;
+    // buffer position + 1 of this node
+    uint16_t    bufPos;
+    // buffer position + 1 of next node in package (0 = none)
+    uint16_t    nextPos;
    public:
     HuffmanNode()
-      : nodeData(0UL)
+      : nodeData(0U),
+        bufPos(0),
+        nextPos(0)
     {
     }
     ~HuffmanNode()
@@ -38,53 +42,51 @@ namespace Plus4Compress {
     }
     inline void initNode(unsigned int value_, size_t weight_)
     {
-      nodeData = (uint64_t(weight_) << 40) | (uint64_t(value_) << 30);
+      nodeData = (uint32_t(weight_) << 10) | uint32_t(value_);
+      bufPos = 0;
+      nextPos = 0;
     }
     inline void setBufPos(HuffmanNode *buf)
     {
-      nodeData = (nodeData & (uint64_t(-(int64_t(0x40000000L)))))
-                 | uint64_t((this - buf) + 1);
+      bufPos = uint16_t((this - buf) + 1);
     }
     inline size_t getBufPos() const
     {
-      return (size_t(nodeData & 0x7FFFUL) - 1);
+      return size_t(bufPos - 1);
     }
     inline bool operator<(const HuffmanNode& r) const
     {
-      return (nodeData < r.nodeData);
+      return ((nodeData & 0xFFFFFC00U) < (r.nodeData & 0xFFFFFC00U));
     }
     inline size_t weight() const
     {
-      return size_t((nodeData >> 40) & 0x00FFFFFFUL);
+      return size_t(nodeData >> 10);
     }
     inline unsigned int value() const
     {
-      return (unsigned int) ((nodeData >> 30) & 0x03FFUL);
+      return (nodeData & 0x03FFU);
     }
     inline HuffmanNode *nextNode(HuffmanNode *buf)
     {
-      size_t  nextPos = size_t((nodeData >> 15) & 0x7FFFUL);
       if (!nextPos)
         return (HuffmanNode *) 0;
       return &(buf[nextPos - 1]);
     }
     inline void merge(HuffmanNode& r, HuffmanNode *buf)
     {
-      nodeData = nodeData + (r.nodeData & (uint64_t(0xFFFFFF00UL) << 32));
-      r.nodeData = r.nodeData & ((uint64_t(1) << 40) - 1UL);
+      nodeData = nodeData + (r.nodeData & 0xFFFFFC00U);
       HuffmanNode *p = this;
-      if (nodeData & 0x3FFF8000UL) {
-        if (!(r.nodeData & 0x3FFF8000UL)) {
-          r.nodeData = r.nodeData | (nodeData & 0x3FFF8000UL);
-          nodeData = nodeData ^ (nodeData & 0x3FFF8000UL);
+      if (nextPos) {
+        if (!r.nextPos) {
+          r.nextPos = nextPos;
         }
         else {
           do {
-            p = &(buf[((p->nodeData & 0x3FFF8000UL) >> 15) - 1]);
-          } while (p->nodeData & 0x3FFF8000UL);
+            p = &(buf[p->nextPos - 1]);
+          } while (p->nextPos);
         }
       }
-      p->nodeData = p->nodeData | ((r.nodeData & 0x7FFFUL) << 15);
+      p->nextPos = r.bufPos;
     }
     static void sortNodes(HuffmanNode *startPtr, HuffmanNode *endPtr,
                           HuffmanNode *tmpBuf);
@@ -200,6 +202,8 @@ namespace Plus4Compress {
               buf2[l] = buf1[k++];
             }
             else {
+              // sort by weight first, then nodes not in a package (from buf0)
+              // are sorted before packages to minimize code length variance
               *allocPtr = buf0[j++];
               allocPtr->setBufPos(buf0);
               buf2[l] = *allocPtr;
@@ -977,12 +981,11 @@ namespace Plus4Compress {
   {
   }
 
-  size_t RadixTree::findMatches(std::vector< unsigned int >& matchBuf,
+  size_t RadixTree::findMatches(unsigned int *offsTable,
                                 const unsigned char *inBuf, size_t inBufPos,
                                 size_t maxLen, size_t maxDistance)
   {
     bufPos = 4U;
-    size_t  nMatches = 0;
     if (buf[bufPos] == 0U) {
       bufPos = findNextNode(inBuf[inBufPos]);
       if (!bufPos)
@@ -994,6 +997,9 @@ namespace Plus4Compress {
     size_t  len = 0;
     do {
       unsigned int  matchPos = buf[bufPos + 1U];
+      unsigned int  d = (unsigned int) inBufPos - matchPos;
+      if (d > maxDistance)
+        return len;
       do {
         unsigned int  l =
             RadixTree::compareStrings(
@@ -1003,19 +1009,14 @@ namespace Plus4Compress {
         if (l < buf[bufPos] || len >= maxLen) {
           bufPos = 0U;
           if (!l)
-            return nMatches;
+            return len;
           break;
         }
         bufPos = findNextNode(inBuf[inBufPos + len]);
       } while (bufPos && buf[bufPos + 1U] == matchPos);
-      unsigned int  d = (unsigned int) inBufPos - matchPos;
-      if (d > maxDistance)
-        return nMatches;
-      matchBuf[nMatches << 1] = (unsigned int) len;
-      matchBuf[(nMatches << 1) + 1] = d;
-      nMatches++;
+      offsTable[len] = d - 1U;
     } while (bufPos);
-    return nMatches;
+    return len;
   }
 
   void RadixTree::allocNode(unsigned char c)
@@ -1142,14 +1143,15 @@ namespace Plus4Compress {
 
   void LZSearchTable::sortFunc(unsigned int *startPtr, unsigned int *endPtr,
                                const unsigned char *buf, size_t bufSize,
-                               unsigned int *tmpBuf, size_t maxLen)
+                               unsigned int *tmpBuf, size_t maxLen,
+                               const unsigned short *rleLenTable)
   {
     // create suffix array using merge sort algorithm
     unsigned int  *midPtr = startPtr + (size_t(endPtr - startPtr) >> 1);
     if (size_t(midPtr - startPtr) > 1)
-      sortFunc(startPtr, midPtr, buf, bufSize, tmpBuf, maxLen);
+      sortFunc(startPtr, midPtr, buf, bufSize, tmpBuf, maxLen, rleLenTable);
     if (size_t(endPtr - midPtr) > 1)
-      sortFunc(midPtr, endPtr, buf, bufSize, tmpBuf, maxLen);
+      sortFunc(midPtr, endPtr, buf, bufSize, tmpBuf, maxLen, rleLenTable);
     const unsigned int  *p1 = startPtr;
     const unsigned int  *p2 = midPtr;
     for (size_t k = 0; k < size_t(endPtr - startPtr); k++) {
@@ -1164,7 +1166,19 @@ namespace Plus4Compress {
         size_t  pos2 = *p2;
         size_t  l = bufSize - (pos1 > pos2 ? pos1 : pos2);
         l = (l < maxLen ? l : maxLen);
-        int     c = std::memcmp(&(buf[pos1]), &(buf[pos2]), l);
+        int     c = 0;
+        if (buf[pos1] == buf[pos2]) {
+          size_t  rl1 = rleLenTable[pos1];
+          size_t  rl2 = rleLenTable[pos2];
+          size_t  rleLen = (rl1 < rl2 ? rl1 : rl2);
+          if (l > rleLen) {
+            c = std::memcmp(buf + (pos1 + rleLen), buf + (pos2 + rleLen),
+                            l - rleLen);
+          }
+        }
+        else {
+          c = int(buf[pos1]) - int(buf[pos2]);
+        }
         if (c < 0 || (c == 0 && pos1 < pos2))
           tmpBuf[k] = *(p1++);
         else
@@ -1175,24 +1189,44 @@ namespace Plus4Compress {
                 size_t(endPtr - startPtr) * sizeof(unsigned int));
   }
 
-  void LZSearchTable::addMatch(size_t bufPos,
-                               unsigned int matchLen, unsigned int offs)
+  void LZSearchTable::addMatches(size_t bufPos,
+                                 unsigned int *offsTable, size_t maxLen)
   {
-    unsigned int  m = matchLen | (offs << 10);
-    if (matchTable[bufPos] == 0xFFFFFFFFU) {
-      if (!m) {
-        matchTable[bufPos] = 0U;
-        return;
+    matchTable[bufPos] = 0U;
+    unsigned int  maxOffs = maxOffs_;
+    unsigned int  prvDist = maxOffs;
+    size_t  minLen = minLength_;
+    bool    firstMatch = true;
+    for (size_t k = maxLen; k >= minLen; k--) {
+      unsigned int  d = offsTable[k];
+      offsTable[k] = maxOffs;
+      if (d < prvDist) {
+        prvDist = d;
+        if (k < 3) {
+          if (d >= (k == 1 ? maxOffs1_ : maxOffs2_))
+            continue;
+        }
+        if (PLUS4EMU_UNLIKELY((matchTableBuf.size() + 3)
+                              > matchTableBuf.capacity())) {
+          matchTableBuf.reserve(((matchTableBuf.size()
+                                  + (matchTableBuf.size() >> 1)) | 0x03FF) + 1);
+        }
+        unsigned int  l = (unsigned int) k;
+        if (PLUS4EMU_UNLIKELY(firstMatch)) {
+          firstMatch = false;
+          matchTable[bufPos] = matchTableBuf.size();
+          if (lengthMaxValue_ > 1023) {
+            matchTableBuf.push_back(l);
+            l = 0U;
+          }
+        }
+        matchTableBuf.push_back(l | ((d + 1U) << 10));
+        if (!d)
+          break;
       }
-      matchTable[bufPos] = (unsigned int) matchTableBuf.size();
     }
-    if (PLUS4EMU_UNLIKELY(matchTableBuf.size() >= matchTableBuf.capacity())) {
-      size_t  tmp = 1024;
-      while (tmp <= matchTableBuf.size())
-        tmp = tmp << 1;
-      matchTableBuf.reserve(tmp);
-    }
-    matchTableBuf.push_back(m);
+    if (!firstMatch)
+      matchTableBuf.push_back(0U);
   }
 
   // --------------------------------------------------------------------------
@@ -1237,11 +1271,7 @@ namespace Plus4Compress {
     if (matchTableBuf.capacity() < 1024)
       matchTableBuf.reserve(1024);
     matchTableBuf.push_back(0U);
-    size_t  minLength = minLength_;
     size_t  maxLength = maxLength_;
-    size_t  lengthMaxValue = lengthMaxValue_;
-    unsigned int  maxOffs1 = maxOffs1_;
-    unsigned int  maxOffs2 = maxOffs2_;
     unsigned int  maxOffs = maxOffs_;
     size_t  bufSize = offs_ + nBytes_;
     // matches up to this length are found using the radix tree,
@@ -1252,7 +1282,6 @@ namespace Plus4Compress {
     std::vector< unsigned int >   invSuffixArray;
     std::vector< unsigned short > prvMatchLenTable;
     std::vector< unsigned int >   offsTable(maxLength + 1, maxOffs);
-    std::vector< unsigned int >   rtMatchTable((rtMaxLen + 1) * 2, 0U);
     // find RLE (offset = 1) matches
     for (size_t i = nBytes_; i-- > 1; ) {
       if (buf[offs_ + i] == buf[offs_ + i - 1]) {
@@ -1271,11 +1300,22 @@ namespace Plus4Compress {
       // sort buffer positions alphabetically by bytes at each position
       suffixArray.resize(nBytes);
       invSuffixArray.resize(nBytes);
+      prvMatchLenTable.resize(nBytes + 1);
+      // create temporary RLE length table to optimize sorting the suffix array
+      prvMatchLenTable[nBytes - 1] = 1;
+      for (size_t i = nBytes - 1; i-- > 0; ) {
+        prvMatchLenTable[i] = 1;
+        if (buf[startPos_ + i] == buf[startPos_ + i + 1]) {
+          unsigned short  l = prvMatchLenTable[i + 1];
+          prvMatchLenTable[i] = l + (unsigned short) (l < maxLength);
+        }
+      }
       for (size_t i = 0; i < nBytes; i++)
         suffixArray[i] = (unsigned int) (startPos_ + i);
       if (nBytes > 1) {
         sortFunc(&(suffixArray.front()), &(suffixArray.front()) + nBytes,
-                 buf, bufSize, &(invSuffixArray.front()), maxLength);
+                 buf, bufSize, &(invSuffixArray.front()), maxLength,
+                 &(prvMatchLenTable.front()) - startPos_);
       }
       // invert suffix array
       for (size_t i = 0; i < nBytes; i++)
@@ -1283,7 +1323,6 @@ namespace Plus4Compress {
       // suffixArray[n] matches prvMatchLenTable[n] characters with
       // suffixArray[n - 1], and nxtMatchLenTable[n] characters with
       // suffixArray[n + 1]
-      prvMatchLenTable.resize(nBytes + 1);
       const unsigned short  *nxtMatchLenTable = &(prvMatchLenTable.front()) + 1;
       prvMatchLenTable[0] = 0;
       for (size_t i = 1; i < nBytes; i++) {
@@ -1313,24 +1352,22 @@ namespace Plus4Compress {
         maxLen = (maxLen < rtMaxLen ? maxLen : rtMaxLen);
         {
           size_t  rleLen = rleLengthTable[i - offs_];
-          size_t  nMatches = 0;
-          if (rleLen < rtMaxLen)
-            nMatches = rt.findMatches(rtMatchTable, buf, i, maxLen, maxOffs);
-          rt.addString(buf, i, maxLen);
-          maxLen = minLength - 1;
-          if (rleLen > maxLen) {
-            maxLen = rleLen;
+          size_t  rtLen = 0;
+          if (rleLen < maxLen) {
+            rtLen = rt.findMatches(&(offsTable.front()), buf, i,
+                                   maxLen, maxOffs);
+          }
+          if (rleLen > rtLen) {
+            rtLen = rleLen;
             offsTable[rleLen] = 0U;
           }
-          for (size_t j = 0; j < nMatches; j++) {
-            unsigned int  l = rtMatchTable[j << 1];
-            unsigned int  d = rtMatchTable[(j << 1) + 1];
-            if (l > maxLen &&
-                !((l == 1U && d > maxOffs1) || (l == 2U && d > maxOffs2))) {
-              maxLen = l;
-              offsTable[l] = d - 1U;
-            }
+          rt.addString(buf, i, maxLen);
+          if (rtLen < rtMaxLen) {
+            // all matches have already been found at this position
+            addMatches(i - offs_, &(offsTable.front()), rtLen);
+            continue;
           }
+          maxLen = rtLen;
         }
         unsigned int  i_ = invSuffixArray[i - startPos_];
         size_t  matchLen = prvMatchLenTable[i_];
@@ -1384,32 +1421,13 @@ namespace Plus4Compress {
           }
         }
         // store the matches that were found
-        i_ = i - offs_;
-        unsigned int  prvDist = maxOffs;
-        bool    firstMatch = (lengthMaxValue > 1023);
-        for (size_t k = maxLen; k >= minLength; k--) {
-          unsigned int  d = offsTable[k];
-          offsTable[k] = maxOffs;
-          if (d < prvDist) {
-            prvDist = d;
-            if (PLUS4EMU_UNLIKELY(firstMatch)) {
-              firstMatch = false;
-              addMatch(i_, k, 0U);
-              addMatch(i_, 0U, d + 1U);
-            }
-            else {
-              addMatch(i_, k, d + 1U);
-            }
-            if (!d)
-              break;
-          }
-        }
-        addMatch(i_, 0U, 0U);
+        addMatches(i - offs_, &(offsTable.front()), maxLen);
       }
       rt.clear();
       startPos = endPos;
     }
     // find very long matches
+    size_t  lengthMaxValue = lengthMaxValue_;
     if (lengthMaxValue <= maxLength || nBytes_ < 2)
       return;
     unsigned int  lenMask = (lengthMaxValue < 1024 ? 0x03FFU : 0xFFFFFFFFU);
