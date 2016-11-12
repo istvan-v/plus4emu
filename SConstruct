@@ -548,6 +548,7 @@ if sys.platform[:6] == 'darwin':
 
 compressLibEnvironment = plus4emuLibEnvironment.Clone()
 compressLibEnvironment.Append(CPPPATH = ['./util/compress'])
+compressLibEnvironment.Prepend(LIBS = [plus4emuLib])
 compressLib = compressLibEnvironment.StaticLibrary(
     'compress',
     Split('''
@@ -652,6 +653,7 @@ if buildRelease:
 compress = compressEnvironment.Program(programNamePrefix + 'compress',
                                        ['util/compress/main.cpp'])
 Depends(compress, compressLib)
+Depends(compress, plus4emuLib)
 
 # -----------------------------------------------------------------------------
 
