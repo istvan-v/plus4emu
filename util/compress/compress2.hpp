@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #define P4COMPRESS_COMPRESS2_HPP
 
 #include "plus4emu.hpp"
+#include "comprlib.hpp"
 #include "compress.hpp"
 #include "compress1.hpp"
 
@@ -49,47 +50,6 @@ namespace Plus4Compress {
     static const unsigned int offs3MaxValue = (unsigned int) maxRepeatDist;
     static const size_t offs3SlotCntTable[4];
     static const size_t literalSequenceMinLength = lengthNumSlots + 9;
-    // --------
-    class SearchTable {
-     private:
-      const std::vector< unsigned char >&   buf;
-      // buffer positions sorted alphabetically
-      // by bytes at each position (buf.size() elements)
-      std::vector< unsigned int >   suffixArray;
-      // suffixArray[n] matches prvMatchLenTable[n] characters with
-      // suffixArray[n - 1] (buf.size() elements)
-      std::vector< unsigned short > prvMatchLenTable;
-      // suffixArray[n] matches nxtMatchLenTable[n] characters with
-      // suffixArray[n + 1] (buf.size() elements)
-      std::vector< unsigned short > nxtMatchLenTable;
-      // for each match length N and buffer position P,
-      // bestMatchPosTable[N - minRepeatLen][P] is the position of the nearest
-      // match (minRepeatDist to maxRepeatDist), or zero if there is no match
-      // of that length
-      // ((maxRepeatLen + 1 - minRepeatLen) * buf.size() elements)
-      std::vector< std::vector< unsigned short > >  bestMatchPosTable;
-      // maximum match length for each buffer position (buf.size() elements)
-      std::vector< unsigned short > maxMatchLenTable;
-      std::vector< unsigned short > rleLengthTable;
-      void sortFunc(size_t startPos, size_t endPos,
-                    std::vector< unsigned int >& tmpBuf);
-     public:
-      SearchTable(const std::vector< unsigned char >& inBuf);
-      virtual ~SearchTable();
-      inline size_t getMaxMatchLength(size_t bufPos) const
-      {
-        return size_t(maxMatchLenTable[bufPos]);
-      }
-      inline size_t getDistanceForMatchLength(size_t bufPos, size_t len) const
-      {
-        return size_t(bestMatchPosTable[len
-                                        - Compressor_M2::minRepeatLen][bufPos]);
-      }
-      inline size_t getRLELength(size_t bufPos) const
-      {
-        return size_t(rleLengthTable[bufPos]);
-      }
-    };
     // --------
     struct LZMatchParameters {
       unsigned short  d;
@@ -130,29 +90,32 @@ namespace Plus4Compress {
     };
     // --------
     Compressor_M1::CompressionParameters  config;
-    Compressor_M1::EncodeTable  lengthEncodeTable;
-    Compressor_M1::EncodeTable  offs1EncodeTable;
-    Compressor_M1::EncodeTable  offs2EncodeTable;
-    Compressor_M1::EncodeTable  offs3EncodeTable;
+    EncodeTable   lengthEncodeTable;
+    EncodeTable   offs1EncodeTable;
+    EncodeTable   offs2EncodeTable;
+    EncodeTable   offs3EncodeTable;
     size_t        offs3NumSlots;
     size_t        offs3PrefixSize;
-    SearchTable   *searchTable;
+    LZSearchTable *searchTable;
     size_t        savedOutBufPos;
     unsigned char outputShiftReg;
     int           outputBitCnt;
     // --------
     void writeRepeatCode(std::vector< unsigned int >& buf, size_t d, size_t n);
     inline size_t getRepeatCodeLength(size_t d, size_t n) const;
-    inline void findBestMatch(LZMatchParameters& p, size_t i, size_t maxLen);
+    void optimizeMatches_noStats(LZMatchParameters *matchTable,
+                                 size_t *bitCountTable,
+                                 size_t offs, size_t nBytes);
+    void optimizeMatches(LZMatchParameters *matchTable,
+                         size_t *bitCountTable, uint64_t *offsSumTable,
+                         size_t offs, size_t nBytes);
     size_t compressData_(std::vector< unsigned int >& tmpOutBuf,
-                         const std::vector< unsigned char >& inBuf,
-                         size_t offs, size_t nBytes, bool optimizeEncodeTables,
-                         bool fastMode = false);
+                         const std::vector< unsigned char >& inBuf, size_t offs,
+                         size_t nBytes, bool firstPass, bool fastMode);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
                       unsigned int startAddr, bool isLastBlock,
-                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL,
-                      bool fastMode = false);
+                      size_t offs, size_t nBytes, bool fastMode);
    public:
     Compressor_M2(std::vector< unsigned char >& outBuf_);
     virtual ~Compressor_M2();

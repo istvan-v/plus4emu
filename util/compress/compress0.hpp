@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #define P4COMPRESS_COMPRESS0_HPP
 
 #include "plus4emu.hpp"
+#include "comprlib.hpp"
 #include "compress.hpp"
 
 #include <vector>
@@ -100,52 +101,22 @@ namespace Plus4Compress {
      public:
       HuffmanCompressor(size_t nCharValues_ = 256);
       virtual ~HuffmanCompressor();
-      std::vector< unsigned int >::iterator calculateCompression(
-          std::vector< unsigned int >& outBuf,
-          std::vector< unsigned int >::iterator outBufPos,
-          std::vector< unsigned int >& encodeTable);
+      void calculateCompression(std::vector< unsigned int >& outBuf,
+                                std::vector< unsigned int >& encodeTable);
       inline void addChar(unsigned int c)
       {
         charCounts[c]++;
       }
     };
     // --------
-    class SearchTable {
+    class DSearchTable : public LZSearchTable {
      private:
-      const std::vector< unsigned char >&   buf;
-      // buffer positions sorted alphabetically
-      // by bytes at each position (buf.size() elements)
-      std::vector< unsigned int >   suffixArray;
-      // suffixArray[n] matches prvMatchLenTable[n] characters with
-      // suffixArray[n - 1] (buf.size() elements)
-      std::vector< unsigned short > prvMatchLenTable;
-      // suffixArray[n] matches nxtMatchLenTable[n] characters with
-      // suffixArray[n + 1] (buf.size() elements)
-      std::vector< unsigned short > nxtMatchLenTable;
-      // for each match length N and buffer position P,
-      // bestMatchPosTable[N - minRepeatLen][P] is the position of the nearest
-      // match (minRepeatDist to maxRepeatDist), or zero if there is no match
-      // of that length
-      // ((maxRepeatLen + 1 - minRepeatLen) * buf.size() elements)
-      std::vector< std::vector< unsigned short > >  bestMatchPosTable;
-      // maximum match length for each buffer position (buf.size() elements)
-      std::vector< unsigned short > maxMatchLenTable;
       std::vector< std::vector< unsigned char > >   seqDiffTable;
       std::vector< std::vector< unsigned short > >  maxSeqLenTable;
-      void sortFunc(size_t startPos, size_t endPos,
-                    std::vector< unsigned int >& tmpBuf);
      public:
-      SearchTable(const std::vector< unsigned char >& inBuf);
-      virtual ~SearchTable();
-      inline size_t getMaxMatchLength(size_t bufPos) const
-      {
-        return size_t(maxMatchLenTable[bufPos]);
-      }
-      inline size_t getDistanceForMatchLength(size_t bufPos, size_t len) const
-      {
-        return size_t(bestMatchPosTable[len
-                                        - Compressor_M0::minRepeatLen][bufPos]);
-      }
+      DSearchTable(size_t minLength, size_t maxLength, size_t maxOffs);
+      virtual ~DSearchTable();
+      void findMatches(const unsigned char *buf, size_t bufSize);
       inline size_t getSequenceLength(size_t bufPos, size_t d) const
       {
         return size_t(maxSeqLenTable[d - Compressor_M0::minRepeatDist][bufPos]);
@@ -157,15 +128,13 @@ namespace Plus4Compress {
     };
     // --------
     struct LZMatchParameters {
-      unsigned short  d;
+      unsigned int    d;
       unsigned short  len;
-      unsigned short  nBits;
       bool            seqFlag;
       unsigned char   seqDiff;
       LZMatchParameters()
         : d(0),
           len(1),
-          nBits(8),
           seqFlag(false),
           seqDiff(0x00)
       {
@@ -173,7 +142,6 @@ namespace Plus4Compress {
       LZMatchParameters(const LZMatchParameters& r)
         : d(r.d),
           len(r.len),
-          nBits(r.nBits),
           seqFlag(r.seqFlag),
           seqDiff(r.seqDiff)
       {
@@ -185,7 +153,6 @@ namespace Plus4Compress {
       {
         d = r.d;
         len = r.len;
-        nBits = r.nBits;
         seqFlag = r.seqFlag;
         seqDiff = r.seqDiff;
         return (*this);
@@ -194,11 +161,16 @@ namespace Plus4Compress {
       {
         d = 0;
         len = 1;
-        nBits = 8;
         seqFlag = false;
         seqDiff = 0x00;
       }
     };
+    // --------
+    struct BitCountTableEntry {
+      long    totalBits;
+      unsigned int  prvDistances[4];
+    };
+    // --------
     struct SplitOptimizationBlock {
       std::vector< unsigned int > buf;
       size_t  startPos;
@@ -215,7 +187,7 @@ namespace Plus4Compress {
     unsigned char   *distanceBitsTable;
     unsigned int    *distanceValueTable;
     size_t          *tmpCharBitsTable;
-    SearchTable     *searchTable;
+    DSearchTable    *searchTable;
     size_t          prvDistances[4];
     unsigned char   outputShiftReg;
     int             outputBitCnt;
@@ -223,13 +195,13 @@ namespace Plus4Compress {
     void huffmanCompressBlock(std::vector< unsigned int >& ioBuf);
     void initializeLengthCodeTables();
     void writeRepeatCode(std::vector< unsigned int >& buf, size_t d, size_t n);
-    inline size_t getRepeatCodeLength(size_t d, size_t n) const;
     void writeSequenceCode(std::vector< unsigned int >& buf,
                            unsigned char seqDiff, size_t d, size_t n);
-    inline size_t getSequenceCodeLength(size_t d, size_t n) const;
-    inline void findBestMatch(LZMatchParameters& p,
-                              const std::vector< unsigned char >& inBuf,
-                              size_t i, size_t maxLen);
+    void optimizeMatches(LZMatchParameters *matchTable,
+                         BitCountTableEntry *bitCountTable,
+                         const size_t *lengthBitsTable_,
+                         const unsigned char *inBuf,
+                         size_t offs, size_t nBytes);
     void compressData_(std::vector< unsigned int >& tmpOutBuf,
                        const std::vector< unsigned char >& inBuf,
                        unsigned int startAddr, bool isLastBlock,

@@ -21,6 +21,7 @@
 // without any restrictions.
 
 #include "plus4emu.hpp"
+#include "comprlib.hpp"
 #include "compress.hpp"
 #include "compress0.hpp"
 
@@ -37,10 +38,7 @@ static size_t getGammaCodeLength(size_t n)
   return nBits;
 }
 
-static std::vector< unsigned int >::iterator
-    writeGammaCode(std::vector< unsigned int >& outBuf,
-                   std::vector< unsigned int >::iterator outBufPos,
-                   size_t n)
+static void writeGammaCode(std::vector< unsigned int >& outBuf, size_t n)
 {
   size_t  nBits = 0;
   size_t  m = 0;
@@ -50,27 +48,21 @@ static std::vector< unsigned int >::iterator
     nBits++;
   }
   while (nBits > 0) {
-    outBufPos = outBuf.insert(outBufPos, 0x01000001U);
-    outBufPos++;
-    outBufPos = outBuf.insert(outBufPos, 0x01000000U | (unsigned int) (m & 1));
-    outBufPos++;
+    outBuf.push_back(0x01000001U);
+    outBuf.push_back(0x01000000U | (unsigned int) (m & 1));
     m = m >> 1;
     nBits--;
   }
-  outBufPos = outBuf.insert(outBufPos, 0x01000000U);
-  outBufPos++;
-  return outBufPos;
+  outBuf.push_back(0x01000000U);
 }
 
 static inline size_t estimateSymbolLength(size_t cnt, size_t totalCount)
 {
-  size_t  nBits = 1;
-  cnt = cnt * 14;
-  totalCount = totalCount * 5;
-  while (cnt < totalCount) {
+  size_t  nBits = 0;
+  do {
     cnt = cnt << 1;
     nBits++;
-  }
+  } while (cnt < totalCount);
   return nBits;
 }
 
@@ -159,11 +151,9 @@ namespace Plus4Compress {
     }
   }
 
-  std::vector< unsigned int >::iterator
-      Compressor_M0::HuffmanCompressor::calculateCompression(
-          std::vector< unsigned int >& outBuf,
-          std::vector< unsigned int >::iterator outBufPos,
-          std::vector< unsigned int >& encodeTable)
+  void Compressor_M0::HuffmanCompressor::calculateCompression(
+      std::vector< unsigned int >& outBuf,
+      std::vector< unsigned int >& encodeTable)
   {
     encodeTable.resize(nCharValues);
     for (size_t i = 0; i < nCharValues; i++)
@@ -189,9 +179,8 @@ namespace Plus4Compress {
     totalBitsUncompressed = totalCharsUncompressed * bitsPerCharUncompressed;
     // check for trivial cases (zero or one symbol only)
     if (nCharValuesUsed == 0) {
-      outBufPos = outBuf.insert(outBufPos, 0x01000000U);
-      outBufPos++;
-      return outBufPos;
+      outBuf.push_back(0x01000000U);
+      return;
     }
     if (nCharValuesUsed == 1) {
       for (size_t i = 0; i < nCharValues; i++) {
@@ -353,141 +342,64 @@ namespace Plus4Compress {
     if (totalBitsCompressed >= totalBitsUncompressed) {
       for (size_t i = 0; i < nCharValues; i++)
         encodeTable[i] = (unsigned int) ((bitsPerCharUncompressed << 24) | i);
-      outBufPos = outBuf.insert(outBufPos, 0x01000000U);
-      outBufPos++;
-      return outBufPos;
+      outBuf.push_back(0x01000000U);
+      return;
     }
     // add decode table to the output buffer
-    std::vector< unsigned int > tmpBuf;
-    tmpBuf.push_back(0x01000001U);
+    outBuf.push_back(0x01000001U);
     for (size_t i = 1; i <= 16; i++) {
       size_t  sizeCnt = 0;
       for (size_t j = 0; j < nCharValues; j++) {
         if (size_t(encodeTable[j] >> 24) == i)
           sizeCnt++;
       }
-      writeGammaCode(tmpBuf, tmpBuf.end(), sizeCnt + 1);
+      writeGammaCode(outBuf, sizeCnt + 1);
       unsigned int  prvChar = 0U - 1U;
       for (size_t j = 0; j < nCharValues; j++) {
         if (size_t(encodeTable[j] >> 24) == i) {
           unsigned int  newChar = (unsigned int) j;
           unsigned int  d = newChar - prvChar;
           prvChar = newChar;
-          writeGammaCode(tmpBuf, tmpBuf.end(), d);
+          writeGammaCode(outBuf, d);
         }
       }
     }
-    size_t  offs = size_t(outBufPos - outBuf.begin());
-    outBuf.insert(outBufPos, tmpBuf.begin(), tmpBuf.end());
-    outBufPos = outBuf.begin() + (offs + tmpBuf.size());
-    return outBufPos;
   }
 
   // --------------------------------------------------------------------------
 
-  void Compressor_M0::SearchTable::sortFunc(size_t startPos, size_t endPos,
-                                            std::vector< unsigned int >& tmpBuf)
+  Compressor_M0::DSearchTable::DSearchTable(size_t minLength, size_t maxLength,
+                                            size_t maxOffs)
+    : LZSearchTable(minLength, maxLength, maxLength, 0, maxOffs, maxOffs)
   {
-    if ((startPos + 1) >= endPos)
-      return;
-    size_t  splitPos = (startPos + endPos) >> 1;
-    sortFunc(startPos, splitPos, tmpBuf);
-    sortFunc(splitPos, endPos, tmpBuf);
-    size_t  i = startPos;
-    size_t  j = splitPos;
-    for (size_t k = 0; k < (endPos - startPos); k++) {
-      if (i >= splitPos) {
-        tmpBuf[k] = suffixArray[j];
-        j++;
-      }
-      else if (j >= endPos) {
-        tmpBuf[k] = suffixArray[i];
-        i++;
-      }
-      else {
-        size_t  pos1 = suffixArray[i];
-        size_t  pos2 = suffixArray[j];
-        size_t  len1 = buf.size() - pos1;
-        if (len1 > Compressor_M0::maxRepeatLen)
-          len1 = Compressor_M0::maxRepeatLen;
-        size_t  len2 = buf.size() - pos2;
-        if (len2 > Compressor_M0::maxRepeatLen)
-          len2 = Compressor_M0::maxRepeatLen;
-        size_t  l = (len1 < len2 ? len1 : len2);
-        const void  *ptr1 = (const void *) (&(buf.front()) + pos1);
-        const void  *ptr2 = (const void *) (&(buf.front()) + pos2);
-        int     c = std::memcmp(ptr1, ptr2, l);
-        if (c == 0)
-          c = (pos1 < pos2 ? -1 : 1);
-        if (c < 0) {
-          tmpBuf[k] = suffixArray[i];
-          i++;
-        }
-        else {
-          tmpBuf[k] = suffixArray[j];
-          j++;
-        }
-      }
-    }
-    for (size_t k = 0; k < (endPos - startPos); k++)
-      suffixArray[startPos + k] = tmpBuf[k];
   }
 
-  Compressor_M0::SearchTable::SearchTable(
-      const std::vector< unsigned char >& inBuf)
-    : buf(inBuf)
+  Compressor_M0::DSearchTable::~DSearchTable()
   {
-    std::vector< unsigned int > tmpBuf;
-    tmpBuf.resize(buf.size());
-    suffixArray.resize(buf.size());
-    prvMatchLenTable.resize(buf.size());
-    nxtMatchLenTable.resize(buf.size());
-    size_t  matchLenCnt =
-        Compressor_M0::maxRepeatLen + 1 - Compressor_M0::minRepeatLen;
-    bestMatchPosTable.resize(matchLenCnt);
-    for (size_t i = 0; i < matchLenCnt; i++) {
-      bestMatchPosTable[i].resize(buf.size());
-      for (size_t j = 0; j < buf.size(); j++)
-        bestMatchPosTable[i][j] = 0;
+  }
+
+  void Compressor_M0::DSearchTable::findMatches(const unsigned char *buf,
+                                                size_t bufSize)
+  {
+    if (bufSize < 1) {
+      throw Plus4Emu::Exception("Compressor_M0::DSearchTable::DSearchTable(): "
+                                "zero input buffer size");
     }
-    maxMatchLenTable.resize(buf.size());
+    // find matches with delta value (offset range: 1..4, delta range: -64..64)
+    seqDiffTable.clear();
+    maxSeqLenTable.clear();
     seqDiffTable.resize(4);
     maxSeqLenTable.resize(4);
     for (size_t i = 0; i < 4; i++) {
-      seqDiffTable[i].resize(buf.size());
-      maxSeqLenTable[i].resize(buf.size());
-      for (size_t j = 0; j < buf.size(); j++) {
+      seqDiffTable[i].resize(bufSize);
+      maxSeqLenTable[i].resize(bufSize);
+      for (size_t j = 0; j < bufSize; j++) {
         seqDiffTable[i][j] = 0x00;
         maxSeqLenTable[i][j] = 0;
       }
     }
-    for (size_t i = 0; i < buf.size(); i++) {
-      maxMatchLenTable[i] = 0;
-      suffixArray[i] = (unsigned int) i;
-    }
-    sortFunc(0, buf.size(), tmpBuf);
-    for (size_t i = 0; i < buf.size(); i++) {
-      if (i == 0) {
-        prvMatchLenTable[i] = 0;
-      }
-      else {
-        size_t  len = 0;
-        size_t  p1 = suffixArray[i - 1];
-        size_t  p2 = suffixArray[i];
-        while (len < Compressor_M0::maxRepeatLen &&
-               p1 < buf.size() && p2 < buf.size() &&
-               buf[p1] == buf[p2]) {
-          len++;
-          p1++;
-          p2++;
-        }
-        prvMatchLenTable[i] = (unsigned short) len;
-        nxtMatchLenTable[i - 1] = prvMatchLenTable[i];
-      }
-      nxtMatchLenTable[i] = 0;
-    }
     for (size_t i = Compressor_M0::minRepeatDist;
-         (i + Compressor_M0::minRepeatLen) <= buf.size();
+         (i + Compressor_M0::minRepeatLen) <= bufSize;
          i++) {
       for (size_t j = 1; j <= 4; j++) {
         if (i >= j) {
@@ -495,7 +407,7 @@ namespace Plus4Compress {
           if (d != 0x00 && (d >= 0xC0 || d <= 0x40)) {
             size_t  k = i;
             size_t  l = i - j;
-            while (k < buf.size() && (k - i) < Compressor_M0::maxRepeatLen &&
+            while (k < bufSize && (k - i) < Compressor_M0::maxRepeatLen &&
                    buf[k] == ((buf[l] + d) & 0xFF)) {
               k++;
               l++;
@@ -509,127 +421,7 @@ namespace Plus4Compress {
         }
       }
     }
-    for (size_t i_ = 1; (i_ + 1) < buf.size(); i_++) {
-      size_t  i = suffixArray[i_];
-      size_t  matchLen = buf.size() - i;
-      if (matchLen > Compressor_M0::maxRepeatLen)
-        matchLen = Compressor_M0::maxRepeatLen;
-      size_t  minLen = Compressor_M0::minRepeatLen;
-      size_t  ndx = i_;
-      while (true) {
-        if (size_t(prvMatchLenTable[ndx]) < matchLen)
-          matchLen = size_t(prvMatchLenTable[ndx]);
-        if (matchLen < Compressor_M0::minRepeatLen)
-          break;
-        ndx--;
-        size_t  matchPos = suffixArray[ndx];
-        if (matchPos >= i || (matchPos + Compressor_M0::maxRepeatDist) < i)
-          continue;
-        if (matchLen > size_t(maxMatchLenTable[i]))
-          maxMatchLenTable[i] = (unsigned short) matchLen;
-        size_t  d = i - matchPos;
-        size_t  k = matchLen - Compressor_M0::minRepeatLen;
-        size_t  prvDist = size_t(bestMatchPosTable[k][i]);
-        if (prvDist == 0 || d < prvDist)
-          bestMatchPosTable[k][i] = (unsigned short) d;
-        if (d == 1) {
-          minLen = matchLen + 1;
-          break;
-        }
-      }
-      matchLen = buf.size() - i;
-      if (matchLen > Compressor_M0::maxRepeatLen)
-        matchLen = Compressor_M0::maxRepeatLen;
-      ndx = i_;
-      while (true) {
-        if (size_t(nxtMatchLenTable[ndx]) < matchLen)
-          matchLen = size_t(nxtMatchLenTable[ndx]);
-        if (matchLen < minLen)
-          break;
-        ndx++;
-        size_t  matchPos = suffixArray[ndx];
-        if (matchPos >= i || (matchPos + Compressor_M0::maxRepeatDist) < i)
-          continue;
-        if (matchLen > size_t(maxMatchLenTable[i]))
-          maxMatchLenTable[i] = (unsigned short) matchLen;
-        size_t  d = i - matchPos;
-        size_t  k = matchLen - Compressor_M0::minRepeatLen;
-        size_t  prvDist = size_t(bestMatchPosTable[k][i]);
-        if (prvDist == 0 || d < prvDist)
-          bestMatchPosTable[k][i] = (unsigned short) d;
-        if (d == 1)
-          break;
-      }
-      size_t  k = size_t(maxMatchLenTable[i]);
-      if (k > Compressor_M0::minRepeatLen) {
-        k = k - Compressor_M0::minRepeatLen;
-        do {
-          if (bestMatchPosTable[k - 1][i] == 0 ||
-              bestMatchPosTable[k][i] < bestMatchPosTable[k - 1][i]) {
-            bestMatchPosTable[k - 1][i] = bestMatchPosTable[k][i];
-          }
-        } while (--k > 0);
-      }
-    }
-  }
-
-  Compressor_M0::SearchTable::~SearchTable()
-  {
-  }
-
-  // --------------------------------------------------------------------------
-
-  Compressor_M0::CompressionParameters::CompressionParameters()
-    : optimizeIterations(2),
-      splitOptimizationDepth(1),
-      optimalParsingEnabled(false),
-      optimizeMatchDistanceRepeats(false)
-  {
-  }
-
-  Compressor_M0::CompressionParameters::CompressionParameters(
-      const CompressionParameters& r)
-  {
-    optimizeIterations = r.optimizeIterations;
-    if (optimizeIterations < 1)
-      optimizeIterations = 1;
-    if (optimizeIterations > 20)
-      optimizeIterations = 20;
-    splitOptimizationDepth = r.splitOptimizationDepth;
-    if (splitOptimizationDepth < 1)
-      splitOptimizationDepth = 1;
-    if (splitOptimizationDepth > 9)
-      splitOptimizationDepth = 9;
-    optimalParsingEnabled = r.optimalParsingEnabled;
-    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
-  }
-
-  Compressor_M0::CompressionParameters&
-      Compressor_M0::CompressionParameters::operator=(
-          const CompressionParameters& r)
-  {
-    optimizeIterations = r.optimizeIterations;
-    if (optimizeIterations < 1)
-      optimizeIterations = 1;
-    if (optimizeIterations > 20)
-      optimizeIterations = 20;
-    splitOptimizationDepth = r.splitOptimizationDepth;
-    if (splitOptimizationDepth < 1)
-      splitOptimizationDepth = 1;
-    if (splitOptimizationDepth > 9)
-      splitOptimizationDepth = 9;
-    optimalParsingEnabled = r.optimalParsingEnabled;
-    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
-    return (*this);
-  }
-
-  void Compressor_M0::CompressionParameters::setCompressionLevel(int n)
-  {
-    n = (n > 1 ? (n < 9 ? n : 9) : 1);
-    optimizeIterations = size_t(n + 7);
-    splitOptimizationDepth = size_t(n);
-    optimalParsingEnabled = true;
-    optimizeMatchDistanceRepeats = (n >= 8);
+    LZSearchTable::findMatches(buf, 0, bufSize);
   }
 
   // --------------------------------------------------------------------------
@@ -638,13 +430,12 @@ namespace Plus4Compress {
   {
     HuffmanCompressor   huff1(324);
     HuffmanCompressor   huff2(28);
-    std::vector< unsigned int > encodeTable1;
-    encodeTable1.resize(324);
-    std::vector< unsigned int > encodeTable2;
-    encodeTable2.resize(28);
+    size_t  n = ioBuf.size();
+    if (n <= 4)
+      return;
     size_t  charCnt1 = 0;
     size_t  charCnt2 = 0;
-    for (size_t i = 0; i < ioBuf.size(); i++) {
+    for (size_t i = 4; i < n; i++) {
       if (ioBuf[i] <= 0x17FU) {
         charCnt1++;
         huff1.addChar(ioBuf[i]);
@@ -654,37 +445,34 @@ namespace Plus4Compress {
         huff2.addChar(ioBuf[i] - 0x180U);
       }
     }
-    // insert the decode table after the block header
-    std::vector< unsigned int >::iterator   i_ = ioBuf.begin();
-    for (size_t i = 0; i < 4 && i_ != ioBuf.end(); i++)
-      i_++;
-    i_ = huff1.calculateCompression(ioBuf, i_, encodeTable1);
-    i_ = huff2.calculateCompression(ioBuf, i_, encodeTable2);
-    for (size_t i = 0; i < ioBuf.size(); i++) {
+    std::vector< unsigned int > encodeTable1(324, 0U);
+    std::vector< unsigned int > encodeTable2(28, 0U);
+    std::vector< unsigned int > tmpBuf;
+    huff1.calculateCompression(tmpBuf, encodeTable1);
+    huff2.calculateCompression(tmpBuf, encodeTable2);
+    ioBuf.resize(n + tmpBuf.size());    // reserve space for the decode table
+    for (size_t i = n; i-- > 4; ) {
       if (ioBuf[i] <= 0x17FU)
-        ioBuf[i] = encodeTable1[ioBuf[i]];
+        ioBuf[i + tmpBuf.size()] = encodeTable1[ioBuf[i]];
       else if (ioBuf[i] <= 0x1FFU)
-        ioBuf[i] = encodeTable2[ioBuf[i] - 0x180U];
+        ioBuf[i + tmpBuf.size()] = encodeTable2[ioBuf[i] - 0x180U];
+      else
+        ioBuf[i + tmpBuf.size()] = ioBuf[i];
     }
+    // insert decode table after the block header
+    for (size_t i = 0; i < tmpBuf.size(); i++)
+      ioBuf[i + 4] = tmpBuf[i];
     // update estimated symbol sizes
-    for (size_t i = 0x0000; i < 0x0144; i++) {
-      if (encodeTable1[i] < 0x01000000U)
-        charCnt1++;             // assume a count of 1 for unused symbols
-    }
-    for (size_t i = 0x0180; i < 0x019C; i++) {
-      if (encodeTable2[i - 0x0180] < 0x01000000U)
-        charCnt2++;
-    }
     for (size_t i = 0x0000; i < 0x0144; i++) {
       size_t  nBits = size_t(encodeTable1[i] >> 24);
       if (nBits == 0)
-        nBits = estimateSymbolLength(1, charCnt1);
+        nBits = estimateSymbolLength(1, charCnt1 + 1);
       tmpCharBitsTable[i] = nBits;
     }
     for (size_t i = 0x0180; i < 0x019C; i++) {
       size_t  nBits = size_t(encodeTable2[i - 0x0180] >> 24);
       if (nBits == 0)
-        nBits = estimateSymbolLength(1, charCnt2);
+        nBits = estimateSymbolLength(1, charCnt2 + 1);
       tmpCharBitsTable[i] = nBits;
     }
   }
@@ -725,6 +513,10 @@ namespace Plus4Compress {
       for (size_t i = 0; i < 4; i++) {
         if (d == prvDistances[i]) {
           unsigned int  c = 0x0140U | (unsigned int) i;
+          if (tmpCharBitsTable[c] >= (tmpCharBitsTable[distanceCodeTable[d]]
+                                      + size_t(distanceBitsTable[d]))) {
+            break;
+          }
           buf.push_back(c);
           c = (unsigned int) lengthCodeTable[n];
           buf.push_back(c);
@@ -747,14 +539,6 @@ namespace Plus4Compress {
       buf.push_back(lengthValueTable[n]);
   }
 
-  inline size_t Compressor_M0::getRepeatCodeLength(size_t d, size_t n) const
-  {
-    unsigned int  dCode = (unsigned int) distanceCodeTable[d];
-    unsigned int  lCode = (unsigned int) lengthCodeTable[n];
-    return (tmpCharBitsTable[dCode] + size_t(distanceBitsTable[d])
-            + tmpCharBitsTable[lCode] + size_t(lengthBitsTable[n]));
-  }
-
   void Compressor_M0::writeSequenceCode(std::vector< unsigned int >& buf,
                                         unsigned char seqDiff,
                                         size_t d, size_t n)
@@ -771,56 +555,140 @@ namespace Plus4Compress {
       buf.push_back(lengthValueTable[n]);
   }
 
-  inline size_t Compressor_M0::getSequenceCodeLength(size_t d, size_t n) const
+  void Compressor_M0::optimizeMatches(LZMatchParameters *matchTable,
+                                      BitCountTableEntry *bitCountTable,
+                                      const size_t *lengthBitsTable_,
+                                      const unsigned char *inBuf,
+                                      size_t offs, size_t nBytes)
   {
-    unsigned int  dCode = (unsigned int) distanceCodeTable[d] | 0x003CU;
-    unsigned int  lCode = (unsigned int) lengthCodeTable[n];
-    return (tmpCharBitsTable[dCode] + 7
-            + tmpCharBitsTable[lCode] + size_t(lengthBitsTable[n]));
-  }
-
-  inline void Compressor_M0::findBestMatch(
-      LZMatchParameters& p, const std::vector< unsigned char >& inBuf,
-      size_t i, size_t maxLen)
-  {
-    {
-      size_t  k = searchTable->getMaxMatchLength(i);
-      if (k >= minRepeatLen) {
-        k = (k < maxLen ? k : maxLen);
-        size_t  d = searchTable->getDistanceForMatchLength(i, k);
-        p.d = (unsigned short) d;
-        p.len = (unsigned short) k;
-        p.nBits = (unsigned short) getRepeatCodeLength(d, k);
-        p.seqFlag = false;
-        p.seqDiff = 0x00;
-        if (d == 1 && k >= 5)
-          return;
+    for (size_t i = nBytes; i-- > 0; ) {
+      long    bestSize = 0x7FFFFFFFL;
+      size_t  bestLen = 1;
+      size_t  bestOffs = 0;
+      bool    bestSeqFlag = false;
+      unsigned char bestSeqDiff = 0x00;
+      size_t  minLen = minRepeatLen;
+      size_t  maxLen = nBytes - i;
+      // check LZ77 matches
+      const unsigned int  *matchPtr = searchTable->getMatches(offs + i);
+      while (size_t(*matchPtr & 0x03FFU) >= minLen) {
+        size_t  len = *matchPtr & 0x03FFU;
+        size_t  d = *(matchPtr++) >> 10;
+        len = (len < maxLen ? len : maxLen);
+        size_t  offsBits = tmpCharBitsTable[distanceCodeTable[d]];
+        if (d > 8) {
+          // long offset: need to search the previous offsets table
+          offsBits += size_t(distanceBitsTable[d]);
+          for ( ; len >= minLen; len--) {
+            const BitCountTableEntry& nxtMatch = bitCountTable[i + len];
+            long    nBits = long(lengthBitsTable_[len]) + nxtMatch.totalBits;
+            if (size_t(nxtMatch.prvDistances[0]) == d) {
+              nBits += long(tmpCharBitsTable[0x0140] < offsBits ?
+                            tmpCharBitsTable[0x0140] : offsBits);
+            }
+            else if (size_t(nxtMatch.prvDistances[1]) == d) {
+              nBits += long(tmpCharBitsTable[0x0141] < offsBits ?
+                            tmpCharBitsTable[0x0141] : offsBits);
+            }
+            else if (size_t(nxtMatch.prvDistances[2]) == d) {
+              nBits += long(tmpCharBitsTable[0x0142] < offsBits ?
+                            tmpCharBitsTable[0x0142] : offsBits);
+            }
+            else if (size_t(nxtMatch.prvDistances[3]) == d) {
+              nBits += long(tmpCharBitsTable[0x0143] < offsBits ?
+                            tmpCharBitsTable[0x0143] : offsBits);
+            }
+            else {
+              nBits += long(offsBits);
+            }
+            if (nBits > bestSize)
+              continue;
+            if (nBits == bestSize) {
+              if (d >= bestOffs)
+                continue;
+            }
+            bestSize = nBits;
+            bestLen = len;
+            bestOffs = d;
+          }
+        }
+        else {
+          // short offset
+          for ( ; len >= minLen; len--) {
+            const BitCountTableEntry& nxtMatch = bitCountTable[i + len];
+            long    nBits = long(lengthBitsTable_[len] + offsBits)
+                            + nxtMatch.totalBits;
+            if (nBits > bestSize)
+              continue;
+            if (nBits == bestSize) {
+              if (d >= bestOffs)
+                continue;
+            }
+            bestSize = nBits;
+            bestLen = len;
+            bestOffs = d;
+          }
+        }
       }
-      else {
-        p.clear();
-        p.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
+      // check matches with delta value
+      for (size_t d = 1; d <= 4; d++) {
+        size_t  len = searchTable->getSequenceLength(offs + i, d);
+        if (len < minLen)
+          continue;
+        unsigned char seqDiff = searchTable->getSequenceDeltaValue(offs + i, d);
+        size_t  offsBits = tmpCharBitsTable[0x013B + d] + 7;
+        len = (len < maxLen ? len : maxLen);
+        for ( ; len >= minLen; len--) {
+          const BitCountTableEntry& nxtMatch = bitCountTable[i + len];
+          long    nBits = long(lengthBitsTable_[len] + offsBits)
+                          + nxtMatch.totalBits;
+          if (nBits > bestSize)
+            continue;
+          if (nBits == bestSize) {
+            if (d >= bestOffs)
+              continue;
+          }
+          bestSize = nBits;
+          bestLen = len;
+          bestOffs = d;
+          bestSeqFlag = true;
+          bestSeqDiff = seqDiff;
+        }
       }
-    }
-    for (size_t d = 1; d <= 4; d++) {
-      size_t  k = searchTable->getSequenceLength(i, d);
-      if (k >= p.len) {
-        k = (k < maxLen ? k : maxLen);
-        unsigned short  nBits = (unsigned short) getSequenceCodeLength(d, k);
-        if (k > p.len || nBits < p.nBits) {
-          p.d = (unsigned short) d;
-          p.len = (unsigned short) k;
-          p.nBits = nBits;
-          p.seqFlag = true;
-          p.seqDiff = searchTable->getSequenceDeltaValue(i, d);
+      // check literal byte
+      {
+        long    nBits = long(tmpCharBitsTable[inBuf[offs + i]])
+                        + bitCountTable[i + 1].totalBits;
+        if (nBits <= bestSize) {
+          bestSize = nBits;
+          bestLen = 1;
+          bestOffs = 0;
+          bestSeqFlag = false;
+          bestSeqDiff = 0x00;
+        }
+      }
+      matchTable[i].d = (unsigned int) bestOffs;
+      matchTable[i].len = (unsigned short) bestLen;
+      matchTable[i].seqFlag = bestSeqFlag;
+      matchTable[i].seqDiff = bestSeqDiff;
+      bitCountTable[i] = bitCountTable[i + bestLen];
+      bitCountTable[i].totalBits = bestSize;
+      if (bestOffs > 8) {
+        for (int nn = 0; true; nn++) {
+          if (size_t(bitCountTable[i].prvDistances[nn]) == bestOffs)
+            break;
+          if (nn >= 3) {
+            while (--nn >= 0) {
+              bitCountTable[i].prvDistances[nn + 1] =
+                  bitCountTable[i].prvDistances[nn];
+            }
+            bitCountTable[i].prvDistances[0] = (unsigned int) bestOffs;
+            break;
+          }
         }
       }
     }
   }
-
-  struct BitCountTableEntry {
-    long    totalBits;
-    unsigned short  prvDistances[4];
-  };
 
   void Compressor_M0::compressData_(std::vector< unsigned int >& tmpOutBuf,
                                     const std::vector< unsigned char >& inBuf,
@@ -830,110 +698,37 @@ namespace Plus4Compress {
     size_t  endPos = offs + nBytes;
     // write data header (start address, 2's complement of the number of bytes,
     // last block flag, and compression enabled flag)
-    tmpOutBuf.resize(0);
-    tmpOutBuf.push_back(0x10000000U | (unsigned int) (startAddr + offs));
-    tmpOutBuf.push_back(0x10000000U | (unsigned int) (65536 - nBytes));
+    tmpOutBuf.clear();
+    if (startAddr < 0x80000000U) {
+      tmpOutBuf.push_back(0x10000000U | (unsigned int) (startAddr + offs));
+      tmpOutBuf.push_back(0x10000000U | (unsigned int) (65536 - nBytes));
+    }
+    else {
+      // hack to keep the number of header symbols constant
+      tmpOutBuf.push_back(0x08000000U | (unsigned int) ((65536 - nBytes) >> 8));
+      tmpOutBuf.push_back(0x08000000U
+                          | (unsigned int) ((65536 - nBytes) & 0xFF));
+    }
     tmpOutBuf.push_back(isLastBlock ? 0x01000001U : 0x01000000U);
     tmpOutBuf.push_back(0x01000001U);
     // compress data by searching for repeated byte sequences,
     // and replacing them with length/distance codes
     for (size_t i = 0; i < 4; i++)
       prvDistances[i] = 0;
-    std::vector< LZMatchParameters >  matchTable;
-    matchTable.resize(nBytes);
-    for (size_t i = offs; i < endPos; i++) {
-      matchTable[i - offs].clear();
-      matchTable[i - offs].nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
-      size_t  maxLen = endPos - i;
-      if (maxLen > maxRepeatLen)
-        maxLen = maxRepeatLen;
-      if (maxLen >= minRepeatLen)
-        findBestMatch(matchTable[i - offs], inBuf, i, maxLen);
-    }
-    if (config.optimalParsingEnabled) {
-      if (config.optimizeMatchDistanceRepeats) {
-        std::vector< BitCountTableEntry >   bitCountTable;
-        bitCountTable.resize(nBytes + 1);
-        bitCountTable[nBytes].totalBits = 0L;
-        for (size_t i = 0; i < 4; i++)
-          bitCountTable[nBytes].prvDistances[i] = 0;
-        for (size_t i = endPos; i > offs; ) {
-          i--;
-          size_t  maxLen = matchTable[i - offs].len;
-          long    bestSize = 0x7FFFFFFFL;
-          LZMatchParameters tmp;
-          for (size_t k = maxLen; k >= minRepeatLen; k--) {
-            findBestMatch(tmp, inBuf, i, k);
-            BitCountTableEntry& nxtMatch = bitCountTable[i + k - offs];
-            BitCountTableEntry  curMatch = nxtMatch;
-            curMatch.totalBits += long(tmp.nBits);
-            if (tmp.d > 8) {
-              for (int nn = 0; true; nn++) {
-                if (curMatch.prvDistances[nn] == tmp.d) {
-                  curMatch.totalBits +=
-                      (long(tmpCharBitsTable[0x0140 | nn])
-                       - (long(tmpCharBitsTable[distanceCodeTable[tmp.d]])
-                          + long(distanceBitsTable[tmp.d])));
-                  break;
-                }
-                if (nn >= 3) {
-                  while (--nn >= 0)
-                    curMatch.prvDistances[nn + 1] = curMatch.prvDistances[nn];
-                  curMatch.prvDistances[0] = tmp.d;
-                  break;
-                }
-              }
-            }
-            long    nBits = curMatch.totalBits;
-            if (nBits < bestSize) {
-              bestSize = nBits;
-              matchTable[i - offs] = tmp;
-              bitCountTable[i - offs] = curMatch;
-            }
-          }
-          {
-            BitCountTableEntry& nxtMatch = bitCountTable[i + 1 - offs];
-            BitCountTableEntry  curMatch = nxtMatch;
-            tmp.clear();
-            tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
-            curMatch.totalBits += long(tmp.nBits);
-            long    nBits = curMatch.totalBits;
-            if (nBits <= bestSize) {
-              bestSize = nBits;
-              matchTable[i - offs] = tmp;
-              bitCountTable[i - offs] = curMatch;
-            }
-          }
-        }
+    std::vector< LZMatchParameters >  matchTable(nBytes);
+    {
+      std::vector< BitCountTableEntry > bitCountTable(nBytes + 1);
+      std::vector< size_t > lengthBitsTable_(maxRepeatLen + 1, 0x7FFF);
+      for (size_t i = minRepeatLen; i <= maxRepeatLen; i++) {
+        lengthBitsTable_[i] = tmpCharBitsTable[lengthCodeTable[i]]
+                              + size_t(lengthBitsTable[i]);
       }
-      else {
-        std::vector< size_t >   bitCountTable;
-        bitCountTable.resize(nBytes + 1);
-        bitCountTable[nBytes] = 0;
-        for (size_t i = endPos; i > offs; ) {
-          i--;
-          size_t  maxLen = matchTable[i - offs].len;
-          size_t  bestSize = 0x7FFFFFFFUL;
-          LZMatchParameters tmp;
-          for (size_t k = maxLen; k >= minRepeatLen; k--) {
-            findBestMatch(tmp, inBuf, i, k);
-            size_t  nBits = size_t(tmp.nBits) + bitCountTable[i + k - offs];
-            if (nBits < bestSize) {
-              matchTable[i - offs] = tmp;
-              bestSize = nBits;
-            }
-          }
-          size_t  nBits =
-              tmpCharBitsTable[inBuf[i]] + bitCountTable[i + 1 - offs];
-          if (nBits <= bestSize) {
-            tmp.clear();
-            tmp.nBits = (unsigned short) tmpCharBitsTable[inBuf[i]];
-            matchTable[i - offs] = tmp;
-            bestSize = nBits;
-          }
-          bitCountTable[i - offs] = bestSize;
-        }
-      }
+      bitCountTable[nBytes].totalBits = 0L;
+      for (size_t i = 0; i < 4; i++)
+        bitCountTable[nBytes].prvDistances[i] = 0;
+      optimizeMatches(&(matchTable.front()), &(bitCountTable.front()),
+                      &(lengthBitsTable_.front()), &(inBuf.front()),
+                      offs, nBytes);
     }
     for (size_t i = offs; i < endPos; ) {
       LZMatchParameters&  tmp = matchTable[i - offs];
@@ -973,13 +768,15 @@ namespace Plus4Compress {
     bool    doneFlag = false;
     for (size_t i = 0; i < config.optimizeIterations; i++) {
       if (progressDisplayEnabled) {
-        if (!setProgressPercentage(int(progressCnt * 100 / progressMax)))
+        if (!setProgressPercentage(int(progressCnt * uint64_t(100)
+                                       / progressMax))) {
           return false;
+        }
         progressCnt += nBytes;
       }
       if (doneFlag)     // if the compression cannot be optimized further,
         continue;       // quit the loop earlier
-      tmpBuf.resize(0);
+      tmpBuf.clear();
       compressData_(tmpBuf, inBuf, startAddr, false, offs, nBytes);
       // apply statistical compression
       huffmanCompressBlock(tmpBuf);
@@ -997,8 +794,8 @@ namespace Plus4Compress {
         // found a better compression, so save it
         bestSize = compressedSize;
         bestBuf.resize(tmpBuf.size());
-        for (size_t j = 0; j < tmpBuf.size(); j++)
-          bestBuf[j] = tmpBuf[j];
+        std::memcpy(&(bestBuf.front()), &(tmpBuf.front()),
+                    tmpBuf.size() * sizeof(unsigned int));
       }
       for (size_t j = 0; j < hashTable.size(); j++) {
         if (hashTable[j] == h) {
@@ -1011,7 +808,7 @@ namespace Plus4Compress {
       if (!doneFlag)
         hashTable.push_back(h);         // save hash value
     }
-    size_t  uncompressedSize = ((nBytes + 4) * 8) + 2;
+    size_t  uncompressedSize = nBytes * 8 + (startAddr < 0x80000000U ? 34 : 18);
     size_t  outBufOffset = tmpOutBuf.size();
     if (bestSize >= uncompressedSize) {
       // if cannot reduce the data size, store without compression
@@ -1043,7 +840,7 @@ namespace Plus4Compress {
       distanceBitsTable((unsigned char *) 0),
       distanceValueTable((unsigned int *) 0),
       tmpCharBitsTable((size_t *) 0),
-      searchTable((SearchTable *) 0),
+      searchTable((DSearchTable *) 0),
       outputShiftReg(0x00),
       outputBitCnt(0)
   {
@@ -1138,9 +935,10 @@ namespace Plus4Compress {
       }
       if (searchTable) {
         delete searchTable;
-        searchTable = (SearchTable *) 0;
+        searchTable = (DSearchTable *) 0;
       }
-      searchTable = new SearchTable(inBuf);
+      searchTable = new DSearchTable(minRepeatLen, maxRepeatLen, maxRepeatDist);
+      searchTable->findMatches(&(inBuf.front()), inBuf.size());
       // split large files to improve statistical compression
       std::list< SplitOptimizationBlock >   splitPositions;
       std::map< uint64_t, bool >    splitOptimizationCache;
@@ -1164,7 +962,7 @@ namespace Plus4Compress {
                             tmpBlock.isLastBlock,
                             tmpBlock.startPos, tmpBlock.nBytes)) {
             delete searchTable;
-            searchTable = (SearchTable *) 0;
+            searchTable = (DSearchTable *) 0;
             if (progressDisplayEnabled)
               progressMessage("");
             return false;
@@ -1210,7 +1008,7 @@ namespace Plus4Compress {
                             tmpBlock.isLastBlock,
                             tmpBlock.startPos, tmpBlock.nBytes)) {
             delete searchTable;
-            searchTable = (SearchTable *) 0;
+            searchTable = (DSearchTable *) 0;
             if (progressDisplayEnabled)
               progressMessage("");
             return false;
@@ -1236,7 +1034,7 @@ namespace Plus4Compress {
           break;
       }
       delete searchTable;
-      searchTable = (SearchTable *) 0;
+      searchTable = (DSearchTable *) 0;
       std::vector< unsigned int >   outBufTmp;
       std::list< SplitOptimizationBlock >::iterator i_ = splitPositions.begin();
       outBufTmp.resize(0);
@@ -1293,13 +1091,68 @@ namespace Plus4Compress {
     catch (...) {
       if (searchTable) {
         delete searchTable;
-        searchTable = (SearchTable *) 0;
+        searchTable = (DSearchTable *) 0;
       }
       if (progressDisplayEnabled)
         progressMessage("");
       throw;
     }
     return true;
+  }
+
+  // --------------------------------------------------------------------------
+
+  Compressor_M0::CompressionParameters::CompressionParameters()
+    : optimizeIterations(2),
+      splitOptimizationDepth(1),
+      optimalParsingEnabled(false),
+      optimizeMatchDistanceRepeats(false)
+  {
+  }
+
+  Compressor_M0::CompressionParameters::CompressionParameters(
+      const CompressionParameters& r)
+  {
+    optimizeIterations = r.optimizeIterations;
+    if (optimizeIterations < 1)
+      optimizeIterations = 1;
+    if (optimizeIterations > 20)
+      optimizeIterations = 20;
+    splitOptimizationDepth = r.splitOptimizationDepth;
+    if (splitOptimizationDepth < 1)
+      splitOptimizationDepth = 1;
+    if (splitOptimizationDepth > 9)
+      splitOptimizationDepth = 9;
+    optimalParsingEnabled = r.optimalParsingEnabled;
+    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
+  }
+
+  Compressor_M0::CompressionParameters&
+      Compressor_M0::CompressionParameters::operator=(
+          const CompressionParameters& r)
+  {
+    optimizeIterations = r.optimizeIterations;
+    if (optimizeIterations < 1)
+      optimizeIterations = 1;
+    if (optimizeIterations > 20)
+      optimizeIterations = 20;
+    splitOptimizationDepth = r.splitOptimizationDepth;
+    if (splitOptimizationDepth < 1)
+      splitOptimizationDepth = 1;
+    if (splitOptimizationDepth > 9)
+      splitOptimizationDepth = 9;
+    optimalParsingEnabled = r.optimalParsingEnabled;
+    optimizeMatchDistanceRepeats = r.optimizeMatchDistanceRepeats;
+    return (*this);
+  }
+
+  void Compressor_M0::CompressionParameters::setCompressionLevel(int n)
+  {
+    n = (n > 1 ? (n < 9 ? n : 9) : 1);
+    optimizeIterations = size_t(n + 7);
+    splitOptimizationDepth = size_t(n);
+    optimalParsingEnabled = true;
+    optimizeMatchDistanceRepeats = (n >= 8);
   }
 
 }       // namespace Plus4Compress
