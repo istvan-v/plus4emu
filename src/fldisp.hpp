@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,13 +32,26 @@ namespace Plus4Emu {
    protected:
     class Message {
      public:
-      Message *nxt;
+      enum {
+        MsgType_None = 0,
+        MsgType_LineData = 1,
+        MsgType_FrameDone = 2,
+        MsgType_SetParameters = 3
+      };
+      Message   *nxt;
+      intptr_t  msgType;
       // --------
       Message()
-        : nxt((Message *) 0)
+        : nxt((Message *) 0),
+          msgType(MsgType_None)
       {
       }
-      virtual ~Message();
+     protected:
+      Message(int msgType_)
+        : nxt((Message *) 0),
+          msgType(msgType_)
+      {
+      }
     };
     class Message_LineData : public Message {
      private:
@@ -55,14 +68,13 @@ namespace Plus4Emu {
       uint8_t   flags;
       size_t    lineLength;
       Message_LineData()
-        : Message()
+        : Message(MsgType_LineData)
       {
         nBytes_ = 0;
         lineNum = 0;
         flags = 0x00;
         lineLength = 0;
       }
-      virtual ~Message_LineData();
       inline void appendData(const uint8_t *buf, size_t nBytes)
       {
         if (nBytes > 0) {
@@ -93,20 +105,18 @@ namespace Plus4Emu {
     class Message_FrameDone : public Message {
      public:
       Message_FrameDone()
-        : Message()
+        : Message(MsgType_FrameDone)
       {
       }
-      virtual ~Message_FrameDone();
     };
     class Message_SetParameters : public Message {
      public:
       DisplayParameters dp;
       Message_SetParameters()
-        : Message(),
+        : Message(MsgType_SetParameters),
           dp()
       {
       }
-      virtual ~Message_SetParameters();
     };
     template <typename T>
     T * allocateMessage()

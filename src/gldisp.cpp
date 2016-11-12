@@ -20,8 +20,6 @@
 #include "plus4emu.hpp"
 #include "system.hpp"
 
-#include <typeinfo>
-
 #define GL_GLEXT_PROTOTYPES 1
 
 #include <FL/Fl.H>
@@ -440,7 +438,6 @@ namespace Plus4Emu {
         Message *m = frameRingBuffer[n][yc];
         if (m) {
           frameRingBuffer[n][yc] = (Message_LineData *) 0;
-          m->~Message();
           std::free(m);
         }
       }
@@ -1123,7 +1120,7 @@ namespace Plus4Emu {
       messageQueueMutex.unlock();
       if (!m)
         break;
-      if (typeid(*m) == typeid(Message_LineData)) {
+      if (PLUS4EMU_EXPECT(m->msgType == Message::MsgType_LineData)) {
         Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
         if (lineNum >= lineReload) {
@@ -1156,7 +1153,7 @@ namespace Plus4Emu {
           continue;
         }
       }
-      else if (typeid(*m) == typeid(Message_FrameDone)) {
+      else if (m->msgType == Message::MsgType_FrameDone) {
         // need to update display
         messageQueueMutex.lock();
         framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
@@ -1195,7 +1192,7 @@ namespace Plus4Emu {
         }
         break;
       }
-      else if (typeid(*m) == typeid(Message_SetParameters)) {
+      else if (m->msgType == Message::MsgType_SetParameters) {
         Message_SetParameters *msg;
         msg = static_cast<Message_SetParameters *>(m);
         if (msg->dp.displayQuality < 2) {
@@ -1251,7 +1248,6 @@ namespace Plus4Emu {
                 Message *m_ = frameRingBuffer[n][yc];
                 if (m_) {
                   frameRingBuffer[n][yc] = (Message_LineData *) 0;
-                  m_->~Message();
                   std::free(m_);
                 }
               }

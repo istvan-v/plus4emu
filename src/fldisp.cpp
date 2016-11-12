@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
 #include "plus4emu.hpp"
 #include "system.hpp"
 
-#include <typeinfo>
-
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 #include <FL/fl_draw.H>
@@ -37,25 +35,8 @@ static int defaultFLTKEventCallback(void *userData, int event)
 
 namespace Plus4Emu {
 
-  FLTKDisplay_::Message::~Message()
-  {
-  }
-
-  FLTKDisplay_::Message_LineData::~Message_LineData()
-  {
-  }
-
-  FLTKDisplay_::Message_FrameDone::~Message_FrameDone()
-  {
-  }
-
-  FLTKDisplay_::Message_SetParameters::~Message_SetParameters()
-  {
-  }
-
   void FLTKDisplay_::deleteMessage(Message *m)
   {
-    m->~Message();
     messageQueueMutex.lock();
     m->nxt = freeMessageStack;
     freeMessageStack = m;
@@ -67,7 +48,6 @@ namespace Plus4Emu {
     messageQueueMutex.lock();
     if (exitFlag) {
       messageQueueMutex.unlock();
-      m->~Message();
       std::free(m);
       return;
     }
@@ -77,8 +57,9 @@ namespace Plus4Emu {
     else
       messageQueue = m;
     lastMessage = m;
+    bool    isFrameDone = (m->msgType == Message::MsgType_FrameDone);
     messageQueueMutex.unlock();
-    if (typeid(*m) == typeid(Message_FrameDone)) {
+    if (PLUS4EMU_UNLIKELY(isFrameDone)) {
       if (!videoResampleEnabled) {
         Fl::awake();
         threadLock.wait(1);
@@ -154,7 +135,6 @@ namespace Plus4Emu {
     while (messageQueue) {
       Message *m = messageQueue;
       messageQueue = m->nxt;
-      m->~Message();
       std::free(m);
     }
     lastMessage = (Message *) 0;
@@ -163,7 +143,6 @@ namespace Plus4Emu {
       Message *m = lineBuffers[n];
       if (m) {
         lineBuffers[n] = (Message_LineData *) 0;
-        m->~Message();
         std::free(m);
       }
     }
@@ -171,7 +150,6 @@ namespace Plus4Emu {
     if (nextLine) {
       Message *m = nextLine;
       nextLine = (Message_LineData *) 0;
-      m->~Message();
       std::free(m);
     }
   }
@@ -831,7 +809,7 @@ namespace Plus4Emu {
       messageQueueMutex.unlock();
       if (!m)
         break;
-      if (typeid(*m) == typeid(Message_LineData)) {
+      if (PLUS4EMU_EXPECT(m->msgType == Message::MsgType_LineData)) {
         Message_LineData  *msg = static_cast<Message_LineData *>(m);
         int     lineNum = msg->lineNum;
         if (lineNum >= lineReload) {
@@ -856,7 +834,7 @@ namespace Plus4Emu {
           continue;
         }
       }
-      else if (typeid(*m) == typeid(Message_FrameDone)) {
+      else if (m->msgType == Message::MsgType_FrameDone) {
         // need to update display
         messageQueueMutex.lock();
         framesPending = (framesPending > 0 ? (framesPending - 1) : 0);
@@ -884,7 +862,7 @@ namespace Plus4Emu {
           checkScreenshotCallback();
         break;
       }
-      else if (typeid(*m) == typeid(Message_SetParameters)) {
+      else if (m->msgType == Message::MsgType_SetParameters) {
         Message_SetParameters *msg;
         msg = static_cast<Message_SetParameters *>(m);
         displayParameters = msg->dp;
