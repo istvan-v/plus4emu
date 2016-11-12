@@ -522,7 +522,6 @@ elif not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
 
 p4fliconvLibSources = ['util/p4fliconv/dither.cpp',
                        'util/p4fliconv/flicfg.cpp',
-                       'util/p4fliconv/flidisp.cpp',
                        'util/p4fliconv/hiresfli.cpp',
                        'util/p4fliconv/hiresnofli.cpp',
                        'util/p4fliconv/hrbmifli.cpp',
@@ -537,7 +536,9 @@ p4fliconvLibSources = ['util/p4fliconv/dither.cpp',
                        'util/p4fliconv/p4fliconv.cpp',
                        'util/p4fliconv/p4slib.cpp',
                        'util/p4fliconv/prgdata.cpp']
-p4fliconvLibSources += fluidCompile(['util/p4fliconv/p4fliconv.fl'])
+if not disableOpenGL:
+    p4fliconvLibSources += ['util/p4fliconv/flidisp.cpp',
+                            fluidCompile(['util/p4fliconv/p4fliconv.fl'])]
 p4fliconvLib = p4fliconvLibEnvironment.StaticLibrary('p4fliconv',
                                                      p4fliconvLibSources)
 

@@ -25,6 +25,7 @@ Changes in version 1.2.10
     TGA
   * added support for building with FLTK 1.3.x and Lua 5.2/5.3, and for
     building 64-bit Windows binaries
+  * OpenGL has been made an optional dependency at compile time
   * minor bug fixes
 
 Changes in version 1.2.9.2

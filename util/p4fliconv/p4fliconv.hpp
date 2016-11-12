@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,16 +34,22 @@
 #include <FL/Fl.H>
 #include <FL/Fl_File_Chooser.H>
 
+#ifndef DISABLE_OPENGL_DISPLAY
 class Plus4FLIConvGUI;
 class Plus4FLIConvGUI_Display;
 class Plus4FLIConvGUI_TED7360;
+#endif
 
 #include "flicfg.hpp"
-#include "flidisp.hpp"
+#ifndef DISABLE_OPENGL_DISPLAY
+#  include "flidisp.hpp"
+#endif
 #include "imageconv.hpp"
 #include "prgdata.hpp"
 
-#include "p4fliconv_fl.hpp"
+#ifndef DISABLE_OPENGL_DISPLAY
+#  include "p4fliconv_fl.hpp"
+#endif
 
 namespace Plus4FLIConv {
 
@@ -192,6 +198,7 @@ namespace Plus4FLIConv {
 
 }       // namespace Plus4FLIConv
 
+#ifndef DISABLE_OPENGL_DISPLAY
 class Plus4FLIConvGUI_TED7360 : public Plus4::TED7360 {
  private:
   Plus4FLIConvGUI&  gui;
@@ -201,6 +208,7 @@ class Plus4FLIConvGUI_TED7360 : public Plus4::TED7360 {
  protected:
   virtual void videoOutputCallback(const uint8_t *buf, size_t nBytes);
 };
+#endif
 
 #endif  // P4FLICONV_P4FLICONV_HPP
 

@@ -174,6 +174,8 @@ namespace Plus4FLIConv {
 
 // ----------------------------------------------------------------------------
 
+#ifndef DISABLE_OPENGL_DISPLAY
+
 Plus4FLIConvGUI_TED7360::Plus4FLIConvGUI_TED7360(Plus4FLIConvGUI& gui_)
   : Plus4::TED7360(),
     gui(gui_)
@@ -1024,4 +1026,6 @@ void Plus4FLIConvGUI::run()
   catch (...) {
   }
 }
+
+#endif  // !DISABLE_OPENGL_DISPLAY
 

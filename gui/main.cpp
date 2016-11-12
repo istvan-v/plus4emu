@@ -68,9 +68,13 @@ int main(int argc, char **argv)
   int       pasteTextIndex = 0;
   int       colorScheme = 0;
   int8_t    retval = 0;
+#ifdef DISABLE_OPENGL_DISPLAY
+  bool      glEnabled = false;
+#else
   bool      glEnabled = true;
   bool      glCanDoSingleBuf = false;
   bool      glCanDoDoubleBuf = false;
+#endif
   bool      configLoaded = false;
 
 #ifdef WIN32
@@ -116,9 +120,11 @@ int main(int argc, char **argv)
       else if (std::strcmp(argv[i], "-plus4") == 0) {
         cfgFileName = "plus4cfg.dat";
       }
+#ifndef DISABLE_OPENGL_DISPLAY
       else if (std::strcmp(argv[i], "-opengl") == 0) {
         glEnabled = true;
       }
+#endif
       else if (std::strcmp(argv[i], "-no-opengl") == 0) {
         glEnabled = false;
       }
@@ -149,9 +155,11 @@ int main(int argc, char **argv)
                      "    -keybuf <TEXT>      "
                      "type TEXT on startup (can be any length, "
                      "or @FILENAME)\n");
+#ifndef DISABLE_OPENGL_DISPLAY
         std::fprintf(stderr,
                      "    -opengl             "
                      "use OpenGL video driver (this is the default)\n");
+#endif
         std::fprintf(stderr,
                      "    -no-opengl          "
                      "use software video driver\n");
@@ -198,6 +206,7 @@ int main(int argc, char **argv)
     Fl::lock();
     Plus4Emu::setGUIColorScheme(colorScheme);
     audioOutput = new Plus4Emu::AudioOutput_PortAudio();
+#ifndef DISABLE_OPENGL_DISPLAY
     if (glEnabled) {
       glCanDoSingleBuf = bool(Fl_Gl_Window::can_do(FL_RGB | FL_SINGLE));
       glCanDoDoubleBuf = bool(Fl_Gl_Window::can_do(FL_RGB | FL_DOUBLE));
@@ -206,6 +215,7 @@ int main(int argc, char **argv)
       else
         glEnabled = false;
     }
+#endif
     if (!glEnabled)
       w = new Plus4Emu::FLTKDisplay(32, 32, 384, 288, "");
     w->end();
@@ -257,7 +267,9 @@ int main(int argc, char **argv)
     // check command line for any additional configuration
     for (int i = 1; i < argc; i++) {
       if (std::strcmp(argv[i], "-plus4") == 0 ||
+#ifndef DISABLE_OPENGL_DISPLAY
           std::strcmp(argv[i], "-opengl") == 0 ||
+#endif
           std::strcmp(argv[i], "-no-opengl") == 0)
         continue;
       if (std::strcmp(argv[i], "-cfg") == 0) {
@@ -297,6 +309,7 @@ int main(int argc, char **argv)
         }
       }
     }
+#ifndef DISABLE_OPENGL_DISPLAY
     if (glEnabled) {
       if (config->display.bufferingMode == 0 && !glCanDoSingleBuf) {
         config->display.bufferingMode = 1;
@@ -307,6 +320,7 @@ int main(int argc, char **argv)
         config->displaySettingsChanged = true;
       }
     }
+#endif
     config->applySettings();
     if (snapshotNameIndex > 0) {
       Plus4Emu::File  f(argv[snapshotNameIndex], false);

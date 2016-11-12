@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -151,6 +151,12 @@ int main(int argc, char **argv)
         throw Plus4Emu::Exception("missing argument(s) "
                                   "for command line option");
       }
+#ifdef DISABLE_OPENGL_DISPLAY
+      if (infileName == "" || outfileName == "") {
+        printUsageFlag = true;
+        throw Plus4Emu::Exception("missing file name");
+      }
+#else
       if (infileName != "" && outfileName == "") {
         printUsageFlag = true;
         throw Plus4Emu::Exception("missing file name");
@@ -181,8 +187,12 @@ int main(int argc, char **argv)
             config[optionName] = double(std::atof(args[i].c_str()));
         }
       }
+#endif  // !DISABLE_OPENGL_DISPLAY
     }
-    if (infileName != "") {
+#ifndef DISABLE_OPENGL_DISPLAY
+    if (infileName != "")
+#endif
+    {
       // run in command line mode
       Plus4FLIConv::FLIConverter  *fliConv = (Plus4FLIConv::FLIConverter *) 0;
       Plus4FLIConv::PRGData       prgData;
@@ -266,6 +276,7 @@ int main(int argc, char **argv)
                                             int(config["prgCompressionLevel"]));
       return 0;
     }
+#ifndef DISABLE_OPENGL_DISPLAY
     config.clearConfigurationChangeFlag();
     Plus4FLIConvGUI *gui = new Plus4FLIConvGUI(config);
     gui->run();
@@ -278,6 +289,7 @@ int main(int argc, char **argv)
     }
     catch (...) {
     }
+#endif
   }
   catch (std::exception& e) {
     if (printUsageFlag || helpFlag) {
