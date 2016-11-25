@@ -81,16 +81,16 @@ for i in range(0, 64):
     fileData = []
     while 1:
         c = f.read(1)
-        if c.__len__() != 1:
+        if len(c) != 1:
             break
         fileData = fileData + [ord(c)]
     f.close()
     os.remove(prgFileName)
     outputData[(i * 4) + 0] = outputDataPos & 0xFF
     outputData[(i * 4) + 1] = (outputDataPos & 0xFF00) / 256
-    outputData[(i * 4) + 2] = fileData.__len__() & 0xFF
-    outputData[(i * 4) + 3] = (fileData.__len__() & 0xFF00) / 256
-    for i in range(0, fileData.__len__()):
+    outputData[(i * 4) + 2] = len(fileData) & 0xFF
+    outputData[(i * 4) + 3] = (len(fileData) & 0xFF00) / 256
+    for i in range(0, len(fileData)):
         outputData = outputData + [fileData[i]]
         outputDataPos = outputDataPos + 1
 
@@ -102,7 +102,7 @@ except:
 f = open(tmpFileName, 'wb')
 f.write(chr(0x00))
 f.write(chr(0x20))
-for i in range(0, outputData.__len__()):
+for i in range(0, len(outputData)):
     f.write(chr(outputData[i]))
 f.flush()
 f.close()
@@ -115,4 +115,25 @@ os.spawnvp(os.P_WAIT,
            ['../../p4compress', '-m0', '-raw', '8192', '-9',
             tmpFileName, 'sfxdecomp0.prg'])
 os.remove(tmpFileName)
+
+f = open('sfxdecomp0.prg', 'rb')
+fileData = []
+while 1:
+    c = f.read(1)
+    if len(c) != 1:
+        break
+    fileData = fileData + [ord(c)]
+f.close()
+os.remove('sfxdecomp0.prg')
+
+f = open('sfxcode0.cpp', 'w')
+f.write('\nconst unsigned char Decompressor_M0::sfxModuleLibrary['
+        + str(len(fileData)) + '] = {\n')
+for i in range(0, len(fileData)):
+    f.write(('%s 0x%02X' % ([' ', ','][int((i % 12) != 0)], fileData[i]))
+            + ['', ',\n', '\n', '\n'][int((i % 12) == 11)
+                                      + (int((i + 1) >= len(fileData)) * 2)])
+f.write('};\n\n')
+f.flush()
+f.close()
 

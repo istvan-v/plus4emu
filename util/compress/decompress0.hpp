@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ namespace Plus4Compress {
 
   class Decompressor_M0 : public Decompressor {
    private:
-    static const unsigned char  sfxModuleLibrary[1898];
+    static const unsigned char  sfxModuleLibrary[1897];
     // main Huffman table (literal characters + match offset codes)
     unsigned int  *huffmanLimitTable0;
     unsigned int  *huffmanOffsetTable0;
