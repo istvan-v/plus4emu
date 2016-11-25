@@ -22,6 +22,7 @@
 
 #include "plus4emu.hpp"
 #include "compress.hpp"
+#include "comprlib.hpp"
 #include "compress1.hpp"
 #include "compress2.hpp"
 
@@ -118,7 +119,7 @@ namespace Plus4Compress {
         else {
           // if a long RLE match is possible, use that
           matchTable[i].d = 1;
-          matchTable[i].len = (unsigned int) len;
+          matchTable[i].len = (unsigned short) len;
           bitCountTable[i] = bitCountTable[i + len] + matchSize3;
           continue;
         }
@@ -193,8 +194,8 @@ namespace Plus4Compress {
           }
         }
       }
-      matchTable[i].d = (unsigned int) bestOffs;
-      matchTable[i].len = (unsigned int) bestLen;
+      matchTable[i].d = (unsigned short) bestOffs;
+      matchTable[i].len = (unsigned short) bestLen;
       bitCountTable[i] = bestSize;
     }
   }
@@ -228,7 +229,7 @@ namespace Plus4Compress {
         else {
           // if a long RLE match is possible, use that
           matchTable[i].d = 1;
-          matchTable[i].len = (unsigned int) len;
+          matchTable[i].len = (unsigned short) len;
           bitCountTable[i] = bitCountTable[i + len]
                              + getRepeatCodeLength(1, len);
           offsSumTable[i] = offsSumTable[i + len] + 1UL;
@@ -322,8 +323,8 @@ namespace Plus4Compress {
           bestOffsSum = offsSumTable[i + bestLen] + bestOffs;
         }
       }
-      matchTable[i].d = (unsigned int) bestOffs;
-      matchTable[i].len = (unsigned int) bestLen;
+      matchTable[i].d = (unsigned short) bestOffs;
+      matchTable[i].len = (unsigned short) bestLen;
       bitCountTable[i] = bestSize;
       offsSumTable[i] = bestOffsSum;
     }
@@ -706,7 +707,6 @@ namespace Plus4Compress {
               // if this block is not in the cache yet, compress it,
               // and store the compressed size in the cache
               std::vector< unsigned int > tmpBuf;
-              tmpBuf.resize(0);
               if (!compressData(tmpBuf, inBuf, startAddr, false,
                                 startPos, endPos - startPos, true)) {
                 delete searchTable;
@@ -751,15 +751,21 @@ namespace Plus4Compress {
         splitPositions.erase(nxtBlock);
       }
       // compress all blocks again with full optimization
+      {
+        size_t  progressPercentage = 0;
+        if (progressCnt > 0 && progressMax > 0) {
+          progressPercentage = (progressCnt * 100) / progressMax;
+          if (progressPercentage > 85)
+            progressPercentage = 85;
+        }
+        size_t  tmp = config.optimizeIterations * splitPositions.size();
+        progressCnt = (tmp * progressPercentage) / (100 - progressPercentage);
+        progressMax = progressCnt + tmp;
+      }
       std::vector< unsigned int >   outBufTmp;
-      progressMax = config.optimizeIterations * splitPositions.size();
-      progressCnt = progressMax * ((splitDepth / 2) + 1);
-      progressMax = progressMax + progressCnt;
-      outBufTmp.resize(0);
       std::list< SplitOptimizationBlock >::iterator i_ = splitPositions.begin();
       while (i_ != splitPositions.end()) {
         std::vector< unsigned int > tmpBuf;
-        tmpBuf.resize(0);
         if (!compressData(tmpBuf, inBuf, startAddr,
                           (isLastBlock &&
                            ((*i_).startPos + (*i_).nBytes) >= inBuf.size()),

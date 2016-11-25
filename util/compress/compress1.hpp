@@ -64,81 +64,42 @@ namespace Plus4Compress {
     static const size_t offs3SlotCntTable[4];
     static const size_t literalSequenceMinLength = lengthNumSlots + 9;
     // --------
-    class SearchTable {
+    class DSearchTable : public LZSearchTable {
      private:
-      const std::vector< unsigned char >&   buf;
-      // buffer positions sorted alphabetically
-      // by bytes at each position (buf.size() elements)
-      std::vector< unsigned int >   suffixArray;
-      // suffixArray[n] matches prvMatchLenTable[n] characters with
-      // suffixArray[n - 1] (buf.size() elements)
-      std::vector< unsigned short > prvMatchLenTable;
-      // suffixArray[n] matches nxtMatchLenTable[n] characters with
-      // suffixArray[n + 1] (buf.size() elements)
-      std::vector< unsigned short > nxtMatchLenTable;
-      // for each match length N and buffer position P,
-      // bestMatchPosTable[N - minRepeatLen][P] is the position of the nearest
-      // match (minRepeatDist to maxRepeatDist), or zero if there is no match
-      // of that length
-      // ((maxRepeatLen + 1 - minRepeatLen) * buf.size() elements)
-      std::vector< std::vector< unsigned short > >  bestMatchPosTable;
-      // maximum match length for each buffer position (buf.size() elements)
-      std::vector< unsigned short > maxMatchLenTable;
-      std::vector< std::vector< unsigned char > >   seqDiffTable;
-      std::vector< std::vector< unsigned short > >  maxSeqLenTable;
-      std::vector< unsigned short > rleLengthTable;
-      void sortFunc(size_t startPos, size_t endPos,
-                    std::vector< unsigned int >& tmpBuf);
+      std::vector< unsigned short > seqLenTable;
+      std::vector< unsigned char >  seqDistTable;
+      std::vector< unsigned char >  seqDiffTable;
      public:
-      SearchTable(const std::vector< unsigned char >& inBuf);
-      virtual ~SearchTable();
-      inline size_t getMaxMatchLength(size_t bufPos) const
+      DSearchTable(size_t minLength, size_t maxLength, size_t maxOffs);
+      virtual ~DSearchTable();
+      void findMatches(const unsigned char *buf, size_t bufSize);
+      inline size_t getSequenceLength(size_t bufPos) const
       {
-        return size_t(maxMatchLenTable[bufPos]);
+        return size_t(seqLenTable[bufPos]);
       }
-      inline size_t getDistanceForMatchLength(size_t bufPos, size_t len) const
+      inline size_t getSequenceOffset(size_t bufPos) const
       {
-        return size_t(bestMatchPosTable[len
-                                        - Compressor_M1::minRepeatLen][bufPos]);
+        return size_t(seqDistTable[bufPos]);
       }
-      inline size_t getMaxSequenceLength(size_t bufPos) const
+      inline unsigned char getSequenceDeltaValue(size_t bufPos) const
       {
-        return size_t(maxSeqLenTable[0][bufPos]);
-      }
-      inline size_t getSequenceLength(size_t bufPos, size_t d) const
-      {
-        return size_t(maxSeqLenTable[d + 1
-                                     - Compressor_M1::minRepeatDist][bufPos]);
-      }
-      inline unsigned char getSequenceDeltaValue(size_t bufPos, size_t d) const
-      {
-        return seqDiffTable[d - Compressor_M1::minRepeatDist][bufPos];
-      }
-      inline size_t getRLELength(size_t bufPos) const
-      {
-        return size_t(rleLengthTable[bufPos]);
+        return seqDiffTable[bufPos];
       }
     };
     // --------
     struct LZMatchParameters {
       unsigned short  d;
       unsigned short  len;
-      unsigned short  nBits;
-      bool            seqFlag;
       unsigned char   seqDiff;
       LZMatchParameters()
         : d(0),
           len(1),
-          nBits(9),
-          seqFlag(false),
           seqDiff(0x00)
       {
       }
       LZMatchParameters(const LZMatchParameters& r)
         : d(r.d),
           len(r.len),
-          nBits(r.nBits),
-          seqFlag(r.seqFlag),
           seqDiff(r.seqDiff)
       {
       }
@@ -149,8 +110,6 @@ namespace Plus4Compress {
       {
         d = r.d;
         len = r.len;
-        nBits = r.nBits;
-        seqFlag = r.seqFlag;
         seqDiff = r.seqDiff;
         return (*this);
       }
@@ -158,8 +117,6 @@ namespace Plus4Compress {
       {
         d = 0;
         len = 1;
-        nBits = 9;
-        seqFlag = false;
         seqDiff = 0x00;
       }
     };
@@ -175,7 +132,7 @@ namespace Plus4Compress {
     EncodeTable   offs3EncodeTable;
     size_t        offs3NumSlots;
     size_t        offs3PrefixSize;
-    SearchTable   *searchTable;
+    DSearchTable  *searchTable;
     size_t        savedOutBufPos;
     unsigned char outputShiftReg;
     int           outputBitCnt;
@@ -185,10 +142,15 @@ namespace Plus4Compress {
     void writeSequenceCode(std::vector< unsigned int >& buf,
                            unsigned char seqDiff, size_t d, size_t n);
     inline size_t getSequenceCodeLength(size_t d, size_t n) const;
-    inline void findBestMatch(LZMatchParameters& p, size_t i, size_t maxLen);
+    void optimizeMatches_noStats(LZMatchParameters *matchTable,
+                                 size_t *bitCountTable,
+                                 size_t offs, size_t nBytes);
+    void optimizeMatches(LZMatchParameters *matchTable,
+                         size_t *bitCountTable, uint64_t *offsSumTable,
+                         size_t offs, size_t nBytes);
     size_t compressData_(std::vector< unsigned int >& tmpOutBuf,
                          const std::vector< unsigned char >& inBuf,
-                         size_t offs, size_t nBytes, bool optimizeEncodeTables,
+                         size_t offs, size_t nBytes, bool firstPass,
                          bool fastMode = false);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
@@ -202,6 +164,7 @@ namespace Plus4Compress {
     void setCompressionParameters(const CompressionParameters& cfg);
     virtual void setCompressionLevel(int n);
     virtual void addZeroPageUpdate(unsigned int endAddr, bool isLastBlock);
+    // if 'startAddr' is 0xFFFFFFFF, it is not stored in the compressed data
     virtual bool compressData(const std::vector< unsigned char >& inBuf,
                               unsigned int startAddr, bool isLastBlock,
                               bool enableProgressDisplay = false);

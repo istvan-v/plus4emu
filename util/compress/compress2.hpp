@@ -54,17 +54,14 @@ namespace Plus4Compress {
     struct LZMatchParameters {
       unsigned short  d;
       unsigned short  len;
-      unsigned short  nBits;
       LZMatchParameters()
         : d(0),
-          len(1),
-          nBits(9)
+          len(1)
       {
       }
       LZMatchParameters(const LZMatchParameters& r)
         : d(r.d),
-          len(r.len),
-          nBits(r.nBits)
+          len(r.len)
       {
       }
       ~LZMatchParameters()
@@ -74,14 +71,12 @@ namespace Plus4Compress {
       {
         d = r.d;
         len = r.len;
-        nBits = r.nBits;
         return (*this);
       }
       inline void clear()
       {
         d = 0;
         len = 1;
-        nBits = 9;
       }
     };
     struct SplitOptimizationBlock {
@@ -110,12 +105,14 @@ namespace Plus4Compress {
                          size_t *bitCountTable, uint64_t *offsSumTable,
                          size_t offs, size_t nBytes);
     size_t compressData_(std::vector< unsigned int >& tmpOutBuf,
-                         const std::vector< unsigned char >& inBuf, size_t offs,
-                         size_t nBytes, bool firstPass, bool fastMode);
+                         const std::vector< unsigned char >& inBuf,
+                         size_t offs, size_t nBytes, bool firstPass,
+                         bool fastMode = false);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
                       unsigned int startAddr, bool isLastBlock,
-                      size_t offs, size_t nBytes, bool fastMode);
+                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL,
+                      bool fastMode = false);
    public:
     Compressor_M2(std::vector< unsigned char >& outBuf_);
     virtual ~Compressor_M2();
@@ -125,6 +122,7 @@ namespace Plus4Compress {
         const Compressor_M1::CompressionParameters& cfg);
     virtual void setCompressionLevel(int n);
     virtual void addZeroPageUpdate(unsigned int endAddr, bool isLastBlock);
+    // if 'startAddr' is 0xFFFFFFFF, it is not stored in the compressed data
     virtual bool compressData(const std::vector< unsigned char >& inBuf,
                               unsigned int startAddr, bool isLastBlock,
                               bool enableProgressDisplay = false);
