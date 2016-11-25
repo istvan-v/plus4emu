@@ -52,63 +52,6 @@ namespace Plus4Compress {
     static const size_t minRepeatLen = 2;
     static const size_t maxRepeatLen = 256;
     // --------
-    class HuffmanCompressor {
-     private:
-      struct HuffmanNode {
-        size_t        weight;
-        unsigned int  value;
-        HuffmanNode   *parent;
-        HuffmanNode   *child0;
-        HuffmanNode   *child1;
-        HuffmanNode   *nextNode;
-        // --------
-        HuffmanNode()
-          : weight(0),
-            value(0),
-            parent((HuffmanNode *) 0),
-            child0((HuffmanNode *) 0),
-            child1((HuffmanNode *) 0),
-            nextNode((HuffmanNode *) 0)
-        {
-        }
-        HuffmanNode(size_t weight_, unsigned int value_,
-                    HuffmanNode *parent_ = (HuffmanNode *) 0,
-                    HuffmanNode *child0_ = (HuffmanNode *) 0,
-                    HuffmanNode *child1_ = (HuffmanNode *) 0,
-                    HuffmanNode *nextNode_ = (HuffmanNode *) 0)
-          : weight(weight_),
-            value(value_),
-            parent(parent_),
-            child0(child0_),
-            child1(child1_),
-            nextNode(nextNode_)
-        {
-        }
-        ~HuffmanNode()
-        {
-        }
-        inline bool isLeafNode() const
-        {
-          return (child0 == (HuffmanNode *) 0 && child1 == (HuffmanNode *) 0);
-        }
-      };
-      size_t  nCharValues;
-      std::vector< size_t >   charCounts;
-      static void sortNodes(HuffmanNode*& startNode);
-      void buildEncodeTable(std::vector< unsigned int >& encodeTable,
-                            const HuffmanNode *p,
-                            unsigned int n, unsigned int nBits);
-     public:
-      HuffmanCompressor(size_t nCharValues_ = 256);
-      virtual ~HuffmanCompressor();
-      void calculateCompression(std::vector< unsigned int >& outBuf,
-                                std::vector< unsigned int >& encodeTable);
-      inline void addChar(unsigned int c)
-      {
-        charCounts[c]++;
-      }
-    };
-    // --------
     class DSearchTable : public LZSearchTable {
      private:
       std::vector< std::vector< unsigned char > >   seqDiffTable;
@@ -130,19 +73,16 @@ namespace Plus4Compress {
     struct LZMatchParameters {
       unsigned int    d;
       unsigned short  len;
-      bool            seqFlag;
       unsigned char   seqDiff;
       LZMatchParameters()
         : d(0),
           len(1),
-          seqFlag(false),
           seqDiff(0x00)
       {
       }
       LZMatchParameters(const LZMatchParameters& r)
         : d(r.d),
           len(r.len),
-          seqFlag(r.seqFlag),
           seqDiff(r.seqDiff)
       {
       }
@@ -153,7 +93,6 @@ namespace Plus4Compress {
       {
         d = r.d;
         len = r.len;
-        seqFlag = r.seqFlag;
         seqDiff = r.seqDiff;
         return (*this);
       }
@@ -161,7 +100,6 @@ namespace Plus4Compress {
       {
         d = 0;
         len = 1;
-        seqFlag = false;
         seqDiff = 0x00;
       }
     };
@@ -191,20 +129,37 @@ namespace Plus4Compress {
     size_t          prvDistances[4];
     unsigned char   outputShiftReg;
     int             outputBitCnt;
+    unsigned int    lfsrState;
+    // for literals and distance codes
+    HuffmanEncoder  huffmanEncoder1;
+    // for length codes
+    HuffmanEncoder  huffmanEncoder2;
+    unsigned int    *symbolCntTable1;
+    unsigned int    *symbolCntTable2;
+    unsigned int    *encodeTable1;
+    unsigned int    *encodeTable2;
     // --------
-    void huffmanCompressBlock(std::vector< unsigned int >& ioBuf);
+    void calculateHuffmanEncoding(std::vector< unsigned int >& ioBuf);
+    void huffmanEncodeBlock(std::vector< unsigned int >& ioBuf,
+                            const unsigned char *inBuf,
+                            size_t uncompressedBytes);
     void initializeLengthCodeTables();
+    PLUS4EMU_INLINE void encodeSymbol(std::vector< unsigned int >& buf,
+                                      unsigned int c);
     void writeRepeatCode(std::vector< unsigned int >& buf, size_t d, size_t n);
     void writeSequenceCode(std::vector< unsigned int >& buf,
                            unsigned char seqDiff, size_t d, size_t n);
-    void optimizeMatches(LZMatchParameters *matchTable,
-                         BitCountTableEntry *bitCountTable,
-                         const size_t *lengthBitsTable_,
-                         const unsigned char *inBuf,
-                         size_t offs, size_t nBytes);
+    PLUS4EMU_INLINE long rndBit();
+    void optimizeMatches_RND(
+        LZMatchParameters *matchTable, BitCountTableEntry *bitCountTable,
+        const size_t *lengthBitsTable_, const unsigned char *inBuf,
+        size_t offs, size_t nBytes);
+    void optimizeMatches(
+        LZMatchParameters *matchTable, BitCountTableEntry *bitCountTable,
+        const size_t *lengthBitsTable_, const unsigned char *inBuf,
+        size_t offs, size_t nBytes);
     void compressData_(std::vector< unsigned int >& tmpOutBuf,
                        const std::vector< unsigned char >& inBuf,
-                       unsigned int startAddr, bool isLastBlock,
                        size_t offs, size_t nBytes);
     bool compressData(std::vector< unsigned int >& tmpOutBuf,
                       const std::vector< unsigned char >& inBuf,
