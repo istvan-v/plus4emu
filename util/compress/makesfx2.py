@@ -110,8 +110,8 @@ try:
 except:
     pass
 os.spawnvp(os.P_WAIT,
-           '../../compress',
-           ['../../compress', '-m2', '-noprg', '-9',
+           '../../p4compress',
+           ['../../p4compress', '-m2', '-noprg', '-9',
             tmpFileName, 'sfxdecomp2.bin'])
 os.remove(tmpFileName)
 
