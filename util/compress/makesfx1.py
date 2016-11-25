@@ -10,9 +10,9 @@ def assembleFile(infileName, outfileName):
         os.remove(tmpName)
     except:
         pass
-    os.spawnvp(os.P_WAIT, 'ca65', ['ca65', '--target', 'plus4',
+    os.spawnvp(os.P_WAIT, 'ca65', ['ca65', '--target', 'none',
                                    infileName, '-o', tmpName])
-    os.spawnvp(os.P_WAIT, 'ld65', ['ld65', '--target', 'plus4',
+    os.spawnvp(os.P_WAIT, 'ld65', ['ld65', '--target', 'none',
                                    tmpName, '-o', outfileName])
     os.remove(tmpName)
 
