@@ -55,10 +55,9 @@ decompressWriteAddrLow = $3c
 decompressWriteAddrHigh = $3d
 tmpLow = $3e
 tmpHigh = $3f
-huffmanLimitLowTable = $40
-huffmanLimitHighTable = $50
-huffmanOffsetLowTable = $60
-huffmanOffsetHighTable = $70
+huffmanSymCntTable = $40
+huffmanOffsetLowTable = $50
+huffmanOffsetHighTable = $60
 
 borderColor = $ff19
 
@@ -145,7 +144,7 @@ l9:     stx deltaValue
         adc decompressWriteAddrHigh
         sta lzMatchReadAddrHigh
         ldy #$00                        ; read match length code
-        ldx #$3f
+        ldx #$2f
 l10:    jsr huffmanDecode2
         cmp #$08
         bcc l11
@@ -206,7 +205,7 @@ addrTable:
         .byte <read5Bits
         .byte <huffmanDecode1
         .byte <huffmanDecode2
-        .byte $00, $40
+        .byte $00, $30
         .byte $00, $44
         .byte $08, $09
 
@@ -223,7 +222,7 @@ l1:     asl shiftRegister
 l2:     ldx addrTable, y
         sta decompressDataBlock, x
         ldy #$00
-l12:    rts
+        rts
 l3:     ora #$08
         tay
         ldx #$04
@@ -235,34 +234,19 @@ l4:     sta huffmanInitTmp - 1, x
         bne l4
         jsr l2
         ldx huffmanInitTmp
-        lda #$02
-        sta huffmanLimitLowTable, x
-l5:     tya
-l6:     sta huffmanLimitHighTable, x
-        lda #$ff
+l5:     lda #$ff
         sta huffmanDecodedValueLow
         asl
         sta huffmanDecodedValueHigh
-        lda huffTableWriteAddrLow
-        sbc huffmanLimitLowTable, x
-        sta huffmanOffsetLowTable, x
-        lda huffTableWriteAddrHigh
-        sbc huffmanLimitHighTable, x
-        sta huffmanOffsetHighTable, x
         jsr gammaDecode
+        sbc #$00                        ; gammaDecode returns with C=0
         sta huffSymbolsRemainingLow
-        cmp #$01
-        lda tmpHigh
-        adc #$00
-        sta huffSymbolsRemainingHigh
-l7:     dec huffSymbolsRemainingLow
-        bne l8
-        dec huffSymbolsRemainingHigh
-        beq l11
-l8:     inc huffmanLimitLowTable, x
-        bne l9
-        inc huffmanLimitHighTable, x
-l9:     jsr gammaDecode
+        sta huffmanSymCntTable, x
+        bne l7
+        ora tmpHigh
+        beq l9                          ; unused code length?
+l6:     bne l6                          ; symCnt == 256 is not supported
+l7:     jsr gammaDecode
         adc huffmanDecodedValueLow
         sta huffmanDecodedValueLow
         lda tmpHigh
@@ -274,24 +258,21 @@ l9:     jsr gammaDecode
         lda huffmanDecodedValueLow
         sta (huffTableWriteAddrLow), y
         inc huffTableWriteAddrLow
-        beq l10
+        beq l8
         dec huffTableWriteAddrHigh
-l10:    dec huffTableWriteAddrHigh
+l8:     dec huffTableWriteAddrHigh
+        dec huffSymbolsRemainingLow
         bne l7
-l11:    inx
+l9:     lda huffTableWriteAddrLow
+        sta huffmanOffsetLowTable, x
+        lda huffTableWriteAddrHigh
+        sta huffmanOffsetHighTable, x
+        dec huffmanOffsetHighTable, x
+        inx
         txa
         and #$0f
-        beq l12
-        eor #$07
-        php
-        lda huffmanLimitLowTable - 1, x
-        asl
-        sta huffmanLimitLowTable, x
-        lda huffmanLimitHighTable - 1, x
-        rol
-        plp
-        bne l6
-        beq l5
+        bne l5
+        rts
         .endproc
 
 ; -----------------------------------------------------------------------------
@@ -301,34 +282,17 @@ l11:    inx
         .endproc
 
         .proc huffmanDecode2
-        lda #$01
-        sty tmpHigh
+        tya
 l1:     inx
         asl shiftRegister
-        beq l8
+        beq l3
 l2:     rol
-        bcs l5
-        cmp huffmanLimitLowTable, x
+        sec
+        sbc huffmanSymCntTable, x
         bcs l1
-        bcc l7
-l3:     inx
-        asl shiftRegister
-        bne l4
-        ldy #$00
-        jsr readCompressedByte
-l4:     rol
-        rol tmpHigh
-        bmi l6
-l5:     cmp huffmanLimitLowTable, x
-        tay
-        lda tmpHigh
-        sbc huffmanLimitHighTable, x
-        tya
-        bcs l3
-l6:     ldy #$00
-l7:     adc huffmanOffsetLowTable, x
+        adc huffmanOffsetLowTable, x
         sta tmpLow
-        lda tmpHigh
+        tya
         adc huffmanOffsetHighTable, x
         sta tmpHigh
         eor #$02
@@ -336,8 +300,8 @@ l7:     adc huffmanOffsetLowTable, x
         sta tmpHigh
         lda (tmpLow), y
         rts
-l8:     jsr readCompressedByte
-        bne l2
+l3:     jsr readCompressedByte
+        jmp l2
         .endproc
 
         .proc read9Bits

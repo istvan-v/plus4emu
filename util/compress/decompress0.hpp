@@ -31,13 +31,13 @@ namespace Plus4Compress {
 
   class Decompressor_M0 : public Decompressor {
    private:
-    static const unsigned char  sfxModuleLibrary[1897];
+    static const unsigned char  sfxModuleLibrary[1750];
     // main Huffman table (literal characters + match offset codes)
-    unsigned int  *huffmanLimitTable0;
+    unsigned int  *huffmanSymCntTable0;
     unsigned int  *huffmanOffsetTable0;
     unsigned int  *huffmanDecodeTable0;
     // match length Huffman table
-    unsigned int  *huffmanLimitTable1;
+    unsigned int  *huffmanSymCntTable1;
     unsigned int  *huffmanOffsetTable1;
     unsigned int  *huffmanDecodeTable1;
     bool          usingHuffTable0;
