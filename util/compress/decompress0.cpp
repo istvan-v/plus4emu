@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -174,8 +174,6 @@ namespace Plus4Compress {
           throw Plus4Emu::Exception("error in compressed data");
         decodedValue = decodedValue + gammaDecode();
         if (decodedValue >= (unsigned int) nSymbols || tablePos >= nSymbols)
-          throw Plus4Emu::Exception("error in compressed data");
-        if (tmp == 0xFFU)       // 1111111 is never output by the compressor
           throw Plus4Emu::Exception("error in compressed data");
         decodeTable[tablePos] = decodedValue;
         tablePos++;
