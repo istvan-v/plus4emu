@@ -382,6 +382,11 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "videoCapture.yuvFormat",
                                 videoCapture.yuvFormat, true,
                                 videoCaptureSettingsChanged);
+    // ----------------
+    // videoCaptureSettingsChanged is used only as a dummy variable here
+    defineConfigurationVariable(*this, "compressFiles",
+                                compressFiles, true,
+                                videoCaptureSettingsChanged);
   }
 
   EmulatorConfiguration::~EmulatorConfiguration()
