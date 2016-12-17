@@ -578,7 +578,9 @@ int main(int argc, char **argv)
         continue;
       }
       blockNum++;
-      std::fprintf(stderr, "Block #%u ($%04X-$%04X): ",
+      std::fprintf(stderr,
+                   (compressionType != 3 ?
+                    "Block #%u ($%04X-$%04X): " : "Block #%u ($%04X-$%04X)\n"),
                    blockNum, startAddr, curPos);
       tmpBuf.resize(0);
       unsigned int  i = startAddr;
