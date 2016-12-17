@@ -22,6 +22,9 @@
 #include "pngwrite.hpp"
 #include <map>
 
+#ifdef LINUX_FLTK_VERSION
+#  undef LINUX_FLTK_VERSION
+#endif
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN   1
 #  include <windows.h>
@@ -29,6 +32,19 @@
 #  include <unistd.h>
 #  include <pthread.h>
 #endif
+#if defined(__linux) || defined(__linux__)
+#  include <X11/Xlib.h>
+#  if defined(FL_MAJOR_VERSION) && defined(FL_MINOR_VERSION) && \
+      defined(FL_PATCH_VERSION)
+#    define LINUX_FLTK_VERSION  ((FL_MAJOR_VERSION * 10000)     \
+                                 + (FL_MINOR_VERSION * 100) + FL_PATCH_VERSION)
+#    if (LINUX_FLTK_VERSION >= 10302)
+#      include <X11/XKBlib.h>
+#    endif
+#  endif
+#endif
+
+#include <FL/x.H>
 
 void Plus4EmuGUI::init_()
 {
@@ -137,11 +153,10 @@ void Plus4EmuGUI::updateDisplay_windowMode()
   int     newWindowWidth = mainWindow->w();
   int     newWindowHeight = mainWindow->h();
   if ((displayMode & 1) == 0) {
-    if (newWindowWidth >= 745)
-      statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
-    else
-      statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
-                                 360, 30);
+    statusDisplayGroup->resize(newWindowWidth - 360,
+                               (newWindowWidth >= 745 ?
+                                0 : (newWindowHeight - 30)),
+                               360, 30);
     statusDisplayGroup->show();
     mainMenuBar->resize(0, 2, 300, 26);
     mainMenuBar->show();
@@ -156,10 +171,7 @@ void Plus4EmuGUI::updateDisplay_windowMode()
   oldWindowWidth = -1;
   oldWindowHeight = -1;
   oldDisplayMode = displayMode;
-  if ((displayMode & 1) == 0)
-    emulatorWindow->cursor(FL_CURSOR_DEFAULT);
-  else
-    emulatorWindow->cursor(FL_CURSOR_NONE);
+  mainWindow->cursor(!(displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
   mainWindow->redraw();
   mainMenuBar->redraw();
   diskStatusDisplayGroup->redraw();
@@ -170,34 +182,35 @@ void Plus4EmuGUI::updateDisplay_windowSize()
 {
   int     newWindowWidth = mainWindow->w();
   int     newWindowHeight = mainWindow->h();
-  if ((displayMode & 1) == 0) {
-    int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
-    emulatorWindow->resize(0, 30, newWindowWidth, h);
-    if ((displayMode & 2) == 0) {
-      config.display.width = newWindowWidth;
-      config.display.height = h;
-    }
-    if (newWindowWidth >= 745)
-      statusDisplayGroup->resize(newWindowWidth - 360, 0, 360, 30);
-    else
-      statusDisplayGroup->resize(newWindowWidth - 360, newWindowHeight - 30,
+  if (newWindowWidth != oldWindowWidth || newWindowHeight != oldWindowHeight) {
+    if ((displayMode & 1) == 0) {
+      int   h = newWindowHeight - (newWindowWidth >= 745 ? 30 : 60);
+      emulatorWindow->resize(0, 30, newWindowWidth, h);
+      if ((displayMode & 2) == 0) {
+        config.display.width = newWindowWidth;
+        config.display.height = h;
+      }
+      statusDisplayGroup->resize(newWindowWidth - 360,
+                                 (newWindowWidth >= 745 ?
+                                  0 : (newWindowHeight - 30)),
                                  360, 30);
-    mainMenuBar->resize(0, 2, 300, 26);
-    diskStatusDisplayGroup->resize(345, 0, 30, 30);
-  }
-  else {
-    emulatorWindow->resize(0, 0, newWindowWidth, newWindowHeight);
-    if ((displayMode & 2) == 0) {
-      config.display.width = newWindowWidth;
-      config.display.height = newWindowHeight;
+      mainMenuBar->resize(0, 2, 300, 26);
+      diskStatusDisplayGroup->resize(345, 0, 30, 30);
     }
+    else {
+      emulatorWindow->resize(0, 0, newWindowWidth, newWindowHeight);
+      if ((displayMode & 2) == 0) {
+        config.display.width = newWindowWidth;
+        config.display.height = newWindowHeight;
+      }
+    }
+    oldWindowWidth = newWindowWidth;
+    oldWindowHeight = newWindowHeight;
+    mainWindow->redraw();
+    mainMenuBar->redraw();
+    diskStatusDisplayGroup->redraw();
+    statusDisplayGroup->redraw();
   }
-  oldWindowWidth = newWindowWidth;
-  oldWindowHeight = newWindowHeight;
-  mainWindow->redraw();
-  mainMenuBar->redraw();
-  diskStatusDisplayGroup->redraw();
-  statusDisplayGroup->redraw();
 }
 
 static void updateFloppyStatsWidgets(uint16_t headPos,
@@ -542,6 +555,13 @@ int Plus4EmuGUI::getMenuItemIndex(int n)
 
 void Plus4EmuGUI::createMenus()
 {
+#if defined(LINUX_FLTK_VERSION) && (LINUX_FLTK_VERSION >= 10302)
+  {
+    // work around broken auto-repeat on Linux
+    Bool    supportedReturn = False;
+    (void) XkbSetDetectableAutoRepeat(fl_display, True, &supportedReturn);
+  }
+#endif
   Plus4Emu::setWindowIcon(mainWindow, 0);
   Plus4Emu::setWindowIcon(diskConfigWindow->window, 1);
   Plus4Emu::setWindowIcon(displaySettingsWindow->window, 2);
@@ -871,10 +891,7 @@ void Plus4EmuGUI::resizeWindow(int w, int h)
     else
       mainWindow->size_range(384, 288, 1536, 1152);
   }
-  if ((displayMode & 1) == 0)
-    emulatorWindow->cursor(FL_CURSOR_DEFAULT);
-  else
-    emulatorWindow->cursor(FL_CURSOR_NONE);
+  mainWindow->cursor(!(displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
 }
 
 int Plus4EmuGUI::handleMouseEvent(int event)
@@ -1235,6 +1252,8 @@ int Plus4EmuGUI::handleFLTKEvent(void *userData, int event)
       }
     }
     return 1;
+  case FL_SHORTCUT:
+    return 1;
   }
   return 0;
 }
@@ -1308,6 +1327,11 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
       } while (browseFileWindowShowFlag);
     }
     else {
+#if defined(LINUX_FLTK_VERSION) && (LINUX_FLTK_VERSION >= 10303)
+      // work around buggy GTK file chooser introduced in FLTK 1.3.3
+      // not sending FL_UNFOCUS event to the emulator window
+      functionKeyState = 0U;
+#endif
       browseFileStatus = browseFileWindow->show();
     }
     if (browseFileStatus < 0) {
@@ -1349,6 +1373,30 @@ bool Plus4EmuGUI::browseFile(std::string& fileName, std::string& dirName,
   return retval;
 }
 
+void Plus4EmuGUI::writeFile(Plus4Emu::File& f, const char *fileName)
+{
+  if (!config.compressFiles) {
+    f.writeFile(fileName);
+    return;
+  }
+  try {
+    mainWindow->label("Compressing file...");
+    mainWindow->cursor(FL_CURSOR_WAIT);
+    Fl::redraw();
+    // should actually use Fl::flush() here, but only Fl::wait() does
+    // correctly update the display
+    Fl::wait(0.0);
+    f.writeFile(fileName, false, true);
+  }
+  catch (...) {
+    mainWindow->label(&(windowTitleBuf[0]));
+    mainWindow->cursor(!(displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
+    throw;
+  }
+  mainWindow->label(&(windowTitleBuf[0]));
+  mainWindow->cursor(!(displayMode & 1) ? FL_CURSOR_DEFAULT : FL_CURSOR_NONE);
+}
+
 void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
 {
   if (lockVMThread()) {
@@ -1379,6 +1427,7 @@ void Plus4EmuGUI::applyEmulatorConfiguration(bool updateWindowFlag_)
       }
       if (updateMenuFlag_)
         updateMenu();
+      updateDisplay_windowSize();
     }
     catch (...) {
       unlockVMThread();
@@ -1546,42 +1595,38 @@ void Plus4EmuGUI::pollJoystickInput(void *userData)
 
 bool Plus4EmuGUI::closeDemoFile(bool stopDemo_)
 {
-  if (demoRecordFile) {
-    if (stopDemo_) {
-      if (lockVMThread()) {
-        try {
-          vm.stopDemo();
-        }
-        catch (std::exception& e) {
-          unlockVMThread();
-          delete demoRecordFile;
-          demoRecordFile = (Plus4Emu::File *) 0;
-          demoRecordFileName.clear();
-          errorMessage(e.what());
-          return true;
-        }
-        catch (...) {
-          unlockVMThread();
-          delete demoRecordFile;
-          demoRecordFile = (Plus4Emu::File *) 0;
-          demoRecordFileName.clear();
-          throw;
-        }
-        unlockVMThread();
-      }
-      else
-        return false;
-    }
+  if (!demoRecordFile)
+    return true;
+  if (stopDemo_ && !lockVMThread())
+    return false;
+  std::string     fName(demoRecordFileName);
+  demoRecordFileName.clear();
+  Plus4Emu::File  *f = demoRecordFile;
+  demoRecordFile = (Plus4Emu::File *) 0;
+  if (stopDemo_) {
     try {
-      demoRecordFile->writeFile(demoRecordFileName.c_str());
+      vm.stopDemo();
     }
     catch (std::exception& e) {
+      unlockVMThread();
+      delete f;
       errorMessage(e.what());
+      return true;
     }
-    delete demoRecordFile;
-    demoRecordFile = (Plus4Emu::File *) 0;
+    catch (...) {
+      unlockVMThread();
+      delete f;
+      throw;
+    }
+    unlockVMThread();
   }
-  demoRecordFileName.clear();
+  try {
+    writeFile(*f, fName.c_str());
+  }
+  catch (std::exception& e) {
+    errorMessage(e.what());
+  }
+  delete f;
   return true;
 }
 
@@ -1795,7 +1840,7 @@ void Plus4EmuGUI::menuCallback_File_SaveSnapshot(Fl_Widget *o, void *v)
         try {
           Plus4Emu::File  f;
           gui_.vm.saveState(f);
-          f.writeFile(tmp.c_str());
+          gui_.writeFile(f, tmp.c_str());
         }
         catch (...) {
           gui_.unlockVMThread();

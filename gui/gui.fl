@@ -115,6 +115,8 @@ class Plus4EmuGUI {open
   }
   decl {bool browseFile(std::string& fileName, std::string& dirName, const char *pattern, int type, const char *title);} {public
   }
+  decl {void writeFile(Plus4Emu::File& f, const char *fileName);} {public
+  }
   decl {void applyEmulatorConfiguration(bool updateWindowFlag_ = false);} {public
   }
   decl {void updateMenu();} {}
