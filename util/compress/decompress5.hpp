@@ -52,7 +52,6 @@ namespace Plus4Compress {
    public:
     Decompressor_ZLib();
     virtual ~Decompressor_ZLib();
-    // NOTE: this function is unimplemented, only raw data is supported
     virtual void decompressData(
         std::vector< std::vector< unsigned char > >& outBuf,
         const std::vector< unsigned char >& inBuf);
@@ -60,6 +59,9 @@ namespace Plus4Compress {
     virtual void decompressData(
         std::vector< unsigned char >& outBuf,
         const std::vector< unsigned char >& inBuf);
+    virtual void decompressData(
+        std::vector< unsigned char >& outBuf,
+        const std::vector< unsigned char >& inBuf, size_t *inBufPos);
   };
 
 }       // namespace Plus4Compress

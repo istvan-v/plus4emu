@@ -308,15 +308,27 @@ namespace Plus4Compress {
       std::vector< std::vector< unsigned char > >& outBuf,
       const std::vector< unsigned char >& inBuf)
   {
-    (void) inBuf;
     outBuf.clear();
-    throw Plus4Emu::Exception("internal error: ZLib decompressor "
-                              "only supports raw format");
+    std::vector< unsigned char >  tmpOutBuf;
+    decompressData(tmpOutBuf, inBuf);
+    // NOTE: this format does not support start addresses,
+    // so use a fixed value of $1001
+    tmpOutBuf.insert(tmpOutBuf.begin(), 2, (unsigned char) 0x00);
+    tmpOutBuf[0] = 0x01;
+    tmpOutBuf[1] = 0x10;
+    outBuf.push_back(tmpOutBuf);
   }
 
   void Decompressor_ZLib::decompressData(
       std::vector< unsigned char >& outBuf,
       const std::vector< unsigned char >& inBuf)
+  {
+    decompressData(outBuf, inBuf, (size_t *) 0);
+  }
+
+  void Decompressor_ZLib::decompressData(
+      std::vector< unsigned char >& outBuf,
+      const std::vector< unsigned char >& inBuf, size_t *inBufPos)
   {
     outBuf.clear();
     if (inBuf.size() < 1)
@@ -324,6 +336,8 @@ namespace Plus4Compress {
     inputBuffer = &(inBuf.front());
     inputBufferSize = inBuf.size();
     inputBufferPosition = 0;
+    if (inBufPos)
+      inputBufferPosition = *inBufPos;
     // check ZLib header
     {
       unsigned int  tmp = (readByte() << 8) | readByte();
@@ -349,11 +363,13 @@ namespace Plus4Compress {
       tmp2 += tmp1;
       tmp2 = (tmp2 < 65521U ? tmp2 : (tmp2 - 65521U));
     }
-    // on successful decompression, all input data must be consumed
-    if ((tmp1 | (tmp2 << 16)) != adler32Sum ||
-        inputBufferPosition < inputBufferSize) {
+    if ((tmp1 | (tmp2 << 16)) != adler32Sum)
       throw Plus4Emu::Exception("error in compressed data");
-    }
+    // on successful decompression, all input data must be consumed
+    if (inBufPos)
+      *inBufPos = inputBufferPosition;
+    else if (inputBufferPosition < inputBufferSize)
+      throw Plus4Emu::Exception("error in compressed data");
   }
 
 }       // namespace Plus4Compress
