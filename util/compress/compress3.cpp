@@ -254,7 +254,7 @@ namespace Plus4Compress {
   {
     (void) enableProgressDisplay;
     // allow start address 0100H (program with EXOS 5 header) for compatibility
-    if ((startAddr != 0x0100U && startAddr != 0xFFFFFFFFU) || !isLastBlock) {
+    if ((startAddr != 0x0000U && startAddr != 0xFFFFFFFFU) || !isLastBlock) {
       throw Plus4Emu::Exception("Compressor_M3::compressData(): "
                                 "internal error: "
                                 "unsupported output format parameters");
