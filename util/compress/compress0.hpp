@@ -24,8 +24,8 @@
 #define P4COMPRESS_COMPRESS0_HPP
 
 #include "plus4emu.hpp"
-#include "comprlib.hpp"
 #include "compress.hpp"
+#include "comprlib.hpp"
 
 #include <vector>
 
@@ -36,8 +36,6 @@ namespace Plus4Compress {
     struct CompressionParameters {
       size_t  optimizeIterations;
       size_t  splitOptimizationDepth;
-      bool    optimalParsingEnabled;
-      bool    optimizeMatchDistanceRepeats;
       CompressionParameters();
       CompressionParameters(const CompressionParameters& r);
       ~CompressionParameters()
@@ -48,10 +46,10 @@ namespace Plus4Compress {
     };
    private:
     static const size_t minRepeatDist = 1;
-    static const size_t maxRepeatDist = 65535;
+    static const size_t maxRepeatDist = 65536;
     static const size_t minRepeatLen = 2;
     static const size_t maxRepeatLen = 256;
-    // --------
+   protected:
     class DSearchTable : public LZSearchTable {
      private:
       std::vector< std::vector< unsigned char > >   seqDiffTable;
@@ -69,7 +67,7 @@ namespace Plus4Compress {
         return seqDiffTable[d - Compressor_M0::minRepeatDist][bufPos];
       }
     };
-    // --------
+   private:
     struct LZMatchParameters {
       unsigned int    d;
       unsigned short  len;
@@ -108,7 +106,7 @@ namespace Plus4Compress {
       long    totalBits;
       unsigned int  prvDistances[4];
     };
-    // --------
+   protected:
     struct SplitOptimizationBlock {
       std::vector< unsigned int > buf;
       size_t  startPos;
@@ -138,18 +136,22 @@ namespace Plus4Compress {
     unsigned int    *symbolCntTable2;
     unsigned int    *encodeTable1;
     unsigned int    *encodeTable2;
-    // --------
+   private:
     void calculateHuffmanEncoding(std::vector< unsigned int >& ioBuf);
-    void huffmanEncodeBlock(std::vector< unsigned int >& ioBuf,
-                            const unsigned char *inBuf,
-                            size_t uncompressedBytes);
+   protected:
+    virtual void huffmanEncodeBlock(std::vector< unsigned int >& ioBuf,
+                                    const unsigned char *inBuf,
+                                    size_t uncompressedBytes);
+   private:
     void initializeLengthCodeTables();
     PLUS4EMU_INLINE void encodeSymbol(std::vector< unsigned int >& buf,
                                       unsigned int c);
     void writeRepeatCode(std::vector< unsigned int >& buf, size_t d, size_t n);
     void writeSequenceCode(std::vector< unsigned int >& buf,
                            unsigned char seqDiff, size_t d, size_t n);
+   protected:
     PLUS4EMU_INLINE long rndBit();
+   private:
     void optimizeMatches_RND(
         LZMatchParameters *matchTable, BitCountTableEntry *bitCountTable,
         const size_t *lengthBitsTable_, const unsigned char *inBuf,
@@ -161,10 +163,22 @@ namespace Plus4Compress {
     void compressData_(std::vector< unsigned int >& tmpOutBuf,
                        const std::vector< unsigned char >& inBuf,
                        size_t offs, size_t nBytes);
-    bool compressData(std::vector< unsigned int >& tmpOutBuf,
-                      const std::vector< unsigned char >& inBuf,
-                      unsigned int startAddr, bool isLastBlock,
-                      size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL);
+   protected:
+    virtual bool compressData(std::vector< unsigned int >& tmpOutBuf,
+                              const std::vector< unsigned char >& inBuf,
+                              unsigned int startAddr, bool isLastBlock,
+                              size_t offs = 0, size_t nBytes = 0x7FFFFFFFUL);
+   private:
+    bool compressBlock(SplitOptimizationBlock& tmpBlock,
+                       const std::vector< unsigned char >& inBuf,
+                       unsigned int startAddr, size_t startPos, size_t nBytes,
+                       bool isLastBlock);
+   protected:
+    virtual void packOutputData(const std::vector< unsigned int >& tmpBuf,
+                                bool isLastBlock);
+    Compressor_M0(std::vector< unsigned char >& outBuf_,
+                  size_t huff1Size, size_t huff1MinCnt,
+                  size_t huff2Size, size_t huff2MinCnt);
    public:
     Compressor_M0(std::vector< unsigned char >& outBuf_);
     virtual ~Compressor_M0();
@@ -172,6 +186,7 @@ namespace Plus4Compress {
     void setCompressionParameters(const CompressionParameters& cfg);
     virtual void setCompressionLevel(int n);
     virtual void addZeroPageUpdate(unsigned int endAddr, bool isLastBlock);
+    // if 'startAddr' is 0xFFFFFFFF, it is not stored in the compressed data
     virtual bool compressData(const std::vector< unsigned char >& inBuf,
                               unsigned int startAddr, bool isLastBlock,
                               bool enableProgressDisplay = false);
