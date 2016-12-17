@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,10 +24,9 @@
 #include "prgdata.hpp"
 #include "p4slib.hpp"
 
-#ifndef NO_P4S_SUPPORT
-#  include <vector>
-#  include <zlib.h>
-#endif
+#include <vector>
+#include "pngwrite.hpp"
+#include "decompress5.hpp"
 
 namespace Plus4FLIConv {
 
@@ -35,7 +34,6 @@ namespace Plus4FLIConv {
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Plus4Emu::Exception("invalid file name");
-#ifndef NO_P4S_SUPPORT
     std::vector< unsigned char >  outBuf;
     // write file header
     outBuf.push_back((unsigned char) 0x50);     // 'P'
@@ -261,23 +259,19 @@ namespace Plus4FLIConv {
         continue;
       // compress data
       std::vector< unsigned char >  compressBuf;
-      compressBuf.resize(bufPtr->size() + (bufPtr->size() >> 6) + 256);
-      z_stream  zStream;
-      std::memset(&zStream, 0, sizeof(z_stream));
-      zStream.next_in = reinterpret_cast<Bytef *>(&(bufPtr->front()));
-      zStream.avail_in = uInt(bufPtr->size());
-      zStream.total_in = uLong(0);
-      zStream.next_out = reinterpret_cast<Bytef *>(&(compressBuf.front()));
-      zStream.avail_out = uInt(compressBuf.size());
-      zStream.total_out = uLong(0);
-      zStream.zalloc = (alloc_func) Z_NULL;
-      zStream.zfree = (free_func) Z_NULL;
-      if (deflateInit(&zStream, Z_BEST_COMPRESSION) != Z_OK)
-        throw Plus4Emu::Exception("error compressing P4S data");
-      int     err = deflate(&zStream, Z_FINISH);
-      deflateEnd(&zStream);
-      if (err != Z_STREAM_END)
-        throw Plus4Emu::Exception("error compressing P4S data");
+      {
+        Plus4Emu::Compressor_ZLib *compressor = (Plus4Emu::Compressor_ZLib *) 0;
+        compressor = new Plus4Emu::Compressor_ZLib();
+        try {
+          compressor->compressData(compressBuf,
+                                   &(bufPtr->front()), bufPtr->size(), 32768);
+        }
+        catch (...) {
+          delete compressor;
+          throw;
+        }
+        delete compressor;
+      }
       // write compressed data to output buffer
       outBuf.push_back((unsigned char) (bufPtr->size() & 0xFF));
       outBuf.push_back((unsigned char) ((bufPtr->size() >> 8) & 0xFF));
@@ -288,7 +282,7 @@ namespace Plus4FLIConv {
         if (blockName[j] == '\0')
           break;
       }
-      for (size_t j = 0; j < size_t(zStream.total_out); j++)
+      for (size_t j = 0; j < compressBuf.size(); j++)
         outBuf.push_back(compressBuf[j]);
     }
     // write output file
@@ -306,11 +300,6 @@ namespace Plus4FLIConv {
       throw Plus4Emu::Exception("error writing P4S file");
     }
     std::fclose(f);
-#else
-    (void) prgData;
-    throw Plus4Emu::Exception("P4S format is not supported by this build of "
-                              "p4fliconv");
-#endif  // NO_P4S_SUPPORT
   }
 
   bool readP4SFile(const char *fileName, PRGData& prgData,
@@ -322,7 +311,6 @@ namespace Plus4FLIConv {
     prgEndAddr = 0x1003U;
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Plus4Emu::Exception("invalid file name");
-#ifndef NO_P4S_SUPPORT
     std::FILE *f = std::fopen(fileName, "rb");
     if (!f)
       throw Plus4Emu::Exception("error opening file");
@@ -429,27 +417,21 @@ namespace Plus4FLIConv {
           bufPtr = &buf_dummy;
         if (!bufPtr)
           throw Plus4Emu::Exception("error in P4S image data");
-        bufPtr->resize(uncompressedSize);
+        bufPtr->clear();
         // decompress data
-        z_stream  zStream;
-        std::memset(&zStream, 0, sizeof(z_stream));
-        zStream.next_in = reinterpret_cast<Bytef *>(&(inBuf.front()) + readPos);
-        zStream.avail_in = uInt(inBuf.size() - readPos);
-        zStream.total_in = uLong(0);
-        zStream.next_out = reinterpret_cast<Bytef *>(&(bufPtr->front()));
-        zStream.avail_out = uInt(uncompressedSize);
-        zStream.total_out = uLong(0);
-        zStream.zalloc = (alloc_func) Z_NULL;
-        zStream.zfree = (free_func) Z_NULL;
-        if (inflateInit(&zStream) != Z_OK)
+        Plus4Compress::Decompressor_ZLib  *decompressor =
+            (Plus4Compress::Decompressor_ZLib *) 0;
+        decompressor = new Plus4Compress::Decompressor_ZLib();
+        try {
+          decompressor->decompressData(*bufPtr, inBuf, &readPos);
+        }
+        catch (...) {
+          delete decompressor;
+          throw;
+        }
+        delete decompressor;
+        if (bufPtr->size() != uncompressedSize)
           throw Plus4Emu::Exception("error reading compressed data");
-        int     err = inflate(&zStream, Z_FINISH);
-        inflateEnd(&zStream);
-        if (err != Z_STREAM_END)
-          throw Plus4Emu::Exception("error reading compressed data");
-        if (size_t(zStream.total_out) != bufPtr->size())
-          throw Plus4Emu::Exception("error in P4S image data");
-        readPos = readPos + size_t(zStream.total_in);
       }
       if ((imageFlags & 4) != 0 && imageHeight == 200) {
         // simple non-FLI formats (hires and multicolor)
@@ -627,13 +609,6 @@ namespace Plus4FLIConv {
         std::fclose(f);
       throw;
     }
-#else
-    (void) prgData;
-    (void) prgStartAddr;
-    (void) prgEndAddr;
-    throw Plus4Emu::Exception("P4S format is not supported by this build of "
-                              "p4fliconv");
-#endif  // NO_P4S_SUPPORT
     return true;
   }
 
