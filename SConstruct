@@ -345,7 +345,9 @@ if not fltkVersion13:
     plus4emuLibSources2 += ['Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx']
 plus4emuLibSources2 += Split('''
     src/cfg_db.cpp
+    src/compress.cpp
     src/comprlib.cpp
+    src/decompm2.cpp
     src/emucfg.cpp
     src/fldisp.cpp
     src/gldisp.cpp
@@ -491,19 +493,16 @@ compressLib = compressLibEnvironment.StaticLibrary(
     'compress',
     Split('''
         util/compress/compress0.cpp
-        util/compress/compress0.hpp
         util/compress/compress1.cpp
-        util/compress/compress1.hpp
         util/compress/compress2.cpp
-        util/compress/compress2.hpp
+        util/compress/compress3.cpp
+        util/compress/compress5.cpp
         util/compress/compress.cpp
-        util/compress/compress.hpp
         util/compress/decompress0.cpp
-        util/compress/decompress0.hpp
         util/compress/decompress1.cpp
-        util/compress/decompress1.hpp
         util/compress/decompress2.cpp
-        util/compress/decompress2.hpp
+        util/compress/decompress3.cpp
+        util/compress/decompress5.cpp
     '''))
 
 # -----------------------------------------------------------------------------
@@ -513,10 +512,7 @@ if mingwCrossCompile:
     p4fliconvLibEnvironment['LINKFLAGS'].remove('-mwindows')
 p4fliconvLibEnvironment.Append(CPPPATH = ['./util/compress',
                                           './util/p4fliconv'])
-if not haveZLib:
-    print 'WARNING: zlib is not found, building p4fliconv without P4S support'
-    p4fliconvLibEnvironment.Append(CXXFLAGS = ['-DNO_P4S_SUPPORT'])
-elif not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
+if haveZLib and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
     if not 'z' in p4fliconvLibEnvironment['LIBS']:
         p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
