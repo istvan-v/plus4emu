@@ -85,9 +85,10 @@ namespace Plus4Compress {
     std::vector< unsigned char >  tmpOutBuf;
     decompressData(tmpOutBuf, inBuf);
     // NOTE: this format does not support start addresses,
-    // so use a fixed value of 0100H (program with EXOS 5 header)
+    // so use a fixed value of $1001
     tmpOutBuf.insert(tmpOutBuf.begin(), 2, (unsigned char) 0x00);
-    tmpOutBuf[1] = 0x01;
+    tmpOutBuf[0] = 0x01;
+    tmpOutBuf[1] = 0x10;
     outBuf.push_back(tmpOutBuf);
   }
 
