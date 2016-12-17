@@ -325,8 +325,13 @@ namespace Plus4Compress {
                          + bitCountTable[i + 1].totalBits;
       size_t  bestLen = 1;
       size_t  bestOffs = 0;
+#if 0
       size_t  minLen = (config.maxOffset <= 32768 ? 3 : 2);
       minLen = (minLen > config.minLength ? minLen : config.minLength);
+#else
+      // TODO: add configuration support for extended Deflate format
+      size_t  minLen = 3;
+#endif
       size_t  maxLen = nBytes - i;
       // check LZ77 matches
       const unsigned int  *matchPtr = searchTable->getMatches(offs + i);
@@ -375,8 +380,13 @@ namespace Plus4Compress {
                          + bitCountTable[i + 1].totalBits;
       size_t  bestLen = 1;
       size_t  bestOffs = 0;
+#if 0
       size_t  minLen = (config.maxOffset <= 32768 ? 3 : 2);
       minLen = (minLen > config.minLength ? minLen : config.minLength);
+#else
+      // TODO: add configuration support for extended Deflate format
+      size_t  minLen = 3;
+#endif
       size_t  maxLen = nBytes - i;
       // check LZ77 matches
       const unsigned int  *matchPtr = searchTable->getMatches(offs + i);
@@ -547,8 +557,14 @@ namespace Plus4Compress {
       //   FLEVEL = 3 (high compression level)
       //   FDICT = 0 (no preset dictionary)
       unsigned char log2DictSize = 8;
+#if 0
       while ((size_t(1) << log2DictSize) < config.maxOffset)
         log2DictSize++;
+#else
+      // TODO: add configuration support for extended Deflate format
+      while ((size_t(1) << log2DictSize) < 32768)
+        log2DictSize++;
+#endif
       unsigned int  tmp = ((unsigned int) (log2DictSize - 8) << 12) | 0x08C0;
       // calculate FCHECK
       while (tmp % 31U)

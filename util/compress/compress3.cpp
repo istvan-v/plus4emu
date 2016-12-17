@@ -90,8 +90,8 @@ namespace Plus4Compress {
                                       unsigned char *bitIncMaxTable,
                                       size_t nBytes)
   {
-    size_t  maxLen = (config.splitOptimizationDepth < 9 ? maxRepeatLen : 1023);
-    size_t  minLen = (config.minLength > 2 ? config.minLength : 2);
+    size_t  maxLen = maxRepeatLen;
+    size_t  minLen = minRepeatLen;
     for (size_t i = nBytes; --i > 0; ) {
       size_t  bestSize = 0x7FFFFFFF;
       size_t  bestLen = 1;
@@ -277,13 +277,8 @@ namespace Plus4Compress {
       for (size_t i = 0; i < nBytes; i++)
         inBufRev[(nBytes - 1) - i] = inBuf[i];          // reverse input data
       searchTable =
-          new LZSearchTable(
-              (config.minLength > minRepeatLen ?
-               config.minLength : minRepeatLen),
-              (config.splitOptimizationDepth < 9 ? maxRepeatLen : 1023),
-              lengthMaxValue, 0, 510,
-              (config.maxOffset < maxRepeatDist ?
-               config.maxOffset : maxRepeatDist));
+          new LZSearchTable(minRepeatLen, maxRepeatLen, lengthMaxValue,
+                            0, 510, maxRepeatDist);
       searchTable->findMatches(&(inBufRev.front()), 0, nBytes);
       std::vector< unsigned int >   tmpBuf;
       compressData_(tmpBuf, inBufRev);

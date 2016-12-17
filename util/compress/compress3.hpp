@@ -32,7 +32,7 @@ namespace Plus4Compress {
     static const size_t minRepeatDist = 1;
     static const size_t maxRepeatDist = 65535;
     static const size_t minRepeatLen = 2;
-    static const size_t maxRepeatLen = 512;
+    static const size_t maxRepeatLen = 1023;
     static const unsigned int lengthMaxValue = 65535U;
     // --------
     struct LZMatchParameters {
