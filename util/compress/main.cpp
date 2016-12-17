@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,13 +21,13 @@
 
 #include <vector>
 
-// compression type (0 to 2, or -1 to use default or auto-detect)
+// compression type (0, 1, 2, 3 or 5, or -1 to use default or auto-detect)
 static int    compressionType = -1;
 // extract compressed file
 static bool   extractMode = false;
 // test compressed file(s)
 static bool   testMode = false;
-// compression level (1: fast, low compression ... 9: slow, high compression)
+// compression level (1: fast, low compression ... 10: slow, high compression)
 static int    compressionLevel = 5;
 // use all RAM (up to $4000) on the C16
 static bool   c16Mode = false;
@@ -251,8 +251,11 @@ int main(int argc, char **argv)
         extractMode = false;
       }
       else if (tmp.length() == 3 &&
-               (tmp[1] == 'm' && (tmp[2] >= '0' && tmp[2] <= '2'))) {
+               (tmp[1] == 'm' && (tmp[2] >= '0' && tmp[2] <= '5'))) {
         compressionType = int(tmp[2] - '0');
+      }
+      else if (tmp == "-mz" || tmp == "-zlib") {
+        compressionType = 5;
       }
       else if (tmp == "-m") {
         if (++i >= argc) {
@@ -260,11 +263,14 @@ int main(int argc, char **argv)
           throw Plus4Emu::Exception("missing argument for '-m'");
         }
         int     n = int(convertStringToInteger(argv[i]));
-        n = ((n >= 0 && n <= 2) ? n : -1);
+        n = ((n >= 0 && n <= 5) ? n : -1);
         compressionType = n;
       }
       else if (tmp.length() == 2 && (tmp[1] >= '1' && tmp[1] <= '9')) {
         compressionLevel = int(tmp[1] - '0');
+      }
+      else if (tmp == "-X") {
+        compressionLevel = 10;
       }
       else if (tmp == "-c16") {
         c16Mode = true;
@@ -376,6 +382,12 @@ int main(int argc, char **argv)
     if (fileNames.size() < (testMode ? 1 : 2)) {
       printUsageFlag = true;
       throw Plus4Emu::Exception("missing file name");
+    }
+    if (compressionType >= 3 && !(noPRGMode && noZPUpdate)) {
+      if (compressionType == 3)
+        throw Plus4Emu::Exception("-m3 compression requires -noprg");
+      else
+        throw Plus4Emu::Exception("ZLib compression requires -noprg");
     }
     // if offset, length, or load address is specified after the last file name,
     // apply it to the last file
@@ -646,11 +658,15 @@ int main(int argc, char **argv)
       std::fprintf(stderr, "    --\n");
       std::fprintf(stderr, "        interpret all remaining arguments as file "
                            "names\n");
-      std::fprintf(stderr, "    -m0 ... -m2\n");
+      std::fprintf(stderr, "    -m0 ... -m5 | -mz | -zlib\n");
       std::fprintf(stderr, "        select compression method (default: 0)\n");
       std::fprintf(stderr, "    -1 ... -9\n");
       std::fprintf(stderr, "        set compression level vs. speed (default: "
                            "5)\n");
+      std::fprintf(stderr, "    -X\n");
+      std::fprintf(stderr, "        set maximum compression level (very slow "
+                           "and may or may not make\n");
+      std::fprintf(stderr, "        the output file smaller)\n");
       std::fprintf(stderr, "    -noprg\n");
       std::fprintf(stderr, "        read and write raw files without PRG or "
                            "P00 header (implies\n");
