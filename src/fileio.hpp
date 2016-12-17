@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -101,14 +101,26 @@ namespace Plus4Emu {
    private:
     Buffer  buf;
     std::map< int, ChunkTypeHandler * > chunkTypeDB;
+    void loadCompressedFile(std::FILE *f);
    public:
     void addChunk(ChunkType type, const Buffer& buf_);
     void processAllChunks();
-    void writeFile(const char *fileName, bool useHomeDirectory = false);
+    void writeFile(const char *fileName, bool useHomeDirectory = false,
+                   bool enableCompression = false);
     void registerChunkType(ChunkTypeHandler *);
     File();
     File(const char *fileName, bool useHomeDirectory = false);
     ~File();
+    inline size_t getBufferDataSize() const
+    {
+      return buf.getDataSize();
+    }
+    inline const unsigned char *getBufferData() const
+    {
+      return buf.getData();
+    }
+    static PLUS4EMU_REGPARM2 uint32_t hash_32(const unsigned char *buf,
+                                              size_t nBytes);
   };
 
 }       // namespace Plus4Emu

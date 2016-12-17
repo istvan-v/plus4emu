@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "plus4emu.hpp"
 #include "fileio.hpp"
 #include "system.hpp"
+#include "decompm2.hpp"
 
 #include <cmath>
 #include <map>
@@ -28,38 +29,6 @@ static const unsigned char plus4EmuFile_Magic[16] = {
   0x5D, 0x12, 0xE4, 0xF4, 0xC9, 0xDA, 0xB6, 0x42,
   0x01, 0x33, 0xDE, 0x07, 0xD2, 0x34, 0xF2, 0x22
 };
-
-static uint32_t hash_32(const unsigned char *buf, size_t nBytes)
-{
-  size_t        n = nBytes >> 2;
-  unsigned int  h = 1U;
-
-  for (size_t i = 0; i < n; i++) {
-    h ^=  ((unsigned int) buf[0] & 0xFFU);
-    h ^= (((unsigned int) buf[1] & 0xFFU) << 8);
-    h ^= (((unsigned int) buf[2] & 0xFFU) << 16);
-    h ^= (((unsigned int) buf[3] & 0xFFU) << 24);
-    buf += 4;
-    uint64_t  tmp = (uint32_t) h * (uint64_t) 0xC2B0C3CCU;
-    h = ((unsigned int) tmp ^ (unsigned int) (tmp >> 32)) & 0xFFFFFFFFU;
-  }
-  switch (uint8_t(nBytes) & 3) {
-  case 3:
-    h ^= (((unsigned int) buf[2] & 0xFFU) << 16);
-  case 2:
-    h ^= (((unsigned int) buf[1] & 0xFFU) << 8);
-  case 1:
-    h ^=  ((unsigned int) buf[0] & 0xFFU);
-    {
-      uint64_t  tmp = (uint32_t) h * (uint64_t) 0xC2B0C3CCU;
-      h = ((unsigned int) tmp ^ (unsigned int) (tmp >> 32)) & 0xFFFFFFFFU;
-    }
-    break;
-  default:
-    break;
-  }
-  return uint32_t(h);
-}
 
 static void getFullPathFileName(const char *fileName, std::string& fullName)
 {
@@ -75,6 +44,39 @@ static void getFullPathFileName(const char *fileName, std::string& fullName)
 // ----------------------------------------------------------------------------
 
 namespace Plus4Emu {
+
+  PLUS4EMU_REGPARM2 uint32_t File::hash_32(const unsigned char *buf,
+                                           size_t nBytes)
+  {
+    size_t        n = nBytes >> 2;
+    unsigned int  h = 1U;
+
+    for (size_t i = 0; i < n; i++) {
+      h ^=  ((unsigned int) buf[0] & 0xFFU);
+      h ^= (((unsigned int) buf[1] & 0xFFU) << 8);
+      h ^= (((unsigned int) buf[2] & 0xFFU) << 16);
+      h ^= (((unsigned int) buf[3] & 0xFFU) << 24);
+      buf += 4;
+      uint64_t  tmp = (uint32_t) h * (uint64_t) 0xC2B0C3CCU;
+      h = ((unsigned int) tmp ^ (unsigned int) (tmp >> 32)) & 0xFFFFFFFFU;
+    }
+    switch (uint8_t(nBytes) & 3) {
+    case 3:
+      h ^= (((unsigned int) buf[2] & 0xFFU) << 16);
+    case 2:
+      h ^= (((unsigned int) buf[1] & 0xFFU) << 8);
+    case 1:
+      h ^=  ((unsigned int) buf[0] & 0xFFU);
+      {
+        uint64_t  tmp = (uint32_t) h * (uint64_t) 0xC2B0C3CCU;
+        h = ((unsigned int) tmp ^ (unsigned int) (tmp >> 32)) & 0xFFFFFFFFU;
+      }
+      break;
+    default:
+      break;
+    }
+    return uint32_t(h);
+  }
 
   File::Buffer::Buffer()
   {
@@ -343,6 +345,43 @@ namespace Plus4Emu {
 
   // --------------------------------------------------------------------------
 
+  void File::loadCompressedFile(std::FILE *f)
+  {
+    long    fileSize = 0L;
+    if (std::fseek(f, 0L, SEEK_END) < 0 || (fileSize = std::ftell(f)) < 0L ||
+        std::fseek(f, 0L, SEEK_SET) < 0) {
+      throw Exception("error seeking file");
+    }
+    if (fileSize < 20L || fileSize >= 0x00300000L)
+      throw Exception("invalid file header");
+    std::vector< unsigned char >  tmpBuf;
+    {
+      std::vector< unsigned char >  inBuf(fileSize);
+      if (std::fread(&(inBuf.front()), sizeof(unsigned char), size_t(fileSize),
+                     f) != size_t(fileSize)) {
+        throw Exception("error reading file");
+      }
+      tmpBuf.reserve(fileSize);
+      try {
+        Plus4Emu::decompressData(tmpBuf, &(inBuf.front()), inBuf.size());
+      }
+      catch (...) {
+        throw Exception("invalid file header or error in compressed file");
+      }
+    }
+    for (size_t i = 0; i < 16; i++) {
+      if (i >= tmpBuf.size() || tmpBuf[i] != plus4EmuFile_Magic[i])
+        throw Exception("invalid file header");
+    }
+    buf.clear();
+    buf.setPosition(tmpBuf.size() - 16);
+    buf.setPosition(0);
+    if (buf.getDataSize() > 0) {
+      std::memcpy(const_cast< unsigned char * >(buf.getData()),
+                  &(tmpBuf.front()) + 16, buf.getDataSize());
+    }
+  }
+
   File::File()
   {
   }
@@ -363,8 +402,13 @@ namespace Plus4Emu {
           int     c;
           for (int i = 0; i < 16; i++) {
             c = std::fgetc(f);
-            if (c == EOF || (unsigned char) (c & 0xFF) != plus4EmuFile_Magic[i])
-              throw Exception("invalid file header");
+            if (c == EOF ||
+                (unsigned char) (c & 0xFF) != plus4EmuFile_Magic[i]) {
+              // check for compressed file format
+              loadCompressedFile(f);
+              std::fclose(f);
+              return;
+            }
           }
           while ((c = std::fgetc(f)) != EOF)
             buf.writeByte((unsigned char) (c & 0xFF));
@@ -446,16 +490,43 @@ namespace Plus4Emu {
       throw Exception("CRC error in file data");
   }
 
-  void File::writeFile(const char *fileName, bool useHomeDirectory)
+  void File::writeFile(const char *fileName, bool useHomeDirectory,
+                       bool enableCompression)
   {
     size_t  startPos = buf.getPosition();
-    bool    err = false;
+    bool    err = true;
 
-    buf.setPosition(startPos + 12);
+    if (enableCompression) {
+      buf.setPosition(startPos + 28);
+      if (startPos > 0) {
+        std::memmove(const_cast< unsigned char * >(buf.getData() + 16),
+                     buf.getData(), startPos);
+      }
+      std::memcpy(const_cast< unsigned char * >(buf.getData()),
+                  &(plus4EmuFile_Magic[0]), 16);
+      startPos = startPos + 16;
+    }
+    else {
+      buf.setPosition(startPos + 12);
+    }
     buf.setPosition(startPos);
     buf.writeUInt32(uint32_t(PLUS4EMU_CHUNKTYPE_END_OF_FILE));
-    buf.writeUInt32(0);
+    buf.writeUInt32(0U);
     buf.writeUInt32(hash_32(buf.getData() + startPos, 8));
+    if (enableCompression) {
+      try {
+        std::vector< unsigned char >  tmpBuf;
+        compressData(tmpBuf, buf.getData(), startPos + 12);
+        buf.clear();
+        buf.setPosition(tmpBuf.size());
+        std::memcpy(const_cast< unsigned char * >(buf.getData()),
+                    &(tmpBuf.front()), tmpBuf.size());
+      }
+      catch (...) {
+        buf.clear();
+        throw Exception("error compressing file");
+      }
+    }
     if (fileName != (char*) 0 && fileName[0] != '\0') {
       std::string fullName;
       if (useHomeDirectory)
@@ -464,21 +535,21 @@ namespace Plus4Emu {
         fullName = fileName;
       std::FILE *f = std::fopen(fullName.c_str(), "wb");
       if (f) {
-        if (std::fwrite(&(plus4EmuFile_Magic[0]), 1, 16, f) != 16)
-          err = true;
-        if (std::fwrite(buf.getData(), 1, buf.getDataSize(), f)
-            != buf.getDataSize())
-          err = true;
+        err = !(enableCompression ||
+                std::fwrite(&(plus4EmuFile_Magic[0]), 1, 16, f) == 16);
+        if (!err) {
+          if (std::fwrite(buf.getData(),
+                          sizeof(unsigned char), buf.getDataSize(), f)
+              != buf.getDataSize()) {
+            err = true;
+          }
+        }
         if (std::fclose(f) != 0)
           err = true;
         if (err)
           std::remove(fullName.c_str());
       }
-      else
-        err = true;
     }
-    else
-      err = true;
     buf.clear();
     if (err)
       throw Exception("error opening or writing file");
