@@ -118,8 +118,8 @@ namespace Plus4Compress {
     splitOptimizationDepth = r.splitOptimizationDepth;
     if (splitOptimizationDepth < 1)
       splitOptimizationDepth = 1;
-    if (splitOptimizationDepth > 9)
-      splitOptimizationDepth = 9;
+    if (splitOptimizationDepth > 10)
+      splitOptimizationDepth = 10;
   }
 
   Compressor_M1::CompressionParameters&
@@ -134,14 +134,14 @@ namespace Plus4Compress {
     splitOptimizationDepth = r.splitOptimizationDepth;
     if (splitOptimizationDepth < 1)
       splitOptimizationDepth = 1;
-    if (splitOptimizationDepth > 9)
-      splitOptimizationDepth = 9;
+    if (splitOptimizationDepth > 10)
+      splitOptimizationDepth = 10;
     return (*this);
   }
 
   void Compressor_M1::CompressionParameters::setCompressionLevel(int n)
   {
-    n = (n > 1 ? (n < 9 ? n : 9) : 1);
+    n = (n > 1 ? (n < 10 ? n : 10) : 1);
     optimizeIterations = 40;
     splitOptimizationDepth = size_t(n);
   }
