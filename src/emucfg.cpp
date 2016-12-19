@@ -118,6 +118,12 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "vm.sidDigiBlaster",
                                 vm.sidDigiBlaster, false,
                                 vmConfigurationChanged);
+    defineConfigurationVariable(*this, "vm.sidRegistersC64",
+                                vm.sidRegistersC64, false,
+                                vmConfigurationChanged);
+    defineConfigurationVariable(*this, "vm.sidClockC64",
+                                vm.sidClockC64, false,
+                                vmConfigurationChanged);
     // ----------------
     defineConfigurationVariable(*this, "memory.ram.size",
                                 memory.ram.size, 64,
@@ -402,8 +408,10 @@ namespace Plus4Emu {
       vm_.setVideoFrequency(vm.videoClockFrequency);
       vm_.setSerialBusDelayOffset(vm.serialBusDelayOffset);
       vm_.setEnableACIAEmulation(vm.enableACIA);
-      vm_.setSIDConfiguration(vm.sidModel6581, vm.sidDigiBlaster,
-                              vm.sidOutputVolume);
+      vm_.setSIDConfiguration(uint8_t(vm.sidModel6581)
+                              | (uint8_t(vm.sidRegistersC64) << 1)
+                              | (uint8_t(vm.sidClockC64) << 2),
+                              vm.sidDigiBlaster, vm.sidOutputVolume);
       vmConfigurationChanged = false;
     }
     if (vmProcessPriorityChanged) {

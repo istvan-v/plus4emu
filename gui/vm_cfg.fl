@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0109 
+version 1.0110 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -123,7 +123,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
           }
           Fl_Group {} {
             label {Video capture settings} open
-            xywh {20 295 360 100} box ENGRAVED_FRAME align 21
+            xywh {20 295 360 65} box ENGRAVED_FRAME align 21
           } {
             Fl_Value_Input videoCaptureFrameRateValuator {
               label {Frame rate}
@@ -131,7 +131,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.frameRate = int(o->clamp(o->value()) + 0.5);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 320 120 25} align 8 when 4 minimum 24 maximum 60 step 1 value 30
+              tooltip {Number of frames per second for video recording; the allowed settings are 24, 25, 30, 32, 40, 48, 50, and 60} xywh {30 320 50 25} align 8 when 4 minimum 24 maximum 60 step 1 value 30
               code0 {o->cursor_color(Fl_Color(3));}
             }
             Fl_Light_Button videoCaptureYUVFormatValuator {
@@ -140,8 +140,15 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.videoCapture.yuvFormat = (o->value() != 0);
   gui.config.videoCaptureSettingsChanged = true;
 }}
-              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are recorded less accurately, and the frame rate is converted without interpolation)} xywh {30 355 240 25} value 1 color 50 selection_color 3
+              tooltip {Video data is recorded in YV12 format if this is checked, and RLE8 otherwise (RLE8 uses less CPU time, avoids chroma subsampling, and the file size is smaller; however, TV emulation color effects are recorded less accurately, and the frame rate is converted without interpolation)} xywh {170 320 200 25} value 1 color 50 selection_color 3
             }
+          }
+          Fl_Light_Button vmCompressFilesValuator {
+            label {Compress snapshot files}
+            callback {{
+  gui.config.compressFiles = (o->value() != 0);
+}}
+            tooltip {Save snapshot and demo files in compressed format} xywh {20 370 240 25} value 1 color 50 selection_color 3
           }
         }
         Fl_Group {} {
@@ -657,7 +664,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
           xywh {10 35 380 370} hide
         } {
           Fl_Group {} {open
-            xywh {20 45 360 135} box ENGRAVED_FRAME align 21
+            xywh {20 45 360 215} box ENGRAVED_FRAME align 21
           } {
             Fl_Light_Button vmSIDModel6581Valuator {
               label {6581 emulation}
@@ -682,6 +689,22 @@ class Plus4EmuGUI_MachineConfigWindow {open
   gui.config.vmConfigurationChanged = true;
 }}
               xywh {30 141 120 23} type Horizontal color 47 selection_color 52 align 8 minimum -8 maximum 2 step 1
+            }
+            Fl_Light_Button vmSIDRegistersC64Valuator {
+              label {Enable at $D400-$D41F}
+              callback {{
+  gui.config.vm.sidRegistersC64 = (o->value() != 0);
+  gui.config.vmConfigurationChanged = true;
+}}
+              tooltip {If checked, the SID registers can also be written at the C64 compatible address range} xywh {30 180 240 25} color 50 selection_color 3
+            }
+            Fl_Light_Button vmSIDClockC64Valuator {
+              label {C64 clock frequency}
+              callback {{
+  gui.config.vm.sidClockC64 = (o->value() != 0);
+  gui.config.vmConfigurationChanged = true;
+}}
+              tooltip {Run the SID emulation at PAL C64 compatible (1.111x higher) clock frequency} xywh {30 220 240 25} color 50 selection_color 3
             }
           }
         }
@@ -723,6 +746,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
   iecDriveReadOnlyModeValuator->value(gui.config.fileio.iecDriveReadOnlyMode ? 1 : 0);
   videoCaptureFrameRateValuator->value(double(gui.config.videoCapture.frameRate));
   videoCaptureYUVFormatValuator->value(gui.config.videoCapture.yuvFormat ? 1 : 0);
+  vmCompressFilesValuator->value(gui.config.compressFiles ? 1 : 0);
   memoryRAMSizeValuator->value(double(gui.config.memory.ram.size));
   memoryRAMStartupPatternValuator->value(gui.config.memory.ram.startupPattern.c_str());
   memoryROM00FileNameValuator->value(gui.config.memory.rom[0x00].file.c_str());
@@ -763,6 +787,8 @@ class Plus4EmuGUI_MachineConfigWindow {open
   vmSIDModel6581Valuator->value(gui.config.vm.sidModel6581 ? 1 : 0);
   vmSIDDigiBlasterValuator->value(gui.config.vm.sidDigiBlaster ? 1 : 0);
   vmSIDOutputVolumeValuator->value(double(gui.config.vm.sidOutputVolume));
+  vmSIDRegistersC64Valuator->value(gui.config.vm.sidRegistersC64 ? 1 : 0);
+  vmSIDClockC64Valuator->value(gui.config.vm.sidClockC64 ? 1 : 0);
 }} {}
   }
   Function {setROMImageFile(uint8_t segment_, const std::string& fileName_)} {open private return_type void

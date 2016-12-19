@@ -50,6 +50,8 @@ namespace Plus4Emu {
       bool          enableACIA;
       bool          sidModel6581;
       bool          sidDigiBlaster;
+      bool          sidRegistersC64;
+      bool          sidClockC64;
     } vm;
     bool          vmConfigurationChanged;
     bool          vmProcessPriorityChanged;

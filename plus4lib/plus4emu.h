@@ -219,10 +219,13 @@ PLUS4EMU_EXPORT void Plus4VM_SetVideoClockFrequency(
 PLUS4EMU_EXPORT void Plus4VM_SetEnableACIAEmulation(Plus4VM *vm, int isEnabled);
 /*!
  * Set SID emulation parameters. 'outputVolume' should be specified in decibels
- * (-8 to +2).
+ * (-8 to +2). 'sidFlags' can be the sum of:
+ *   1: SID model is 6581
+ *   2: enable write access at $D400-$D41F
+ *   4: run SID emulation at C64 clock frequency
  */
 PLUS4EMU_EXPORT void Plus4VM_SetSIDConfiguration(
-    Plus4VM *vm, int is6581, int enableDigiBlaster, int outputVolume);
+    Plus4VM *vm, int sidFlags, int enableDigiBlaster, int outputVolume);
 /*!
  * SID emulation is automatically enabled by writing to any of the SID
  * registers, but this function can be used to enable it explicitly, or disable

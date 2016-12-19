@@ -1,6 +1,7 @@
 Changes in version 1.2.10
 -------------------------
 
+  * new configuration options for C64 compatible SID emulation
   * video display improvements and bug fixes; the screen is no longer
     blanked while the emulator is paused
   * the debugger window is hidden only after a short delay when it is

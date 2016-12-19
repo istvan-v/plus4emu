@@ -209,9 +209,12 @@ namespace Plus4Emu {
     virtual void setEnableACIAEmulation(bool isEnabled);
     /*!
      * Set SID emulation parameters. 'outputVolume' should be specified in
-     * decibels (-8 to +2).
+     * decibels (-8 to +2). 'sidFlags_' can be the sum of:
+     *   1: SID model is 6581
+     *   2: enable write access at $D400-$D41F
+     *   4: run SID emulation at C64 clock frequency
      */
-    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster,
+    virtual void setSIDConfiguration(uint8_t sidFlags_, bool enableDigiBlaster,
                                      int outputVolume);
     /*!
      * Disable SID emulation (which is automatically enabled by writing to

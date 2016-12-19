@@ -296,8 +296,11 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void write_memory_8000_to_BFFF(
         void *userData, uint16_t addr, uint8_t value);
+   protected:
+    // needed for SID emulation at $D400-$D41F
     static PLUS4EMU_REGPARM3 void write_memory_C000_to_FCFF(
         void *userData, uint16_t addr, uint8_t value);
+   private:
     static PLUS4EMU_REGPARM3 void write_memory_FD00_to_FEFF(
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void write_memory_FF00_to_FFFF(

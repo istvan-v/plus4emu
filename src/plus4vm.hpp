@@ -46,6 +46,8 @@ namespace Plus4 {
           void *userData, uint16_t addr);
       static PLUS4EMU_REGPARM3 void sidRegisterWrite(
           void *userData, uint16_t addr, uint8_t value);
+      static PLUS4EMU_REGPARM3 void sidRegisterWriteC64(
+          void *userData, uint16_t addr, uint8_t value);
       static PLUS4EMU_REGPARM2 uint8_t parallelIECRead(
           void *userData, uint16_t addr);
       static PLUS4EMU_REGPARM3 void parallelIECWrite(
@@ -62,6 +64,7 @@ namespace Plus4 {
       TED7360_(Plus4VM& vm_);
       virtual ~TED7360_();
       virtual void reset(bool cold_reset = false);
+      void setEnableC64CompatibleSID(bool isEnabled);
       SerialBus serialPort;
      protected:
       virtual void playSample(int16_t sampleValue);
@@ -101,6 +104,7 @@ namespace Plus4 {
     // true after loading a snapshot; if not playing a demo as well, the
     // keyboard state will be cleared
     bool      snapshotLoadFlag;
+    bool      tapeCallbackFlag;
     // used for counting time between demo events (in TED cycles)
     uint64_t  demoTimeCnt;
     SID       *sid_;
@@ -108,10 +112,13 @@ namespace Plus4 {
     int32_t   soundOutputSignal;
     int32_t   sidOutputVolume;
     bool      sidEnabled;
-    bool      sidModel6581;
     bool      digiBlasterEnabled;
     uint8_t   digiBlasterOutput;
-    bool      tapeCallbackFlag;
+    uint8_t   sidCycleCnt;
+    // bit 0 = SID model is 6581
+    // bit 1 = enable write access at $D400-$D41F
+    // bit 2 = run SID emulation at C64 clock frequency
+    uint8_t   sidFlags;
     bool      is1541HighAccuracy;
     int16_t   serialBusDelayOffset;
     SerialDevice  *serialDevices[12];
@@ -157,6 +164,8 @@ namespace Plus4 {
     const M7501 * getDebugCPU() const;
     static void tapeCallback(void *userData);
     static void sidCallback(void *userData);
+    // run SID emulation at 9/8 * TED single clock frequency
+    static void sidCallbackC64(void *userData);
     static void demoPlayCallback(void *userData);
     static void demoRecordCallback(void *userData);
     static void videoBreakPointCheckCallback(void *userData);
@@ -230,9 +239,12 @@ namespace Plus4 {
     virtual void setEnableACIAEmulation(bool isEnabled);
     /*!
      * Set SID emulation parameters. 'outputVolume' should be specified in
-     * decibels (-8 to +2).
+     * decibels (-8 to +2). 'sidFlags_' can be the sum of:
+     *   1: SID model is 6581
+     *   2: enable write access at $D400-$D41F
+     *   4: run SID emulation at C64 clock frequency
      */
-    virtual void setSIDConfiguration(bool is6581, bool enableDigiBlaster,
+    virtual void setSIDConfiguration(uint8_t sidFlags_, bool enableDigiBlaster,
                                      int outputVolume);
     /*!
      * Disable SID emulation (which is automatically enabled by writing to

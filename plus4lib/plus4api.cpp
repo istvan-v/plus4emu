@@ -502,9 +502,9 @@ extern "C" PLUS4EMU_EXPORT void Plus4VM_SetEnableACIAEmulation(
 }
 
 extern "C" PLUS4EMU_EXPORT void Plus4VM_SetSIDConfiguration(
-    Plus4VM *vm, int is6581, int enableDigiBlaster, int outputVolume)
+    Plus4VM *vm, int sidFlags, int enableDigiBlaster, int outputVolume)
 {
-  vm->getVM().setSIDConfiguration(bool(is6581), bool(enableDigiBlaster),
+  vm->getVM().setSIDConfiguration(uint8_t(sidFlags), bool(enableDigiBlaster),
                                   outputVolume);
 }
 
