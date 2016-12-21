@@ -592,8 +592,23 @@ if not mingwCrossCompile:
     makecfgEnvironment.Install(instPixmapDir, ["resource/Cbm4.png"])
     makecfgEnvironment.Install(instDesktopDir, ["resource/plus4emu.desktop"])
     if not buildingLinuxPackage:
+        confFileList = [instConfDir + '/P4_Keyboard_HU.cfg',
+                        instConfDir + '/P4_Keyboard_US.cfg']
+        confFiles = 0
+        f = open("./installer/makecfg.cpp")
+        for l in f:
+          if not confFiles:
+            confFiles = "machineConfigFileNames" in l
+          elif "};" in l:
+            confFiles = None
+            break
+          elif '"' in l:
+            confFileList += [instConfDir + '/'
+                             + l[l.find('"') + 1:l.rfind('"')]]
+        f.close()
+        f = None
         makecfgEnvironment.Command(
-            instConfDir + "/P4_64k_PAL_3PLUS1.cfg", makecfg,
+            [confFileList], [makecfg],
             ['./' + programNamePrefix + 'makecfg -f "' + instDataDir + '"'])
     makecfgEnvironment.Install(instROMDir,
                                ["roms/1526_07c.rom", "roms/3plus1.rom",
