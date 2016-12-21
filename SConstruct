@@ -90,6 +90,8 @@ def configurePackage(env, pkgName):
                 if not s:
                     env['CCFLAGS'] = savedCFlags
                     env['CXXFLAGS'] = savedCXXFlags
+                    if ['_FORTIFY_SOURCE', '2'] in env['CPPDEFINES']:
+                        env['CPPDEFINES'].remove(['_FORTIFY_SOURCE', '2'])
                 return 1
             except:
                 print 'no'
