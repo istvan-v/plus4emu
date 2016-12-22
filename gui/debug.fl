@@ -744,7 +744,8 @@ class Plus4EmuGUI_DebugWindow {open
   gui.vm.setSingleStepMode(2);
   uint16_t  tmp = gui.vm.getStackPointer();
   uint32_t  tmp2 = gui.vm.readMemory(tmp, true)
-                   | (uint32_t(gui.vm.readMemory(tmp + 1, true)) << 8);
+                   | (uint32_t(gui.vm.readMemory((tmp - 0xFF) | 0x0100, true))
+                      << 8);
   gui.vm.setSingleStepModeNextAddress(int32_t(tmp2 + 1U));
   this->deactivate();
 }}
@@ -757,7 +758,7 @@ class Plus4EmuGUI_DebugWindow {open
   if (parseHexNumber(tmp, stepToAddressValuator->value()) > 0L) {
     focusWidget = stepButton;
     gui.vm.setSingleStepMode(2);
-    gui.vm.setSingleStepModeNextAddress(int32_t(tmp & 0xFFFFU));
+    gui.vm.setSingleStepModeNextAddress(int32_t(tmp));
     this->deactivate();
   }
 }}
