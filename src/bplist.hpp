@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -30,23 +30,25 @@ namespace Plus4Emu {
     // 0x00000000: no break (disabled)
     // 0x01000000: memory read (16 bit address)
     // 0x02000000: memory write (16 bit address)
-    // 0x03000000: memory read/write (16 bit address)
+    // 0x03000000: any memory access (read, write or CPU opcode read)
     // 0x04000000: video (16 bit address: bits 7..15 for Y, bits 0..6 for X)
     // 0x05000000: ignore other breakpoints if PC is at this address
+    // 0x06000000: CPU opcode read
     // + priority (0 to 3) * 0x00400000
     // + address
     uint32_t  n_;
    public:
     // allowed values for 'type_':
-    //   0: memory read/write
+    //   0: memory read/write/execute
     //   1: memory read
     //   2: memory write
-    //   3: memory read/write
+    //   3: memory read/write/execute
     //   4: video
     //   5: ignore
+    //   6: opcode read
     BreakPoint(int type_, uint16_t addr_, int priority_)
     {
-      if (type_ >= 1 && type_ <= 5)
+      if (type_ >= 1 && type_ <= 6)
         this->n_ = uint32_t(type_) << 24;
       else
         this->n_ = 0x03000000U;
@@ -94,8 +96,9 @@ namespace Plus4Emu {
     //   nnnn:nn        a single video position, as Y:X
     //   nnnn:nn-nn     range of video positions (Y:first_X-last_X)
     // and these optional modifiers:
-    //   r              the breakpoint is triggered on reads
+    //   r              the breakpoint is triggered on data reads
     //   w              the breakpoint is triggered on writes
+    //   x              the breakpoint is triggered on opcode reads
     //   p0             the breakpoint has a priority of 0
     //   p1             the breakpoint has a priority of 1
     //   p2             the breakpoint has a priority of 2
@@ -105,7 +108,7 @@ namespace Plus4Emu {
     //                  (read/write flags and priority are not used in
     //                  this case)
     // by default, the breakpoint is triggered on both reads and writes if
-    // 'r' or 'w' is not used, and has a priority of 2.
+    // 'r', 'w' or 'x' is not used, and has a priority of 2.
     // Example: 8000-8003rp1 means break on reading CPU addresses 0x8000,
     // 0x8001, 0x8002, and 0x8003, if the breakpoint priority threshold is
     // less than or equal to 1.
@@ -113,13 +116,22 @@ namespace Plus4Emu {
     // thrown, and no breakpoints are added.
     BreakPointList(const std::string& lst);
     // allowed values for type:
-    //   0: memory read/write
+    //   0: memory read/write/execute
     //   1: memory read
     //   2: memory write
-    //   3: memory read/write
+    //   3: memory read/write/execute
     //   4: video (address bits 7..15 for Y, bits 0..6 for X)
     //   5: ignore other breakpoints if PC is at this address
+    //   6: CPU opcode read
     void addBreakPoint(int type, uint16_t addr, int priority);
+    // Add memory breakpoint(s) at 'addr', bpFlags is the sum of
+    // at least one of:
+    //   1: read
+    //   2: write
+    //   4: execute
+    //   8: ignore
+    // and the priority (0 to 3) multiplied by 16.
+    void addBreakPoint(uint8_t bpFlags, uint16_t addr);
     size_t getBreakPointCnt() const
     {
       return this->lst_.size();
@@ -128,7 +140,6 @@ namespace Plus4Emu {
     {
       return ((const BreakPointList *) this)->lst_.at(ndx);
     }
-    std::string getBreakPointList();
     void saveState(File::Buffer&);
     void saveState(File&);
     void loadState(File::Buffer&);
