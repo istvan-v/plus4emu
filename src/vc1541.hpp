@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -78,7 +78,6 @@ namespace Plus4 {
                                       int debugContext_, int type,
                                       uint16_t addr, uint8_t value);
     void        *breakPointCallbackUserData;
-    bool        noBreakOnDataRead;
     // ----------------
     static PLUS4EMU_REGPARM2 uint8_t readMemory_RAM_0000_07FF(
         void *userData, uint16_t addr);
@@ -173,12 +172,6 @@ namespace Plus4 {
                                            int debugContext_, int type,
                                            uint16_t addr, uint8_t value),
                                        void *userData_);
-    /*!
-     * If 'n' is true, breakpoints will not be triggered on reads from
-     * any memory address other than the current value of the program
-     * counter.
-     */
-    virtual void setNoBreakOnDataRead(bool n);
     /*!
      * Read a byte from drive memory (used for debugging).
      */

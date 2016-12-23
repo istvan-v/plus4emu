@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -84,8 +84,6 @@ namespace Plus4 {
   void VC1541::M7501_::breakPointCallback(int type,
                                           uint16_t addr, uint8_t value)
   {
-    if (vc1541.noBreakOnDataRead && type == 1)
-      return;
     vc1541.breakPointCallback(vc1541.breakPointCallbackUserData,
                               (vc1541.deviceNumber & 3) + 1, type, addr, value);
   }
@@ -355,8 +353,7 @@ namespace Plus4 {
       spindleMotorSpeed(0),
       diskChangeCnt(15625),
       breakPointCallback(&defaultBreakPointCallback),
-      breakPointCallbackUserData((void *) 0),
-      noBreakOnDataRead(false)
+      breakPointCallbackUserData((void *) 0)
   {
     // clear RAM
     for (int i = 0; i < 2048; i++)
@@ -558,11 +555,6 @@ namespace Plus4 {
     else
       breakPointCallback = &defaultBreakPointCallback;
     breakPointCallbackUserData = userData_;
-  }
-
-  void VC1541::setNoBreakOnDataRead(bool n)
-  {
-    noBreakOnDataRead = n;
   }
 
   uint8_t VC1541::readMemoryDebug(uint16_t addr) const

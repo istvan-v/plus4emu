@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -51,8 +51,6 @@ namespace Plus4 {
   void VC1526::M6504_::breakPointCallback(int type,
                                           uint16_t addr, uint8_t value)
   {
-    if (vc1526.noBreakOnDataRead && type == 1)
-      return;
     vc1526.breakPointCallback(vc1526.breakPointCallbackUserData,
                               5, type, addr, value);
   }
@@ -217,7 +215,6 @@ namespace Plus4 {
       pageBuf((uint8_t *) 0),
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
-      noBreakOnDataRead(false),
       outFileASCIIMode(false),
       outFile((std::FILE *) 0)
   {
@@ -574,11 +571,6 @@ namespace Plus4 {
     else
       breakPointCallback = &defaultBreakPointCallback;
     breakPointCallbackUserData = userData_;
-  }
-
-  void VC1526::setNoBreakOnDataRead(bool n)
-  {
-    noBreakOnDataRead = n;
   }
 
   uint8_t VC1526::readMemoryDebug(uint16_t addr) const

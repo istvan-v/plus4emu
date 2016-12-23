@@ -288,8 +288,6 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
     tmpBuffer.clear();
     updateMemoryDumpDisplay();
     updateDisassemblyDisplay();
-    noBreakOnDataReadValuator->value(
-        gui.config.debug.noBreakOnDataRead ? 1 : 0);
     bpPriorityThresholdValuator->value(
         double(gui.config.debug.bpPriorityThreshold));
     breakOnInvalidOpcodeValuator->value(
