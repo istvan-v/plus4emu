@@ -260,9 +260,12 @@ namespace Plus4 {
     {
       reg_SR |= uint8_t(0x40);
     }
-    // type can be 0 for no break (delete previously set breakpoint),
-    // 1 for memory read, 2 for memory write, 3 for memory read and write,
-    // and 5 for ignore
+    // 'type' can be the sum of any of:
+    //   1: memory read
+    //   2: memory write
+    //   4: execute (opcode read)
+    //   8: ignore
+    // a negative priority value deletes a previously set breakpoint
     void setBreakPoint(int type, uint16_t addr, int priority);
     void clearBreakPoints();
     void setBreakPointPriorityThreshold(int n);

@@ -749,10 +749,10 @@ Start debugger (Alt + M)
       the current debugging context, with priority 'priority' (0 to 3).
       'bptype' can be one of the following values:
 
-        0: memory read or write
+        0: any memory access (read, write or CPU opcode read)
         1: memory read
         2: memory write
-        3: memory read or write (same as bptype == 0)
+        3: any memory access, same as bptype == 0
         4: video breakpoint, breaks at the TED video position defined by
            'addr'; this is only allowed for the main CPU, and cannot be
            set for floppy drives or printers. Bits 7 to 15 of the
@@ -763,6 +763,13 @@ Start debugger (Alt + M)
            $FF1E)
         5: ignore other breakpoints if the program counter is at this
            address (note: the priority parameter is ignored)
+        6: CPU opcode read
+
+      A 'priority' value of -1 will delete an existing breakpoint at the
+      specified address.
+      The read, write, execute, and ignore flags are combined if
+      multiple breakpoints are set at the same address, while the
+      priority will be the highest value specified.
 
       NOTE: the changes made to the breakpoint list by the script are
       not reflected in the breakpoint editor. To restore the previously

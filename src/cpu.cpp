@@ -1622,11 +1622,9 @@ namespace Plus4 {
   {
     if (haveBreakPoints && (singleStepMode == 0 || singleStepMode == 3)) {
       uint8_t *tbl = breakPointTable;
-      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0) {
-        if (!((tbl[addr] | tbl[reg_PC]) & 0x10)) {
-          breakPointCallback(0, addr, value);
-          return;
-        }
+      if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 12) == 4) {
+        breakPointCallback(0, addr, value);
+        return;
       }
       if (!singleStepMode)
         return;
@@ -1658,7 +1656,7 @@ namespace Plus4 {
         singleStepModeNextAddr = int32_t(-1);
     }
     if (breakPointTable != (uint8_t *) 0) {
-      if (breakPointTable[addr] & 0x10)
+      if (breakPointTable[addr] & 8)
         return;
     }
     breakPointCallback(3, addr, value);
@@ -1669,7 +1667,7 @@ namespace Plus4 {
     if (!(singleStepMode == 1 || singleStepMode == 2)) {
       uint8_t *tbl = breakPointTable;
       if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 1) != 0) {
-        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+        if (!(tbl[reg_PC] & 8))
           breakPointCallback(1, addr, value);
       }
     }
@@ -1680,7 +1678,7 @@ namespace Plus4 {
     if (!(singleStepMode == 1 || singleStepMode == 2)) {
       uint8_t *tbl = breakPointTable;
       if (tbl[addr] >= breakPointPriorityThreshold && (tbl[addr] & 2) != 0) {
-        if (!((tbl[addr] | tbl[reg_PC]) & 0x10))
+        if (!(tbl[reg_PC] & 8))
           breakPointCallback(2, addr, value);
       }
     }
@@ -1688,45 +1686,47 @@ namespace Plus4 {
 
   void M7501::setBreakPoint(int type, uint16_t addr, int priority)
   {
-    uint8_t mode =
-        uint8_t(type >= 0 && type <= 3 ? type : (type == 5 ? 31 : 0));
-    if (mode) {
+    if (priority >= 0) {
       // create new breakpoint, or change existing one
-      mode |= uint8_t((priority > 0 ? (priority < 3 ? priority : 3) : 0) << 2);
-      if (!breakPointTable) {
+      uint8_t mode = uint8_t(type & 15);
+      if (PLUS4EMU_UNLIKELY(!mode))
+        return;
+      if (PLUS4EMU_UNLIKELY(!breakPointTable)) {
         breakPointTable = new uint8_t[65536];
-        for (int i = 0; i < 65536; i++)
-          breakPointTable[i] = 0;
+        haveBreakPoints = true;
+        clearBreakPoints();
       }
       haveBreakPoints = true;
       uint8_t&  bp = breakPointTable[addr];
       if (!bp)
         breakPointCnt++;
-      if (bp > mode)
-        mode = (bp & 28) | (mode & 3);
-      mode |= (bp & 3);
-      bp = mode;
+      bp = bp | mode;
+      mode = mode | uint8_t((priority < 3 ? priority : 3) << 4);
+      if (mode > bp)
+        bp = mode;
     }
     else if (breakPointTable) {
       if (breakPointTable[addr]) {
         // remove a previously existing breakpoint
-        breakPointTable[addr] = mode;
+        breakPointTable[addr] = 0;
         breakPointCnt--;
-        if (!breakPointCnt)
-          haveBreakPoints = false;
+        haveBreakPoints = bool(breakPointCnt);
       }
     }
   }
 
   void M7501::clearBreakPoints()
   {
-    for (unsigned int addr = 0; addr < 65536; addr++)
-      setBreakPoint(0, uint16_t(addr), 0);
+    if (haveBreakPoints) {
+      breakPointCnt = 0U;
+      haveBreakPoints = false;
+      std::memset(breakPointTable, 0x00, sizeof(uint8_t) * 65536);
+    }
   }
 
   void M7501::setBreakPointPriorityThreshold(int n)
   {
-    breakPointPriorityThreshold = uint8_t((n > 0 ? (n < 4 ? n : 4) : 0) << 2);
+    breakPointPriorityThreshold = uint8_t((n > 0 ? (n < 4 ? n : 4) : 0) << 4);
   }
 
   Plus4Emu::BreakPointList M7501::getBreakPointList()
@@ -1735,10 +1735,8 @@ namespace Plus4 {
     if (breakPointTable) {
       for (size_t i = 0; i < 65536; i++) {
         uint8_t bp = breakPointTable[i];
-        if (bp) {
-          bplst.addBreakPoint(((bp & 16) != 0 ? 5 : int(bp & 3)),
-                              uint16_t(i), bp >> 2);
-        }
+        if (bp)
+          bplst.addBreakPoint(bp, uint16_t(i));
       }
     }
     return bplst;
