@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0109 
+version 1.0110 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -86,7 +86,7 @@ class Plus4EmuGUI_DebugWindow {open
   gui.vm.setSingleStepMode(0);
   this->hide();
 }} open
-      xywh {146 98 960 720} type Double color 48 visible
+      xywh {146 98 960 720} type Double color 48 resizable size_range {920 700 1080 810} visible
     } {
       Fl_Tabs debugTabs {
         callback {{
@@ -427,38 +427,10 @@ class Plus4EmuGUI_DebugWindow {open
               callback {{
   applyBreakPointList();
 }}
-              tooltip {Enter watchpoint definitions, separated by spaces or newlines. Allowed formats include NNNN (memory, CPU address), and NNNN:NN (TED video position as Y:X); each N is a hexadecimal digit. Address ranges (separated by a - character) can also be specified. Use the following suffixes to check for read or write access only, set priority, or ignore watchpoints depending on the program counter: r, w, p0, p1, p2, p3, i.} xywh {570 55 360 230} box DOWN_BOX align 5 textfont 4
+              tooltip {Enter watchpoint definitions, separated by spaces or newlines. Allowed formats include NNNN (memory, CPU address), and NNNN:NN (TED video position as Y:X); each N is a hexadecimal digit. Address ranges (separated by a - character) can also be specified. Use the following suffixes to check for read, write or execute access only, set priority, or ignore watchpoints depending on the program counter: r, w, x, p0, p1, p2, p3, i.} xywh {570 55 360 255} box DOWN_BOX align 5 textfont 4
               code0 {o->cursor_color(Fl_Color(3));}
               code1 {o->buffer(bpEditBuffer);}
               code2 {o->scrollbar_align(FL_ALIGN_RIGHT);}
-            }
-            Fl_Light_Button noBreakOnDataReadValuator {
-              label {Ignore data reads}
-              callback {{
-  gui.config.debug.noBreakOnDataRead = (o->value() != 0);
-  gui.config.debugSettingsChanged = true;
-  try {
-    gui.config.applySettings();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
-}}
-              xywh {575 295 145 25} color 50 selection_color 3
-            }
-            Fl_Light_Button breakOnInvalidOpcodeValuator {
-              label {Break on CPU jam}
-              callback {{
-  gui.config.debug.breakOnInvalidOpcode = (o->value() != 0);
-  gui.config.debugSettingsChanged = true;
-  try {
-    gui.config.applySettings();
-  }
-  catch (std::exception& e) {
-    gui.errorMessage(e.what());
-  }
-}}
-              xywh {575 330 145 25} color 50 selection_color 3
             }
             Fl_Value_Slider bpPriorityThresholdValuator {
               label {Priority threshold}
@@ -472,10 +444,31 @@ class Plus4EmuGUI_DebugWindow {open
     gui.errorMessage(e.what());
   }
 }}
-              xywh {575 376 145 23} type Horizontal color 47 selection_color 52 align 5 maximum 4 step 1
+              xywh {575 331 145 23} type Horizontal color 47 selection_color 52 align 5 maximum 4 step 1
+            }
+            Fl_Light_Button breakOnInvalidOpcodeValuator {
+              label {Break on CPU jam}
+              callback {{
+  gui.config.debug.breakOnInvalidOpcode = (o->value() != 0);
+  gui.config.debugSettingsChanged = true;
+  try {
+    gui.config.applySettings();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+              xywh {780 330 145 25} color 50 selection_color 3
             }
             Fl_Button {} {
-              label {Load from file}
+              label Apply
+              callback {{
+  applyBreakPointList();
+}}
+              tooltip {Reset watchpoints from text format definition} xywh {575 370 145 25} color 50 selection_color 51
+            }
+            Fl_Button {} {
+              label Load
               callback {{
   std::FILE *f = (std::FILE *) 0;
   try {
@@ -520,10 +513,10 @@ class Plus4EmuGUI_DebugWindow {open
     gui.errorMessage(e.what());
   }
 }}
-              xywh {780 295 145 25} color 50 selection_color 51
+              xywh {780 370 65 25} color 50 selection_color 51
             }
             Fl_Button {} {
-              label {Save to file}
+              label Save
               callback {{
   std::FILE   *f = (std::FILE *) 0;
   const char  *buf = (char *) 0;
@@ -562,14 +555,7 @@ class Plus4EmuGUI_DebugWindow {open
     gui.errorMessage(e.what());
   }
 }}
-              xywh {780 330 145 25} color 50 selection_color 51
-            }
-            Fl_Button {} {
-              label Apply
-              callback {{
-  applyBreakPointList();
-}}
-              tooltip {Reset watchpoints from text format definition} xywh {780 375 145 25} color 50 selection_color 51
+              xywh {860 370 65 25} color 50 selection_color 51
             }
           }
           Fl_Group {} {open
