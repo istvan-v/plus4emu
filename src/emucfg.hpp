@@ -193,7 +193,6 @@ namespace Plus4Emu {
     // --------
     struct {
       int         bpPriorityThreshold;
-      bool        noBreakOnDataRead;
       bool        breakOnInvalidOpcode;
     } debug;
     bool          debugSettingsChanged;

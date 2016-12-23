@@ -375,9 +375,6 @@ namespace Plus4Emu {
     defineConfigurationVariable(*this, "debug.bpPriorityThreshold",
                                 debug.bpPriorityThreshold, int(0),
                                 debugSettingsChanged, 0.0, 4.0);
-    defineConfigurationVariable(*this, "debug.noBreakOnDataRead",
-                                debug.noBreakOnDataRead, false,
-                                debugSettingsChanged);
     defineConfigurationVariable(*this, "debug.breakOnInvalidOpcode",
                                 debug.breakOnInvalidOpcode, false,
                                 debugSettingsChanged);
@@ -639,7 +636,6 @@ namespace Plus4Emu {
     }
     if (debugSettingsChanged) {
       vm_.setBreakPointPriorityThreshold(debug.bpPriorityThreshold);
-      vm_.setNoBreakOnDataRead(debug.noBreakOnDataRead);
       vm_.setBreakOnInvalidOpcode(debug.breakOnInvalidOpcode);
       debugSettingsChanged = false;
     }
