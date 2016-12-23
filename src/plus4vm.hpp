@@ -475,6 +475,19 @@ namespace Plus4 {
      */
     virtual void setDebugContext(int n);
     /*!
+     * Add new breakpoint with the specified type, address, and priority
+     * (0 to 3). The allowed values for 'bpType' are:
+     *   0: any memory access (read, write or CPU opcode read)
+     *   1: memory read
+     *   2: memory write
+     *   3: any memory access, same as bpType == 0
+     *   4: video (address bits 7..15 for Y, bits 0..6 for X)
+     *   5: ignore other breakpoints if the program counter is at this address
+     *   6: CPU opcode read
+     * A negative priority value deletes any existing breakpoint at 'bpAddr'.
+     */
+    virtual void setBreakPoint(int bpType, uint16_t bpAddr, int bpPriority);
+    /*!
      * Add breakpoints from the specified breakpoint list (see also
      * bplist.hpp).
      */
@@ -488,12 +501,6 @@ namespace Plus4 {
      * priority less than this value will not trigger a break.
      */
     virtual void setBreakPointPriorityThreshold(int n);
-    /*!
-     * If 'n' is true, breakpoints will not be triggered on reads from
-     * any memory address other than the current value of the program
-     * counter.
-     */
-    virtual void setNoBreakOnDataRead(bool n);
     /*!
      * Set if the breakpoint callback should be called whenever the first byte
      * of a CPU instruction is read from memory. 'mode_' can be one of the

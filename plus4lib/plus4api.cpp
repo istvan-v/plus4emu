@@ -1063,9 +1063,7 @@ extern "C" PLUS4EMU_EXPORT Plus4Emu_Error Plus4VM_AddBreakPoint(
     Plus4VM *vm, int bpType, uint16_t bpAddr, int bpPriority)
 {
   try {
-    Plus4Emu::BreakPointList  bpList;
-    bpList.addBreakPoint(bpType, bpAddr, bpPriority);
-    vm->getVM().setBreakPoints(bpList);
+    vm->getVM().setBreakPoint(bpType, bpAddr, bpPriority);
   }
   catch (std::exception& e) {
     vm->setLastErrorMessage(e.what());
@@ -1089,7 +1087,9 @@ extern "C" PLUS4EMU_EXPORT void Plus4VM_SetBPPriorityThreshold(
 
 extern "C" PLUS4EMU_EXPORT void Plus4VM_SetNoBreakOnDataRead(Plus4VM *vm, int n)
 {
-  vm->getVM().setNoBreakOnDataRead(bool(n));
+  // deprecated function, has no effect
+  (void) vm;
+  (void) n;
 }
 
 extern "C" PLUS4EMU_EXPORT void Plus4VM_SetSingleStepMode(Plus4VM *vm, int mode)

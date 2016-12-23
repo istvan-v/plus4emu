@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
 // Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 #include "plus4emu.hpp"
 #include "vm.hpp"
 #include "plus4vm.hpp"
-#include "bplist.hpp"
 #include "script.hpp"
 
 #ifdef HAVE_LUA_H
@@ -198,11 +197,9 @@ namespace Plus4Emu {
       return 0;
     }
     try {
-      BreakPointList  bpList;
-      bpList.addBreakPoint(int(lua_tointeger(lst, 1)),
-                           uint16_t(lua_tointeger(lst, 2) & 0xFFFF),
-                           int(lua_tointeger(lst, 3)));
-      this_.vm.setBreakPoints(bpList);
+      this_.vm.setBreakPoint(int(lua_tointeger(lst, 1)),
+                             uint16_t(lua_tointeger(lst, 2) & 0xFFFF),
+                             int(lua_tointeger(lst, 3)));
     }
     catch (std::exception& e) {
       this_.luaError(e.what());

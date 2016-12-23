@@ -121,8 +121,6 @@ namespace Plus4 {
   void Plus4VM::TED7360_::breakPointCallback(int type,
                                              uint16_t addr, uint8_t value)
   {
-    if (vm.noBreakOnDataRead && type == 1)
-      return;
     vm.breakPointCallback(vm.breakPointCallbackUserData, 0, type, addr, value);
   }
 
@@ -1500,7 +1498,6 @@ namespace Plus4 {
             ted->getBreakPointPriorityThreshold());
         p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
       }
-      printer_->setNoBreakOnDataRead(noBreakOnDataRead);
     }
   }
 
@@ -1800,7 +1797,6 @@ namespace Plus4 {
               ted->getBreakPointPriorityThreshold());
           p->setBreakOnInvalidOpcode(ted->getIsBreakOnInvalidOpcode());
         }
-        floppyDrive->setNoBreakOnDataRead(noBreakOnDataRead);
       }
       if (serialDevices[n] != (SerialDevice *) 0) {
         reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
@@ -2016,40 +2012,61 @@ namespace Plus4 {
     }
   }
 
+  void Plus4VM::setBreakPoint(int bpType, uint16_t bpAddr, int bpPriority)
+  {
+    bpPriority = (bpPriority < 3 ? bpPriority : 3);
+    if (bpType == 4) {
+      if (currentDebugContext != 0) {
+        throw Plus4Emu::Exception("video breakpoints can only be set "
+                                  "for the main CPU");
+      }
+      // correct video position for FF1E read delay
+      uint16_t  addrX = (bpAddr + 1) & 0x7F;
+      bpAddr = bpAddr & 0xFF80;
+      if (addrX != 114)
+        bpAddr = bpAddr | addrX;
+      if (bpPriority >= 0) {
+        if (videoBreakPointCnt == 0) {
+          if (!videoBreakPoints) {
+            videoBreakPoints = new uint8_t[65536];
+            for (size_t j = 0; j <= 0xFFFF; j++)
+              videoBreakPoints[j] = 0;
+          }
+          ted->setCallback(&videoBreakPointCheckCallback, this, 3);
+        }
+        if (!videoBreakPoints[bpAddr])
+          videoBreakPointCnt++;
+        if (bpPriority >= int(videoBreakPoints[bpAddr]))
+          videoBreakPoints[bpAddr] = uint8_t(bpPriority + 1);
+      }
+      else if (videoBreakPoints) {
+        if (videoBreakPoints[bpAddr]) {
+          videoBreakPoints[bpAddr] = 0;
+          videoBreakPointCnt--;
+          if (!videoBreakPointCnt)
+            ted->setCallback(&videoBreakPointCheckCallback, this, 0);
+        }
+      }
+      return;
+    }
+    M7501   *p = getDebugCPU();
+    if (!p)
+      return;
+    if (bpType < 0 || bpType > 6) {
+      bpType = 0;
+    }
+    else {
+      bpType = ((bpType == 0 || bpType == 3) ?
+                7 : (bpType == 6 ? 4 : (bpType == 5 ? 8 : bpType)));
+    }
+    p->setBreakPoint(bpType, bpAddr, bpPriority);
+  }
+
   void Plus4VM::setBreakPoints(const Plus4Emu::BreakPointList& bpList)
   {
     for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
       const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-      if (bp.type() == 4 && currentDebugContext != 0)
-        throw Plus4Emu::Exception("video breakpoints can only be set "
-                                  "for the main CPU");
-    }
-    M7501   *p = getDebugCPU();
-    if (p) {
-      for (size_t i = 0; i < bpList.getBreakPointCnt(); i++) {
-        const Plus4Emu::BreakPoint& bp = bpList.getBreakPoint(i);
-        if (bp.type() != 4) {
-          p->setBreakPoint(bp.type(), bp.addr(), bp.priority());
-        }
-        else {
-          if (videoBreakPointCnt == 0) {
-            if (!videoBreakPoints) {
-              videoBreakPoints = new uint8_t[65536];
-              for (size_t j = 0; j <= 0xFFFF; j++)
-                videoBreakPoints[j] = 0;
-            }
-            ted->setCallback(&videoBreakPointCheckCallback, this, 3);
-          }
-          // correct video position for FF1E read delay
-          uint16_t  addr = bp.addr();
-          uint16_t  addrX = (addr & 0x7F) + 1;
-          addr = addr & 0xFF80;
-          if (addrX != 114)
-            addr = addr | (addrX & 0x7F);
-          videoBreakPoints[addr] = uint8_t(bp.priority() + 1);
-          videoBreakPointCnt++;
-        }
-      }
+      setBreakPoint(bp.type(), bp.addr(), bp.priority());
     }
   }
 
@@ -2058,7 +2075,7 @@ namespace Plus4 {
     M7501   *p = getDebugCPU();
     if (p)
       p->clearBreakPoints();
-    if (currentDebugContext == 0 && videoBreakPointCnt != 0) {
+    if (currentDebugContext == 0 && videoBreakPoints) {
       ted->setCallback(&videoBreakPointCheckCallback, this, 0);
       videoBreakPointCnt = 0;
       delete[] videoBreakPoints;
@@ -2076,16 +2093,6 @@ namespace Plus4 {
         p = serialDevices[tmp]->getCPU();
       if (p)
         p->setBreakPointPriorityThreshold(n);
-    }
-  }
-
-  void Plus4VM::setNoBreakOnDataRead(bool n)
-  {
-    noBreakOnDataRead = n;
-    for (int i = 0; i < 5; i++) {
-      int     tmp = (i < 4 ? (i + 8) : printerDeviceNumber);
-      if (serialDevices[tmp] != (SerialDevice *) 0)
-        serialDevices[tmp]->setNoBreakOnDataRead(n);
     }
   }
 

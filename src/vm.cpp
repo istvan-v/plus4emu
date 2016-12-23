@@ -119,7 +119,6 @@ namespace Plus4Emu {
       breakPointCallback(&defaultBreakPointCallback),
       breakPointCallbackUserData((void *) 0),
       currentDebugContext(0),
-      noBreakOnDataRead(false),
 #ifndef WIN32
       fileIOWorkingDirectory("./"),
 #else
@@ -671,6 +670,14 @@ namespace Plus4Emu {
     return currentDebugContext;
   }
 
+  void VirtualMachine::setBreakPoint(int bpType, uint16_t bpAddr,
+                                     int bpPriority)
+  {
+    (void) bpType;
+    (void) bpAddr;
+    (void) bpPriority;
+  }
+
   void VirtualMachine::setBreakPoints(const BreakPointList& bpList)
   {
     (void) bpList;
@@ -683,11 +690,6 @@ namespace Plus4Emu {
   void VirtualMachine::setBreakPointPriorityThreshold(int n)
   {
     (void) n;
-  }
-
-  void VirtualMachine::setNoBreakOnDataRead(bool n)
-  {
-    noBreakOnDataRead = n;
   }
 
   void VirtualMachine::setSingleStepMode(int mode_)

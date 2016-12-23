@@ -583,12 +583,14 @@ PLUS4EMU_EXPORT int Plus4VM_GetDebugContext(Plus4VM *vm);
 /*!
  * Add new breakpoint with the specified type, address, and priority (0 to 3).
  * The allowed values for 'bpType' are:
- *   0: memory read/write
+ *   0: any memory access (read, write or CPU opcode read)
  *   1: memory read
  *   2: memory write
- *   3: memory read/write
+ *   3: any memory access, same as bpType == 0
  *   4: video (address bits 7..15 for Y, bits 0..6 for X)
  *   5: ignore other breakpoints if the program counter is at this address
+ *   6: CPU opcode read
+ * A negative priority value deletes any existing breakpoint at 'bpAddr'.
  */
 PLUS4EMU_EXPORT Plus4Emu_Error Plus4VM_AddBreakPoint(
     Plus4VM *vm, int bpType, uint16_t bpAddr, int bpPriority);
@@ -602,7 +604,9 @@ PLUS4EMU_EXPORT void Plus4VM_ClearBreakPoints(Plus4VM *vm);
  */
 PLUS4EMU_EXPORT void Plus4VM_SetBPPriorityThreshold(Plus4VM *vm, int n);
 /*!
- * If 'n' is non-zero, read breakpoints will only be triggered on opcode reads.
+ * (DEPRECATED) If 'n' is non-zero, read breakpoints will only be triggered on
+ * opcode reads. NOTE: this function no longer has any effect, use execute
+ * breakpoints instead.
  */
 PLUS4EMU_EXPORT void Plus4VM_SetNoBreakOnDataRead(Plus4VM *vm, int n);
 /*!
