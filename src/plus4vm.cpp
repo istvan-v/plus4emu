@@ -507,11 +507,11 @@ namespace Plus4 {
   void Plus4VM::sidCallbackC64(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
-    // FIXME: the accuracy and sound quality of this solution is not very good
+    // FIXME: the accuracy and sound quality of this solution could be improved
     if (PLUS4EMU_UNLIKELY(!(--(vm.sidCycleCnt)))) {
-      // on every 8th TED single clock cycle,
+      // on every 9th TED single clock cycle,
       // run the SID emulation twice and average the outputs
-      vm.sidCycleCnt = 8;
+      vm.sidCycleCnt = 9;
       vm.sid_->clock();
       int32_t tmp = int32_t(vm.sid_->fast_output());
       vm.sid_->clock();
@@ -2498,14 +2498,14 @@ namespace Plus4 {
       (void) tmpTEDInputClockFrequency;
       (void) tmpSoundClockFrequency;
       sidEnabled = buf.readBoolean();
+      sidCycleCnt = 4;
       if (version != 0x01000000) {
         if (version < 0x01000004) {
           sidFlags = uint8_t(buf.readBoolean());
-          sidCycleCnt = 4;
         }
         else {
           sidFlags = buf.readByte() & 7;
-          sidCycleCnt = ((buf.readByte() + 7) & 7) + 1;
+          sidCycleCnt = ((buf.readByte() - 1) & 15) + 1;
         }
         digiBlasterEnabled = buf.readBoolean();
         digiBlasterOutput = buf.readByte();
@@ -2514,7 +2514,6 @@ namespace Plus4 {
         sidFlags = 0;
         digiBlasterEnabled = false;
         digiBlasterOutput = 0x80;
-        sidCycleCnt = 4;
       }
       if (sidFlags & 1)
         sid_->set_chip_model(MOS6581);

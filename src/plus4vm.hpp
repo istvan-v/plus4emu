@@ -164,7 +164,7 @@ namespace Plus4 {
     const M7501 * getDebugCPU() const;
     static void tapeCallback(void *userData);
     static void sidCallback(void *userData);
-    // run SID emulation at 9/8 * TED single clock frequency
+    // run SID emulation at 10/9 * TED single clock frequency
     static void sidCallbackC64(void *userData);
     static void demoPlayCallback(void *userData);
     static void demoRecordCallback(void *userData);
