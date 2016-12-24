@@ -1,6 +1,6 @@
 //  ---------------------------------------------------------------------------
 //  This file is part of reSID, a MOS6581 SID emulator engine.
-//  Copyright (C) 2004  Dag Lem <resid@nimrod.no>
+//  Copyright (C) 2010  Dag Lem <resid@nimrod.no>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
 //  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //  ---------------------------------------------------------------------------
 
-#ifndef __ENVELOPE_HPP__
-#define __ENVELOPE_HPP__
+#ifndef RESID_ENVELOPE_HPP
+#define RESID_ENVELOPE_HPP
 
 #include "plus4emu.hpp"
 #include "siddefs.hpp"
@@ -41,8 +41,10 @@ namespace Plus4 {
 
     enum State { ATTACK, DECAY_SUSTAIN, RELEASE };
 
-    inline void clock();
-    inline void clock(cycle_count delta_t);
+    void set_chip_model(chip_model model);
+
+    PLUS4EMU_INLINE void clock();
+    PLUS4EMU_INLINE void clock(cycle_count delta_t);
     void reset();
 
     void writeCONTROL_REG(reg8);
@@ -51,14 +53,18 @@ namespace Plus4 {
     reg8 readENV();
 
     // 8-bit envelope output.
-    inline reg8 output();
+    PLUS4EMU_INLINE short output();
 
   protected:
+    PLUS4EMU_INLINE void set_exponential_counter();
+
     reg16 rate_counter;
     reg16 rate_period;
     reg8 exponential_counter;
     reg8 exponential_counter_period;
     reg8 envelope_counter;
+    // Emulation of pipeline delay for envelope decrement.
+    cycle_count envelope_pipeline;
     bool hold_zero;
 
     reg4 attack;
@@ -70,12 +76,17 @@ namespace Plus4 {
 
     State state;
 
+    chip_model sid_model;
+
     // Lookup table to convert from attack, decay, or release value to rate
     // counter period.
     static reg16 rate_counter_period[];
 
     // The 16 selectable sustain levels.
     static reg8 sustain_level[];
+
+    // DAC lookup tables.
+    static unsigned short model_dac[2][1 << 8];
 
   friend class SID;
   };
@@ -89,8 +100,17 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   // SID clocking - 1 cycle.
   // --------------------------------------------------------------------------
-  inline void EnvelopeGenerator::clock()
+  PLUS4EMU_INLINE void EnvelopeGenerator::clock()
   {
+    // If the exponential counter period != 1, the envelope decrement is delayed
+    // 1 cycle. This is only modeled for single cycle clocking.
+    if (PLUS4EMU_UNLIKELY(envelope_pipeline)) {
+      --envelope_counter;
+      envelope_pipeline = 0;
+      // Check for change of exponential counter period.
+      set_exponential_counter();
+    }
+
     // Check for ADSR delay bug.
     // If the rate counter comparison value is set below the current value of
     // the rate counter, the counter will continue counting up until it wraps
@@ -98,11 +118,11 @@ namespace Plus4 {
     // the envelope can finally be stepped.
     // This has been verified by sampling ENV3.
     //
-    if (++rate_counter & 0x8000) {
+    if (PLUS4EMU_UNLIKELY(++rate_counter & 0x8000)) {
       ++rate_counter &= 0x7fff;
     }
 
-    if (rate_counter != rate_period) {
+    if (PLUS4EMU_EXPECT(rate_counter != rate_period)) {
       return;
     }
 
@@ -113,10 +133,11 @@ namespace Plus4 {
     //
     if (state == ATTACK || ++exponential_counter == exponential_counter_period)
     {
+      // likely (~50%)
       exponential_counter = 0;
 
       // Check whether the envelope counter is frozen at zero.
-      if (hold_zero) {
+      if (PLUS4EMU_UNLIKELY(hold_zero)) {
         return;
       }
 
@@ -128,15 +149,22 @@ namespace Plus4 {
         // then to attack. This has been verified by sampling ENV3.
         //
         ++envelope_counter &= 0xff;
-        if (envelope_counter == 0xff) {
+        if (PLUS4EMU_UNLIKELY(envelope_counter == 0xff)) {
           state = DECAY_SUSTAIN;
           rate_period = rate_counter_period[decay];
         }
         break;
       case DECAY_SUSTAIN:
-        if (envelope_counter != sustain_level[sustain]) {
-          --envelope_counter;
+        if (PLUS4EMU_EXPECT(envelope_counter == sustain_level[sustain])) {
+          return;
         }
+        if (exponential_counter_period != 1) {
+          // unlikely (15%)
+          // The decrement is delayed one cycle.
+          envelope_pipeline = 1;
+          return;
+        }
+        --envelope_counter;
         break;
       case RELEASE:
         // The envelope counter can flip from 0x00 to 0xff by changing state to
@@ -145,46 +173,29 @@ namespace Plus4 {
         // This has been verified by sampling ENV3.
         // NB! The operation below requires two's complement integer.
         //
+        if (exponential_counter_period != 1) {
+          // likely (~50%)
+          // The decrement is delayed one cycle.
+          envelope_pipeline = 1;
+          return;
+        }
         --envelope_counter &= 0xff;
         break;
       }
 
       // Check for change of exponential counter period.
-      switch (envelope_counter) {
-      case 0xff:
-        exponential_counter_period = 1;
-        break;
-      case 0x5d:
-        exponential_counter_period = 2;
-        break;
-      case 0x36:
-        exponential_counter_period = 4;
-        break;
-      case 0x1a:
-        exponential_counter_period = 8;
-        break;
-      case 0x0e:
-        exponential_counter_period = 16;
-        break;
-      case 0x06:
-        exponential_counter_period = 30;
-        break;
-      case 0x00:
-        exponential_counter_period = 1;
-
-        // When the envelope counter is changed to zero, it is frozen at zero.
-        // This has been verified by sampling ENV3.
-        hold_zero = true;
-        break;
-      }
+      set_exponential_counter();
     }
   }
 
   // --------------------------------------------------------------------------
   // SID clocking - delta_t cycles.
   // --------------------------------------------------------------------------
-  inline void EnvelopeGenerator::clock(cycle_count delta_t)
+  PLUS4EMU_INLINE void EnvelopeGenerator::clock(cycle_count delta_t)
   {
+    // NB! Any pipelined envelope counter decrement from single cycle clocking
+    // will be lost. It is not worth the trouble to flush the pipeline here.
+
     // Check for ADSR delay bug.
     // If the rate counter comparison value is set below the current value of
     // the rate counter, the counter will continue counting up until it wraps
@@ -195,14 +206,15 @@ namespace Plus4 {
 
     // NB! This requires two's complement integer.
     int rate_step = rate_period - rate_counter;
-    if (rate_step <= 0) {
+    if (PLUS4EMU_UNLIKELY(rate_step <= 0)) {
       rate_step += 0x7fff;
     }
 
     while (delta_t) {
       if (delta_t < rate_step) {
+        // likely (~65%)
         rate_counter += delta_t;
-        if (rate_counter & 0x8000) {
+        if (PLUS4EMU_UNLIKELY(rate_counter & 0x8000)) {
           ++rate_counter &= 0x7fff;
         }
         return;
@@ -211,16 +223,17 @@ namespace Plus4 {
       rate_counter = 0;
       delta_t -= rate_step;
 
-      // The first envelope step in the attack state also resets the
-      // exponential counter. This has been verified by sampling ENV3.
+      // The first envelope step in the attack state also resets the exponential
+      // counter. This has been verified by sampling ENV3.
       //
       if (state == ATTACK ||
           ++exponential_counter == exponential_counter_period)
       {
+        // likely (~50%)
         exponential_counter = 0;
 
         // Check whether the envelope counter is frozen at zero.
-        if (hold_zero) {
+        if (PLUS4EMU_UNLIKELY(hold_zero)) {
           rate_step = rate_period;
           continue;
         }
@@ -233,15 +246,16 @@ namespace Plus4 {
           // release, then to attack. This has been verified by sampling ENV3.
           //
           ++envelope_counter &= 0xff;
-          if (envelope_counter == 0xff) {
+          if (PLUS4EMU_UNLIKELY(envelope_counter == 0xff)) {
             state = DECAY_SUSTAIN;
             rate_period = rate_counter_period[decay];
           }
           break;
         case DECAY_SUSTAIN:
-          if (envelope_counter != sustain_level[sustain]) {
-            --envelope_counter;
+          if (PLUS4EMU_EXPECT(envelope_counter == sustain_level[sustain])) {
+            return;
           }
+          --envelope_counter;
           break;
         case RELEASE:
           // The envelope counter can flip from 0x00 to 0xff by changing state
@@ -255,33 +269,7 @@ namespace Plus4 {
         }
 
         // Check for change of exponential counter period.
-        switch (envelope_counter) {
-        case 0xff:
-          exponential_counter_period = 1;
-          break;
-        case 0x5d:
-          exponential_counter_period = 2;
-          break;
-        case 0x36:
-          exponential_counter_period = 4;
-          break;
-        case 0x1a:
-          exponential_counter_period = 8;
-          break;
-        case 0x0e:
-          exponential_counter_period = 16;
-          break;
-        case 0x06:
-          exponential_counter_period = 30;
-          break;
-        case 0x00:
-          exponential_counter_period = 1;
-
-          // When the envelope counter is changed to zero, it is frozen at
-          // zero. This has been verified by sampling ENV3.
-          hold_zero = true;
-          break;
-        }
+        set_exponential_counter();
       }
 
       rate_step = rate_period;
@@ -291,12 +279,49 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   // Read the envelope generator output.
   // --------------------------------------------------------------------------
-  inline reg8 EnvelopeGenerator::output()
+  PLUS4EMU_INLINE short EnvelopeGenerator::output()
   {
-    return envelope_counter;
+    // DAC imperfections are emulated by using envelope_counter as an index
+    // into a DAC lookup table. readENV() uses envelope_counter directly.
+    return model_dac[sid_model][envelope_counter];
+  }
+
+  PLUS4EMU_INLINE void EnvelopeGenerator::set_exponential_counter()
+  {
+    // Check for change of exponential counter period.
+    switch (envelope_counter) {
+    case 0xff:
+      exponential_counter_period = 1;
+      break;
+    case 0x5d:
+      exponential_counter_period = 2;
+      break;
+    case 0x36:
+      exponential_counter_period = 4;
+      break;
+    case 0x1a:
+      exponential_counter_period = 8;
+      break;
+    case 0x0e:
+      exponential_counter_period = 16;
+      break;
+    case 0x06:
+      exponential_counter_period = 30;
+      break;
+    case 0x00:
+      // FIXME: Check whether 0x00 really changes the period.
+      // E.g. set R = 0xf, gate on to 0x06, gate off to 0x00, gate on to 0x04,
+      // gate off, sample.
+      exponential_counter_period = 1;
+
+      // When the envelope counter is changed to zero, it is frozen at zero.
+      // This has been verified by sampling ENV3.
+      hold_zero = true;
+      break;
+    }
   }
 
 }       // namespace Plus4
 
-#endif  // not __ENVELOPE_HPP__
+#endif  // not RESID_ENVELOPE_HPP
 

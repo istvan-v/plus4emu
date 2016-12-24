@@ -17,11 +17,17 @@
 //  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //  ---------------------------------------------------------------------------
 
-#include "plus4emu.hpp"
-#include "siddefs.hpp"
+#ifndef RESID_DAC_HPP
+#define RESID_DAC_HPP
 
-extern "C"
-{
-  const char* resid_version_string = "1.0";
-}
+#include "plus4emu.hpp"
+
+namespace Plus4 {
+
+  void build_dac_table(unsigned short* dac, int bits, double _2R_div_R,
+                       bool term);
+
+}       // namespace Plus4
+
+#endif  // not RESID_DAC_HPP
 

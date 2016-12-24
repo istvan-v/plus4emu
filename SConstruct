@@ -371,6 +371,7 @@ residLibEnvironment = plus4emuLibEnvironment.Clone()
 residLibEnvironment.Append(CPPPATH = ['./resid'])
 
 residLibSources = Split('''
+    resid/dac.cpp
     resid/envelope.cpp
     resid/extfilt.cpp
     resid/filter.cpp
@@ -378,14 +379,6 @@ residLibSources = Split('''
     resid/sid.cpp
     resid/version.cpp
     resid/voice.cpp
-    resid/wave6581_PS_.cpp
-    resid/wave6581_PST.cpp
-    resid/wave6581_P_T.cpp
-    resid/wave6581__ST.cpp
-    resid/wave8580_PS_.cpp
-    resid/wave8580_PST.cpp
-    resid/wave8580_P_T.cpp
-    resid/wave8580__ST.cpp
     resid/wave.cpp
 ''')
 

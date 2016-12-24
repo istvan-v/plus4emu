@@ -1,6 +1,6 @@
 //  ---------------------------------------------------------------------------
 //  This file is part of reSID, a MOS6581 SID emulator engine.
-//  Copyright (C) 2004  Dag Lem <resid@nimrod.no>
+//  Copyright (C) 2010  Dag Lem <resid@nimrod.no>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -18,42 +18,10 @@
 //  ---------------------------------------------------------------------------
 
 #include "plus4emu.hpp"
-
-#define __ENVELOPE_CPP__
 #include "envelope.hpp"
+#include "dac.hpp"
 
 namespace Plus4 {
-
-  // --------------------------------------------------------------------------
-  // Constructor.
-  // --------------------------------------------------------------------------
-  EnvelopeGenerator::EnvelopeGenerator()
-  {
-    reset();
-  }
-
-  // --------------------------------------------------------------------------
-  // SID reset.
-  // --------------------------------------------------------------------------
-  void EnvelopeGenerator::reset()
-  {
-    envelope_counter = 0;
-
-    attack = 0;
-    decay = 0;
-    sustain = 0;
-    release = 0;
-
-    gate = 0;
-
-    rate_counter = 0;
-    exponential_counter = 0;
-    exponential_counter_period = 1;
-
-    state = RELEASE;
-    rate_period = rate_counter_period[release];
-    hold_zero = true;
-  }
 
   // Rate counter periods are calculated from the Envelope Rates table in
   // the Programmer's Reference Guide. The rate counter period is the number of
@@ -70,8 +38,8 @@ namespace Plus4 {
   // down) and 1 has beed added to the result. A possible explanation for this
   // is that the SID designers have used the calculated values directly
   // as rate counter comparison values, not considering a one cycle delay to
-  // zero the counter. This would yield an actual period of comparison
-  // value + 1.
+  // zero the counter. This would yield an actual period of comparison value
+  // + 1.
   //
   // The time of the first envelope count can not be exactly controlled, except
   // possibly by resetting the chip. Because of this we cannot do cycle exact
@@ -97,8 +65,9 @@ namespace Plus4 {
   //     bne l2
   //
   // This yields a maximum error for the calculated rate period of 14/128
-  // cycles. The described method is thus sufficient for exact calculation of
-  // the rate periods.
+  // cycles.
+  // The described method is thus sufficient for exact calculation of the rate
+  // periods.
   //
   reg16 EnvelopeGenerator::rate_counter_period[] = {
         9,  //   2ms*1.0MHz/256 =     7.81
@@ -127,14 +96,14 @@ namespace Plus4 {
   // envelope has been rising (attack -> release) or sinking (decay/release).
   //
   // Since it is not possible to reset the rate counter (the test bit has no
-  // influence on the envelope generator whatsoever) a method must be devised
-  // to do cycle exact sampling of ENV3 to do the investigation. This is
-  // possible with knowledge of the rate period for A=0, found above.
+  // influence on the envelope generator whatsoever) a method must be devised to
+  // do cycle exact sampling of ENV3 to do the investigation. This is possible
+  // with knowledge of the rate period for A=0, found above.
   //
   // The CPU can be synchronized with ENV3 by first synchronizing with the rate
   // counter by setting A=0 and wait in a carefully timed loop for the envelope
-  // counter _not_ to change for 9 cycles. We can then wait for a specific
-  // value of ENV3 with another timed loop to fully synchronize with ENV3.
+  // counter _not_ to change for 9 cycles. We can then wait for a specific value
+  // of ENV3 with another timed loop to fully synchronize with ENV3.
   //
   // At the first period when an exponential counter period larger than one
   // is used (decay or relase), one extra cycle is spent before the envelope is
@@ -149,10 +118,10 @@ namespace Plus4 {
   // (255 + 162*1 + 39*2 + 28*4 + 12*8 + 8*16 + 6*30)*32 = 756*32 = 32352
   // which corresponds exactly to the timed value divided by the number of
   // complete envelopes.
-  // NB! This one cycle delay is not modeled.
+  // NB! This one cycle delay is only modeled for single cycle clocking.
 
-  // From the sustain levels it follows that both the low and high 4 bits of
-  // the envelope counter are compared to the 4-bit sustain value.
+  // From the sustain levels it follows that both the low and high 4 bits of the
+  // envelope counter are compared to the 4-bit sustain value.
   // This has been verified by sampling ENV3.
   //
   reg8 EnvelopeGenerator::sustain_level[] = {
@@ -174,6 +143,66 @@ namespace Plus4 {
     0xff,
   };
 
+  // DAC lookup tables.
+  unsigned short EnvelopeGenerator::model_dac[2][1 << 8] = {
+    {0},
+    {0},
+  };
+
+  // --------------------------------------------------------------------------
+  // Constructor.
+  // --------------------------------------------------------------------------
+  EnvelopeGenerator::EnvelopeGenerator()
+  {
+    static bool class_init;
+
+    if (!class_init) {
+      // Build DAC lookup tables for 8-bit DACs.
+      // MOS 6581: 2R/R ~ 2.20, missing termination resistor.
+      build_dac_table(model_dac[0], 8, 2.20, false);
+      // MOS 8580: 2R/R ~ 2.00, correct termination.
+      build_dac_table(model_dac[1], 8, 2.00, true);
+
+      class_init = true;
+    }
+
+    set_chip_model(MOS6581);
+
+    reset();
+  }
+
+  // --------------------------------------------------------------------------
+  // SID reset.
+  // --------------------------------------------------------------------------
+  void EnvelopeGenerator::reset()
+  {
+    envelope_counter = 0;
+    envelope_pipeline = 0;
+
+    attack = 0;
+    decay = 0;
+    sustain = 0;
+    release = 0;
+
+    gate = 0;
+
+    rate_counter = 0;
+    exponential_counter = 0;
+    exponential_counter_period = 1;
+
+    state = RELEASE;
+    rate_period = rate_counter_period[release];
+    hold_zero = true;
+  }
+
+  // --------------------------------------------------------------------------
+  // Set chip model.
+  // --------------------------------------------------------------------------
+  void EnvelopeGenerator::set_chip_model(chip_model model)
+  {
+    sid_model = model;
+  }
+
   // --------------------------------------------------------------------------
   // Register functions.
   // --------------------------------------------------------------------------
@@ -189,8 +218,12 @@ namespace Plus4 {
       state = ATTACK;
       rate_period = rate_counter_period[attack];
 
-      // Switching to attack state unlocks the zero freeze.
+      // Switching to attack state unlocks the zero freeze and aborts any
+      // pipelined envelope decrement.
       hold_zero = false;
+      // FIXME: This is an assumption which should be checked using cycle exact
+      // envelope sampling.
+      envelope_pipeline = 0;
     }
     // Gate bit off: Start release.
     else if (gate && !gate_next) {
@@ -224,7 +257,7 @@ namespace Plus4 {
 
   reg8 EnvelopeGenerator::readENV()
   {
-    return output();
+    return envelope_counter;
   }
 
 }       // namespace Plus4

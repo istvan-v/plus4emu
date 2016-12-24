@@ -1,6 +1,6 @@
 //  ---------------------------------------------------------------------------
 //  This file is part of reSID, a MOS6581 SID emulator engine.
-//  Copyright (C) 2004  Dag Lem <resid@nimrod.no>
+//  Copyright (C) 2010  Dag Lem <resid@nimrod.no>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
 //  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //  ---------------------------------------------------------------------------
 
-#ifndef __SID_HPP__
-#define __SID_HPP__
+#ifndef RESID_SID_HPP
+#define RESID_SID_HPP
 
 #include "plus4emu.hpp"
 #include "siddefs.hpp"
@@ -30,20 +30,18 @@
 
 namespace Plus4 {
 
-  class SID
-  {
+  class SID {
   public:
     SID();
     ~SID();
 
     void set_chip_model(chip_model model);
+    void set_voice_mask(reg4 mask);
     void enable_filter(bool enable);
+    void adjust_filter_bias(double dac_bias);
     void enable_external_filter(bool enable);
 
-    void fc_default(const fc_point*& points, int& count);
-    PointPlotter<sound_sample> fc_plotter();
-
-    void clock();
+    PLUS4EMU_INLINE void clock();
     void clock(cycle_count delta_t);
     void reset();
 
@@ -52,8 +50,7 @@ namespace Plus4 {
     void write(reg8 offset, reg8 value);
 
     // Read/write state.
-    class State
-    {
+    class State {
     public:
       State();
 
@@ -61,9 +58,17 @@ namespace Plus4 {
 
       reg8 bus_value;
       cycle_count bus_value_ttl;
+      cycle_count write_pipeline;
+      reg8 write_address;
+      reg4 voice_mask;
 
       reg24 accumulator[3];
       reg24 shift_register[3];
+      cycle_count shift_register_reset[3];
+      cycle_count shift_pipeline[3];
+      reg16 pulse_output[3];
+      cycle_count floating_output_ttl[3];
+
       reg16 rate_counter[3];
       reg16 rate_counter_period[3];
       reg16 exponential_counter[3];
@@ -71,27 +76,24 @@ namespace Plus4 {
       reg8 envelope_counter[3];
       EnvelopeGenerator::State envelope_state[3];
       bool hold_zero[3];
+      cycle_count envelope_pipeline[3];
     };
 
     State read_state();
     void write_state(const State& state);
 
     // 16-bit input (EXT IN).
-    void input(int sample);
+    void input(short sample);
 
     // 16-bit output (AUDIO OUT).
-    int output();
-
-    // fast inline version with no 1/11 scaling and -32768 to 32767 clipping
-    inline int fast_output()
-    {
-      return (this->extfilt.output());
-    }
-
-    // n-bit output.
-    int output(int bits);
+    PLUS4EMU_INLINE short output();
+    // fast inline version with no 2^-11 scaling and -32768 to 32767 clipping
+    PLUS4EMU_INLINE int fast_output();
 
   protected:
+    void write();
+
+    chip_model sid_model;
     Voice voice[3];
     Filter filter;
     ExternalFilter extfilt;
@@ -101,8 +103,12 @@ namespace Plus4 {
     reg8 bus_value;
     cycle_count bus_value_ttl;
 
-    // External audio input.
-    int ext_in;
+    // The data bus TTL for the selected chip model
+    cycle_count databus_ttl;
+
+    // Pipeline for writes on the MOS8580.
+    cycle_count write_pipeline;
+    reg8 write_address;
 
   public:
     void saveState(Plus4Emu::File::Buffer&);
@@ -111,7 +117,73 @@ namespace Plus4 {
     void registerChunkType(Plus4Emu::File&);
   };
 
+  // --------------------------------------------------------------------------
+  // Inline functions.
+  // The following functions are defined inline because they are called every
+  // time a sample is calculated.
+  // --------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------------
+  // Read 16-bit sample from audio output.
+  // --------------------------------------------------------------------------
+  PLUS4EMU_INLINE short SID::output()
+  {
+    return extfilt.output();
+  }
+
+  // --------------------------------------------------------------------------
+  // Read 27-bit sample from audio output.
+  // --------------------------------------------------------------------------
+  PLUS4EMU_INLINE int SID::fast_output()
+  {
+    return extfilt.fast_output();
+  }
+
+  // --------------------------------------------------------------------------
+  // SID clocking - 1 cycle.
+  // --------------------------------------------------------------------------
+  PLUS4EMU_INLINE void SID::clock()
+  {
+    int i;
+
+    // Clock amplitude modulators.
+    for (i = 0; i < 3; i++) {
+      voice[i].envelope.clock();
+    }
+
+    // Clock oscillators.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.clock();
+    }
+
+    // Synchronize oscillators.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.synchronize();
+    }
+
+    // Calculate waveform output.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.set_waveform_output();
+    }
+
+    // Clock filter.
+    filter.clock(voice[0].output(), voice[1].output(), voice[2].output());
+
+    // Clock external filter.
+    extfilt.clock(filter.output());
+
+    // Pipelined writes on the MOS8580.
+    if (PLUS4EMU_UNLIKELY(write_pipeline)) {
+      write();
+    }
+
+    // Age bus value.
+    if (PLUS4EMU_UNLIKELY(!--bus_value_ttl)) {
+      bus_value = 0;
+    }
+  }
+
 }       // namespace Plus4
 
-#endif  // not __SID_HPP__
+#endif  // not RESID_SID_HPP
 

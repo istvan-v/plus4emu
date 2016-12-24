@@ -1,6 +1,6 @@
 //  ---------------------------------------------------------------------------
 //  This file is part of reSID, a MOS6581 SID emulator engine.
-//  Copyright (C) 1999  Dag Lem <resid@nimrod.no>
+//  Copyright (C) 2010  Dag Lem <resid@nimrod.no>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,15 +17,20 @@
 //  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //  ---------------------------------------------------------------------------
 
-#ifndef __SIDDEFS_HPP__
-#define __SIDDEFS_HPP__
+#ifndef RESID_SIDDEFS_HPP
+#define RESID_SIDDEFS_HPP
+
+#include "plus4emu.hpp"
+
+// (PAL frequency (17734475 / 20) + NTSC frequency (14318180 / 16)) / 2
+#define RESID_CLOCK_FREQUENCY   890805.0
 
 namespace Plus4 {
 
   // We could have used the smallest possible data type for each SID register,
   // however this would give a slower engine because of data type conversions.
-  // An int is assumed to be at least 32 bits (necessary in the types reg24,
-  // cycle_count, and sound_sample). GNU does not support 16-bit machines
+  // An int is assumed to be at least 32 bits (necessary in the types reg24
+  // and cycle_count). GNU does not support 16-bit machines
   // (GNU Coding Standards: Portability between CPUs), so this should be
   // a valid assumption.
 
@@ -36,21 +41,17 @@ namespace Plus4 {
   typedef unsigned int reg24;
 
   typedef int cycle_count;
-  typedef int sound_sample;
-  typedef sound_sample fc_point[2];
+  typedef short short_point[2];
+  typedef double double_point[2];
 
   enum chip_model { MOS6581, MOS8580 };
 
-  enum sampling_method { SAMPLE_FAST, SAMPLE_INTERPOLATE,
-                         SAMPLE_RESAMPLE_INTERPOLATE, SAMPLE_RESAMPLE_FAST };
-
-#ifndef __VERSION_CPP__
-  extern const char* resid_version_string;
-#else
-  const char* resid_version_string = "0.16";
-#endif
-
 }       // namespace Plus4
 
-#endif  // not __SIDDEFS_HPP__
+extern "C"
+{
+  extern const char* resid_version_string;
+}
+
+#endif  // not RESID_SIDDEFS_HPP
 

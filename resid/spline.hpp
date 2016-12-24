@@ -1,6 +1,6 @@
 //  ---------------------------------------------------------------------------
 //  This file is part of reSID, a MOS6581 SID emulator engine.
-//  Copyright (C) 2004  Dag Lem <resid@nimrod.no>
+//  Copyright (C) 2010  Dag Lem <resid@nimrod.no>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,17 +17,17 @@
 //  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //  ---------------------------------------------------------------------------
 
-#ifndef __SPLINE_HPP__
-#define __SPLINE_HPP__
+#ifndef RESID_SPLINE_HPP
+#define RESID_SPLINE_HPP
 
 namespace Plus4 {
 
-  // Our objective is to construct a smooth interpolating single-valued
-  // function y = f(x).
+  // Our objective is to construct a smooth interpolating single-valued function
+  // y = f(x).
   //
   // Catmull-Rom splines are widely used for interpolation, however these are
-  // parametric curves [x(t) y(t) ...] and can not be used to directly
-  // calculate y = f(x).
+  // parametric curves [x(t) y(t) ...] and can not be used to directly calculate
+  // y = f(x).
   // For a discussion of Catmull-Rom splines see Catmull, E., and R. Rom,
   // "A Class of Local Interpolating Splines", Computer Aided Geometric Design.
   //
@@ -38,8 +38,8 @@ namespace Plus4 {
   // curve can be calculated. The lack of local control makes the splines
   // more difficult to handle than e.g. Catmull-Rom splines, and real-time
   // interpolation of a stream of data points is not possible.
-  // For a discussion of natural cubic splines, see e.g. Kreyszig, E.,
-  // "Advanced Engineering Mathematics".
+  // For a discussion of natural cubic splines, see e.g. Kreyszig, E., "Advanced
+  // Engineering Mathematics".
   //
   // Our approach is to approximate the properties of Catmull-Rom splines for
   // piecewice cubic polynomials f(x) = ax^3 + bx^2 + cx + d as follows:
@@ -47,8 +47,7 @@ namespace Plus4 {
   // p0, p1, p2, p3.
   // The curve between p1 and p2 must interpolate both p1 and p2, and in
   // addition
-  //   f'(p1.x) = k1 = (p2.y - p0.y)/(p2.x - p0.x)
-  // and
+  //   f'(p1.x) = k1 = (p2.y - p0.y)/(p2.x - p0.x) and
   //   f'(p2.x) = k2 = (p3.y - p1.y)/(p3.x - p1.x).
   //
   // The constraints are expressed by the following system of linear equations
@@ -126,9 +125,10 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   // Calculation of coefficients.
   // --------------------------------------------------------------------------
-  inline void cubic_coefficients(double x1, double y1, double x2, double y2,
-                                 double k1, double k2,
-                                 double& a, double& b, double& c, double& d)
+  inline
+  void cubic_coefficients(double x1, double y1, double x2, double y2,
+                          double k1, double k2,
+                          double& a, double& b, double& c, double& d)
   {
     double dx = x2 - x1, dy = y2 - y1;
 
@@ -142,10 +142,10 @@ namespace Plus4 {
   // Evaluation of cubic polynomial by brute force.
   // --------------------------------------------------------------------------
   template<class PointPlotter>
-  inline void interpolate_brute_force(double x1, double y1,
-                                      double x2, double y2,
-                                      double k1, double k2,
-                                      PointPlotter plot, double res)
+  inline
+  void interpolate_brute_force(double x1, double y1, double x2, double y2,
+                               double k1, double k2,
+                               PointPlotter plot, double res)
   {
     double a, b, c, d;
     cubic_coefficients(x1, y1, x2, y2, k1, k2, a, b, c, d);
@@ -161,10 +161,11 @@ namespace Plus4 {
   // Evaluation of cubic polynomial by forward differencing.
   // --------------------------------------------------------------------------
   template<class PointPlotter>
-  inline void interpolate_forward_difference(double x1, double y1,
-                                             double x2, double y2,
-                                             double k1, double k2,
-                                             PointPlotter plot, double res)
+  inline
+  void interpolate_forward_difference(double x1, double y1,
+                                      double x2, double y2,
+                                      double k1, double k2,
+                                      PointPlotter plot, double res)
   {
     double a, b, c, d;
     cubic_coefficients(x1, y1, x2, y2, k1, k2, a, b, c, d);
@@ -182,13 +183,15 @@ namespace Plus4 {
   }
 
   template<class PointIter>
-  inline double x(PointIter p)
+  inline
+  double x(PointIter p)
   {
     return (*p)[0];
   }
 
   template<class PointIter>
-  inline double y(PointIter p)
+  inline
+  double y(PointIter p)
   {
     return (*p)[1];
   }
@@ -202,8 +205,8 @@ namespace Plus4 {
   // introduced by repeating points.
   // --------------------------------------------------------------------------
   template<class PointIter, class PointPlotter>
-  inline void interpolate(PointIter p0, PointIter pn, PointPlotter plot,
-                          double res)
+  inline
+  void interpolate(PointIter p0, PointIter pn, PointPlotter plot, double res)
   {
     double k1, k2;
 
@@ -263,11 +266,11 @@ namespace Plus4 {
         y = 0;
       }
 
-      f[F(x)] = F(y);
+      f[int(x)] = F(y + 0.5);
     }
   };
 
 }       // namespace Plus4
 
-#endif  // not __SPLINE_HPP__
+#endif  // not RESID_SPLINE_HPP
 
