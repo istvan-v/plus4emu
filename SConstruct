@@ -276,7 +276,6 @@ if configure.CheckCHeader('stdint.h'):
 if sys.platform[:5] == 'linux' and not mingwCrossCompile:
     if configure.CheckCHeader('linux/fd.h'):
         plus4emuLibEnvironment.Append(CCFLAGS = ['-DHAVE_LINUX_FD_H'])
-haveZLib = configure.CheckCHeader('zlib.h')
 configure.Finish()
 
 if not havePortAudioV19:
@@ -507,9 +506,6 @@ if mingwCrossCompile:
     p4fliconvLibEnvironment['LINKFLAGS'].remove('-mwindows')
 p4fliconvLibEnvironment.Append(CPPPATH = ['./util/compress',
                                           './util/p4fliconv'])
-if haveZLib and not 'fltk_z' in p4fliconvLibEnvironment['LIBS']:
-    if not 'z' in p4fliconvLibEnvironment['LIBS']:
-        p4fliconvLibEnvironment.Append(LIBS = ['z'])
 
 p4fliconvLibSources = ['util/p4fliconv/dither.cpp',
                        'util/p4fliconv/flicfg.cpp',
