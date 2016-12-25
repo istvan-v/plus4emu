@@ -64,7 +64,7 @@ namespace Plus4 {
   protected:
     void write();
     // simplified version with no external filter,
-    // adds the output to soundOutputAcculumator
+    // adds the output to soundOutputAccumulator
     PLUS4EMU_INLINE void clock_fast();
 
     chip_model sid_model;

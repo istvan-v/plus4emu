@@ -613,10 +613,10 @@ namespace Plus4 {
         voice[i].wave.accumulator = buf.readUInt32() & 0x00FFFFFFU;
         voice[i].wave.shift_register = buf.readUInt32() & 0x00FFFFFFU;
         if (version >= 0x01000001) {
-          voice[i].wave.shift_register_reset = cycle_count(buf.readUInt32());
+          voice[i].wave.shift_register_reset = buf.readInt32();
           voice[i].wave.shift_pipeline = buf.readByte() & 3;
           voice[i].wave.pulse_output = uint16_t(buf.readUInt32() & 0xFFFFU);
-          voice[i].wave.floating_output_ttl = cycle_count(buf.readUInt32());
+          voice[i].wave.floating_output_ttl = buf.readInt32();
         }
         voice[i].envelope.rate_counter = buf.readUInt32() & 0x0000FFFFU;
         voice[i].envelope.rate_period = buf.readUInt32() & 0x0000FFFFU;
