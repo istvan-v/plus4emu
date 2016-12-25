@@ -28,7 +28,7 @@ namespace Plus4 {
   class Potentiometer
   {
   public:
-    reg8 readPOT();
+    reg8 readPOT() const;
   };
 
 }       // namespace Plus4

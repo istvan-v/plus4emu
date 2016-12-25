@@ -50,7 +50,7 @@ namespace Plus4 {
     void writeCONTROL_REG(reg8);
     void writeATTACK_DECAY(reg8);
     void writeSUSTAIN_RELEASE(reg8);
-    reg8 readENV();
+    reg8 readENV() const;
 
     // 8-bit envelope output.
     PLUS4EMU_INLINE short output();

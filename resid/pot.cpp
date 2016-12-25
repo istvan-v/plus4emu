@@ -22,7 +22,7 @@
 
 namespace Plus4 {
 
-  reg8 Potentiometer::readPOT()
+  reg8 Potentiometer::readPOT() const
   {
     // NB! Not modeled.
     return 0xff;

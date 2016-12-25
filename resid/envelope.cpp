@@ -255,7 +255,7 @@ namespace Plus4 {
     }
   }
 
-  reg8 EnvelopeGenerator::readENV()
+  reg8 EnvelopeGenerator::readENV() const
   {
     return envelope_counter;
   }
