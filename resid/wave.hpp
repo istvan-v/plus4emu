@@ -51,7 +51,7 @@ namespace Plus4 {
     void writePW_LO(reg8);
     void writePW_HI(reg8);
     void writeCONTROL_REG(reg8);
-    reg8 readOSC();
+    reg8 readOSC() const;
 
     // 12-bit waveform output.
     short output();

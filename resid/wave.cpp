@@ -180,7 +180,12 @@ namespace Plus4 {
       shift_pipeline = 0;
 
       // Set reset time for shift register.
+#if 0
       shift_register_reset = 0x8000;
+#else
+      // adjust delay for the actual SID clock frequency
+      shift_register_reset = int(0.03325861 * RESID_CLOCK_FREQUENCY + 0.5);
+#endif
 
       // The test bit sets pulse high.
       pulse_output = 0xfff;
@@ -214,14 +219,14 @@ namespace Plus4 {
       floating_output_ttl = 0x14000;
 #else
       // adjust delay for the actual SID clock frequency
-      floating_output_ttl = int(0.081920 * RESID_CLOCK_FREQUENCY + 0.5);
+      floating_output_ttl = int(0.08314653 * RESID_CLOCK_FREQUENCY + 0.5);
 #endif
     }
 
     // The gate bit is handled by the EnvelopeGenerator.
   }
 
-  reg8 WaveformGenerator::readOSC()
+  reg8 WaveformGenerator::readOSC() const
   {
     return osc3 >> 4;
   }
