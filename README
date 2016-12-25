@@ -48,7 +48,7 @@ Plus/4 emulation
     start-up
   * .PRG, .P00, .D64, and .D81 files can be associated with plus4emu on
     Windows
-  * SID chip (MOS 6581 and 8580) emulation using version 0.16 of the
+  * SID chip (MOS 6581 and 8580) emulation using version 1.0 of the
     reSID library written by Dag Lem; the Digi-Blaster expansion by
     Solder is also supported
 
@@ -867,7 +867,7 @@ Copyright
 
 plus4emu is copyright (C) 2003-2016 by Istvan Varga
 <istvanv@users.sourceforge.net>.
-reSID 0.16 copyright (C) 2004 by Dag Lem.
+reSID 1.0 copyright (C) 2010 by Dag Lem.
 Fl_Native_File_Chooser 0.84 copyright (C) 2004 by Greg Ercolano.
 dotconf 1.3 copyright (C) by Lukas Schröder and William Hubbs.
 
