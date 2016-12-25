@@ -26,7 +26,8 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   // Constructor.
   // --------------------------------------------------------------------------
-  SID::SID()
+  SID::SID(int32_t& soundOutputAccumulator_)
+    : soundOutputAccumulator(soundOutputAccumulator_)
   {
     sid_model = MOS6581;
     voice[0].set_sync_source(&voice[2]);
@@ -429,6 +430,58 @@ namespace Plus4 {
   void SID::enable_external_filter(bool enable)
   {
     extfilt.enable_filter(enable);
+  }
+
+  // --------------------------------------------------------------------------
+  // SID clocking - 1 cycle.
+  // --------------------------------------------------------------------------
+  PLUS4EMU_INLINE void SID::clock_fast()
+  {
+    int i;
+
+    // Clock amplitude modulators.
+    for (i = 0; i < 3; i++) {
+      voice[i].envelope.clock();
+    }
+
+    // Clock oscillators.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.clock();
+    }
+
+    // Synchronize oscillators.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.synchronize();
+    }
+
+    // Calculate waveform output.
+    for (i = 0; i < 3; i++) {
+      voice[i].wave.set_waveform_output();
+    }
+
+    // Clock filter.
+    filter.clock(voice[0].output(), voice[1].output(), voice[2].output());
+
+    soundOutputAccumulator =
+        soundOutputAccumulator + (int32_t(filter.output()) * 15 - 131072);
+
+    // Pipelined writes on the MOS8580.
+    if (PLUS4EMU_UNLIKELY(write_pipeline)) {
+      write();
+    }
+
+    // Age bus value.
+    if (PLUS4EMU_UNLIKELY(!--bus_value_ttl)) {
+      bus_value = 0;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // SID clocking - 1 cycle.
+  // --------------------------------------------------------------------------
+  PLUS4EMU_REGPARM1 void SID::clockCallback(void *userData)
+  {
+    reinterpret_cast< SID * >(userData)->clock_fast();
   }
 
   // --------------------------------------------------------------------------

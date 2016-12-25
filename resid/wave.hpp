@@ -483,8 +483,7 @@ namespace Plus4 {
     }
     else {
       // Age floating DAC input.
-      if (PLUS4EMU_EXPECT(bool(floating_output_ttl)) &&
-          PLUS4EMU_UNLIKELY(!--floating_output_ttl)) {
+      if (PLUS4EMU_UNLIKELY(!--floating_output_ttl)) {
         waveform_output = 0;
       }
     }

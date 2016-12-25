@@ -170,9 +170,10 @@ namespace Plus4 {
     ted.dataBusState = value;
     if (PLUS4EMU_UNLIKELY(!ted.vm.sidEnabled)) {
       ted.vm.sidEnabled = true;
-      ted.setCallback((!(ted.vm.sidFlags & 4) ?
-                       &(ted.vm.sidCallback) : &(ted.vm.sidCallbackC64)),
-                      &(ted.vm), 1);
+      if (!(ted.vm.sidFlags & 4))
+        ted.setCallback(&SID::clockCallback, ted.vm.sid_, 1);
+      else
+        ted.setCallback(&(ted.vm.sidCallbackC64), &(ted.vm), 1);
     }
     uint8_t regNum = uint8_t(addr & 0x001F);
     if (regNum == 0x1E) {
@@ -497,31 +498,21 @@ namespace Plus4 {
     vm.soundOutputAccumulator += vm.tapeFeedbackSignal;
   }
 
-  void Plus4VM::sidCallback(void *userData)
-  {
-    Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
-    vm.sid_->clock();
-    vm.soundOutputAccumulator += int32_t(vm.sid_->fast_output());
-  }
-
   void Plus4VM::sidCallbackC64(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     // FIXME: the accuracy and sound quality of this solution could be improved
     if (PLUS4EMU_UNLIKELY(!(--(vm.sidCycleCnt)))) {
-      // on every 9th TED single clock cycle,
+      // on every 9th TED single clock cycle (7th if NTSC),
       // run the SID emulation twice and average the outputs
-      vm.sidCycleCnt = 9;
-      vm.sid_->clock();
-      int32_t tmp = int32_t(vm.sid_->fast_output());
-      vm.sid_->clock();
-      tmp += int32_t(vm.sid_->fast_output());
-      tmp = ((tmp + 0x40000001) >> 1) - 0x20000000;
-      vm.soundOutputAccumulator += tmp;
+      vm.sidCycleCnt = (uint8_t(vm.tedInputClockFrequency >> 24) << 1) + 7;
+      vm.soundOutputAccumulator = (vm.soundOutputAccumulator << 1) + 0x40000001;
+      SID::clockCallback(vm.sid_);
+      SID::clockCallback(vm.sid_);
+      vm.soundOutputAccumulator = (vm.soundOutputAccumulator >> 1) - 0x20000000;
       return;
     }
-    vm.sid_->clock();
-    vm.soundOutputAccumulator += int32_t(vm.sid_->fast_output());
+    SID::clockCallback(vm.sid_);
   }
 
   void Plus4VM::demoPlayCallback(void *userData)
@@ -879,7 +870,7 @@ namespace Plus4 {
   {
     for (int i = 0; i < 12; i++)
       serialDevices[i] = (SerialDevice *) 0;
-    sid_ = new SID();
+    sid_ = new SID(soundOutputAccumulator);
     try {
       sid_->set_chip_model(MOS8580);
       sid_->enable_external_filter(false);
@@ -987,7 +978,7 @@ namespace Plus4 {
     sid_->input(0);
     if (isColdReset) {
       sidEnabled = false;
-      ted->setCallback(&sidCallback, this, 0);
+      ted->setCallback(&SID::clockCallback, sid_, 0);
       ted->setCallback(&sidCallbackC64, this, 0);
       disableUnusedFloppyDrives();
     }
@@ -1180,7 +1171,7 @@ namespace Plus4 {
         if (changeMask & 2)
           ted->setEnableC64CompatibleSID(bool(sidFlags_ & 2));
         if (sidEnabled && (changeMask & 4) != 0) {
-          ted->setCallback(&sidCallback, this, int(!(sidFlags_ & 4)));
+          ted->setCallback(&SID::clockCallback, sid_, int(!(sidFlags_ & 4)));
           ted->setCallback(&sidCallbackC64, this, int(bool(sidFlags_ & 4)));
         }
       }
@@ -1224,7 +1215,7 @@ namespace Plus4 {
       digiBlasterOutput = 0x80;
       sid_->input(0);
       sidEnabled = false;
-      ted->setCallback(&sidCallback, this, 0);
+      ted->setCallback(&SID::clockCallback, sid_, 0);
       ted->setCallback(&sidCallbackC64, this, 0);
     }
   }
@@ -2524,7 +2515,7 @@ namespace Plus4 {
         sid_->input((int(digiBlasterOutput) << 8) - 32768);
       else
         sid_->input(0);
-      ted->setCallback(&sidCallback, this,
+      ted->setCallback(&SID::clockCallback, sid_,
                        int(sidEnabled) & int(!(sidFlags & 4)));
       ted->setCallback(&sidCallbackC64, this,
                        int(sidEnabled) & int(bool(sidFlags & 4)));

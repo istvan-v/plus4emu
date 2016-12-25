@@ -32,7 +32,7 @@ namespace Plus4 {
 
   class SID {
   public:
-    SID();
+    SID(int32_t& soundOutputAccumulator_);
     ~SID();
 
     void set_chip_model(chip_model model);
@@ -41,6 +41,8 @@ namespace Plus4 {
     void adjust_filter_bias(double dac_bias);
     void enable_external_filter(bool enable);
 
+    // callback function for Plus4VM, 'userData' is a pointer to "this"
+    static PLUS4EMU_REGPARM1 void clockCallback(void *userData);
     PLUS4EMU_INLINE void clock();
     void clock(cycle_count delta_t);
     void reset();
@@ -92,6 +94,9 @@ namespace Plus4 {
 
   protected:
     void write();
+    // simplified version with no external filter,
+    // adds the output to soundOutputAcculumator
+    PLUS4EMU_INLINE void clock_fast();
 
     chip_model sid_model;
     Voice voice[3];
@@ -109,6 +114,8 @@ namespace Plus4 {
     // Pipeline for writes on the MOS8580.
     cycle_count write_pipeline;
     reg8 write_address;
+
+    int32_t&  soundOutputAccumulator;
 
   public:
     void saveState(Plus4Emu::File::Buffer&);

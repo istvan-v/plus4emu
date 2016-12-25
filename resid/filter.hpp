@@ -368,7 +368,7 @@ namespace Plus4 {
     PLUS4EMU_INLINE void input(short sample);
 
     // SID audio output (16 bits).
-    PLUS4EMU_INLINE short output();
+    PLUS4EMU_INLINE int output();
 
   protected:
     void set_sum_mix();
@@ -723,7 +723,7 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   // SID audio output (16 bits).
   // --------------------------------------------------------------------------
-  PLUS4EMU_INLINE short Filter::output()
+  PLUS4EMU_INLINE int Filter::output()
   {
     model_filter_t& f = model_filter[sid_model];
 
@@ -1273,10 +1273,17 @@ namespace Plus4 {
       // FIXME: Temporary code for MOS 8580, should use code above.
       /* do hard clipping here, else some tunes manage to overflow this
          (eg /MUSICIANS/L/Linus/64_Forever.sid, starting at 0:44) */
+#if 0
       int tmp = Vi*(int)vol >> 4;
       if (tmp < -32768) tmp = -32768;
       if (tmp > 32767) tmp = 32767;
-      return (short)tmp;  }
+      return (int)tmp;
+#else
+      // FIXME: this only works with SID::clock_fast() and Plus4VM audio mixing
+      // which will clip the output if it is out of range
+      return (Vi*(int)vol >> 4);
+#endif
+    }
   }
 
   /*

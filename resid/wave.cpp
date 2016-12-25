@@ -210,7 +210,12 @@ namespace Plus4 {
       //
       // This can't be found via sampling OSC3, it seems that
       // the actual analog output must be sampled and timed.
+#if 0
       floating_output_ttl = 0x14000;
+#else
+      // adjust delay for the actual SID clock frequency
+      floating_output_ttl = int(0.081920 * RESID_CLOCK_FREQUENCY + 0.5);
+#endif
     }
 
     // The gate bit is handled by the EnvelopeGenerator.
