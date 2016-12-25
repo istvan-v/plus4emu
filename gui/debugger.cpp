@@ -281,8 +281,8 @@ void Plus4EmuGUI_DebugWindow::updateWindow()
       tmpBuffer.clear();
     }
     uint32_t  tmp = gui.vm.getStackPointer();
-    uint32_t  startAddr = (tmp + 0xFFF4U) & 0xFFF8U;
-    uint32_t  endAddr = (startAddr + 0x002FU) & 0xFFFFU;
+    uint32_t  startAddr = (((tmp - 1U) & 0xFFU) + 0x00F5U) & 0xFFF8U;
+    uint32_t  endAddr = startAddr + 0x002FU;
     dumpMemory(tmpBuffer, startAddr, endAddr, tmp, true, true);
     stackMemoryDumpDisplay->value(tmpBuffer.c_str());
     tmpBuffer.clear();
