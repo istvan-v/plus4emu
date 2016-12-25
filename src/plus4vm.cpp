@@ -2150,10 +2150,7 @@ namespace Plus4 {
   {
     if (isCPUAddress) {
       if (currentDebugContext == 0) {
-        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled)
-          return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
-        else
-          return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
+        return readMemory((addr & 0xFFFFU) | 0x00100000U, false);
       }
       else {
         int     tmp = (currentDebugContext <= 4 ?
@@ -2193,10 +2190,17 @@ namespace Plus4 {
       case 0x41:
       case 0x42:
       case 0x43:
-        if ((addr & 0xFFF0U) != 0xFD00U || !aciaEnabled)
-          return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
-        else
-          return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
+        switch (addr & 0xFFF0U) {
+        case 0xFD40U:
+        case 0xFD50U:
+        case 0xFE80U:
+        case 0xFE90U:
+          return sid_->readDebug(addr);
+        case 0xFD00U:
+          if (aciaEnabled)
+            return acia_.readRegisterDebug(uint16_t(addr & 0xFFFFU));
+        }
+        return ted->readMemoryCPU(uint16_t(addr & 0xFFFFU));
       case 0x50:
       case 0x51:
       case 0x52:
@@ -2242,7 +2246,8 @@ namespace Plus4 {
     }
     if (isCPUAddress) {
       if (currentDebugContext == 0) {
-        ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
+        writeMemory((addr & 0xFFFFU) | 0x00100000U, value, false);
+        return;
       }
       else {
         int     tmp = (currentDebugContext <= 4 ?
@@ -2259,7 +2264,15 @@ namespace Plus4 {
         uint32_t  tmp = (addr >> 16) & 0x3FU;
         switch (tmp) {
         case 0x10U:
-          ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
+          switch (addr & 0xFFE0U) {
+          case 0xFD40U:
+          case 0xFE80U:
+            sid_->writeDebug(addr, value);
+            break;
+          default:
+            ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
+            break;
+          }
           break;
         case 0x14U:
         case 0x15U:
