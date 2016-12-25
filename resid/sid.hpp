@@ -49,40 +49,9 @@ namespace Plus4 {
 
     // Read/write registers.
     reg8 read(reg8 offset);
+    reg8 readDebug(reg8 offset) const;
     void write(reg8 offset, reg8 value);
-
-    // Read/write state.
-    class State {
-    public:
-      State();
-
-      char sid_register[0x20];
-
-      reg8 bus_value;
-      cycle_count bus_value_ttl;
-      cycle_count write_pipeline;
-      reg8 write_address;
-      reg4 voice_mask;
-
-      reg24 accumulator[3];
-      reg24 shift_register[3];
-      cycle_count shift_register_reset[3];
-      cycle_count shift_pipeline[3];
-      reg16 pulse_output[3];
-      cycle_count floating_output_ttl[3];
-
-      reg16 rate_counter[3];
-      reg16 rate_counter_period[3];
-      reg16 exponential_counter[3];
-      reg16 exponential_counter_period[3];
-      reg8 envelope_counter[3];
-      EnvelopeGenerator::State envelope_state[3];
-      bool hold_zero[3];
-      cycle_count envelope_pipeline[3];
-    };
-
-    State read_state();
-    void write_state(const State& state);
+    void writeDebug(reg8 offset, reg8 value);
 
     // 16-bit input (EXT IN).
     void input(short sample);

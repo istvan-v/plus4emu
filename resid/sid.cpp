@@ -148,6 +148,21 @@ namespace Plus4 {
     return bus_value;
   }
 
+  reg8 SID::readDebug(reg8 offset) const
+  {
+    switch (offset & 0x1f) {
+    case 0x19:
+      return potx.readPOT();
+    case 0x1a:
+      return poty.readPOT();
+    case 0x1b:
+      return voice[2].wave.readOSC();
+    case 0x1c:
+      return voice[2].envelope.readENV();
+    }
+    return bus_value;
+  }
+
   // --------------------------------------------------------------------------
   // Write registers.
   // Writes are one cycle delayed on the MOS8580. This is only modeled for
@@ -256,143 +271,17 @@ namespace Plus4 {
     write_pipeline = 0;
   }
 
-  // --------------------------------------------------------------------------
-  // Constructor.
-  // --------------------------------------------------------------------------
-  SID::State::State()
+  void SID::writeDebug(reg8 offset, reg8 value)
   {
-    int i;
-
-    for (i = 0; i < 0x20; i++) {
-      sid_register[i] = 0;
-    }
-
-    bus_value = 0;
-    bus_value_ttl = 0;
-    write_pipeline = 0;
-    write_address = 0;
-    voice_mask = 0xff;
-
-    for (i = 0; i < 3; i++) {
-      accumulator[i] = 0;
-      shift_register[i] = 0x7fffff;
-      shift_register_reset[i] = 0;
-      shift_pipeline[i] = 0;
-      pulse_output[i] = 0;
-      floating_output_ttl[i] = 0;
-
-      rate_counter[i] = 0;
-      rate_counter_period[i] = 9;
-      exponential_counter[i] = 0;
-      exponential_counter_period[i] = 1;
-      envelope_counter[i] = 0;
-      envelope_state[i] = EnvelopeGenerator::RELEASE;
-      hold_zero[i] = true;
-      envelope_pipeline[i] = 0;
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // Read state.
-  // --------------------------------------------------------------------------
-  SID::State SID::read_state()
-  {
-    State state;
-    int i, j;
-
-    for (i = 0, j = 0; i < 3; i++, j += 7) {
-      WaveformGenerator& wave = voice[i].wave;
-      EnvelopeGenerator& envelope = voice[i].envelope;
-      state.sid_register[j + 0] = wave.freq & 0xff;
-      state.sid_register[j + 1] = wave.freq >> 8;
-      state.sid_register[j + 2] = wave.pw & 0xff;
-      state.sid_register[j + 3] = wave.pw >> 8;
-      state.sid_register[j + 4] =
-        (wave.waveform << 4)
-        | (wave.test ? 0x08 : 0)
-        | (wave.ring_mod ? 0x04 : 0)
-        | (wave.sync ? 0x02 : 0)
-        | (envelope.gate ? 0x01 : 0);
-      state.sid_register[j + 5] = (envelope.attack << 4) | envelope.decay;
-      state.sid_register[j + 6] = (envelope.sustain << 4) | envelope.release;
-    }
-
-    state.sid_register[j++] = filter.fc & 0x007;
-    state.sid_register[j++] = filter.fc >> 3;
-    state.sid_register[j++] = (filter.res << 4) | filter.filt;
-    state.sid_register[j++] = filter.mode | filter.vol;
-
-    // These registers are superfluous, but are included for completeness.
-    for (; j < 0x1d; j++) {
-      state.sid_register[j] = read(j);
-    }
-    for (; j < 0x20; j++) {
-      state.sid_register[j] = 0;
-    }
-
-    state.bus_value = bus_value;
-    state.bus_value_ttl = bus_value_ttl;
-    state.write_pipeline = write_pipeline;
-    state.write_address = write_address;
-    state.voice_mask = filter.voice_mask;
-
-    for (i = 0; i < 3; i++) {
-      state.accumulator[i] = voice[i].wave.accumulator;
-      state.shift_register[i] = voice[i].wave.shift_register;
-      state.shift_register_reset[i] = voice[i].wave.shift_register_reset;
-      state.shift_pipeline[i] = voice[i].wave.shift_pipeline;
-      state.pulse_output[i] = voice[i].wave.pulse_output;
-      state.floating_output_ttl[i] = voice[i].wave.floating_output_ttl;
-
-      state.rate_counter[i] = voice[i].envelope.rate_counter;
-      state.rate_counter_period[i] = voice[i].envelope.rate_period;
-      state.exponential_counter[i] = voice[i].envelope.exponential_counter;
-      state.exponential_counter_period[i] =
-          voice[i].envelope.exponential_counter_period;
-      state.envelope_counter[i] = voice[i].envelope.envelope_counter;
-      state.envelope_state[i] = voice[i].envelope.state;
-      state.hold_zero[i] = voice[i].envelope.hold_zero;
-      state.envelope_pipeline[i] = voice[i].envelope.envelope_pipeline;
-    }
-
-    return state;
-  }
-
-  // --------------------------------------------------------------------------
-  // Write state.
-  // --------------------------------------------------------------------------
-  void SID::write_state(const State& state)
-  {
-    int i;
-
-    for (i = 0; i <= 0x18; i++) {
-      write(i, state.sid_register[i]);
-    }
-
-    bus_value = state.bus_value;
-    bus_value_ttl = state.bus_value_ttl;
-    write_pipeline = state.write_pipeline;
-    write_address = state.write_address;
-    filter.set_voice_mask(state.voice_mask);
-
-    for (i = 0; i < 3; i++) {
-      voice[i].wave.accumulator = state.accumulator[i];
-      voice[i].wave.shift_register = state.shift_register[i];
-      voice[i].wave.shift_register_reset = state.shift_register_reset[i];
-      voice[i].wave.shift_pipeline = state.shift_pipeline[i];
-      voice[i].wave.pulse_output = state.pulse_output[i];
-      voice[i].wave.floating_output_ttl = state.floating_output_ttl[i];
-
-      voice[i].envelope.rate_counter = state.rate_counter[i];
-      voice[i].envelope.rate_period = state.rate_counter_period[i];
-      voice[i].envelope.exponential_counter = state.exponential_counter[i];
-      voice[i].envelope.exponential_counter_period =
-          state.exponential_counter_period[i];
-      voice[i].envelope.envelope_counter = state.envelope_counter[i];
-      voice[i].envelope.state = state.envelope_state[i];
-      voice[i].envelope.hold_zero = state.hold_zero[i];
-      voice[i].envelope.envelope_pipeline = state.envelope_pipeline[i];
-    }
+    reg8    savedBusValue = bus_value;
+    cycle_count savedWritePipeline = write_pipeline;
+    reg8    savedWriteAddress = write_address;
+    bus_value = value;
+    write_address = offset & 0x1F;
+    write();
+    bus_value = savedBusValue;
+    write_pipeline = savedWritePipeline;
+    write_address = savedWriteAddress;
   }
 
   // --------------------------------------------------------------------------
@@ -604,28 +493,65 @@ namespace Plus4 {
   void SID::saveState(Plus4Emu::File::Buffer& buf)
   {
     buf.setPosition(0);
-    buf.writeUInt32(0x01000000);        // version number
-    // TODO: update snapshot format for new reSID version
-    State   state_ = read_state();
-    for (uint8_t i = 0x00; i <= 0x1F; i++)
-      buf.writeByte(uint8_t(state_.sid_register[i]));
-    buf.writeByte(uint8_t(state_.bus_value));
-    buf.writeInt32(int32_t(state_.bus_value_ttl));
+    buf.writeUInt32(0x01000001);        // version number
+    buf.writeBoolean(sid_model == MOS6581);
+    {
+      int i, j;
+
+      for (i = 0, j = 0; i < 3; i++, j += 7) {
+        WaveformGenerator& wave = voice[i].wave;
+        EnvelopeGenerator& envelope = voice[i].envelope;
+        buf.writeByte(wave.freq & 0xff);
+        buf.writeByte(wave.freq >> 8);
+        buf.writeByte(wave.pw & 0xff);
+        buf.writeByte(wave.pw >> 8);
+        buf.writeByte((wave.waveform << 4)
+                      | (wave.test ? 0x08 : 0)
+                      | (wave.ring_mod ? 0x04 : 0)
+                      | (wave.sync ? 0x02 : 0)
+                      | (envelope.gate ? 0x01 : 0));
+        buf.writeByte((envelope.attack << 4) | envelope.decay);
+        buf.writeByte((envelope.sustain << 4) | envelope.release);
+      }
+
+      buf.writeByte(filter.fc & 0x007);
+      buf.writeByte(filter.fc >> 3);
+      buf.writeByte((filter.res << 4) | filter.filt);
+      buf.writeByte(filter.mode | filter.vol);
+
+      // These registers are superfluous, but are included for completeness.
+      for (j = 0x19; j < 0x1d; j++) {
+        buf.writeByte(readDebug(j));
+      }
+      for (; j < 0x20; j++) {
+        buf.writeByte(0x00);
+      }
+    }
+    buf.writeByte(uint8_t(bus_value));
+    buf.writeInt32(int32_t(bus_value_ttl));
+    buf.writeBoolean(bool(write_pipeline));
+    buf.writeByte(uint8_t(write_address));
+    buf.writeByte(uint8_t(filter.voice_mask));
     for (uint8_t i = 0; i < 3; i++) {
-      buf.writeUInt32(state_.accumulator[i]);
-      buf.writeUInt32(state_.shift_register[i]);
-      buf.writeUInt32(state_.rate_counter[i]);
-      buf.writeUInt32(state_.rate_counter_period[i]);
-      buf.writeUInt32(state_.exponential_counter[i]);
-      buf.writeUInt32(state_.exponential_counter_period[i]);
-      buf.writeByte(uint8_t(state_.envelope_counter[i]));
-      if (state_.envelope_state[i] == EnvelopeGenerator::ATTACK)
+      buf.writeUInt32(voice[i].wave.accumulator);
+      buf.writeUInt32(voice[i].wave.shift_register);
+      buf.writeInt32(int32_t(voice[i].wave.shift_register_reset));
+      buf.writeByte(uint8_t(voice[i].wave.shift_pipeline));
+      buf.writeUInt32(voice[i].wave.pulse_output);
+      buf.writeInt32(int32_t(voice[i].wave.floating_output_ttl));
+      buf.writeUInt32(voice[i].envelope.rate_counter);
+      buf.writeUInt32(voice[i].envelope.rate_period);
+      buf.writeUInt32(voice[i].envelope.exponential_counter);
+      buf.writeUInt32(voice[i].envelope.exponential_counter_period);
+      buf.writeByte(uint8_t(voice[i].envelope.envelope_counter));
+      if (voice[i].envelope.state == EnvelopeGenerator::ATTACK)
         buf.writeByte(1);
-      else if (state_.envelope_state[i] == EnvelopeGenerator::DECAY_SUSTAIN)
+      else if (voice[i].envelope.state == EnvelopeGenerator::DECAY_SUSTAIN)
         buf.writeByte(2);
       else
         buf.writeByte(0);
-      buf.writeBoolean(state_.hold_zero[i]);
+      buf.writeBoolean(voice[i].envelope.hold_zero);
+      buf.writeBoolean(bool(voice[i].envelope.envelope_pipeline));
     }
   }
 
@@ -641,39 +567,77 @@ namespace Plus4 {
     buf.setPosition(0);
     // check version number
     unsigned int  version = buf.readUInt32();
-    // TODO: update snapshot format for new reSID version
-    if (version != 0x01000000) {
+    if (!(version >= 0x01000000 && version <= 0x01000001)) {
       buf.setPosition(buf.getDataSize());
       throw Plus4Emu::Exception("incompatible SID snapshot format");
     }
+    // set default state
+    for (uint8_t i = 0; i < 0x20; i++)
+      writeDebug(i, 0x00);
+    bus_value = 0;
+    bus_value_ttl = 0;
+    write_pipeline = 0;
+    write_address = 0;
+    filter.set_voice_mask(0xff);
+    for (int i = 0; i < 3; i++) {
+      voice[i].wave.accumulator = 0;
+      voice[i].wave.shift_register = 0x7fffff;
+      voice[i].wave.shift_register_reset = 0;
+      voice[i].wave.shift_pipeline = 0;
+      voice[i].wave.pulse_output = 0;
+      voice[i].wave.floating_output_ttl = 0;
+
+      voice[i].envelope.rate_counter = 0;
+      voice[i].envelope.rate_period = 9;
+      voice[i].envelope.exponential_counter = 0;
+      voice[i].envelope.exponential_counter_period = 1;
+      voice[i].envelope.envelope_counter = 0;
+      voice[i].envelope.state = EnvelopeGenerator::RELEASE;
+      voice[i].envelope.hold_zero = true;
+      voice[i].envelope.envelope_pipeline = 0;
+    }
     try {
       // load saved state
-      State   state_;
-      for (uint8_t i = 0x00; i <= 0x1F; i++)
-        state_.sid_register[i] = char(buf.readByte());
-      state_.bus_value = buf.readByte();
-      state_.bus_value_ttl = buf.readInt32();
+      set_chip_model(
+          (version >= 0x01000001 && buf.readBoolean()) ? MOS6581 : MOS8580);
+      for (uint8_t i = 0x00; i < 0x20; i++)
+        writeDebug(i, buf.readByte());
+      bus_value = buf.readByte();
+      bus_value_ttl = buf.readInt32();
+      if (version >= 0x01000001) {
+        write_pipeline = cycle_count(buf.readBoolean());
+        write_address = buf.readByte() & 0x1F;
+        filter.set_voice_mask(buf.readByte() & 0x0F);
+      }
       for (uint8_t i = 0; i < 3; i++) {
-        state_.accumulator[i] = buf.readUInt32() & 0x00FFFFFFU;
-        state_.shift_register[i] = buf.readUInt32() & 0x00FFFFFFU;
-        state_.rate_counter[i] = buf.readUInt32() & 0x0000FFFFU;
-        state_.rate_counter_period[i] = buf.readUInt32() & 0x0000FFFFU;
-        state_.exponential_counter[i] = buf.readUInt32() & 0x0000FFFFU;
-        state_.exponential_counter_period[i] = buf.readUInt32() & 0x0000FFFFU;
-        state_.envelope_counter[i] = buf.readByte();
+        voice[i].wave.accumulator = buf.readUInt32() & 0x00FFFFFFU;
+        voice[i].wave.shift_register = buf.readUInt32() & 0x00FFFFFFU;
+        if (version >= 0x01000001) {
+          voice[i].wave.shift_register_reset = cycle_count(buf.readUInt32());
+          voice[i].wave.shift_pipeline = buf.readByte() & 3;
+          voice[i].wave.pulse_output = uint16_t(buf.readUInt32() & 0xFFFFU);
+          voice[i].wave.floating_output_ttl = cycle_count(buf.readUInt32());
+        }
+        voice[i].envelope.rate_counter = buf.readUInt32() & 0x0000FFFFU;
+        voice[i].envelope.rate_period = buf.readUInt32() & 0x0000FFFFU;
+        voice[i].envelope.exponential_counter = buf.readUInt32() & 0x0000FFFFU;
+        voice[i].envelope.exponential_counter_period =
+            buf.readUInt32() & 0x0000FFFFU;
+        voice[i].envelope.envelope_counter = buf.readByte();
         uint8_t tmp = buf.readByte();
         if (tmp == 1)
-          state_.envelope_state[i] = EnvelopeGenerator::ATTACK;
+          voice[i].envelope.state = EnvelopeGenerator::ATTACK;
         else if (tmp == 2)
-          state_.envelope_state[i] = EnvelopeGenerator::DECAY_SUSTAIN;
+          voice[i].envelope.state = EnvelopeGenerator::DECAY_SUSTAIN;
         else
-          state_.envelope_state[i] = EnvelopeGenerator::RELEASE;
-        state_.hold_zero[i] = buf.readBoolean();
+          voice[i].envelope.state = EnvelopeGenerator::RELEASE;
+        voice[i].envelope.hold_zero = buf.readBoolean();
+        if (version >= 0x01000001)
+          voice[i].envelope.envelope_pipeline = cycle_count(buf.readBoolean());
       }
       if (buf.getPosition() != buf.getDataSize())
         throw Plus4Emu::Exception("trailing garbage at end of "
                                   "SID snapshot data");
-      write_state(state_);
     }
     catch (...) {
       // reset SID
