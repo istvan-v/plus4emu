@@ -475,7 +475,7 @@ namespace Plus4 {
     return (M7501 *) 0;
   }
 
-  void Plus4VM::tapeCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::tapeCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.tapeTimeRemaining += vm.tedTimesliceLength;
@@ -498,7 +498,7 @@ namespace Plus4 {
     vm.soundOutputAccumulator += vm.tapeFeedbackSignal;
   }
 
-  void Plus4VM::sidCallbackC64(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::sidCallbackC64(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     // FIXME: the accuracy and sound quality of this solution could be improved
@@ -515,7 +515,7 @@ namespace Plus4 {
     SID::clockCallback(vm.sid_);
   }
 
-  void Plus4VM::demoPlayCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::demoPlayCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     while (!vm.demoTimeCnt) {
@@ -556,13 +556,13 @@ namespace Plus4 {
       vm.demoTimeCnt--;
   }
 
-  void Plus4VM::demoRecordCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::demoRecordCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.demoTimeCnt++;
   }
 
-  void Plus4VM::videoBreakPointCheckCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::videoBreakPointCheckCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     TED7360_& ted_ = *(vm.ted);
@@ -583,7 +583,7 @@ namespace Plus4 {
     }
   }
 
-  void Plus4VM::lightPenCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::lightPenCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     TED7360_& ted_ = *(vm.ted);
@@ -600,14 +600,14 @@ namespace Plus4 {
     }
   }
 
-  void Plus4VM::videoCaptureCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::videoCaptureCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.videoCapture->runOneCycle(vm.ted->getVideoOutput(),
                                  vm.soundOutputSignal);
   }
 
-  void Plus4VM::aciaCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::aciaCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.aciaTimeRemaining += (vm.tedTimesliceLength >> 1);
@@ -622,7 +622,7 @@ namespace Plus4 {
       vm.setEnableACIACallback(false);
   }
 
-  void Plus4VM::pasteTextCallback(void *userData)
+  PLUS4EMU_REGPARM1 void Plus4VM::pasteTextCallback(void *userData)
   {
     Plus4VM&  vm = *(reinterpret_cast<Plus4VM *>(userData));
     vm.pasteTextCycleCnt--;
@@ -959,11 +959,14 @@ namespace Plus4 {
       }
       ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
-    tedTimeRemaining += (int64_t(microseconds) << 32);
-    while (PLUS4EMU_EXPECT(tedTimeRemaining >= 0)) {
-      ted->runOneCycle();
-      tedTimeRemaining -= tedTimesliceLength;
+    int64_t   tedTimeRemaining_ =
+        tedTimeRemaining + (int64_t(microseconds) << 32);
+    TED7360_  *ted_ = ted;
+    while (PLUS4EMU_EXPECT(tedTimeRemaining_ >= 0)) {
+      ted_->runOneCycle();
+      tedTimeRemaining_ -= tedTimesliceLength;
     }
+    tedTimeRemaining = tedTimeRemaining_;
   }
 
   void Plus4VM::reset(bool isColdReset)
@@ -2246,8 +2249,7 @@ namespace Plus4 {
     }
     if (isCPUAddress) {
       if (currentDebugContext == 0) {
-        writeMemory((addr & 0xFFFFU) | 0x00100000U, value, false);
-        return;
+        ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
       }
       else {
         int     tmp = (currentDebugContext <= 4 ?
@@ -2264,15 +2266,7 @@ namespace Plus4 {
         uint32_t  tmp = (addr >> 16) & 0x3FU;
         switch (tmp) {
         case 0x10U:
-          switch (addr & 0xFFE0U) {
-          case 0xFD40U:
-          case 0xFE80U:
-            sid_->writeDebug(addr, value);
-            break;
-          default:
-            ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
-            break;
-          }
+          ted->writeMemoryCPU(uint16_t(addr & 0xFFFFU), value);
           break;
         case 0x14U:
         case 0x15U:
