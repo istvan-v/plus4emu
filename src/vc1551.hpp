@@ -214,7 +214,7 @@ namespace Plus4 {
     bool updateMotors();
     void updateHead();
     void updateParallelInterface();
-    static void processCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallback(void *userData);
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:

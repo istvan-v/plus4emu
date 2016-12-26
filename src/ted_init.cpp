@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ namespace Plus4 {
   {
     tedRegisters[0x07] = uint8_t(0x00);         // default to PAL mode
     for (int i = 0; i < int(sizeof(callbacks) / sizeof(TEDCallback)); i++) {
-      callbacks[i].func = (void (*)(void *)) 0;
+      callbacks[i].func = (PLUS4EMU_REGPARM1 void (*)(void *)) 0;
       callbacks[i].userData = (void *) 0;
       callbacks[i].nxt0 = (TEDCallback *) 0;
       callbacks[i].nxt1 = (TEDCallback *) 0;

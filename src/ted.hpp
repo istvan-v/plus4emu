@@ -607,7 +607,7 @@ namespace Plus4 {
     uint8_t     memoryMapTable[32768];
     // --------
     struct TEDCallback {
-      void        (*func)(void *);
+      PLUS4EMU_REGPARM1 void (*func)(void *);
       void        *userData;
       TEDCallback *nxt0;
       TEDCallback *nxt1;
@@ -824,8 +824,8 @@ namespace Plus4 {
     //   3: call the function at double clock frequency
     // The functions are called in the order of being registered; up to 16
     // callbacks can be set.
-    void setCallback(void (*func)(void *userData), void *userData_,
-                     int flags_ = 1);
+    void setCallback(PLUS4EMU_REGPARM1 void (*func)(void *userData),
+                     void *userData_, int flags_ = 1);
     static void convertPixelToYUV(uint8_t color, bool isNTSC,
                                   float& y, float& u, float& v);
     // save snapshot

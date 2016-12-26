@@ -397,7 +397,7 @@ namespace Plus4 {
       riot2.setPortA(riot2.getPortAInput() & 0xFB);
   }
 
-  void VC1526::processCallback(void *userData)
+  PLUS4EMU_REGPARM1 void VC1526::processCallback(void *userData)
   {
     VC1526& vc1526 = *(reinterpret_cast<VC1526 *>(userData));
     vc1526.timeRemaining += vc1526.serialBus.timesliceLength;

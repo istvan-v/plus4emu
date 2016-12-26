@@ -126,7 +126,7 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     void updatePins();
     void updateMotors();
-    static void processCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallback(void *userData);
     static inline int yPosToPixel(int n)
     {
       return ((n * 7) / 18);

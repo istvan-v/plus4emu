@@ -105,8 +105,8 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
-    static void processCallback(void *userData);
-    static void processCallbackHighAccuracy(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallbackHighAccuracy(void *userData);
    protected:
     virtual bool setCurrentTrack(int trackNum);
    public:

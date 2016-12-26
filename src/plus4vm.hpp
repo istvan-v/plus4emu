@@ -162,15 +162,15 @@ namespace Plus4 {
     void resetACIA();
     M7501 * getDebugCPU();
     const M7501 * getDebugCPU() const;
-    static void tapeCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void tapeCallback(void *userData);
     // run SID emulation at 10/9 * TED single clock frequency
-    static void sidCallbackC64(void *userData);
-    static void demoPlayCallback(void *userData);
-    static void demoRecordCallback(void *userData);
-    static void videoBreakPointCheckCallback(void *userData);
-    static void lightPenCallback(void *userData);
-    static void videoCaptureCallback(void *userData);
-    static void aciaCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void sidCallbackC64(void *userData);
+    static PLUS4EMU_REGPARM1 void demoPlayCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void demoRecordCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void videoBreakPointCheckCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void lightPenCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void videoCaptureCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void aciaCallback(void *userData);
     inline void setEnableACIACallback(bool isEnabled)
     {
       if (isEnabled != aciaCallbackFlag) {
@@ -178,7 +178,7 @@ namespace Plus4 {
         aciaCallbackFlag = isEnabled;
       }
     }
-    static void pasteTextCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void pasteTextCallback(void *userData);
     void removePasteTextCallback();
     bool checkEditorMode() const;
     void setCursorPosition_(int xPos, int yPos);

@@ -83,7 +83,7 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     static PLUS4EMU_REGPARM3 void writeWD177x(
         void *userData, uint16_t addr, uint8_t value);
-    static void processCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallback(void *userData);
    public:
     VC1581(SerialBus& serialBus_, int driveNum_ = 8);
     virtual ~VC1581();

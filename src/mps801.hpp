@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ namespace Plus4 {
     void printCharacter(uint8_t c);
     bool processInputByte(uint8_t n, bool atnState_);
     void runOneCycle();
-    static void processCallback(void *userData);
+    static PLUS4EMU_REGPARM1 void processCallback(void *userData);
     void writeOutputFile(uint8_t c);
    public:
     MPS801(SerialBus& serialBus_, int devNum_ = 4);

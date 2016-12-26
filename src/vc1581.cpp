@@ -269,7 +269,7 @@ namespace Plus4 {
     return wd177x.haveDisk();
   }
 
-  void VC1581::processCallback(void *userData)
+  PLUS4EMU_REGPARM1 void VC1581::processCallback(void *userData)
   {
     VC1581& vc1581 = *(reinterpret_cast<VC1581 *>(userData));
     vc1581.timeRemaining += vc1581.serialBus.timesliceLength;

@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -110,8 +110,8 @@ namespace Plus4 {
       keyboard_matrix[ndx] |= (uint8_t) mask;
   }
 
-  void TED7360::setCallback(void (*func)(void *userData), void *userData_,
-                            int flags_)
+  void TED7360::setCallback(PLUS4EMU_REGPARM1 void (*func)(void *userData),
+                            void *userData_, int flags_)
   {
     if (!func)
       return;
@@ -151,7 +151,7 @@ namespace Plus4 {
         p = p->nxt1;
       }
       if (flags_ == 0) {
-        callbacks[ndx].func = (void (*)(void *)) 0;
+        callbacks[ndx].func = (PLUS4EMU_REGPARM1 void (*)(void *)) 0;
         callbacks[ndx].userData = (void *) 0;
         callbacks[ndx].nxt0 = (TEDCallback *) 0;
         callbacks[ndx].nxt1 = (TEDCallback *) 0;
@@ -161,7 +161,7 @@ namespace Plus4 {
       return;
     if (ndx < 0) {
       for (size_t i = 0; i < (sizeof(callbacks) / sizeof(TEDCallback)); i++) {
-        if (callbacks[i].func == (void (*)(void *)) 0) {
+        if (!(callbacks[i].func)) {
           ndx = int(i);
           break;
         }

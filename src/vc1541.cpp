@@ -415,7 +415,7 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1541::processCallback(void *userData)
+  PLUS4EMU_REGPARM1 void VC1541::processCallback(void *userData)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.timeRemaining += vc1541.serialBus.timesliceLength;
@@ -456,7 +456,7 @@ namespace Plus4 {
     }
   }
 
-  void VC1541::processCallbackHighAccuracy(void *userData)
+  PLUS4EMU_REGPARM1 void VC1541::processCallbackHighAccuracy(void *userData)
   {
     VC1541& vc1541 = *(reinterpret_cast<VC1541 *>(userData));
     vc1541.timeRemaining += (vc1541.serialBus.timesliceLength >> 1);

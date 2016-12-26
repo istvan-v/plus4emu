@@ -359,7 +359,7 @@ namespace Plus4 {
     return (imageFile != (std::FILE *) 0);
   }
 
-  void VC1551::processCallback(void *userData)
+  PLUS4EMU_REGPARM1 void VC1551::processCallback(void *userData)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
     vc1551.timeRemaining += vc1551.serialBus.timesliceLength;

@@ -105,7 +105,7 @@ namespace Plus4 {
     SerialBus&  serialBus;
     int64_t     timeRemaining;
    public:
-    typedef void (*ProcessCallbackPtr)(void *);
+    typedef PLUS4EMU_REGPARM1 void (*ProcessCallbackPtr)(void *);
     // --------
     SerialDevice(SerialBus& serialBus_)
       : serialBus(serialBus_),
