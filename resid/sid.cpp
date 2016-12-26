@@ -170,6 +170,10 @@ namespace Plus4 {
   // --------------------------------------------------------------------------
   void SID::write(reg8 offset, reg8 value)
   {
+    // if there is already a pending write, complete it first
+    if (PLUS4EMU_UNLIKELY(write_pipeline))
+      write();
+
     write_address = offset;
     bus_value = value;
     bus_value_ttl = databus_ttl;
@@ -269,19 +273,6 @@ namespace Plus4 {
 
     // Tell clock() that the pipeline is empty.
     write_pipeline = 0;
-  }
-
-  void SID::writeDebug(reg8 offset, reg8 value)
-  {
-    reg8    savedBusValue = bus_value;
-    cycle_count savedWritePipeline = write_pipeline;
-    reg8    savedWriteAddress = write_address;
-    bus_value = value;
-    write_address = offset & 0x1F;
-    write();
-    bus_value = savedBusValue;
-    write_pipeline = savedWritePipeline;
-    write_address = savedWriteAddress;
   }
 
   // --------------------------------------------------------------------------
@@ -573,7 +564,7 @@ namespace Plus4 {
     }
     // set default state
     for (uint8_t i = 0; i < 0x20; i++)
-      writeDebug(i, 0x00);
+      write(i, 0x00);
     bus_value = 0;
     bus_value_ttl = 0;
     write_pipeline = 0;
@@ -601,7 +592,7 @@ namespace Plus4 {
       set_chip_model(
           (version >= 0x01000001 && buf.readBoolean()) ? MOS6581 : MOS8580);
       for (uint8_t i = 0x00; i < 0x20; i++)
-        writeDebug(i, buf.readByte());
+        write(i, buf.readByte());
       bus_value = buf.readByte();
       bus_value_ttl = buf.readInt32();
       if (version >= 0x01000001) {

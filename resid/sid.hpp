@@ -51,7 +51,6 @@ namespace Plus4 {
     reg8 read(reg8 offset);
     reg8 readDebug(reg8 offset) const;
     void write(reg8 offset, reg8 value);
-    void writeDebug(reg8 offset, reg8 value);
 
     // 16-bit input (EXT IN).
     void input(short sample);
