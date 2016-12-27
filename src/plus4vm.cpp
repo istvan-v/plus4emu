@@ -963,11 +963,12 @@ namespace Plus4 {
     int32_t tedCycles = int32_t(double(tedTimeRemaining)
                                 * double(int32_t(tedInputClockFrequency))
                                 * (1.0 / 4294967296000000.0));
-    if (tedCycles >= 0)
+    if (tedCycles >= 0) {
       tedCycles = tedCycles - ted->run(tedCycles);
-    tedTimeRemaining = tedTimeRemaining
-                       - int64_t(double(tedCycles) * 4294967296000000.0
-                                 / double(int32_t(tedInputClockFrequency)));
+      tedTimeRemaining = tedTimeRemaining
+                         - int64_t(double(tedCycles) * 4294967296000000.0
+                                   / double(int32_t(tedInputClockFrequency)));
+    }
   }
 
   void Plus4VM::reset(bool isColdReset)

@@ -743,9 +743,9 @@ namespace Plus4 {
     {
       return (size_t(ramSegments) << 4);
     }
-    // run TED emulation for 'nCycles' input clock cycles (17734475 Hz for PAL,
+    // Run TED emulation for 'nCycles' input clock cycles (17734475 Hz for PAL,
     // 14318180 Hz for NTSC). 'nCycles' must be non-negative.
-    // Returns the number of cycles remaining, which is always negative
+    // Returns the number of cycles remaining, which is always negative.
     int run(int nCycles);
     virtual void reset(bool cold_reset = false);
     void setCPUClockMultiplier(int clk);
