@@ -959,14 +959,15 @@ namespace Plus4 {
       }
       ted->setCallback(&tapeCallback, this, (tapeCallbackFlag ? 1 : 0));
     }
-    int64_t   tedTimeRemaining_ =
-        tedTimeRemaining + (int64_t(microseconds) << 32);
-    TED7360_  *ted_ = ted;
-    while (PLUS4EMU_EXPECT(tedTimeRemaining_ >= 0)) {
-      ted_->runOneCycle();
-      tedTimeRemaining_ -= tedTimesliceLength;
-    }
-    tedTimeRemaining = tedTimeRemaining_;
+    tedTimeRemaining = tedTimeRemaining + (int64_t(microseconds) << 32);
+    int32_t tedCycles = int32_t(double(tedTimeRemaining)
+                                * double(int32_t(tedInputClockFrequency))
+                                * (1.0 / 4294967296000000.0));
+    if (tedCycles >= 0)
+      tedCycles = tedCycles - ted->run(tedCycles);
+    tedTimeRemaining = tedTimeRemaining
+                       - int64_t(double(tedCycles) * 4294967296000000.0
+                                 / double(int32_t(tedInputClockFrequency)));
   }
 
   void Plus4VM::reset(bool isColdReset)

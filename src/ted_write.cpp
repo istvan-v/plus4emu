@@ -210,7 +210,7 @@ namespace Plus4 {
       else
         ted.delayedEvents1.setHorizontalScroll();
     }
-    if (bitsChanged & uint8_t(0x60)) {
+    if (PLUS4EMU_UNLIKELY(bitsChanged & uint8_t(0x60))) {
       if (bitsChanged & uint8_t(0x20)) {
         if (ted.ted_disabled) {
           if (!(ted.videoColumn & uint8_t(0x01))) {
@@ -223,10 +223,12 @@ namespace Plus4 {
       if (bitsChanged & uint8_t(0x40)) {
         if (value & uint8_t(0x40)) {
           ted.videoOutputFlags |= uint8_t(0x01);
+          ted.singleClockCycleLength = 16;
           ted.ntscModeChangeCallback(true);
         }
         else {
           ted.videoOutputFlags &= uint8_t(0xFC);
+          ted.singleClockCycleLength = 20;
           ted.ntscModeChangeCallback(false);
         }
         if (ted.savedVideoLine >= 226 && ted.savedVideoLine <= 269) {

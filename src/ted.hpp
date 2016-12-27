@@ -551,6 +551,7 @@ namespace Plus4 {
     bool        incrementingDMAPosition;
     bool        incrementingCharacterPosition;
     bool        cpuHaltedFlag;
+    uint8_t     singleClockCycleLength;         // PAL: 20, NTSC: 16
     DelayedEventsMask   delayedEvents0;
     DelayedEventsMask   delayedEvents1;
     int         savedVideoLine;
@@ -742,7 +743,10 @@ namespace Plus4 {
     {
       return (size_t(ramSegments) << 4);
     }
-    void runOneCycle();
+    // run TED emulation for 'nCycles' input clock cycles (17734475 Hz for PAL,
+    // 14318180 Hz for NTSC). 'nCycles' must be non-negative.
+    // Returns the number of cycles remaining, which is always negative
+    int run(int nCycles);
     virtual void reset(bool cold_reset = false);
     void setCPUClockMultiplier(int clk);
     void setKeyState(int keyNum, bool isPressed);

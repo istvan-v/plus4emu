@@ -276,6 +276,7 @@ namespace Plus4 {
     incrementingDMAPosition = false;
     incrementingCharacterPosition = false;
     cpuHaltedFlag = false;
+    singleClockCycleLength = 20;
     delayedEvents0 = 0U;
     delayedEvents1 = 0U;
     savedVideoLine = 224;
