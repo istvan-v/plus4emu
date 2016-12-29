@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ namespace Plus4 {
       updateInterruptFlags();
       break;
     case 0x05:                                  // timer 1 high byte
-      value = uint8_t(timer1Counter >> 8);
+      value = uint8_t((timer1Counter & 0xFF00) >> 8);
       break;
     case 0x06:                                  // timer 1 latch low byte
       value = uint8_t(timer1Latch & 0x00FF);
@@ -308,7 +308,7 @@ namespace Plus4 {
       value = uint8_t(timer1Counter & 0x00FF);
       break;
     case 0x05:                                  // timer 1 high byte
-      value = uint8_t(timer1Counter >> 8);
+      value = uint8_t((timer1Counter & 0xFF00) >> 8);
       break;
     case 0x06:                                  // timer 1 latch low byte
       value = uint8_t(timer1Latch & 0x00FF);
@@ -344,11 +344,13 @@ namespace Plus4 {
 
   void VIA6522::timer1Underflow()
   {
+    timer1Counter = 0xFFFF;
     if (!timer1SingleShotMode || !timer1SingleShotModeDone) {
-      if (timer1SingleShotMode)
+      if (timer1SingleShotMode) {
         portBTimerOutput = 0x80;
+      }
       else {
-        timer1Counter = timer1Latch;
+        timer1Counter = -1;             // reload counter after 1 cycle delay
         portBTimerOutput = portBTimerOutput ^ 0x80;
       }
       updatePortB();

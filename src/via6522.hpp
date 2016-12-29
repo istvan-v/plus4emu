@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ namespace Plus4 {
     uint8_t   portBTimerOutputMask;
     uint8_t   portBTimerOutput;
     uint8_t   portBOutput;
-    uint16_t  timer1Counter;
+    int32_t   timer1Counter;
     uint16_t  timer1Latch;
     bool      timer1SingleShotMode;
     bool      timer1SingleShotModeDone;
@@ -78,20 +78,25 @@ namespace Plus4 {
     void timer1Underflow();
     inline void updateTimer1()
     {
-      timer1Counter = (timer1Counter - 1) & 0xFFFF;
-      if (!timer1Counter)
-        timer1Underflow();
+      if (PLUS4EMU_UNLIKELY(timer1Counter <= 0)) {
+        if (timer1Counter < 0)
+          timer1Counter = timer1Latch;
+        else
+          timer1Underflow();
+        return;
+      }
+      timer1Counter--;
     }
     inline void updateTimer2()
     {
-      timer2Counter = (timer2Counter - 1) & 0xFFFF;
-      if (!timer2Counter) {
+      if (PLUS4EMU_UNLIKELY(!timer2Counter)) {
         if (!timer2SingleShotModeDone) {
           timer2SingleShotModeDone = true;
           viaRegisters[0x0D] = viaRegisters[0x0D] | 0x20;
           updateInterruptFlags();
         }
       }
+      timer2Counter--;
     }
    public:
     VIA6522();
