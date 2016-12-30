@@ -229,6 +229,7 @@ namespace Plus4 {
       break;
     case 0x0B:                                  // auxiliary control register
       viaRegisters[addr] = value;
+      timer2PulseCountingMode = bool(value & 0x20);
       timer1SingleShotMode = !(value & 0x40);
       portBTimerOutputMask = value & 0x80;
       updatePortB();
