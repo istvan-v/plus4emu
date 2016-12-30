@@ -105,6 +105,8 @@ namespace Plus4 {
         void *userData, uint16_t addr, uint8_t value);
     bool updateMotors();
     void updateHead();
+    PLUS4EMU_REGPARM1 void updateSerialBus();
+    PLUS4EMU_INLINE void updateDrive();
     static PLUS4EMU_REGPARM1 void processCallback(void *userData);
     static PLUS4EMU_REGPARM1 void processCallbackHighAccuracy(void *userData);
    protected:

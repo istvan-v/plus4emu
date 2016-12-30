@@ -78,14 +78,12 @@ namespace Plus4 {
     void timer1Underflow();
     inline void updateTimer1()
     {
-      if (PLUS4EMU_UNLIKELY(timer1Counter <= 0)) {
-        if (timer1Counter < 0)
+      if (PLUS4EMU_UNLIKELY(--timer1Counter < 0)) {
+        if (timer1Counter < -1)
           timer1Counter = timer1Latch;
         else
           timer1Underflow();
-        return;
       }
-      timer1Counter--;
     }
     inline void updateTimer2()
     {
@@ -105,7 +103,7 @@ namespace Plus4 {
     inline void runOneCycle()
     {
       updateTimer1();
-      if (!timer2PulseCountingMode)
+      if (PLUS4EMU_EXPECT(!timer2PulseCountingMode))
         updateTimer2();
     }
     uint8_t readRegister(uint16_t addr);
