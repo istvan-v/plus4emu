@@ -419,8 +419,7 @@ namespace Plus4 {
   {
     via1PortBOutputChangeFlag = false;
     uint8_t via1PortBOutput = via1.getPortB();
-    uint8_t atnInput = (~(uint8_t(serialBus.getATN())));
-    uint8_t atnAck_ = via1PortBOutput ^ atnInput;
+    uint8_t atnAck_ = via1PortBOutput ^ ~(uint8_t(serialBus.getATN()));
     atnAck_ = uint8_t((atnAck_ & 0x10) | (via1PortBOutput & 0x02));
     serialBus.setCLKAndDATA(deviceNumber,
                             !(via1PortBOutput & 0x08), !(atnAck_));
