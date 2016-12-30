@@ -36,7 +36,10 @@ namespace Plus4 {
     ca2Input = true;
     cb1Input = true;
     cb2Input = true;
+#if 0
+    // FIXME: shift register is unimplemented
     shiftRegister = 0x00;
+#endif
     irqState = false;
     this->reset();
   }
@@ -71,7 +74,10 @@ namespace Plus4 {
     cb1PositiveEdge = false;
     cb2Output = true;
     cb2IsOutput = false;
+#if 0
+    // FIXME: shift register is unimplemented
     shiftCounter = 0;
+#endif
     updatePortA();
     updatePortB();
     if (irqState) {

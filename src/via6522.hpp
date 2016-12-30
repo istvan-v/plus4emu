@@ -61,8 +61,11 @@ namespace Plus4 {
     bool      cb2Input;
     bool      cb2Output;
     bool      cb2IsOutput;
+#if 0
+    // FIXME: shift register is unimplemented
     uint8_t   shiftRegister;
     uint8_t   shiftCounter;
+#endif
     bool      irqState;
     inline void updateInterruptFlags()
     {
