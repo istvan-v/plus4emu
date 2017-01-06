@@ -162,6 +162,26 @@ namespace Plus4Emu {
   // sufficient privileges, Plus4Emu::Exception may be thrown.
   void setProcessPriority(int n);
 
+#ifndef WIN32
+  PLUS4EMU_INLINE std::FILE *fileOpen(const char *fileName, const char *mode)
+  {
+    return std::fopen(fileName, mode);
+  }
+  PLUS4EMU_INLINE int fileRemove(const char *fileName)
+  {
+    return std::remove(fileName);
+  }
+#else
+  /*!
+   * Convert UTF-8 encoded string to wchar_t.
+   */
+  void convertUTF8(wchar_t *buf, const char *s, size_t bufSize);
+
+  // file I/O wrappers with support for UTF-8 encoded file names
+  std::FILE *fileOpen(const char *fileName, const char *mode);
+  int fileRemove(const char *fileName);
+#endif
+
 }       // namespace Plus4Emu
 
 #endif  // PLUS4EMU_SYSTEM_HPP

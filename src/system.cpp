@@ -551,5 +551,66 @@ namespace Plus4Emu {
 #endif
   }
 
+#ifdef WIN32
+
+  void convertUTF8(wchar_t *buf, const char *s, size_t bufSize)
+  {
+    if (PLUS4EMU_UNLIKELY(!buf || bufSize < 1))
+      return;
+    if (!s)
+      s = "";
+    wchar_t w = wchar_t(0);
+    unsigned char n = 0;
+    unsigned char c;
+    while ((c = (unsigned char) *(s++)) != '\0') {
+      if (PLUS4EMU_EXPECT(!(c & 0x80))) {
+        w = wchar_t(c);
+      }
+      else if (c >= 0xC0) {
+        n = 1;
+        while (PLUS4EMU_UNLIKELY(c & (0x40 >> n)))
+          n++;
+        w = wchar_t(c & ((0x80 >> n) - 1));
+        n--;
+        continue;
+      }
+      else {
+        w = (w << 6) | wchar_t(c & 0x3F);
+        if (PLUS4EMU_UNLIKELY(n > 0)) {
+          n--;
+          continue;
+        }
+      }
+      if (PLUS4EMU_UNLIKELY(!(--bufSize)))
+        break;
+      *(buf++) = w;
+      w = wchar_t(0);
+      n = 0;
+    }
+    *buf = wchar_t(0);
+  }
+
+  // fopen() wrapper with support for UTF-8 encoded file names
+  std::FILE *fileOpen(const char *fileName, const char *mode)
+  {
+    wchar_t tmpBuf1[480];
+    wchar_t tmpBuf2[32];
+    wchar_t *fileName_ = &(tmpBuf1[0]);
+    wchar_t *mode_ = &(tmpBuf2[0]);
+    convertUTF8(fileName_, fileName, 480);
+    convertUTF8(mode_, mode, 32);
+    return _wfopen(fileName_, mode_);
+  }
+
+  int fileRemove(const char *fileName)
+  {
+    wchar_t tmpBuf[512];
+    wchar_t *fileName_ = &(tmpBuf[0]);
+    convertUTF8(fileName_, fileName, 512);
+    return _wremove(fileName_);
+  }
+
+#endif
+
 }       // namespace Plus4Emu
 
