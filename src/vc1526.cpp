@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include "via6522.hpp"
 #include "riot6532.hpp"
 #include "vc1526.hpp"
+#include "system.hpp"
 
 static void defaultBreakPointCallback(void *userData,
                                       int debugContext_, int type,
@@ -528,7 +529,7 @@ namespace Plus4 {
     }
     if (outFile)
       setTextOutputFile((char *) 0);    // close old output file first
-    std::FILE *f = std::fopen(fileName, (asciiMode ? "w" : "wb"));
+    std::FILE *f = Plus4Emu::fileOpen(fileName, (asciiMode ? "w" : "wb"));
     if (!f)
       throw Plus4Emu::Exception("error opening printer output file");
     outFile = f;

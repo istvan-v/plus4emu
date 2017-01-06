@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -396,7 +396,7 @@ namespace Plus4Emu {
         getFullPathFileName(fileName, fullName);
       else
         fullName = fileName;
-      std::FILE *f = std::fopen(fullName.c_str(), "rb");
+      std::FILE *f = fileOpen(fullName.c_str(), "rb");
       if (f) {
         try {
           int     c;
@@ -533,7 +533,7 @@ namespace Plus4Emu {
         getFullPathFileName(fileName, fullName);
       else
         fullName = fileName;
-      std::FILE *f = std::fopen(fullName.c_str(), "wb");
+      std::FILE *f = fileOpen(fullName.c_str(), "wb");
       if (f) {
         err = !(enableCompression ||
                 std::fwrite(&(plus4EmuFile_Magic[0]), 1, 16, f) == 16);
@@ -547,7 +547,7 @@ namespace Plus4Emu {
         if (std::fclose(f) != 0)
           err = true;
         if (err)
-          std::remove(fullName.c_str());
+          fileRemove(fullName.c_str());
       }
     }
     buf.clear();

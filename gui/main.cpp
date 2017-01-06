@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -383,7 +383,7 @@ int main(int argc, char **argv)
           std::FILE   *f = (std::FILE *) 0;
           try {
             if (s[0] != '\0')
-              f = std::fopen(s, "rb");
+              f = Plus4Emu::fileOpen(s, "rb");
             if (!f)
               throw Plus4Emu::Exception("cannot open text file");
             int     prvChar = EOF;

@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -826,7 +826,7 @@ namespace Plus4Emu {
         Compressor_ZLib::compressData(outBuf, &(imgDataBuf.front()),
                                       imgDataBuf.size(), blockSize);
       }
-      f = std::fopen(fileName, "wb");
+      f = fileOpen(fileName, "wb");
       if (!f)
         throw Exception("error opening PNG image file");
       if (std::fwrite(pngSignature, sizeof(char), 8, f) != 8)
@@ -859,7 +859,7 @@ namespace Plus4Emu {
     catch (...) {
       if (f) {
         std::fclose(f);
-        std::remove(fileName);
+        fileRemove(fileName);
       }
       throw;
     }

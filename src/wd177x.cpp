@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "wd177x.hpp"
+#include "system.hpp"
 
 #include <vector>
 
@@ -122,9 +123,9 @@ namespace Plus4Emu {
     bool    nSectorsPerTrackValid =
                 (nSectorsPerTrack_ >= 1 && nSectorsPerTrack_ <= 240);
     try {
-      imageFile = std::fopen(fileName_.c_str(), "r+b");
+      imageFile = fileOpen(fileName_.c_str(), "r+b");
       if (!imageFile) {
-        imageFile = std::fopen(fileName_.c_str(), "rb");
+        imageFile = fileOpen(fileName_.c_str(), "rb");
         if (imageFile)
           writeProtectFlag = true;
         else

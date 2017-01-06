@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -983,7 +983,12 @@ namespace Plus4Emu {
 #else
       struct _stat  st;
       std::memset(&st, 0, sizeof(struct _stat));
-      int   err = _stat(fullName.c_str(), &st);
+      int   err;
+      {
+        wchar_t tmpBuf[512];
+        convertUTF8(&(tmpBuf[0]), fullName.c_str(), 512);
+        err = _wstat(&(tmpBuf[0]), &st);
+      }
 #endif
       if (err != 0) {
         if (mode == (char *) 0 || mode[0] != 'w')
@@ -1002,7 +1007,7 @@ namespace Plus4Emu {
       }
       // FIXME: the file may possibly be created, changed, or removed between
       // calling stat() and fopen()
-      f = std::fopen(fullName.c_str(), mode);
+      f = fileOpen(fullName.c_str(), mode);
       if (!f)
         return -5;                      // error: cannot open file
     }

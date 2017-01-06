@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -735,7 +735,7 @@ namespace Plus4 {
 #endif
         }
         fullName += baseName;
-        f = std::fopen(fullName.c_str(), "rb");
+        f = Plus4Emu::fileOpen(fullName.c_str(), "rb");
         if (!f)
           continue;
         if (fileType != 'p') {
@@ -839,7 +839,7 @@ namespace Plus4 {
         // change suffix if a file with the same name already exists
         fullName[fullName.length() - 2] = (char(fileIndex / 10) + '0');
         fullName[fullName.length() - 1] = (char(fileIndex % 10) + '0');
-        f = std::fopen(fullName.c_str(), "rb");
+        f = Plus4Emu::fileOpen(fullName.c_str(), "rb");
         if (!f)
           break;
         std::fclose(f);
@@ -847,14 +847,15 @@ namespace Plus4 {
       } while (++fileIndex <= 99U);
       if (fileIndex > 99U)
         return -2;
-      f = std::fopen(fullName.c_str(), (fileType != 'R' ? "wb" : "w+b"));
+      f = Plus4Emu::fileOpen(fullName.c_str(),
+                             (fileType != 'R' ? "wb" : "w+b"));
       if (!f)
         return -1;
       if (std::fwrite(&(hdrData[0]), sizeof(unsigned char), 26, f) != 26 ||
           std::fflush(f) != 0) {
         std::fclose(f);
         f = (std::FILE *) 0;
-        std::remove(fullName.c_str());
+        Plus4Emu::fileRemove(fullName.c_str());
         return -1;
       }
       addFileToDB(fileName, fullName, fileType, recSize);
@@ -1135,7 +1136,7 @@ namespace Plus4 {
             }
           }
         }
-        f = std::fopen(fileDB[fileName].fullName.c_str(), "rb");
+        f = Plus4Emu::fileOpen(fileDB[fileName].fullName.c_str(), "rb");
         if (!f) {
           fileDBUpdateFlag = true;
           setErrorMessage(62);          // "file not found"
@@ -1159,7 +1160,7 @@ namespace Plus4 {
             return;
           }
         }
-        f = std::fopen(fileDB[fileName].fullName.c_str(), "ab");
+        f = Plus4Emu::fileOpen(fileDB[fileName].fullName.c_str(), "ab");
         if (!f) {
           fileDBUpdateFlag = true;
           setErrorMessage(26);          // error opening file for write
@@ -1523,10 +1524,10 @@ namespace Plus4 {
     char    openMode = 'W';
     std::FILE *f = (std::FILE *) 0;
     if (!writeProtectFlag)
-      f = std::fopen(fileDB[fileName].fullName.c_str(), "r+b");
+      f = Plus4Emu::fileOpen(fileDB[fileName].fullName.c_str(), "r+b");
     if (!f) {
       openMode = 'R';
-      f = std::fopen(fileDB[fileName].fullName.c_str(), "rb");
+      f = Plus4Emu::fileOpen(fileDB[fileName].fullName.c_str(), "rb");
     }
     if (!f) {
       fileDBUpdateFlag = true;
@@ -1767,7 +1768,8 @@ namespace Plus4 {
           }
         }
         FileDBEntry&  fileDBEntry = (*directoryIterator).second;
-        std::FILE     *f = std::fopen(fileDBEntry.fullName.c_str(), "rb");
+        std::FILE     *f =
+            Plus4Emu::fileOpen(fileDBEntry.fullName.c_str(), "rb");
         if (f) {
           // get file size
           std::fseek(f, 0L, SEEK_END);
@@ -1875,7 +1877,7 @@ namespace Plus4 {
         return false;
       }
     }
-    if (std::remove(fileDB[fileName].fullName.c_str()) != 0) {
+    if (Plus4Emu::fileRemove(fileDB[fileName].fullName.c_str()) != 0) {
       fileDBUpdateFlag = true;
       setErrorMessage(26);              // "write protect on"
       return false;
@@ -1940,7 +1942,7 @@ namespace Plus4 {
       return true;
     FileTableEntry  dstFile;    // use FileTableEntry structures so that
     FileTableEntry  srcFile;    // the files are automatically closed on return
-    srcFile.f = std::fopen(fileDB[srcFileName].fullName.c_str(), "rb");
+    srcFile.f = Plus4Emu::fileOpen(fileDB[srcFileName].fullName.c_str(), "rb");
     if (srcFile.f == (std::FILE *) 0) {
       fileDBUpdateFlag = !fileDBUpdated;
       setErrorMessage(62);              // "file not found"
@@ -2031,7 +2033,7 @@ namespace Plus4 {
     }
     FileTableEntry  dstFile;    // use FileTableEntry structures so that
     FileTableEntry  srcFile;    // the files are automatically closed on return
-    srcFile.f = std::fopen(fileDB[srcFileName].fullName.c_str(), "rb");
+    srcFile.f = Plus4Emu::fileOpen(fileDB[srcFileName].fullName.c_str(), "rb");
     if (srcFile.f == (std::FILE *) 0) {
       fileDBUpdateFlag = !fileDBUpdated;
       setErrorMessage(62);              // "file not found"
@@ -2044,7 +2046,7 @@ namespace Plus4 {
         return false;
       }
     }
-    dstFile.f = std::fopen(fileDB[dstFileName].fullName.c_str(), "ab");
+    dstFile.f = Plus4Emu::fileOpen(fileDB[dstFileName].fullName.c_str(), "ab");
     if (dstFile.f == (std::FILE *) 0) {
       fileDBUpdateFlag = !fileDBUpdated;
       setErrorMessage(26);              // "write protect on"

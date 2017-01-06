@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include "fileio.hpp"
 #include "cpu.hpp"
 #include "ted.hpp"
+#include "system.hpp"
 
 #include <cmath>
 
@@ -659,7 +660,7 @@ namespace Plus4 {
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Plus4Emu::Exception("invalid plus4 program file name");
-    std::FILE *f = std::fopen(fileName, "wb");
+    std::FILE *f = Plus4Emu::fileOpen(fileName, "wb");
     if (!f)
       throw Plus4Emu::Exception("error opening plus4 program file");
     uint16_t  startAddr, endAddr, len;
@@ -733,7 +734,7 @@ namespace Plus4 {
       throw Plus4Emu::Exception("invalid plus4 program file name");
     }
     if (!f) {
-      f = std::fopen(fileName, "rb");
+      f = Plus4Emu::fileOpen(fileName, "rb");
       if (!f)
         throw Plus4Emu::Exception("error opening plus4 program file");
     }

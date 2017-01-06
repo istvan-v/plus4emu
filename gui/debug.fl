@@ -262,7 +262,7 @@ class Plus4EmuGUI_DebugWindow {open
     if (gui.browseFile(tmp, gui.debuggerDirectory,
                        "All files\\t*", Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load memory")) {
-      f = std::fopen(tmp.c_str(), "rb");
+      f = Plus4Emu::fileOpen(tmp.c_str(), "rb");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       if (memoryDumpASCIIFileFormat) {
@@ -312,9 +312,9 @@ class Plus4EmuGUI_DebugWindow {open
                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save memory")) {
       if (memoryDumpASCIIFileFormat)
-        f = std::fopen(tmp.c_str(), "w");
+        f = Plus4Emu::fileOpen(tmp.c_str(), "w");
       else
-        f = std::fopen(tmp.c_str(), "wb");
+        f = Plus4Emu::fileOpen(tmp.c_str(), "wb");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       if (memoryDumpASCIIFileFormat) {
@@ -476,7 +476,7 @@ class Plus4EmuGUI_DebugWindow {open
     if (gui.browseFile(tmp, gui.debuggerDirectory,
                        "All files\\t*", Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load watchpoint definitions from file")) {
-      f = std::fopen(tmp.c_str(), "rb");
+      f = Plus4Emu::fileOpen(tmp.c_str(), "rb");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       tmp = "";
@@ -526,7 +526,7 @@ class Plus4EmuGUI_DebugWindow {open
                        "All files\\t*",
                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save watchpoint definitions to file")) {
-      f = std::fopen(tmp.c_str(), "w");
+      f = Plus4Emu::fileOpen(tmp.c_str(), "w");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       buf = bpEditBuffer->text();
@@ -577,7 +577,7 @@ class Plus4EmuGUI_DebugWindow {open
                        "Lua scripts\\t*.lua",
                        Fl_Native_File_Chooser::BROWSE_FILE,
                        "Load Lua script from file")) {
-      f = std::fopen(tmp.c_str(), "rb");
+      f = Plus4Emu::fileOpen(tmp.c_str(), "rb");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       tmp = "";
@@ -624,7 +624,7 @@ class Plus4EmuGUI_DebugWindow {open
                        "Lua scripts\\t*.lua",
                        Fl_Native_File_Chooser::BROWSE_SAVE_FILE,
                        "Save Lua script to file")) {
-      f = std::fopen(tmp.c_str(), "w");
+      f = Plus4Emu::fileOpen(tmp.c_str(), "w");
       if (!f)
         throw Plus4Emu::Exception("cannot open file");
       buf = scriptEditBuffer->text();

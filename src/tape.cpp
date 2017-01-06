@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 #include "plus4emu.hpp"
 #include "tape.hpp"
+#include "system.hpp"
 #include <cmath>
 #include <sndfile.h>
 
@@ -327,15 +328,15 @@ namespace Plus4Emu {
         buf[i] = 0;
       fileHeader = new uint32_t[1024];
       if (mode == 0 || mode == 1)
-        f = std::fopen(fileName, "r+b");
+        f = fileOpen(fileName, "r+b");
       if (f == (std::FILE *) 0 && mode != 3) {
-        f = std::fopen(fileName, "rb");
+        f = fileOpen(fileName, "rb");
         if (f)
           isReadOnly = true;
       }
       if (f == (std::FILE *) 0 && (mode == 0 || mode == 3)) {
         // create new tape file
-        f = std::fopen(fileName, "w+b");
+        f = fileOpen(fileName, "w+b");
         if (f) {
           usingNewFormat = true;
           sampleRate = sampleRate_;
@@ -348,7 +349,7 @@ namespace Plus4Emu {
             fileHeader[i] = 0xFFFFFFFFU;
           if (!writeHeader_()) {
             std::fclose(f);
-            std::remove(fileName);
+            fileRemove(fileName);
             f = (std::FILE *) 0;
           }
         }
@@ -586,7 +587,7 @@ namespace Plus4Emu {
   {
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Exception("invalid tape file name");
-    f = std::fopen(fileName, "rb");
+    f = fileOpen(fileName, "rb");
     if (!f)
       throw Exception("error opening tape file");
     bool    isC16TAPFile = false;
@@ -989,7 +990,7 @@ namespace Plus4Emu {
     isReadOnly = (mode == 2);
     if (!isReadOnly) {
       // check if file exists so that libsndfile does not create an empty file
-      std::FILE *f = std::fopen(fileName, "rb");
+      std::FILE *f = fileOpen(fileName, "rb");
       if (f)
         std::fclose(f);
       else

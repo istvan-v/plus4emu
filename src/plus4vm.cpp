@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 #include "vc1551.hpp"
 #include "vc1581.hpp"
 #include "iecdrive.hpp"
+#include "system.hpp"
 
 static void writeDemoTimeCnt(Plus4Emu::File::Buffer& buf, uint64_t n)
 {
@@ -1100,7 +1101,7 @@ namespace Plus4 {
     // load file into memory
     std::vector<uint8_t>  buf;
     buf.resize(nBytes);
-    std::FILE   *f = std::fopen(fileName, "rb");
+    std::FILE   *f = Plus4Emu::fileOpen(fileName, "rb");
     if (!f)
       throw Plus4Emu::Exception("cannot open ROM file");
     std::fseek(f, 0L, SEEK_END);
@@ -1710,7 +1711,7 @@ namespace Plus4 {
         bool    isD81 = true;
         {
           // find out file type
-          std::FILE *f = std::fopen(fileName_.c_str(), "rb");
+          std::FILE *f = Plus4Emu::fileOpen(fileName_.c_str(), "rb");
           if (f) {
             if (std::fseek(f, 0L, SEEK_END) >= 0) {
               long    fSize = std::ftell(f);

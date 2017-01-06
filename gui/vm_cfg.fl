@@ -802,7 +802,7 @@ class Plus4EmuGUI_MachineConfigWindow {open
     cv = fileName_;
     std::string fName = std::string(cv);
     if (fName.length() > 0) {
-      std::FILE *f = std::fopen(fName.c_str(), "rb");
+      std::FILE *f = Plus4Emu::fileOpen(fName.c_str(), "rb");
       long    fSize = 0L;
       if (f) {
         if (std::fseek(f, 0L, SEEK_END) >= 0)
