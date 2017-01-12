@@ -865,11 +865,11 @@ Start debugger (Alt + M)
 Copyright
 =========
 
-plus4emu is copyright (C) 2003-2016 by Istvan Varga
+plus4emu is copyright © 2003-2017 by Istvan Varga
 <istvanv@users.sourceforge.net>.
-reSID 1.0 copyright (C) 2010 by Dag Lem.
-Fl_Native_File_Chooser 0.84 copyright (C) 2004 by Greg Ercolano.
-dotconf 1.3 copyright (C) by Lukas Schröder and William Hubbs.
+reSID 1.0 copyright © 2010 by Dag Lem.
+Fl_Native_File_Chooser 0.84 copyright © 2004 by Greg Ercolano.
+dotconf 1.3 copyright © by Lukas Schröder and William Hubbs.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
