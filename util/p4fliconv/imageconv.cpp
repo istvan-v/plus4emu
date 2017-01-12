@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -327,7 +327,7 @@ namespace Plus4FLIConv {
             (fileName[n - 1] == 'P' || fileName[n - 1] == 'p'))))) {
       return false;
     }
-    std::FILE *f = std::fopen(fileName, "rb");
+    std::FILE *f = Plus4Emu::fileOpen(fileName, "rb");
     if (!f)
       return false;
     if (std::fseek(f, 0L, SEEK_END) < 0) {
@@ -374,7 +374,7 @@ namespace Plus4FLIConv {
     attr12Data.resize(1000);
     attr3Data.resize(1000);
     imageData.resize(64000);    // 320x200 Plus/4 color codes
-    std::FILE *f = std::fopen(fileName, "rb");
+    std::FILE *f = Plus4Emu::fileOpen(fileName, "rb");
     if (!f)
       throw Plus4Emu::Exception("error opening image file");
     size_t  fileSize =

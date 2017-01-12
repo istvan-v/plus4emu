@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ namespace Plus4FLIConv {
         outBuf.push_back(compressBuf[j]);
     }
     // write output file
-    std::FILE *f = std::fopen(fileName, "wb");
+    std::FILE *f = Plus4Emu::fileOpen(fileName, "wb");
     if (!f)
       throw Plus4Emu::Exception("error opening P4S file");
     for (size_t i = 0; i < outBuf.size(); i++) {
@@ -311,7 +311,7 @@ namespace Plus4FLIConv {
     prgEndAddr = 0x1003U;
     if (fileName == (char *) 0 || fileName[0] == '\0')
       throw Plus4Emu::Exception("invalid file name");
-    std::FILE *f = std::fopen(fileName, "rb");
+    std::FILE *f = Plus4Emu::fileOpen(fileName, "rb");
     if (!f)
       throw Plus4Emu::Exception("error opening file");
     try {

@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -138,7 +138,7 @@ namespace Plus4FLIConv {
             outBuf.push_back(color3);
           }
         }
-        f = std::fopen(fileName, "wb");
+        f = Plus4Emu::fileOpen(fileName, "wb");
         if (!f)
           throw Plus4Emu::Exception("error opening output file");
         if (std::fwrite(&(outBuf.front()), sizeof(unsigned char), outBuf.size(),
@@ -153,7 +153,7 @@ namespace Plus4FLIConv {
         unsigned int  prgStartAddr = 0x1001U;
         if (rawMode)
           prgStartAddr = prgData.getImageDataStartAddress();
-        f = std::fopen(fileName, "wb");
+        f = Plus4Emu::fileOpen(fileName, "wb");
         if (!f)
           throw Plus4Emu::Exception("error opening PRG file");
         if (compressionLevel > 0) {

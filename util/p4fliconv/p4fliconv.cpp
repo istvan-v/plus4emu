@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -981,7 +981,7 @@ void Plus4FLIConvGUI::run()
     ted->setRAMSize(64);
     for (int i = 0; i < 8; i++) {
       if (romFileNames[i] != "") {
-        std::FILE *f = std::fopen(romFileNames[i].c_str(), "rb");
+        std::FILE *f = Plus4Emu::fileOpen(romFileNames[i].c_str(), "rb");
         if (f) {
           std::fseek(f, long(romFileOffsets[i]), SEEK_SET);
           for (int j = 0; j < 64; j++) {
