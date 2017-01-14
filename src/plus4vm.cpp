@@ -100,9 +100,9 @@ namespace Plus4 {
     int32_t tmp = vm.soundOutputAccumulator;
     if (tmp != 0) {
       vm.soundOutputAccumulator = 0;
-      tmp = (tmp >= -1441792 ? (tmp < 1441792 ? tmp : 1441792) : -1441792);
+      tmp = (tmp >= -1048576 ? (tmp < 1048576 ? tmp : 1048576) : -1048576);
       tmp = int32_t((uint32_t(tmp * vm.sidOutputVolume)
-                     + uint32_t(0x80008000UL)) >> 16) - int32_t(32768);
+                     + uint32_t(0x80004000UL)) >> 15) - int32_t(65536);
     }
     vm.soundOutputSignal = tmp + int32_t(sampleValue);
     vm.sendMonoAudioOutput(vm.soundOutputSignal);
@@ -829,7 +829,7 @@ namespace Plus4 {
       sid_((SID *) 0),
       soundOutputAccumulator(0),
       soundOutputSignal(0),
-      sidOutputVolume(1117),
+      sidOutputVolume(1051),
       sidEnabled(false),
       digiBlasterEnabled(false),
       digiBlasterOutput(0x80),
@@ -1191,20 +1191,20 @@ namespace Plus4 {
     }
     int32_t newSIDOutputVolume =
         int32_t(std::pow(10.0, double(outputVolume) * 0.05)
-                * (65536.0 * 3.0 / 176.0) + 0.5);
+                * (65536.0 * 3.0 / 187.0) + 0.5);
     if (newSIDOutputVolume != sidOutputVolume) {
       // adjust tape feedback level so that only the SID output level changes
       int     tapeFeedbackLevel_ = 0;
       if (tapeFeedbackLevel > 0) {
         tapeFeedbackLevel_ =
             int((std::log(double(tapeFeedbackLevel)
-                          * double(sidOutputVolume) / (11264.0 * 1117.0))
+                          * double(sidOutputVolume) / (5632.0 * 1117.0))
                  / std::log(2.0)) * 2.0 + 0.5);
       }
       else if (tapeFeedbackLevel < 0) {
         tapeFeedbackLevel_ =
             int((std::log(double(tapeFeedbackLevel)
-                          * double(sidOutputVolume) / (-11264.0 * 1117.0))
+                          * double(sidOutputVolume) / (-5632.0 * 1117.0))
                  / std::log(2.0)) * -2.0 - 0.5);
       }
       sidOutputVolume = newSIDOutputVolume;
@@ -1950,12 +1950,12 @@ namespace Plus4 {
     n = (n >= -10 ? (n <= 10 ? n : 10) : -10);
     if (n > 0) {
       tapeFeedbackLevel = int32_t(std::pow(2.0, double(n) * 0.5)
-                                  * 11264.0 * 1117.0 / double(sidOutputVolume)
+                                  * 5632.0 * 1117.0 / double(sidOutputVolume)
                                   + 0.5);
     }
     else if (n < 0) {
       tapeFeedbackLevel = int32_t(std::pow(2.0, double(n) * -0.5)
-                                  * -11264.0 * 1117.0 / double(sidOutputVolume)
+                                  * -5632.0 * 1117.0 / double(sidOutputVolume)
                                   - 0.5);
     }
     else
