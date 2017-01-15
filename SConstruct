@@ -40,15 +40,16 @@ else:
 fltkLibsLinux = '-lfltk -lfltk_images -lfltk_jpeg -lfltk_png'
 fltkLibsMinGW = fltkLibsLinux + ' -lz -lcomdlg32 -lcomctl32 -lole32'
 fltkLibsMinGW = fltkLibsMinGW + ' -luuid -lws2_32 -lwinmm -lgdi32'
-fltkLibsLinux = fltkLibsLinux + ' -lfltk_z -lXinerama -lXrender -lXext -lXft'
-fltkLibsLinux = fltkLibsLinux + ' -lXfixes -lX11 -lfontconfig -ldl'
+fltkLibsLinux = fltkLibsLinux + ' -lfltk_z -lXcursor -lXinerama -lXrender'
+fltkLibsLinux = fltkLibsLinux + ' -lXext -lXft -lXfixes -lX11 -lfontconfig -ldl'
 
 packageConfigs = {
     'FLTK' : [
         'fltk-config --use-images --cflags --cxxflags --ldflags', [''],
         fltkLibsLinux, fltkLibsMinGW, '', 'FL/Fl.H', 0 ],
     'FLTK-GL' : [
-        'fltk-config --use-gl --use-images --cflags --cxxflags --ldflags', [''],        '-lfltk_gl ' + fltkLibsLinux + ' -lGL',
+        'fltk-config --use-gl --use-images --cflags --cxxflags --ldflags', [''],
+        '-lfltk_gl ' + fltkLibsLinux + ' -lGL',
         '-lfltk_gl ' + fltkLibsMinGW + ' -lopengl32',
         '', 'FL/Fl_Gl_Window.H', 1 ],
     'sndfile' : [
