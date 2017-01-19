@@ -29,6 +29,16 @@
 #include <stdio.h>
 #include "dotconf.h"
 
+#ifdef WIN32
+extern "C" {
+  // C wrapper for dotconf.c
+  std::FILE *Plus4Emu_fileOpen(const char *name, const char *mode)
+  {
+    return Plus4Emu::fileOpen(name, mode);
+  }
+}
+#endif
+
 namespace Plus4Emu {
 
   class ConfigurationVariable_Boolean
@@ -436,6 +446,17 @@ namespace Plus4Emu {
   }
 
   ConfigurationDB::ConfigurationVariable&
+      ConfigurationDB::operator[](const char *keyName)
+  {
+    std::map<std::string, ConfigurationVariable *>::iterator  i;
+
+    i = db.find(std::string(keyName));
+    if (i == db.end())
+      throw Exception("configuration variable is not found");
+    return *((*i).second);
+  }
+
+  ConfigurationDB::ConfigurationVariable&
       ConfigurationDB::operator[](const std::string& keyName)
   {
     std::map<std::string, ConfigurationVariable *>::iterator  i;
@@ -781,7 +802,7 @@ namespace Plus4Emu {
       options.push_back(tmp);
     }
     {
-      configoption_t  tmp = LAST_OPTION;
+      configoption_t  tmp = LAST_CONTEXT_OPTION;
       options.push_back(tmp);
     }
     configfile_t  *cfgFile = dotconf_create(
