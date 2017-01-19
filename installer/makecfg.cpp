@@ -384,7 +384,7 @@ static void saveConfigurationFile(Plus4Emu::ConfigurationDB& config,
         // hack to work around errors due to lack of write access to
         // Program Files if makecfg is run as a normal user; if the
         // file already exists, then the error is ignored
-        std::FILE *f = std::fopen(fullName.c_str(), "rb");
+        std::FILE *f = Plus4Emu::fileOpen(fullName.c_str(), "rb");
         if (!f)
           throw;
         else
