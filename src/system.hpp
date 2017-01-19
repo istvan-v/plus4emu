@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -51,9 +51,11 @@ namespace Plus4Emu {
     ~ThreadLock();
     ThreadLock& operator=(const ThreadLock&);
     void wait();
-    // wait with a timeout of 't' (in milliseconds)
-    // returns 'true' if the lock was signaled before the timeout,
-    // and 'false' otherwise
+    /*!
+     * Wait with a timeout of 't' (in milliseconds).
+     * Returns 'true' if the lock was signaled before the timeout,
+     * and 'false' otherwise.
+     */
     bool wait(size_t t);
     void notify();
   };
@@ -70,15 +72,21 @@ namespace Plus4Emu {
     ThreadLock  threadLock_;
     bool    isJoined_;
    protected:
-    // thread routine (should be implemented by classes derived from Thread)
+    /*!
+     * Thread routine (should be implemented by classes derived from Thread).
+     */
     virtual void run() = 0;
-    // wait until start() is called by another thread
+    /*!
+     * Wait until start() is called by another thread.
+     */
     inline void wait()
     {
       threadLock_.wait();
     }
-    // wait until start() is called by another thread (return value = true),
-    // or the timeout of 't' milliseconds is elapsed (return value = false)
+    /*!
+     * Wait until start() is called by another thread (return value = true),
+     * or the timeout of 't' milliseconds is elapsed (return value = false).
+     */
     inline bool wait(size_t t)
     {
       return threadLock_.wait(t);
@@ -86,14 +94,18 @@ namespace Plus4Emu {
    public:
     Thread();
     virtual ~Thread();
-    // signal the child thread, allowing it to execute run() after the thread
-    // object is created, or to return from wait()
+    /*!
+     * Signal the child thread, allowing it to execute run() after the thread
+     * object is created, or to return from wait().
+     */
     inline void start()
     {
       threadLock_.notify();
     }
-    // wait until the child thread finishes (implies calling start() first,
-    // and the destructor calls join())
+    /*!
+     * Wait until the child thread finishes (implies calling start() first,
+     * and the destructor calls join()).
+     */
     void join();
   };
 
@@ -113,8 +125,22 @@ namespace Plus4Emu {
     Mutex(const Mutex& m_);
     ~Mutex();
     Mutex& operator=(const Mutex& m_);
-    void lock();
-    void unlock();
+    PLUS4EMU_INLINE void lock()
+    {
+#ifdef WIN32
+      EnterCriticalSection(&(m->mutex_));
+#else
+      pthread_mutex_lock(&(m->mutex_));
+#endif
+    }
+    PLUS4EMU_INLINE void unlock()
+    {
+#ifdef WIN32
+      LeaveCriticalSection(&(m->mutex_));
+#else
+      pthread_mutex_unlock(&(m->mutex_));
+#endif
+    }
   };
 
   class Timer {
@@ -132,34 +158,50 @@ namespace Plus4Emu {
     static uint32_t getRandomSeedFromTime();
   };
 
-  // remove leading and trailing whitespace from string
+  /*!
+   * Remove leading and trailing whitespace from string.
+   */
   void stripString(std::string& s);
 
-  // convert string to upper case
+  /*!
+   * Convert string to upper case.
+   */
   void stringToUpperCase(std::string& s);
 
-  // convert string to lower case
+  /*!
+   * Convert string to lower case.
+   */
   void stringToLowerCase(std::string& s);
 
-  // split path into directory name and base name
-  // note: the result of passing multiple references to the same string
-  // is undefined
+  /*!
+   * Split path into directory name and base name.
+   * NOTE: the result of passing multiple references to the same string
+   * is undefined.
+   */
   void splitPath(const std::string& path_,
                  std::string& dirname_, std::string& basename_);
 
-  // returns full path to ~/.plus4emu, creating the directory first
-  // if it does not exist yet
+  /*!
+   * Returns full path to ~/.plus4emu, creating the directory first
+   * if it does not exist yet.
+   */
   std::string getPlus4EmuHomeDirectory();
 
-  // returns a pseudo-random number in the range 1 to 0x7FFFFFFE
+  /*!
+   * Returns a pseudo-random number in the range 1 to 0x7FFFFFFE.
+   */
   int getRandomNumber(int& seedValue);
 
-  // initialize a pseudo-random generator to be used with getRandomNumber()
+  /*!
+   * Initialize a pseudo-random generator to be used with getRandomNumber().
+   */
   void setRandomSeed(int& seedValue, uint32_t n);
 
-  // Set the process priority to 'n' (-2 to +3, 0 is the normal priority,
-  // higher values mean higher priority). On error, such as not having
-  // sufficient privileges, Plus4Emu::Exception may be thrown.
+  /*!
+   * Set the process priority to 'n' (-2 to +3, 0 is the normal priority,
+   * higher values mean higher priority). On error, such as not having
+   * sufficient privileges, Plus4Emu::Exception may be thrown.
+   */
   void setProcessPriority(int n);
 
 #ifndef WIN32
@@ -173,6 +215,13 @@ namespace Plus4Emu {
   }
 #else
   /*!
+   * Convert from wchar_t to UTF-8 encoded string.
+   */
+  void convertToUTF8(std::string& buf, const wchar_t *s);
+
+  void getenv_UTF8(std::string& s, const char *name);
+
+  /*!
    * Convert UTF-8 encoded string to wchar_t.
    */
   void convertUTF8(wchar_t *buf, const char *s, size_t bufSize);
@@ -180,6 +229,9 @@ namespace Plus4Emu {
   // file I/O wrappers with support for UTF-8 encoded file names
   std::FILE *fileOpen(const char *fileName, const char *mode);
   int fileRemove(const char *fileName);
+  // 'st' is a pointer to a _stat structure
+  int fileStat(const char *fileName, void *st);
+  int mkdir_UTF8(const char *dirName);
 #endif
 
 }       // namespace Plus4Emu
