@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -438,19 +438,20 @@ int main(int argc, char **argv)
 #else
     {
       // try to get installation directory from registry
-      char    installDir[256];
+      wchar_t installDir[256];
+      wchar_t valueName = wchar_t(0);
       HKEY    regKey = 0;
       DWORD   regType = 0;
-      DWORD   bufSize = 256;
+      DWORD   bufSize = DWORD(sizeof(wchar_t) * 256);
       if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
                        "Software\\plus4emu\\InstallDirectory", 0,
                        KEY_QUERY_VALUE | KEY_WOW64_32KEY, &regKey)
           == ERROR_SUCCESS) {
-        if (RegQueryValueEx(regKey, "", (LPDWORD) 0, &regType,
-                            (LPBYTE) installDir, &bufSize)
+        if (RegQueryValueExW(regKey, LPCWSTR(&valueName), (LPDWORD) 0, &regType,
+                             (LPBYTE) installDir, &bufSize)
             == ERROR_SUCCESS && regType == REG_SZ && bufSize < 256) {
-          installDir[bufSize] = '\0';
-          tmp = installDir;
+          installDir[bufSize] = wchar_t(0);
+          Plus4Emu::convertToUTF8(tmp, &(installDir[0]));
         }
         RegCloseKey(regKey);
       }
@@ -517,22 +518,22 @@ int main(int argc, char **argv)
     installDirectory.resize(installDirectory.length() - 1);
   }
   {
-    _mkdir(installDirectory.c_str());
+    Plus4Emu::mkdir_UTF8(installDirectory.c_str());
     std::string tmp = installDirectory;
     if (tmp[tmp.length() - 1] != '/' && tmp[tmp.length() - 1] != '\\')
       tmp += '\\';
     std::string tmp2 = tmp + "config";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "demo";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "disk";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "progs";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "roms";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "tape";
-    _mkdir(tmp2.c_str());
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
   }
 #endif
 #ifdef WIN32
