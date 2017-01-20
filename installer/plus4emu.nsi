@@ -209,6 +209,7 @@ Section "Source code" SecSrc
   File "..\README"
   File "..\SConstruct"
   File "..\*.sh"
+  File "..\.gitignore"
 
   SetOutPath "$INSTDIR\src\Fl_Native_File_Chooser"
 
@@ -360,6 +361,26 @@ Section "Associate .tap files with plus4emu" SecAssocTape
 
 SectionEnd
 
+Section "Create desktop shortcuts" SecDesktop
+
+  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+
+    SetShellVarContext all
+
+    ;Create shortcuts
+    SetOutPath "$INSTDIR"
+
+    CreateShortCut "$DESKTOP\plus4emu.lnk" "$INSTDIR\plus4emu.exe" '-opengl'
+    SectionGetFlags ${SecUtils} $0
+    IntOp $0 $0 & ${SF_SELECTED}
+    IntCmp $0 0 noImgConv
+    CreateShortCut "$DESKTOP\p4fliconv.lnk" "$INSTDIR\p4fliconv_gui.exe"
+noImgConv:
+
+  !insertmacro MUI_STARTMENU_WRITE_END
+
+SectionEnd
+
 ;--------------------------------
 ;Descriptions
 
@@ -371,6 +392,7 @@ SectionEnd
   LangString DESC_SecAssocPRG ${LANG_ENGLISH} "Associate .prg and .p00 files with plus4emu"
   LangString DESC_SecAssocDisk ${LANG_ENGLISH} "Associate .d64 and .d81 files with plus4emu"
   LangString DESC_SecAssocTape ${LANG_ENGLISH} "Associate .tap files with plus4emu"
+  LangString DESC_SecDesktop ${LANG_ENGLISH} "Create desktop shortcuts"
 
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
@@ -381,6 +403,7 @@ SectionEnd
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocPRG} $(DESC_SecAssocPRG)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocDisk} $(DESC_SecAssocDisk)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecAssocTape} $(DESC_SecAssocTape)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} $(DESC_SecDesktop)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
@@ -472,6 +495,9 @@ Section "Uninstall"
   RMDir "$INSTDIR\roms"
   RMDir /r "$INSTDIR\src"
   RMDir "$INSTDIR\tape"
+
+  Delete "$DESKTOP\plus4emu.lnk"
+  Delete "$DESKTOP\p4fliconv.lnk"
 
   !insertmacro MUI_STARTMENU_GETFOLDER Application $MUI_TEMP
 
