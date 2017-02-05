@@ -806,7 +806,7 @@ configfile_t *dotconf_create(char *fname, const configoption_t * options,
         new_cfg->stream = fopen(fname, "r");
 #else
         /* use UTF-8 compatible wrapper on Windows */
-        new_cfg->strean = Plus4Emu_fileOpen(fname, "r");
+        new_cfg->stream = Plus4Emu_fileOpen(fname, "r");
 #endif
         if (new_cfg->stream == NULL) {
                 fprintf(stderr, "Error opening configuration file '%s'\n",
