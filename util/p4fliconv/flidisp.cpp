@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -45,9 +45,8 @@ bool Plus4FLIConvGUI_Display::checkEvents()
     double  t = gui.emulationTimer.getRealTime();
     gui.emulationTimer.reset();
     t = (t > 0.0 ? (t < 0.1 ? t : 0.1) : 0.0);
-    int     nCycles = int(t * 886724.0 + 0.5);
-    while (nCycles--)
-      gui.ted->runOneCycle();
+    int     nCycles = int(t * 17734475.0 + 0.5);
+    gui.ted->run(nCycles);
     return Plus4Emu::OpenGLDisplay::checkEvents();
   }
   if (!textureID) {
