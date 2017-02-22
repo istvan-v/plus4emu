@@ -924,8 +924,8 @@ void Plus4FLIConvGUI::run()
   Plus4Emu::setWindowIcon(errorMessageWindow, 12);
   aboutWindowText->value(
       "p4fliconv: high resolution interlaced FLI converter utility\n"
-      "Copyright (C) 2007-2008 by Istvan Varga; plus4emu is copyright\n"
-      "(C) 2003-2008 by Istvan Varga <istvanv@users.sourceforge.net>\n"
+      "Copyright (C) 2007-2017 by Istvan Varga; plus4emu is copyright\n"
+      "(C) 2003-2017 by Istvan Varga <istvanv@users.sourceforge.net>\n"
       "\n"
       "This program is free software; you can redistribute it and/or\n"
       "modify it under the terms of the GNU General Public License as\n"
