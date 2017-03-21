@@ -422,7 +422,7 @@ namespace Plus4 {
 
     enable_filter(true);
     set_chip_model(MOS6581);
-    set_voice_mask(0x07);
+    set_voice_mask(0x0f);
     input(0);
     reset();
   }
