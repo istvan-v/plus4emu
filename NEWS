@@ -2,7 +2,7 @@ Changes in version 1.2.10.2
 ---------------------------
 
   * fixed DigiBlaster bug, SID external input was muted by default
-
+  * minor fix in 1551 emulation
 
 Changes in version 1.2.10.1
 ---------------------------

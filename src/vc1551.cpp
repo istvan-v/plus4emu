@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -111,6 +111,8 @@ namespace Plus4 {
       void *userData, uint16_t addr)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
+    // clear byte ready flag
+    vc1551.memory_ram[0x0001] &= uint8_t(0x7F);
     vc1551.dataBusState = vc1551.tpi1.readRegister(addr);
     return vc1551.dataBusState;
   }
@@ -160,6 +162,8 @@ namespace Plus4 {
       void *userData, uint16_t addr, uint8_t value)
   {
     VC1551& vc1551 = *(reinterpret_cast<VC1551 *>(userData));
+    // clear byte ready flag
+    vc1551.memory_ram[0x0001] &= uint8_t(0x7F);
     vc1551.dataBusState = value & 0xFF;
     vc1551.tpi1.writeRegister(addr, vc1551.dataBusState);
     vc1551.updateParallelInterface();
@@ -384,16 +388,10 @@ namespace Plus4 {
           vc1551.motorUpdateCnt += 64;
           vc1551.headLoadedFlag = vc1551.updateMotors();
         }
-        if (vc1551.shiftRegisterBitCnt >= 7) {
+        if (++(vc1551.shiftRegisterBitCnt) >= 8) {
           vc1551.shiftRegisterBitCnt = 0;
           // read/write next byte
           vc1551.updateHead();
-        }
-        else if (++(vc1551.shiftRegisterBitCnt) == 2) {
-          // clear byte ready flag
-          // FIXME: setting this for two bits is a hack
-          // to work around bytes getting lost sometimes
-          vc1551.memory_ram[0x0001] &= uint8_t(0x7F);
         }
       }
     }
@@ -466,6 +464,8 @@ namespace Plus4 {
       }
     }
     else if ((addr & 0xC000) == 0x4000) {
+      // clear byte ready flag
+      memory_ram[0x0001] &= uint8_t(0x7F);
       tpi1.writeRegister(addr, value);
       updateParallelInterface();
     }
