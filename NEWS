@@ -3,6 +3,8 @@ Changes in version 1.2.10.2
 
   * fixed DigiBlaster bug, SID external input was muted by default
   * minor fix in 1551 emulation
+  * fixed video breakpoints not working when the priority threshold is
+    not zero
 
 Changes in version 1.2.10.1
 ---------------------------
