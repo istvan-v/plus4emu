@@ -144,7 +144,6 @@ namespace Plus4Emu {
     unsigned char readByte();
     uint16_t readUInt16();
     uint32_t readUInt32();
-    unsigned int readCompressedByte();
     PLUS4EMU_INLINE unsigned int readBit();
     unsigned int readBits(size_t nBits);
     unsigned int huffmanDecode(int huffTable);

@@ -92,7 +92,7 @@ namespace Plus4Emu {
       crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c >> 4)) & 3U];
       crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c >> 6)) & 3U];
     }
-    return crc;
+    return ~crc;
   }
 
   File::Buffer::Buffer()
@@ -670,6 +670,9 @@ namespace Plus4Emu {
       if (c >= 'a' && c <= 'z') {
         c = c - ('a' - 'A');
       }
+      else if (c == '_') {
+        c = ' ';
+      }
       else if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
                  c == '+' || c == '-' || c == '.' || c == ' ')) {
         c = char(0xA4);
@@ -744,18 +747,13 @@ namespace Plus4Emu {
     return n;
   }
 
-  unsigned int ZIPFile::readCompressedByte()
-  {
-    shiftRegister = readByte();
-    shiftRegisterCnt = 8;
-    return (unsigned int) shiftRegister;
-  }
-
   PLUS4EMU_INLINE unsigned int ZIPFile::readBit()
   {
+    if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1)) {
+      shiftRegister = readByte();
+      shiftRegisterCnt = 8;
+    }
     unsigned int  retval = (unsigned int) (shiftRegister & 0x01);
-    if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1))
-      retval = readByte() & 1U;
     shiftRegister = shiftRegister >> 1;
     shiftRegisterCnt--;
     return retval;
@@ -765,8 +763,10 @@ namespace Plus4Emu {
   {
     unsigned int  retval = 0U;
     for (unsigned char i = 0; i < (unsigned char) nBits; ) {
-      if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1))
-        (void) readByte();
+      if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1)) {
+        shiftRegister = readByte();
+        shiftRegisterCnt = 8;
+      }
       unsigned char n = (unsigned char) nBits - i;
       if (n > (unsigned char) shiftRegisterCnt)
         n = (unsigned char) shiftRegisterCnt;
@@ -904,7 +904,7 @@ namespace Plus4Emu {
     if (!blockType) {
       // uncompressed data
       shiftRegisterCnt = 0;
-      unsigned int  blockSize = readBits(32);
+      unsigned int  blockSize = readUInt32();
       blockSize = blockSize ^ ((~blockSize & 0xFFFFU) << 16);
       if (!(blockSize >= 1U && blockSize <= 0xFFFFU))
         throw Plus4Emu::Exception("error in compressed data");
@@ -913,7 +913,6 @@ namespace Plus4Emu {
           throw Plus4Emu::Exception("error in compressed data");
         buf.push_back((unsigned char) readByte());
       } while (--blockSize);
-      shiftRegisterCnt = 0;
       return isLastBlock;
     }
     huffmanInit(blockType);
@@ -1006,7 +1005,8 @@ namespace Plus4Emu {
     try {
       long    fileSize = 0L;
       if (std::fseek(f, 0L, SEEK_END) < 0 ||
-          (unsigned long) (fileSize = std::ftell(f)) > 0x04000000) {
+          (unsigned long) (fileSize = std::ftell(f)) > 0x04000000UL ||
+          std::fseek(f, 0L, SEEK_SET) < 0) {
         throw Exception("error opening or reading file");
       }
       inBuf.resize(size_t(fileSize));
@@ -1081,7 +1081,7 @@ namespace Plus4Emu {
       }
       if (fileType >= 0 && t != fileType) {
         // file type does not match: skip file
-        if (inBufPos >= inBuf.size() ||
+        if (inBufPos > inBuf.size() ||
             size_t(compressedSize) > (inBuf.size() - inBufPos)) {
           throw Exception("unexpected end of file");
         }
