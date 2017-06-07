@@ -749,33 +749,27 @@ namespace Plus4 {
         addr |= uint16_t((c & 0xFF) << 8);
         // check for P00 format
         if (addr == 0x3643) {           // "C6"
-          size_t  nameLen = std::strlen(fileName);
-          if (nameLen >= 4) {
-            if (fileName[nameLen - 4] == '.' &&
-                (fileName[nameLen - 3] == 'P' ||
-                 fileName[nameLen - 3] == 'p') &&
-                fileName[nameLen - 2] == '0' && fileName[nameLen - 1] == '0') {
-              static const char *p00HeaderMagic = "C64File";
-              int     i = 2;
-              do {
+          if (Plus4Emu::checkFileNameExtension(fileName, ".p00")) {
+            static const char *p00HeaderMagic = "C64File";
+            int     i = 2;
+            do {
+              c = std::fgetc(f);
+              eofFlag = (c == EOF);
+            } while (!eofFlag && c == p00HeaderMagic[i] && ++i < 8);
+            if (i == 8) {
+              for ( ; i < 26 && !eofFlag; i++) {
                 c = std::fgetc(f);
                 eofFlag = (c == EOF);
-              } while (!eofFlag && c == p00HeaderMagic[i] && ++i < 8);
-              if (i == 8) {
-                for ( ; i < 26 && !eofFlag; i++) {
-                  c = std::fgetc(f);
-                  eofFlag = (c == EOF);
-                }
+              }
+              if (!eofFlag) {
+                c = std::fgetc(f);
+                eofFlag = (c == EOF);
                 if (!eofFlag) {
+                  addr = uint16_t(c & 0xFF);
                   c = std::fgetc(f);
                   eofFlag = (c == EOF);
-                  if (!eofFlag) {
-                    addr = uint16_t(c & 0xFF);
-                    c = std::fgetc(f);
-                    eofFlag = (c == EOF);
-                    if (!eofFlag)
-                      addr |= uint16_t((c & 0xFF) << 8);
-                  }
+                  if (!eofFlag)
+                    addr |= uint16_t((c & 0xFF) << 8);
                 }
               }
             }

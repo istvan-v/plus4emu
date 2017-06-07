@@ -181,24 +181,17 @@ int main(int argc, char **argv)
         return 0;
       }
       else {
-        size_t  n = std::strlen(argv[i]);
-        if (n >= 4 && argv[i][n - 4] == '.') {
-          const char  *s = &(argv[i][n - 3]);
-          if ((s[0] == 'P' || s[0] == 'p') &&
-              (((s[1] == 'R' || s[1] == 'r') && (s[2] == 'G' || s[2] == 'g')) ||
-               (s[1] == '0' && s[2] == '0'))) {
-            prgNameIndex = i;
-          }
-          else if ((s[0] == 'D' || s[0] == 'd') &&
-                   ((s[1] == '6' && s[2] == '4') ||
-                    (s[1] == '8' && s[2] == '1'))) {
-            diskNameIndex = i;
-          }
-          else if ((s[0] == 'T' || s[0] == 't') &&
-                   (s[1] == 'A' || s[1] == 'a') &&
-                   (s[2] == 'P' || s[2] == 'p')) {
-            tapeNameIndex = i;
-          }
+        const char  *s = argv[i];
+        if (Plus4Emu::checkFileNameExtension(s, ".prg") ||
+            Plus4Emu::checkFileNameExtension(s, ".p00")) {
+          prgNameIndex = i;
+        }
+        else if (Plus4Emu::checkFileNameExtension(s, ".d64") ||
+                 Plus4Emu::checkFileNameExtension(s, ".d81")) {
+          diskNameIndex = i;
+        }
+        else if (Plus4Emu::checkFileNameExtension(s, ".tap")) {
+          tapeNameIndex = i;
         }
       }
     }

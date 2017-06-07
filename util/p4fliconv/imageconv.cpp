@@ -313,18 +313,8 @@ namespace Plus4FLIConv {
 
   bool YUVImageConverter::isC64ImageFile(const char *fileName)
   {
-    if (fileName == (char *) 0 || fileName[0] == '\0')
-      return false;
-    size_t  n = std::strlen(fileName);
-    if (n < 4)
-      return false;
-    if (!(fileName[n - 4] == '.' &&
-          (((fileName[n - 3] == 'K' || fileName[n - 3] == 'k') &&
-            (fileName[n - 2] == 'O' || fileName[n - 2] == 'o') &&
-            (fileName[n - 1] == 'A' || fileName[n - 1] == 'a')) ||
-           ((fileName[n - 3] == 'O' || fileName[n - 3] == 'o') &&
-            (fileName[n - 2] == 'C' || fileName[n - 2] == 'c') &&
-            (fileName[n - 1] == 'P' || fileName[n - 1] == 'p'))))) {
+    if (!(Plus4Emu::checkFileNameExtension(fileName, ".koa") ||
+          Plus4Emu::checkFileNameExtension(fileName, ".ocp"))) {
       return false;
     }
     std::FILE *f = Plus4Emu::fileOpen(fileName, "rb");
@@ -348,12 +338,12 @@ namespace Plus4FLIConv {
     f = (std::FILE *) 0;
     if (startAddr[0] != 0x00)
       return false;
-    if ((fileName[n - 3] == 'K' || fileName[n - 3] == 'k') &&
+    if (Plus4Emu::checkFileNameExtension(fileName, ".koa") &&
         fileSize == 10003L && startAddr[1] == 0x60) {
       // Koala Painter format
       return true;
     }
-    if ((fileName[n - 3] == 'O' || fileName[n - 3] == 'o') &&
+    if (Plus4Emu::checkFileNameExtension(fileName, ".ocp") &&
         fileSize == 10018L && startAddr[1] == 0x20) {
       // Advanced Art Studio format
       return true;
