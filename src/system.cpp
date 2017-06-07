@@ -396,6 +396,32 @@ namespace Plus4Emu {
       basename_ += path_[j];
   }
 
+  bool checkFileNameExtension(const char *fileName, const char *suffix)
+  {
+    if (!suffix || suffix[0] == '\0')
+      return true;
+    if (!fileName || fileName[0] == '\0')
+      return false;
+    size_t  len1 = std::strlen(fileName);
+    size_t  len2 = std::strlen(suffix);
+    if (len2 > len1)
+      return false;
+    fileName = fileName + (len1 - len2);
+    for ( ; *fileName != '\0'; fileName++, suffix++) {
+      char    c1 = *fileName;
+      char    c2 = *suffix;
+      if (c1 != c2) {
+        if (c1 >= 'A' && c1 <= 'Z')
+          c1 = c1 + ('a' - 'A');
+        if (c2 >= 'A' && c2 <= 'Z')
+          c2 = c2 + ('a' - 'A');
+        if (c1 != c2)
+          return false;
+      }
+    }
+    return true;
+  }
+
   std::string getPlus4EmuHomeDirectory()
   {
     std::string dirName;

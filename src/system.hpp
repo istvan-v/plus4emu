@@ -182,6 +182,11 @@ namespace Plus4Emu {
                  std::string& dirname_, std::string& basename_);
 
   /*!
+   * Returns true if the file name ends with 'suffix' (case insensitive).
+   */
+  bool checkFileNameExtension(const char *fileName, const char *suffix);
+
+  /*!
    * Returns full path to ~/.plus4emu, creating the directory first
    * if it does not exist yet.
    */
