@@ -78,6 +78,23 @@ namespace Plus4Emu {
     return uint32_t(h);
   }
 
+  PLUS4EMU_REGPARM2 uint32_t File::crc_32(const unsigned char *buf,
+                                          size_t nBytes)
+  {
+    static const uint32_t crc32Table[4] = {
+      0x00000000U, 0x76DC4190U, 0xEDB88320U, 0x9B64C2B0U
+    };
+    uint32_t  crc = ~0U;
+    for ( ; nBytes > 0; buf++, nBytes--) {
+      unsigned char c = *buf;
+      crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c)) & 3U];
+      crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c >> 2)) & 3U];
+      crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c >> 4)) & 3U];
+      crc = (crc >> 2) ^ crc32Table[(crc ^ uint32_t(c >> 6)) & 3U];
+    }
+    return crc;
+  }
+
   File::Buffer::Buffer()
   {
     buf = (unsigned char *) 0;
@@ -573,6 +590,534 @@ namespace Plus4Emu {
       chunkTypeDB.erase(type);
     }
     chunkTypeDB[type] = p;
+  }
+
+  // --------------------------------------------------------------------------
+
+  static const unsigned char d64ImageData[100] = {
+    0xD4, 0x00, 0x22, 0xC0, 0x02, 0x00, 0x00, 0x00,
+    0x00, 0x26, 0x43, 0x20, 0x00, 0x03, 0x36, 0x00,
+    0x2E, 0x00, 0x01, 0x4F, 0x17, 0xED, 0xC4, 0x32,
+    0x78, 0x09, 0x07, 0x48, 0xF8, 0x2F, 0x40, 0x56,
+    0x1D, 0xFA, 0x71, 0x10, 0xBE, 0xFF, 0xF8, 0xFD,
+    0x8F, 0x74, 0x80, 0x05, 0x12, 0x01, 0x41, 0x90,
+    0x15, 0xFF, 0x1F, 0xE7, 0xA2, 0x11, 0xFC, 0xCA,
+    0x07, 0x13, 0xD4, 0x95, 0x12, 0x0D, 0x03, 0x29,
+    0x11, 0x50, 0x01, 0xCE, 0x80, 0x4E, 0x45, 0x57,
+    0x20, 0x44, 0x49, 0x18, 0x53, 0x4B, 0xA0, 0xE2,
+    0x30, 0x28, 0x32, 0x41, 0xAC, 0x13, 0xB4, 0xFF,
+    0x48, 0xFE, 0x80, 0x00, 0x0F, 0x19, 0xFC, 0x84,
+    0x20, 0x7B, 0x28, 0xFC
+  };
+
+  static const unsigned char d81ImageData[151] = {
+    0x6C, 0x00, 0x3F, 0xC1, 0x20, 0x15, 0x30, 0x11,
+    0x01, 0x01, 0x00, 0x02, 0x04, 0x30, 0x61, 0x80,
+    0x1C, 0x00, 0x01, 0x4A, 0x13, 0x95, 0x43, 0x21,
+    0xE1, 0x07, 0x0A, 0xF8, 0xB0, 0x4F, 0xED, 0xCB,
+    0x87, 0x4F, 0x70, 0x60, 0x0F, 0xF7, 0xF0, 0xBF,
+    0x83, 0x3F, 0xB7, 0x2E, 0x1D, 0xC0, 0x93, 0xCB,
+    0x3F, 0xDF, 0x41, 0x04, 0xFE, 0xDC, 0xB8, 0x77,
+    0x3E, 0x0A, 0xFF, 0x7F, 0x81, 0x13, 0xFB, 0x72,
+    0xE1, 0xDC, 0x3D, 0x83, 0x03, 0xFD, 0xFC, 0xEC,
+    0x5F, 0xF9, 0x7F, 0x02, 0x84, 0x15, 0x76, 0x1E,
+    0xE9, 0x00, 0x11, 0x23, 0x76, 0x51, 0x41, 0x02,
+    0x08, 0xFD, 0xA6, 0xD8, 0x28, 0x25, 0x03, 0x44,
+    0x09, 0x4E, 0x45, 0x57, 0x20, 0xC3, 0x49, 0x53,
+    0x4B, 0xA0, 0x18, 0x42, 0x30, 0x42, 0x33, 0x44,
+    0x95, 0xF7, 0xF9, 0x16, 0x02, 0x44, 0xBB, 0xD8,
+    0xC0, 0xF8, 0x4B, 0xFF, 0x04, 0xFB, 0x18, 0x24,
+    0xF0, 0x32, 0x00, 0x3A, 0xFF, 0xCF, 0xDA, 0xFC,
+    0x7F, 0xDD, 0x80, 0xF6, 0xA1, 0xFE, 0xF2, 0x60,
+    0x32, 0xA5, 0x50, 0xC8, 0x44, 0xF6, 0xC4
+  };
+
+  std::FILE *createDiskImage(const char *fileName)
+  {
+    bool    isD81 = checkFileNameExtension(fileName, ".d81");
+    if (!isD81 && !checkFileNameExtension(fileName, ".d64"))
+      throw Exception("error opening disk image file");
+
+    const unsigned char *compressedImage =
+        (isD81 ? &(d81ImageData[0]) : &(d64ImageData[0]));
+    size_t  compressedImageSize =
+        (isD81 ? sizeof(d81ImageData) : sizeof(d64ImageData))
+        / sizeof(unsigned char);
+    std::vector< unsigned char >  buf;
+    {
+      std::vector< unsigned char >  tmpBuf;
+      decompressData(tmpBuf, compressedImage, compressedImageSize);
+      decompressData(buf, &(tmpBuf.front()), tmpBuf.size());
+    }
+
+    const char  *s = fileName + (std::strlen(fileName) - 4);
+    size_t  n = 0;
+    for ( ; s > fileName; s--, n++) {
+      char    c = *(s - 1);
+      if (c == '/' || c == '\\')
+        break;
+#ifdef WIN32
+      if (c == ':')
+        break;
+#endif
+    }
+    unsigned char *diskName =
+        &(buf.front()) + (isD81 ? 0x00061804 : 0x00016590);
+    for (size_t i = 0; i < 16; i++) {
+      char    c = char(0xA0);
+      if (i < n)
+        c = s[i];
+      if (c >= 'a' && c <= 'z') {
+        c = c - ('a' - 'A');
+      }
+      else if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                 c == '+' || c == '-' || c == '.' || c == ' ')) {
+        c = char(0xA4);
+      }
+      diskName[i] = (unsigned char) c;
+    }
+
+    unsigned char *diskID = diskName + 18;
+    uint32_t  tmp = File::crc_32(diskName, 16);
+    tmp = tmp ^ (tmp >> 16);
+    tmp = tmp ^ (tmp >> 8);
+    for (int i = 0; i < 2; i++) {
+      diskID[i] = (unsigned char) (((tmp >> (i << 2)) & 0x0F) | '0');
+      if (diskID[i] > '9')
+        diskID[i] = diskID[i] + ('A' - ('9' + 1));
+      if (isD81) {
+        buf[0x00061904 + i] = diskID[i];
+        buf[0x00061A04 + i] = diskID[i];
+      }
+    }
+
+    std::FILE *f = fileOpen(fileName, "w+b");
+    if (!f ||
+        std::fwrite(&(buf.front()), sizeof(unsigned char), buf.size(), f)
+        != buf.size() ||
+        std::fflush(f) != 0 ||
+        std::fseek(f, 0L, SEEK_SET) < 0) {
+      if (f) {
+        std::fclose(f);
+        fileRemove(fileName);
+      }
+      throw Exception("error creating disk image file");
+    }
+
+    return f;
+  }
+
+  // --------------------------------------------------------------------------
+
+  // 0:       unused symbol
+  // 1 to 15: code length in bits
+  // 16:      repeat the last code length 3 to 6 times (2 extra bits)
+  // 17:      repeat unused symbol 3 to 10 times (3 extra bits)
+  // 18:      repeat unused symbol 11 to 138 times (7 extra bits)
+
+  static const unsigned char deflateCodeLengthCodeTable[19] = {
+    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+  };
+
+  unsigned char ZIPFile::readByte()
+  {
+    if (inBufPos >= inBuf.size())
+      throw Exception("unexpected end of file");
+    unsigned char c = inBuf[inBufPos];
+    inBufPos++;
+    return c;
+  }
+
+  uint16_t ZIPFile::readUInt16()
+  {
+    uint16_t  n = readByte();
+    n = n | (uint16_t(readByte()) << 8);
+    return n;
+  }
+
+  uint32_t ZIPFile::readUInt32()
+  {
+    uint32_t  n = readByte();
+    n = n | (uint32_t(readByte()) << 8);
+    n = n | (uint32_t(readByte()) << 16);
+    n = n | (uint32_t(readByte()) << 24);
+    return n;
+  }
+
+  unsigned int ZIPFile::readCompressedByte()
+  {
+    shiftRegister = readByte();
+    shiftRegisterCnt = 8;
+    return (unsigned int) shiftRegister;
+  }
+
+  PLUS4EMU_INLINE unsigned int ZIPFile::readBit()
+  {
+    unsigned int  retval = (unsigned int) (shiftRegister & 0x01);
+    if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1))
+      retval = readByte() & 1U;
+    shiftRegister = shiftRegister >> 1;
+    shiftRegisterCnt--;
+    return retval;
+  }
+
+  unsigned int ZIPFile::readBits(size_t nBits)
+  {
+    unsigned int  retval = 0U;
+    for (unsigned char i = 0; i < (unsigned char) nBits; ) {
+      if (PLUS4EMU_UNLIKELY(shiftRegisterCnt < 1))
+        (void) readByte();
+      unsigned char n = (unsigned char) nBits - i;
+      if (n > (unsigned char) shiftRegisterCnt)
+        n = (unsigned char) shiftRegisterCnt;
+      retval |= (((unsigned int) shiftRegister & ((1U << n) - 1U)) << i);
+      shiftRegister = shiftRegister >> n;
+      shiftRegisterCnt = shiftRegisterCnt - n;
+      i = i + n;
+    }
+    return retval;
+  }
+
+  unsigned int ZIPFile::huffmanDecode(int huffTable)
+  {
+    int     tmp = 0;
+    int     cnt = -1;
+    const unsigned int  *symCntTable =
+        (huffTable == 0 ? huffmanSymCntTable0 : huffmanSymCntTable1);
+    const unsigned int  *offsetTable =
+        (huffTable == 0 ? huffmanOffsetTable0 : huffmanOffsetTable1);
+    const unsigned int  *decodeTable =
+        (huffTable == 0 ? huffmanDecodeTable0 : huffmanDecodeTable1);
+    do {
+      if (++cnt >= 15)
+        throw Plus4Emu::Exception("error in compressed data");
+      tmp = ((tmp << 1) | int(readBit())) - int(symCntTable[cnt]);
+    } while (tmp >= 0);
+    tmp = tmp + int(offsetTable[cnt]);
+    if (decodeTable[tmp] == 0xFFFFFFFFU)
+      throw Plus4Emu::Exception("error in compressed data");
+    return decodeTable[tmp];
+  }
+
+  void ZIPFile::buildDecodeTable(int huffTable,
+                                 const unsigned char *lenBuf, size_t nSymbols)
+  {
+    unsigned int  *symCntTable =
+        (huffTable == 0 ? huffmanSymCntTable0 : huffmanSymCntTable1);
+    unsigned int  *offsetTable =
+        (huffTable == 0 ? huffmanOffsetTable0 : huffmanOffsetTable1);
+    unsigned int  *decodeTable =
+        (huffTable == 0 ? huffmanDecodeTable0 : huffmanDecodeTable1);
+    for (size_t i = 0; i < 15; i++)
+      symCntTable[i] = 0U;
+    for (size_t i = 0; i < nSymbols; i++) {
+      decodeTable[i] = 0xFFFFFFFFU;
+      if (lenBuf[i])
+        symCntTable[lenBuf[i] - 1] = symCntTable[lenBuf[i] - 1] + 1U;
+    }
+    {
+      unsigned int  offs = 0U;
+      for (size_t i = 0; i < 15; i++) {
+        offsetTable[i] = offs;
+        offs = offs + symCntTable[i];
+      }
+    }
+    for (size_t i = 0; i < nSymbols; i++) {
+      unsigned char len = lenBuf[i];
+      if (len) {
+        len--;
+        unsigned int  offs = offsetTable[len];
+        decodeTable[offs] = (unsigned int) i;
+        offsetTable[len] = offs + 1U;
+      }
+    }
+  }
+
+  void ZIPFile::huffmanInit(unsigned char blockType)
+  {
+    unsigned char lenBuf[320];
+    if (blockType == 1) {
+      // fixed Huffman codes
+      for (int i = 0; i < 320; i++) {
+        lenBuf[i] =
+            (i < 144 ? 8 : (i < 256 ? 9 : (i < 280 ? 7 : (i < 288 ? 8 : 5))));
+      }
+    }
+    else {
+      for (int i = 0; i < 320; i++)
+        lenBuf[i] = 0;
+      size_t  litCnt = size_t(readBits(5)) + 257;
+      size_t  distCnt = size_t(readBits(5)) + 1;
+      size_t  codeCnt = size_t(readBits(4)) + 4;
+      for (size_t i = 0; i < 19; i++)
+        lenBuf[i] = 0;
+      for (size_t i = 0; i < codeCnt; i++)
+        lenBuf[deflateCodeLengthCodeTable[i]] = (unsigned char) readBits(3);
+      buildDecodeTable(1, lenBuf, 19);
+      size_t  totalCnt = distCnt + 288;
+      size_t  rleCnt = 0;
+      unsigned char rleCode = 0x00;
+      for (size_t i = 0; i < totalCnt; i++) {
+        if (i == litCnt)
+          i = 288;
+        if (rleCnt > 0) {
+          lenBuf[i] = rleCode;
+          rleCnt--;
+          continue;
+        }
+        unsigned char c = (unsigned char) huffmanDecode(1);
+        if (c < 16) {
+          lenBuf[i] = c;
+          rleCode = c;
+          continue;
+        }
+        else if (c == 16) {
+          if (!i)
+            throw Plus4Emu::Exception("error in compressed data");
+          rleCnt = size_t(readBits(2)) + 2;
+        }
+        else {
+          if (c == 17)
+            rleCnt = size_t(readBits(3)) + 2;
+          else
+            rleCnt = size_t(readBits(7)) + 10;
+          rleCode = 0x00;
+        }
+        lenBuf[i] = rleCode;
+      }
+      if (rleCnt > 0 || lenBuf[256] == 0)
+        throw Plus4Emu::Exception("error in compressed data");
+    }
+    buildDecodeTable(0, lenBuf, 288);
+    buildDecodeTable(1, &(lenBuf[288]), 32);
+  }
+
+  bool ZIPFile::decompressDataBlock(std::vector< unsigned char >& buf)
+  {
+    static const size_t maxDataSize = 0x04000000;
+    bool    isLastBlock = bool(readBit());
+    unsigned char blockType = (unsigned char) readBits(2);
+    if (blockType == 3)
+      throw Plus4Emu::Exception("error in compressed data");
+    if ((buf.size() + 65536) > buf.capacity())
+      buf.reserve(((buf.size() + (buf.size() >> 2)) | 0xFFFF) + 1);
+    if (!blockType) {
+      // uncompressed data
+      shiftRegisterCnt = 0;
+      unsigned int  blockSize = readBits(32);
+      blockSize = blockSize ^ ((~blockSize & 0xFFFFU) << 16);
+      if (!(blockSize >= 1U && blockSize <= 0xFFFFU))
+        throw Plus4Emu::Exception("error in compressed data");
+      do {
+        if (PLUS4EMU_UNLIKELY(buf.size() >= maxDataSize))
+          throw Plus4Emu::Exception("error in compressed data");
+        buf.push_back((unsigned char) readByte());
+      } while (--blockSize);
+      shiftRegisterCnt = 0;
+      return isLastBlock;
+    }
+    huffmanInit(blockType);
+    unsigned int  prvDistance = 0U;
+    while (true) {
+      unsigned int  c = huffmanDecode(0);
+      if (c == 0x0100U)
+        break;
+      if (c < 0x0100U) {
+        // literal character
+        if (PLUS4EMU_UNLIKELY(buf.size() >= maxDataSize))
+          throw Plus4Emu::Exception("error in compressed data");
+        buf.push_back((unsigned char) c);
+        continue;
+      }
+      // decode length:
+      //   0x0101..0x0108: 3 to 10
+      //   0x0109..0x010C: 11 to 18 (1 extra bit)
+      //   0x010D..0x0110: 19 to 34 (2 extra bits)
+      //   0x0111..0x0114: 35 to 66 (3 extra bits)
+      //   0x0115..0x0118: 67 to 130 (4 extra bits)
+      //   0x0119..0x011C: 131 to 258 (5 extra bits)
+      //   0x011D:         258, no extra bits
+      //   0x011E:         2 bytes (non-standard extension)
+      //   0x011F:         2 bytes, repeat prv. offset (non-standard extension)
+      unsigned int  len = c - 0x0100U;
+      unsigned int  d = prvDistance;
+      if (len > 8U) {
+        if (len > 28U) {
+          len = (len == 29U ? 256U : 0U);
+        }
+        else {
+          unsigned char nBits = (unsigned char) ((len - 5U) >> 2);
+          len = (((((len - 1U) & 3U) | 4U) << nBits) | readBits(nBits)) + 1U;
+        }
+      }
+      len = len + 2U;
+      // decode offset:
+      //     0..3: 1 to 4
+      //     4..5: 5 to 8 (1 extra bit)
+      //     ...
+      //   28..29: 16385 to 32768 (13 extra bits)
+      //   30..31: 32769 to 65536 (14 extra bits, non-standard extension)
+      if (c != 0x011FU) {
+        c = huffmanDecode(1);
+        if (c < 4U) {
+          d = c + 1U;
+        }
+        else {
+          unsigned char nBits = (unsigned char) ((c - 2U) >> 1);
+          d = ((((c & 1U) | 2U) << nBits) | readBits(nBits)) + 1U;
+        }
+      }
+      if (!(d > 0U && d <= (unsigned int) buf.size()))
+        throw Plus4Emu::Exception("error in compressed data");
+      prvDistance = d;
+      if (PLUS4EMU_UNLIKELY((buf.size() + size_t(len)) > maxDataSize))
+        throw Plus4Emu::Exception("error in compressed data");
+      do {
+        buf.push_back(buf[buf.size() - size_t(d)]);
+      } while (--len);
+    }
+    return isLastBlock;
+  }
+
+  ZIPFile::ZIPFile(const char *fileName)
+    : inBufPos(0),
+      huffmanSymCntTable0((unsigned int *) 0),
+      huffmanOffsetTable0((unsigned int *) 0),
+      huffmanDecodeTable0((unsigned int *) 0),
+      huffmanSymCntTable1((unsigned int *) 0),
+      huffmanOffsetTable1((unsigned int *) 0),
+      huffmanDecodeTable1((unsigned int *) 0),
+      shiftRegister(0x00),
+      shiftRegisterCnt(0)
+  {
+    size_t  totalTableSize = 15 + 15 + 288 + 15 + 15 + 32;
+    huffmanSymCntTable0 = new unsigned int[totalTableSize];
+    for (size_t i = 0; i < totalTableSize; i++)
+      huffmanSymCntTable0[i] = 0U;
+    huffmanOffsetTable0 = &(huffmanSymCntTable0[15]);
+    huffmanDecodeTable0 = &(huffmanOffsetTable0[15]);
+    huffmanSymCntTable1 = &(huffmanDecodeTable0[288]);
+    huffmanOffsetTable1 = &(huffmanSymCntTable1[15]);
+    huffmanDecodeTable1 = &(huffmanOffsetTable1[15]);
+
+    std::FILE *f = fileOpen(fileName, "rb");
+    if (!f)
+      throw Exception("error opening or reading file");
+    try {
+      long    fileSize = 0L;
+      if (std::fseek(f, 0L, SEEK_END) < 0 ||
+          (unsigned long) (fileSize = std::ftell(f)) > 0x04000000) {
+        throw Exception("error opening or reading file");
+      }
+      inBuf.resize(size_t(fileSize));
+      if (std::fread(&(inBuf.front()), sizeof(unsigned char), size_t(fileSize),
+                     f) != size_t(fileSize)) {
+        throw Exception("error opening or reading file");
+      }
+      std::fclose(f);
+    }
+    catch (...) {
+      delete[] huffmanSymCntTable0;
+      if (f)
+        std::fclose(f);
+      throw;
+    }
+  }
+
+  ZIPFile::~ZIPFile()
+  {
+    delete[] huffmanSymCntTable0;
+  }
+
+  bool ZIPFile::getFile(std::vector< unsigned char >& buf,
+                        std::string& fileName, int& fileType)
+  {
+    buf.clear();
+    if (!(fileType >= 0 && fileType <= 2))
+      fileType = -1;
+    while (true) {
+      fileName.clear();
+      // check header
+      uint32_t  h = readUInt32();
+      if (h == 0x02014B50)              // central directory file header
+        return false;
+      else if (h != 0x04034B50)         // local file header
+        throw Exception("invalid file header");
+      (void) readUInt16();              // version needed to extract
+      uint16_t  flg = readUInt16();     // general purpose bit flag
+      if (flg & 0x0008)                 // unknown file size: not supported
+        throw Exception("invalid file header");
+      uint16_t  m = readUInt16();       // compression method
+      (void) readUInt32();              // last modification time and date
+      uint32_t  crc = readUInt32();     // CRC-32
+      uint32_t  compressedSize = readUInt32();
+      uint32_t  uncompressedSize = readUInt32();
+      uint16_t  nameLen = readUInt16(); // file name length
+      uint16_t  extLen = readUInt16();  // extra field length
+      for ( ; nameLen > 0; nameLen--) {
+        char    c = char(readByte());
+        if ((unsigned char) c < 0x20)
+          c = ' ';
+        fileName += c;
+      }
+      for ( ; extLen > 0; extLen--)
+        (void) readByte();
+
+      // check file type
+      int     t = -1;
+      if ((fileType < 0 || fileType == 0) &&
+          (checkFileNameExtension(fileName.c_str(), ".prg") ||
+           checkFileNameExtension(fileName.c_str(), ".p00"))) {
+        t = 0;
+      }
+      else if ((fileType < 0 || fileType == 1) &&
+               (checkFileNameExtension(fileName.c_str(), ".d64") ||
+                checkFileNameExtension(fileName.c_str(), ".d81"))) {
+        t = 1;
+      }
+      else if ((fileType < 0 || fileType == 2) &&
+               checkFileNameExtension(fileName.c_str(), ".tap")) {
+        t = 2;
+      }
+      if (fileType >= 0 && t != fileType) {
+        // file type does not match: skip file
+        if (inBufPos >= inBuf.size() ||
+            size_t(compressedSize) > (inBuf.size() - inBufPos)) {
+          throw Exception("unexpected end of file");
+        }
+        inBufPos = inBufPos + compressedSize;
+        continue;
+      }
+      fileType = t;
+
+      if (m == 0x0000) {                // Store
+        if (compressedSize != uncompressedSize)
+          throw Exception("error in compressed data");
+        for ( ; compressedSize > 0U; compressedSize--)
+          buf.push_back(readByte());
+      }
+      else if (m == 0x0008) {           // Deflate
+        size_t  endPos = inBufPos + compressedSize;
+        shiftRegister = 0x00;
+        shiftRegisterCnt = 0;
+        // decompress all data blocks
+        while (!decompressDataBlock(buf))
+          ;
+        // on successful decompression, all input data must be consumed
+        if (inBufPos != endPos)
+          throw Exception("error in compressed data");
+      }
+      else {                            // unsupported method
+        throw Exception("error in compressed data");
+      }
+
+      // verify CRC-32 checksum
+      if (crc != File::crc_32(&(buf.front()), buf.size()))
+        throw Exception("error in compressed data");
+
+      break;
+    }
+    return true;
   }
 
 }       // namespace Plus4Emu

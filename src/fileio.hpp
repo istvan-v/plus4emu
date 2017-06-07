@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #define PLUS4EMU_FILEIO_HPP
 
 #include "plus4emu.hpp"
+#include <vector>
 #include <map>
 
 namespace Plus4Emu {
@@ -121,7 +122,58 @@ namespace Plus4Emu {
     }
     static PLUS4EMU_REGPARM2 uint32_t hash_32(const unsigned char *buf,
                                               size_t nBytes);
+    static PLUS4EMU_REGPARM2 uint32_t crc_32(const unsigned char *buf,
+                                             size_t nBytes);
   };
+
+  class ZIPFile {
+   protected:
+    std::vector< unsigned char >  inBuf;
+    size_t  inBufPos;
+    // main Huffman table (literal characters + length codes), size = 288
+    unsigned int  *huffmanSymCntTable0;
+    unsigned int  *huffmanOffsetTable0;
+    unsigned int  *huffmanDecodeTable0;
+    // Huffman table for distance codes, size = 32
+    unsigned int  *huffmanSymCntTable1;
+    unsigned int  *huffmanOffsetTable1;
+    unsigned int  *huffmanDecodeTable1;
+    unsigned char shiftRegister;
+    int           shiftRegisterCnt;
+    // --------
+    unsigned char readByte();
+    uint16_t readUInt16();
+    uint32_t readUInt32();
+    unsigned int readCompressedByte();
+    PLUS4EMU_INLINE unsigned int readBit();
+    unsigned int readBits(size_t nBits);
+    unsigned int huffmanDecode(int huffTable);
+    void buildDecodeTable(int huffTable,
+                          const unsigned char *lenBuf, size_t nSymbols);
+    void huffmanInit(unsigned char blockType);
+    bool decompressDataBlock(std::vector< unsigned char >& buf);
+   public:
+    ZIPFile(const char *fileName);
+    virtual ~ZIPFile();
+    /*!
+     * Uncompress the next file of the specified type from the archive to
+     * 'buf', the file name is stored in 'fileName'.
+     *
+     * fileType == -1: any type (updated on return)
+     * fileType == 0: program (.PRG or .P00)
+     * fileType == 1: disk (.D64 or .D81)
+     * fileType == 2: tape (.TAP)
+     *
+     * Returns false on EOF.
+     */
+    bool getFile(std::vector< unsigned char >& buf, std::string& fileName,
+                 int& fileType);
+  };
+
+  /*!
+   * Create empty D64 or D81 disk image.
+   */
+  std::FILE *createDiskImage(const char *fileName);
 
 }       // namespace Plus4Emu
 
