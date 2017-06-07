@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -113,8 +113,6 @@ namespace Plus4Emu {
 #  define PLUS4EMU_EXPECT(x__)    x__
 #  define PLUS4EMU_UNLIKELY(x__)  x__
 #endif
-
-#include "fileio.hpp"
 
 #endif  // PLUS4EMU_PLUS4EMU_HPP
 

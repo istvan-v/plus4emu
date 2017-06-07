@@ -21,6 +21,7 @@
 #define PLUS4EMU_CPU_HPP
 
 #include "plus4emu.hpp"
+#include "fileio.hpp"
 #include "bplist.hpp"
 
 namespace Plus4 {

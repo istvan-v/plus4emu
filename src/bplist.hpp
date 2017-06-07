@@ -21,6 +21,7 @@
 #define PLUS4EMU_BPLIST_HPP
 
 #include "plus4emu.hpp"
+#include "fileio.hpp"
 #include <vector>
 
 namespace Plus4Emu {
