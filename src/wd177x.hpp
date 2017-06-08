@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@ namespace Plus4Emu {
 
   class WD177x {
    private:
-    std::string imageFileName;
     std::FILE   *imageFile;
     uint8_t     nTracks;
     uint8_t     nSides;
@@ -57,7 +56,7 @@ namespace Plus4Emu {
    public:
     WD177x();
     virtual ~WD177x();
-    virtual void setDiskImageFile(const std::string& fileName_,
+    virtual void setDiskImageFile(std::FILE *imageFile_, bool isReadOnly,
                                   int nTracks_ = -1,
                                   int nSides_ = 2,
                                   int nSectorsPerTrack_ = 9);

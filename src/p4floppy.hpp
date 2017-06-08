@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@ namespace Plus4 {
     {
     }
     /*!
-     * Open disk image file 'fileName_' (an empty file name means no disk).
+     * Use disk image file 'imageFile_' (imageFile_ == NULL means no disk).
      */
-    virtual void setDiskImageFile(const std::string& fileName_) = 0;
+    virtual void setDiskImageFile(std::FILE *imageFile_, bool isReadOnly) = 0;
     /*!
      * Returns true if there is a disk image file opened.
      */

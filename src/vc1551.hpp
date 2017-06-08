@@ -236,9 +236,9 @@ namespace Plus4 {
      */
     virtual void setROMImage(int n, const uint8_t *romData_);
     /*!
-     * Open disk image file 'fileName_' (an empty file name means no disk).
+     * Use disk image file 'imageFile_' (imageFile_ == NULL means no disk).
      */
-    virtual void setDiskImageFile(const std::string& fileName_);
+    virtual void setDiskImageFile(std::FILE *imageFile_, bool isReadOnly);
     /*!
      * Returns true if there is a disk image file opened.
      */

@@ -341,7 +341,7 @@ namespace Plus4 {
     }
   }
 
-  void VC1551::setDiskImageFile(const std::string& fileName_)
+  void VC1551::setDiskImageFile(std::FILE *imageFile_, bool isReadOnly)
   {
     headLoadedFlag = false;
     prvByteWasFF = false;
@@ -351,7 +351,7 @@ namespace Plus4 {
     currentTrackStepperMotorPhase = 0;
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
     memory_ram[0x0001] &= uint8_t(0xEF);
-    D64Image::setImageFile(fileName_);
+    D64Image::setImageFile(imageFile_, isReadOnly);
     // invert write protect sense input for 0.25 seconds so that the DOS can
     // detect the disk change
     memory_ram[0x0001] = uint8_t((memory_ram[0x0001] & 0xEF)

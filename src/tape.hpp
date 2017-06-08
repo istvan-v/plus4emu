@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -199,6 +199,9 @@ namespace Plus4Emu {
     void unpackSamples_();
     bool writeHeader_();
     void flushBuffer_();
+    // called by the constructors
+    void setImageFile(std::FILE *imageFile_, const char *fileName, int mode,
+                      long sampleRate_, int bitsPerSample);
    public:
     /*!
      * Open tape file 'fileName'. If the file does not exist yet, it may be
@@ -216,11 +219,16 @@ namespace Plus4Emu {
      */
     Tape_Plus4Emu(const char *fileName, int mode = 0,
                   long sampleRate_ = 24000L, int bitsPerSample = 1);
+    /*!
+     * Use existing tape file 'imageFile_'.
+     */
+    Tape_Plus4Emu(std::FILE *imageFile_, int mode = 0,
+                  long sampleRate_ = 24000L, int bitsPerSample = 1);
     virtual ~Tape_Plus4Emu();
+   protected:
     /*!
      * Run tape emulation for a period of 1.0 / getSampleRate() seconds.
      */
-   protected:
     virtual void runOneSample_();
    public:
     /*!
@@ -267,9 +275,9 @@ namespace Plus4Emu {
     int       savedInputCnt;
    public:
     /*!
-     * Open C16 format tape file 'fileName' read-only.
+     * Use C16 format tape file 'imageFile_' read-only.
      */
-    Tape_C16(const char *fileName, int bitsPerSample = 1);
+    Tape_C16(std::FILE *imageFile_, int bitsPerSample = 1);
     virtual ~Tape_C16();
     /*!
      * Run tape emulation for a period of 1.0 / getSampleRate() seconds.
@@ -327,7 +335,8 @@ namespace Plus4Emu {
       static void fft(float *buf, size_t n, bool isInverse);
     };
    private:
-    SNDFILE     *sf;            // tape image file
+    std::FILE   *f;             // tape image file
+    SNDFILE     *sf;
     std::vector<short>  buf;    // 1024 interleaved sample frames
     int         nChannels;
     int         requestedChannel;
@@ -343,13 +352,11 @@ namespace Plus4Emu {
     void invertBuffer_();
    public:
     /*!
-     * Open tape file 'fileName'.
-     * 'mode' can be one of the following values:
-     *   0, 1: open tape file read-write if possible, and fail if it does not
-     *         exist
-     *   2:    open an existing tape file read-only
+     * Use existing tape file 'imageFile_' in the specified mode:
+     *   0, 1: read-write
+     *   2:    read-only
      */
-    Tape_SoundFile(const char *fileName, int mode = 0, int bitsPerSample = 1);
+    Tape_SoundFile(std::FILE *imageFile_, int mode = 0, int bitsPerSample = 1);
     virtual ~Tape_SoundFile();
     /*!
      * Run tape emulation for a period of 1.0 / getSampleRate() seconds.

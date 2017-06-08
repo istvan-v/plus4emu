@@ -20,6 +20,7 @@
 #include "plus4emu.hpp"
 #include "tape.hpp"
 #include "system.hpp"
+#include "fileio.hpp"
 #include <cmath>
 #include <sndfile.h>
 
@@ -305,19 +306,19 @@ namespace Plus4Emu {
     }
   }
 
-  Tape_Plus4Emu::Tape_Plus4Emu(const char *fileName, int mode,
-                               long sampleRate_, int bitsPerSample)
-    : Tape(bitsPerSample),
-      f((std::FILE *) 0),
-      buf((uint8_t *) 0),
-      fileHeader((uint32_t *) 0),
-      cuePointCnt(0),
-      isBufferDirty(false),
-      usingNewFormat(false)
+  void Tape_Plus4Emu::setImageFile(std::FILE *imageFile_, const char *fileName,
+                                   int mode, long sampleRate_,
+                                   int bitsPerSample)
   {
+    f = (std::FILE *) 0;
+    buf = (uint8_t *) 0;
+    fileHeader = (uint32_t *) 0;
+    cuePointCnt = 0;
+    isBufferDirty = false;
+    usingNewFormat = false;
     isReadOnly = false;
     try {
-      if (fileName == (char *) 0 || fileName[0] == '\0')
+      if (!imageFile_ && (!fileName || fileName[0] == '\0'))
         throw Exception("invalid tape file name");
       if (sampleRate_ < 10000L || sampleRate_ > 120000L)
         throw Exception("invalid tape sample rate");
@@ -327,27 +328,36 @@ namespace Plus4Emu {
       for (size_t i = 0; i < 4096; i++)
         buf[i] = 0;
       fileHeader = new uint32_t[1024];
-      if (mode == 0 || mode == 1)
-        f = fileOpen(fileName, "r+b");
-      if (f == (std::FILE *) 0 && mode != 3) {
-        f = fileOpen(fileName, "rb");
-        if (f)
-          isReadOnly = true;
+      if (imageFile_) {
+        f = imageFile_;
       }
-      if (f == (std::FILE *) 0 && (mode == 0 || mode == 3)) {
+      else {
+        f = fileOpen(fileName, (mode < 2 ? "r+b" : (mode == 2 ? "rb" : "w+b")));
+        if (!f && mode < 2) {
+          f = fileOpen(fileName, "rb");
+          if (f) {
+            mode = 2;
+          }
+          else if (!mode) {
+            f = fileOpen(fileName, "w+b");
+            mode = 3;
+          }
+        }
+      }
+      isReadOnly = (mode == 2);
+      if (mode == 3 && f) {
         // create new tape file
-        f = fileOpen(fileName, "w+b");
-        if (f) {
-          usingNewFormat = true;
-          sampleRate = sampleRate_;
-          fileBitsPerSample = requestedBitsPerSample;
-          fileHeader[0] = 0x0275CD72U;
-          fileHeader[1] = 0x1C445126U;
-          fileHeader[2] = uint32_t(fileBitsPerSample);
-          fileHeader[3] = uint32_t(sampleRate);
-          for (size_t i = 4; i < 1024; i++)
-            fileHeader[i] = 0xFFFFFFFFU;
-          if (!writeHeader_()) {
+        usingNewFormat = true;
+        sampleRate = sampleRate_;
+        fileBitsPerSample = requestedBitsPerSample;
+        fileHeader[0] = 0x0275CD72U;
+        fileHeader[1] = 0x1C445126U;
+        fileHeader[2] = uint32_t(fileBitsPerSample);
+        fileHeader[3] = uint32_t(sampleRate);
+        for (size_t i = 4; i < 1024; i++)
+          fileHeader[i] = 0xFFFFFFFFU;
+        if (!writeHeader_()) {
+          if (!imageFile_) {
             std::fclose(f);
             fileRemove(fileName);
             f = (std::FILE *) 0;
@@ -404,7 +414,7 @@ namespace Plus4Emu {
       }
     }
     catch (...) {
-      if (f)
+      if (f && !imageFile_)
         std::fclose(f);
       if (fileHeader)
         delete[] fileHeader;
@@ -412,6 +422,20 @@ namespace Plus4Emu {
         delete[] buf;
       throw;
     }
+  }
+
+  Tape_Plus4Emu::Tape_Plus4Emu(const char *fileName, int mode,
+                               long sampleRate_, int bitsPerSample)
+    : Tape(bitsPerSample)
+  {
+    setImageFile((std::FILE *) 0, fileName, mode, sampleRate_, bitsPerSample);
+  }
+
+  Tape_Plus4Emu::Tape_Plus4Emu(std::FILE *imageFile_, int mode,
+                               long sampleRate_, int bitsPerSample)
+    : Tape(bitsPerSample)
+  {
+    setImageFile(imageFile_, (char *) 0, mode, sampleRate_, bitsPerSample);
   }
 
   Tape_Plus4Emu::~Tape_Plus4Emu()
@@ -576,20 +600,15 @@ namespace Plus4Emu {
 
   // --------------------------------------------------------------------------
 
-  Tape_C16::Tape_C16(const char *fileName, int bitsPerSample)
+  Tape_C16::Tape_C16(std::FILE *imageFile_, int bitsPerSample)
     : Tape(bitsPerSample),
-      f((std::FILE *) 0),
+      f(imageFile_),
       endOfTape(false),
       usingOldTapFormat(false),
       inputSignal(0),
       inputCnt(0),
       savedInputCnt(0)
   {
-    if (fileName == (char *) 0 || fileName[0] == '\0')
-      throw Exception("invalid tape file name");
-    f = fileOpen(fileName, "rb");
-    if (!f)
-      throw Exception("error opening tape file");
     bool    isC16TAPFile = false;
     if (std::fseek(f, 0L, SEEK_END) >= 0) {
       if (std::ftell(f) >= 20L) {
@@ -611,10 +630,8 @@ namespace Plus4Emu {
         }
       }
     }
-    if (!isC16TAPFile) {
-      std::fclose(f);
+    if (!isC16TAPFile)
       throw Exception("invalid tape file header");
-    }
     sampleRate = 55420L;
     this->seek(0.0);
   }
@@ -972,9 +989,10 @@ namespace Plus4Emu {
     }
   }
 
-  Tape_SoundFile::Tape_SoundFile(const char *fileName,
+  Tape_SoundFile::Tape_SoundFile(std::FILE *imageFile_,
                                  int mode, int bitsPerSample)
     : Tape(bitsPerSample),
+      f(imageFile_),
       sf((SNDFILE *) 0),
       nChannels(1),
       requestedChannel(0),
@@ -983,30 +1001,20 @@ namespace Plus4Emu {
       isBufferDirty(false),
       firFilter(2048)
   {
-    if (fileName == (char *) 0 || fileName[0] == '\0')
-      throw Exception("invalid tape file name");
     if (!(mode >= 0 && mode <= 2))
       throw Exception("invalid tape open mode parameter");
     isReadOnly = (mode == 2);
-    if (!isReadOnly) {
-      // check if file exists so that libsndfile does not create an empty file
-      std::FILE *f = fileOpen(fileName, "rb");
-      if (f)
-        std::fclose(f);
-      else
-        throw Exception("error opening tape file");
-    }
     SF_INFO sfinfo;
     std::memset(&sfinfo, 0, sizeof(SF_INFO));
-    sf = sf_open(fileName, (isReadOnly ? SFM_READ : SFM_RDWR), &sfinfo);
-    if (!sf) {
-      if (!isReadOnly) {
-        isReadOnly = true;
-        sf = sf_open(fileName, SFM_READ, &sfinfo);
-      }
-      if (!sf)
-        throw Exception("error opening tape file");
-    }
+    sf = sf_open_fd(
+#ifdef WIN32
+             _fileno(f),
+#else
+             fileno(f),
+#endif
+             (isReadOnly ? SFM_READ : SFM_RDWR), &sfinfo, SF_FALSE);
+    if (!sf)
+      throw Exception("error opening tape file");
     try {
       int32_t   nFrames = int32_t(sfinfo.frames);
       if (sf_count_t(nFrames) != sfinfo.frames)
@@ -1072,6 +1080,7 @@ namespace Plus4Emu {
     catch (...) {
     }
     (void) sf_close(sf);
+    (void) std::fclose(f);
   }
 
   void Tape_SoundFile::runOneSample_()
@@ -1210,20 +1219,31 @@ namespace Plus4Emu {
   {
     Tape    *t = (Tape *) 0;
     if (mode != 3) {
-      try {
-        t = new Tape_C16(fileName, bitsPerSample);
-      }
-      catch (...) {
+      int     fileType = 2;
+      bool    isReadOnly = (mode == 2);
+      std::FILE *f = openPlus4ImageFile(fileName, fileType, isReadOnly);
+      if (f) {
         try {
-          t = new Tape_SoundFile(fileName, mode, bitsPerSample);
+          t = new Tape_C16(f, bitsPerSample);
         }
         catch (...) {
-          t = new Tape_Plus4Emu(fileName, mode, sampleRate_, bitsPerSample);
+          try {
+            t = new Tape_SoundFile(f, mode, bitsPerSample);
+          }
+          catch (...) {
+            try {
+              t = new Tape_Plus4Emu(f, mode, sampleRate_, bitsPerSample);
+            }
+            catch (...) {
+              std::fclose(f);
+              throw;
+            }
+          }
         }
+        return t;
       }
     }
-    else
-      t = new Tape_Plus4Emu(fileName, mode, sampleRate_, bitsPerSample);
+    t = new Tape_Plus4Emu(fileName, mode, sampleRate_, bitsPerSample);
     return t;
   }
 

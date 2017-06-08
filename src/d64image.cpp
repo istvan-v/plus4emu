@@ -20,6 +20,7 @@
 #include "plus4emu.hpp"
 #include "d64image.hpp"
 #include "system.hpp"
+#include "fileio.hpp"
 
 namespace Plus4 {
 
@@ -477,7 +478,7 @@ namespace Plus4 {
     }
   }
 
-  void D64Image::setImageFile(const std::string& fileName_)
+  void D64Image::setImageFile(std::FILE *imageFile_, bool isReadOnly)
   {
     if (imageFile) {
       (void) flushTrack();              // FIXME: should report errors ?
@@ -488,21 +489,10 @@ namespace Plus4 {
     writeProtectFlag = false;
     haveBadSectorTable = false;
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
-    if (fileName_.length() > 0) {
-      bool    isReadOnly = false;
-      imageFile = Plus4Emu::fileOpen(fileName_.c_str(), "r+b");
-      if (!imageFile) {
-        imageFile = Plus4Emu::fileOpen(fileName_.c_str(), "rb");
-        isReadOnly = true;
-      }
-      if (!imageFile)
-        throw Plus4Emu::Exception("error opening disk image file");
-      if (std::fseek(imageFile, 0L, SEEK_END) < 0) {
-        std::fclose(imageFile);
-        imageFile = (std::FILE *) 0;
+    if (imageFile_) {
+      if (std::fseek(imageFile_, 0L, SEEK_END) < 0)
         throw Plus4Emu::Exception("error seeking to end of disk image file");
-      }
-      long    fSize = std::ftell(imageFile);
+      long    fSize = std::ftell(imageFile_);
       long    nSectors = fSize / 256L;
       if ((nSectors * 256L) != fSize) {
         nSectors = fSize / 257L;
@@ -513,12 +503,11 @@ namespace Plus4 {
       // allow any number of tracks from 35 to 42
       if (nSectors < 0L || nSectors > 119L ||
           ((nSectors / 17L) * 17L) != nSectors) {
-        std::fclose(imageFile);
-        imageFile = (std::FILE *) 0;
         throw Plus4Emu::Exception("D64 image file has invalid length");
       }
-      std::fseek(imageFile, 0L, SEEK_SET);
+      imageFile = imageFile_;
       writeProtectFlag = isReadOnly;
+      std::fseek(imageFile, 0L, SEEK_SET);
       nTracks = 35L + (nSectors / 17L);
       haveBadSectorTable = (((nSectors + 683L) * 256L) < fSize);
       diskID = (diskID + 1) & 0xFF;

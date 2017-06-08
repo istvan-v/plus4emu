@@ -20,14 +20,14 @@
 #include "plus4emu.hpp"
 #include "wd177x.hpp"
 #include "system.hpp"
+#include "fileio.hpp"
 
 #include <vector>
 
 namespace Plus4Emu {
 
   WD177x::WD177x()
-    : imageFileName(""),
-      imageFile((std::FILE *) 0),
+    : imageFile((std::FILE *) 0),
       nTracks(0),
       nSides(0),
       nSectorsPerTrack(0),
@@ -56,7 +56,7 @@ namespace Plus4Emu {
   WD177x::~WD177x()
   {
     try {
-      setDiskImageFile("", 0, 0, 0);
+      setDiskImageFile((std::FILE *) 0, 0, 0, 0);
     }
     catch (...) {
     }
@@ -95,27 +95,27 @@ namespace Plus4Emu {
     }
   }
 
-  void WD177x::setDiskImageFile(const std::string& fileName_,
-                        int nTracks_, int nSides_, int nSectorsPerTrack_)
+  void WD177x::setDiskImageFile(std::FILE *imageFile_, bool isReadOnly,
+                                int nTracks_, int nSides_,
+                                int nSectorsPerTrack_)
   {
-    if ((fileName_ == "" && imageFileName == "") ||
-        (fileName_ == imageFileName &&
-         nTracks_ == int(nTracks) &&
-         nSides_ == int(nSides) &&
-         nSectorsPerTrack_ == int(nSectorsPerTrack)))
+    if (imageFile_ == imageFile &&
+        (!imageFile_ ||
+         (nTracks_ == int(nTracks) && nSides_ == int(nSides) &&
+          nSectorsPerTrack_ == int(nSectorsPerTrack)))) {
       return;
+    }
     if (imageFile) {
       std::fclose(imageFile);
       imageFile = (std::FILE *) 0;
     }
-    imageFileName = "";
     nTracks = 0;
     nSides = 0;
     nSectorsPerTrack = 0;
     writeProtectFlag = false;
     this->reset();
     diskChangeFlag = true;
-    if (fileName_ == "")
+    if (!imageFile_)
       return;
     unsigned char tmpBuf[512];
     bool    nTracksValid = (nTracks_ >= 1 && nTracks_ <= 240);
@@ -123,15 +123,8 @@ namespace Plus4Emu {
     bool    nSectorsPerTrackValid =
                 (nSectorsPerTrack_ >= 1 && nSectorsPerTrack_ <= 240);
     try {
-      imageFile = fileOpen(fileName_.c_str(), "r+b");
-      if (!imageFile) {
-        imageFile = fileOpen(fileName_.c_str(), "rb");
-        if (imageFile)
-          writeProtectFlag = true;
-        else
-          throw Exception("wd177x: error opening disk image file");
-      }
-      std::setvbuf(imageFile, (char *) 0, _IONBF, 0);
+      imageFile = imageFile_;
+      writeProtectFlag = isReadOnly;
       long    fileSize = -1L;
       if (std::fseek(imageFile, 0L, SEEK_END) >= 0)
         fileSize = std::ftell(imageFile);
@@ -199,13 +192,9 @@ namespace Plus4Emu {
         throw Exception("wd177x: invalid or inconsistent "
                         "disk image size parameters");
       std::fseek(imageFile, 0L, SEEK_SET);
-      imageFileName = fileName_;
     }
     catch (...) {
-      if (imageFile) {
-        std::fclose(imageFile);
-        imageFile = (std::FILE *) 0;
-      }
+      imageFile = (std::FILE *) 0;
       writeProtectFlag = false;
       throw;
     }
@@ -412,8 +401,10 @@ namespace Plus4Emu {
         if (bufPos > 0) {
           for ( ; bufPos < 512; bufPos++)
             buf[bufPos] = 0;
-          if (imageFile != (std::FILE *) 0 && !writeProtectFlag)
+          if (imageFile != (std::FILE *) 0 && !writeProtectFlag) {
             std::fwrite(&(buf[0]), 1, 512, imageFile);
+            std::fflush(imageFile);
+          }
         }
       }
       // FIXME: only immediate interrupt is implemented
@@ -481,7 +472,9 @@ namespace Plus4Emu {
         dataRequestFlag = false;
         statusRegister = statusRegister & 0xFC;
         if (setFilePosition()) {
-          if (std::fwrite(&(buf[0]), 1, 512, imageFile) == 512) {
+          size_t  bytesWritten = std::fwrite(&(buf[0]), 1, 512, imageFile);
+          std::fflush(imageFile);
+          if (bytesWritten == 512) {
             if (commandRegister & 0x10) {
               // multiple sectors: continue with writing next sector
               sectorRegister++;

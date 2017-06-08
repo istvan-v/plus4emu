@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -392,7 +392,7 @@ namespace Plus4 {
     }
   }
 
-  void VC1541::setDiskImageFile(const std::string& fileName_)
+  void VC1541::setDiskImageFile(std::FILE *imageFile_, bool isReadOnly)
   {
     headLoadedFlag = false;
     prvByteWasFF = false;
@@ -402,7 +402,7 @@ namespace Plus4 {
     (void) setCurrentTrack(18);         // FIXME: should report errors ?
     via2PortBInput &= uint8_t(0xEF);
     via2.setPortB(via2PortBInput);
-    D64Image::setImageFile(fileName_);
+    D64Image::setImageFile(imageFile_, isReadOnly);
     // invert write protect sense input for 0.25 seconds so that the DOS can
     // detect the disk change
     via2PortBInput = uint8_t(writeProtectFlag ? (via2PortBInput | 0x10)
