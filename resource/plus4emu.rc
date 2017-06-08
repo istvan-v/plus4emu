@@ -2,8 +2,8 @@
 #include <winver.h>
 
 VS_VERSION_INFO VERSIONINFO
-  FILEVERSION     1, 2, 10, 2
-  PRODUCTVERSION  1, 2, 10, 2
+  FILEVERSION     1, 2, 11, 0
+  PRODUCTVERSION  1, 2, 11, 0
   FILEFLAGSMASK   0
   FILEFLAGS       0
   FILEOS          VOS__WINDOWS32
@@ -17,12 +17,12 @@ BEGIN
       VALUE "Comments", "Home page: https://github.com/istvan-v/plus4emu/"
       VALUE "CompanyName", "Istvan Varga"
       VALUE "FileDescription", "plus4emu - Commodore Plus/4 and C16 emulator"
-      VALUE "FileVersion", "1.2.10.2"
+      VALUE "FileVersion", "1.2.11.0"
       VALUE "InternalName", "plus4emu"
-      VALUE "LegalCopyright", "Copyright (C) 2003-2016, GPL v2 or later"
+      VALUE "LegalCopyright", "Copyright (C) 2003-2017, GPL v2 or later"
       VALUE "OriginalFilename", "plus4emu"
       VALUE "ProductName", "Plus4Emu"
-      VALUE "ProductVersion", "1.2.10.2"
+      VALUE "ProductVersion", "1.2.11.0"
     END
   END
   BLOCK "VarFileInfo"
