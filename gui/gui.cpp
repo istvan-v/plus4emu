@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -2184,7 +2184,7 @@ void Plus4EmuGUI::menuCallback_Machine_OpenTape(Fl_Widget *o, void *v)
   try {
     std::string tmp;
     if (gui_.browseFile(tmp, gui_.tapeImageDirectory,
-                        "Tape files\t*.{tap,wav,aif,aiff,au,snd}",
+                        "Tape files\t*.{tap,wav,aif,aiff,au,snd,zip}",
 #ifdef WIN32
                         Fl_Native_File_Chooser::BROWSE_FILE,
 #else
