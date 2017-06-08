@@ -285,13 +285,13 @@ namespace Plus4 {
           // update timer 1 on even cycle count (886 kHz rate)
           timer1_state = (timer1_state - 1) & 0xFFFF;
         }
-        if (!timer2_state) {
+        if (PLUS4EMU_UNLIKELY(!timer2_state)) {
           if (timer2_run) {
             tedRegisters[0x09] |= uint8_t(0x10);
             updateInterruptFlag();
           }
         }
-        if (!timer3_state) {
+        if (PLUS4EMU_UNLIKELY(!timer3_state)) {
           if (timer3_run) {
             tedRegisters[0x09] |= uint8_t(0x40);
             updateInterruptFlag();
