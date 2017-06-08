@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -193,10 +193,9 @@ namespace Plus4 {
         case 102:                       // enable / start DMA
           dmaFlags = dmaFlags | 0x80;
           characterColumn = (characterColumn == 40 ? 0x3C : characterColumn);
-          if (renderWindow) {
+          if (dmaEnabled) {     // was renderWindow
             // check if DMA should be requested:
-            if ((savedVideoLineDelay1 & 7) == int(verticalScroll) &&
-                dmaEnabled) {
+            if ((savedVideoLineDelay1 & 7) == int(verticalScroll)) {
               // start a new DMA at character line 7
               delayedEvents0.stopDMA();
               dmaActive = true;
@@ -204,14 +203,14 @@ namespace Plus4 {
               dmaFlags = dmaFlags | 0x01;
               dmaBaseAddr = dmaBaseAddr & 0xF800;
             }
-            else if (dmaFlags & 0x02) {
-              // done reading attribute data in previous line,
-              // now continue DMA to get character data
-              delayedEvents0.stopDMA();
-              dmaActive = true;
-              delayedEvents.startDMA();
-              dmaBaseAddr = dmaBaseAddr | 0x0400;
-            }
+          }
+          if (PLUS4EMU_UNLIKELY(dmaFlags & 0x02)) {
+            // done reading attribute data in previous line,
+            // now continue DMA to get character data
+            delayedEvents0.stopDMA();
+            dmaActive = true;
+            delayedEvents.startDMA();
+            dmaBaseAddr = dmaBaseAddr | 0x0400;
           }
           break;
         case 104:                       // burst end
@@ -567,7 +566,9 @@ namespace Plus4 {
           if (savedVideoLine == 204) {  // end of display
             bitmapAddressDisableFlags = bitmapAddressDisableFlags | 0x02;
             singleClockModeFlags &= uint8_t(0x82);
+#if 0
             dmaFlags = 0x00;
+#endif
           }
           else if (renderWindow) {
             if (((savedVideoLineDelay1 ^ int(tedRegisters[0x06])) & 7) == 0 &&
