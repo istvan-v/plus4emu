@@ -665,17 +665,18 @@ namespace Plus4Emu {
         &(buf.front()) + (isD81 ? 0x00061804 : 0x00016590);
     for (size_t i = 0; i < 16; i++) {
       char    c = char(0xA0);
-      if (i < n)
+      if (i < n) {
         c = s[i];
-      if (c >= 'a' && c <= 'z') {
-        c = c - ('a' - 'A');
-      }
-      else if (c == '_') {
-        c = ' ';
-      }
-      else if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
-                 c == '+' || c == '-' || c == '.' || c == ' ')) {
-        c = char(0xA4);
+        if (c >= 'a' && c <= 'z') {
+          c = c - ('a' - 'A');
+        }
+        else if (c == '_') {
+          c = ' ';
+        }
+        else if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                   c == '+' || c == '-' || c == '.' || c == ' ')) {
+          c = char(0xA4);
+        }
       }
       diskName[i] = (unsigned char) c;
     }
@@ -1118,6 +1119,60 @@ namespace Plus4Emu {
       break;
     }
     return true;
+  }
+
+  // --------------------------------------------------------------------------
+
+  std::FILE *openPlus4ImageFile(const char *fileName,
+                                int& fileType, bool& isReadOnly)
+  {
+    if (!(fileType >= 0 && fileType <= 2))
+      fileType = -1;
+    if (checkFileNameExtension(fileName, ".zip")) {
+      isReadOnly = true;
+      ZIPFile zipFile(fileName);
+      std::vector< unsigned char >  buf;
+      std::string s;
+      if (!zipFile.getFile(buf, s, fileType))
+        throw Exception("no matching file found in archive");
+      std::FILE *f = std::tmpfile();
+      if (!f ||
+          std::fwrite(&(buf.front()), sizeof(unsigned char), buf.size(), f)
+          != buf.size() ||
+          std::fflush(f) != 0 ||
+          std::fseek(f, 0L, SEEK_SET) < 0) {
+        if (f)
+          std::fclose(f);
+        throw Exception("error creating temporary file");
+      }
+      return f;
+    }
+    std::FILE *f = (std::FILE *) 0;
+    if (!isReadOnly)
+      f = fileOpen(fileName, "r+b");
+    if (!f) {
+      f = fileOpen(fileName, "rb");
+      if (f)
+        isReadOnly = true;
+    }
+    if (fileType == 1) {
+      if (f) {
+#ifdef WIN32
+        if (!(fileName[0] == '\\' && fileName[1] == '\\' &&
+              fileName[2] == '.' && fileName[3] == '\\'))
+#elif defined(__linux) || defined(__linux__)
+        if (std::strncmp(fileName, "/dev/", 5) == 0)
+#endif
+        {
+          std::setvbuf(f, (char *) 0, _IONBF, 0);
+        }
+      }
+      else {
+        isReadOnly = false;
+        f = createDiskImage(fileName);
+      }
+    }
+    return f;
   }
 
 }       // namespace Plus4Emu

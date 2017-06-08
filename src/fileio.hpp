@@ -174,6 +174,14 @@ namespace Plus4Emu {
    */
   std::FILE *createDiskImage(const char *fileName);
 
+  /*!
+   * Open or create a D64, D81, TAP, PRG or P00 file. If the file name ends
+   * with ".zip" (case insensitive), then the first matching file from the
+   * archive is extracted to a temporary file created with std::tmpfile().
+   */
+  std::FILE *openPlus4ImageFile(const char *fileName,
+                                int& fileType, bool& isReadOnly);
+
 }       // namespace Plus4Emu
 
 #endif  // PLUS4EMU_FILEIO_HPP
