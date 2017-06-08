@@ -1694,6 +1694,7 @@ namespace Plus4 {
     if (driveType < 0 || driveType > 1)
       throw Plus4Emu::Exception("invalid floppy drive type");
     n = n + 8;
+    std::FILE *imageFile = (std::FILE *) 0;
     try {
       int     oldDriveType = -1;
       if (serialDevices[n] != (SerialDevice *) 0) {
@@ -1705,33 +1706,31 @@ namespace Plus4 {
           oldDriveType = 4;
       }
       int     newDriveType = driveType;
+      bool    isReadOnly = false;
       if (fileName_.length() > 0) {
         // insert or replace disk
         bool    isD64 = false;
         bool    isD81 = true;
-        {
-          // find out file type
-          std::FILE *f = Plus4Emu::fileOpen(fileName_.c_str(), "rb");
-          if (f) {
-            if (std::fseek(f, 0L, SEEK_END) >= 0) {
-              long    fSize = std::ftell(f);
-              long    nSectors = fSize / 256L;
-              if ((nSectors * 256L) != fSize) {
-                // allow error info (one byte per sector at the end of the file)
-                nSectors = fSize / 257L;
-                if ((nSectors * 257L) != fSize)
-                  nSectors = 0L;
-              }
-              nSectors -= 683L;
-              // allow any number of D64 tracks from 35 to 42
-              isD64 = (nSectors >= 0L && nSectors <= 119L &&
-                       ((nSectors / 17L) * 17L) == nSectors);
-              isD81 = (fSize == (80L * 2L * 10L * 512L));
-            }
-            std::fclose(f);
+        int     fileType = 1;
+        imageFile = Plus4Emu::openPlus4ImageFile(fileName_.c_str(),
+                                                 fileType, isReadOnly);
+        if (!imageFile)
+          throw Plus4Emu::Exception("error opening disk image file");
+        // find out file type
+        if (std::fseek(imageFile, 0L, SEEK_END) >= 0) {
+          long    fSize = std::ftell(imageFile);
+          long    nSectors = fSize / 256L;
+          if ((nSectors * 256L) != fSize) {
+            // allow error info (one byte per sector at the end of the file)
+            nSectors = fSize / 257L;
+            if ((nSectors * 257L) != fSize)
+              nSectors = 0L;
           }
-          else
-            throw Plus4Emu::Exception("error opening disk image file");
+          nSectors -= 683L;
+          // allow any number of D64 tracks from 35 to 42
+          isD64 = (nSectors >= 0L && nSectors <= 119L &&
+                   ((nSectors / 17L) * 17L) == nSectors);
+          isD81 = (fSize == (80L * 2L * 10L * 512L));
         }
         if (!isD64 && !isD81)
           throw Plus4Emu::Exception("disk image is not a D64 or D81 file");
@@ -1797,10 +1796,12 @@ namespace Plus4 {
       }
       if (serialDevices[n] != (SerialDevice *) 0) {
         reinterpret_cast<FloppyDrive *>(serialDevices[n])->setDiskImageFile(
-            fileName_);
+            imageFile, isReadOnly);
       }
     }
     catch (...) {
+      if (imageFile)
+        std::fclose(imageFile);
       if (serialDevices[8] != (SerialDevice *) 0)
         drive8Is1551 = (typeid(*(serialDevices[8])) == typeid(VC1551));
       else if (n == 8)
