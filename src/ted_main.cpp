@@ -193,18 +193,18 @@ namespace Plus4 {
         case 102:                       // enable / start DMA
           dmaFlags = dmaFlags | 0x80;
           characterColumn = (characterColumn == 40 ? 0x3C : characterColumn);
-          if (dmaEnabled) {     // was renderWindow
-            // check if DMA should be requested:
-            if ((savedVideoLineDelay1 & 7) == int(verticalScroll)) {
-              // start a new DMA at character line 7
-              delayedEvents0.stopDMA();
-              dmaActive = true;
-              delayedEvents.startDMA();
-              dmaFlags = dmaFlags | 0x01;
-              dmaBaseAddr = dmaBaseAddr & 0xF800;
-            }
+          // check if DMA should be requested:
+          if (dmaEnabled &&
+              PLUS4EMU_UNLIKELY((savedVideoLineDelay1 & 7)
+                                == int(verticalScroll))) {
+            // start a new DMA at character line 7
+            delayedEvents0.stopDMA();
+            dmaActive = true;
+            delayedEvents.startDMA();
+            dmaFlags = dmaFlags | 0x01;
+            dmaBaseAddr = dmaBaseAddr & 0xF800;
           }
-          if (PLUS4EMU_UNLIKELY(dmaFlags & 0x02)) {
+          else if (PLUS4EMU_UNLIKELY(dmaFlags & 0x02)) {
             // done reading attribute data in previous line,
             // now continue DMA to get character data
             delayedEvents0.stopDMA();
@@ -446,7 +446,7 @@ namespace Plus4 {
       cycle_count--;
       // update horizontal position (reads are delayed by one cycle)
       tedRegisters[0x1E] = videoColumn;
-      if (!ted_disabled)
+      if (PLUS4EMU_EXPECT(!ted_disabled))
         videoColumn = uint8_t(videoColumn != 113 ? (videoColumn + 1) : 0);
       videoColumn &= uint8_t(0x7E);
       nCycles = nCycles - int(singleClockCycleLength);
