@@ -1,12 +1,17 @@
 Changes in version 1.2.11
 -------------------------
 
-  * fixed DigiBlaster bug, SID external input was muted by default
-  * minor fix in 1551 emulation
-  * fixed video breakpoints not working when the priority threshold is
-    not zero
+  * an empty D64 or D81 image is automatically created when trying to
+    open a file that does not exist
+  * disk and tape images can be opened from .zip format archives, the
+    first packed file with matching extension is temporarily extracted
+    and used in read-only mode
   * added support for comments (beginning with ; or #) in the breakpoint
     list
+  * fixed DigiBlaster bug, SID external input was muted by default
+  * minor fixes in 1551 and TED emulation
+  * fixed video breakpoints not working when the priority threshold is
+    not zero
 
 Changes in version 1.2.10.1
 ---------------------------

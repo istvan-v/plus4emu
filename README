@@ -519,6 +519,13 @@ Floppy / Configure... (Alt + D)
   working directory, and also has the advantage of not increasing the
   CPU usage.
 
+  New in version 1.2.11: if the specified image file does not exist, it
+  is automatically created as a formatted empty disk, with the format
+  (D64 or D81), disk name and ID determined from the file name and
+  extension. It is also possible to open disk and tape images archived
+  in .zip format, the first packed file with matching extension is
+  temporarily extracted and used in read-only mode.
+
 Floppy / Remove disk / Unit 8
 Floppy / Remove disk / Unit 9
 Floppy / Remove disk / Unit 10
