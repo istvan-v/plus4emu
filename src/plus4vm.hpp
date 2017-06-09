@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -131,13 +131,15 @@ namespace Plus4 {
     size_t    videoBreakPointCnt;
     uint8_t   *videoBreakPoints;
     int32_t   tapeFeedbackSignal;
-    int32_t   tapeFeedbackLevel;
+    // calculated from tapeFeedbackLevel and SID volume
+    int32_t   tapeFeedbackMult;
     int       lightPenPositionX;
     int       lightPenPositionY;
     int       lightPenCycleCounter;
     bool      printerOutputChangedFlag;
     bool      printerFormFeedOn;
     bool      videoCaptureNTSCMode;
+    int8_t    tapeFeedbackLevel;
     Plus4Emu::VideoCapture  *videoCapture;
     ACIA6551  acia_;
     int64_t   aciaTimeRemaining;        // in 2^-32 microsecond units
