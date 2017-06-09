@@ -249,11 +249,7 @@ static void initializeTexture(const Plus4Emu::VideoDisplay::DisplayParameters&
     txtFormat = GL_RGBA;
     txtType = GL_UNSIGNED_INT_8_8_8_8_REV;
     uint32_t  *textureBuffer32 = reinterpret_cast< uint32_t * >(textureBuffer);
-    uint32_t  c = 0U;
-    if (dp.displayQuality > 2) {
-      txtType = GL_UNSIGNED_INT_2_10_10_10_REV;
-      c = 0x20080000U;
-    }
+    uint32_t  c = (dp.displayQuality > 2 ? 0x00808000U : 0U);
     for (size_t i = 0; i < (1024 * 8); i++)
       textureBuffer32[i] = c;
   }
@@ -543,7 +539,7 @@ namespace Plus4Emu {
     if (!l) {
       if (yuvTextureMode) {
         for (size_t xc = 0; xc < 768; xc++)
-          outBuf[xc] = 0x20080000U;
+          outBuf[xc] = 0x00808000U;
       }
       else {
         for (size_t xc = 0; xc < 768; xc++)
@@ -712,7 +708,7 @@ namespace Plus4Emu {
       }
       // load texture
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, GLint((yc + 4) >> 1), 768, 14,
-                      GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, textureSpace);
+                      GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
     }
     // update display
     double  yOffs = (y1 - y0) * (double(int(oddFrame_) - 2) / 576.0);

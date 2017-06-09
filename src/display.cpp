@@ -292,18 +292,6 @@ namespace Plus4Emu {
     return ((bi << 16) | (gi << 8) | ri);
   }
 
-  static uint32_t pixelConvYUV30(float y, float u, float v)
-  {
-    uint32_t  yi, ui, vi;
-    yi = uint32_t(int(y >= 0.0f ? (y < 1.0f ? (y * 1023.0f + 0.5f) : 1023.0f)
-                                  : 0.0f));
-    ui = uint32_t(int(u >= 0.0f ? (u < 1.0f ? (u * 1023.0f + 0.5f) : 1023.0f)
-                                  : 0.0f));
-    vi = uint32_t(int(v >= 0.0f ? (v < 1.0f ? (v * 1023.0f + 0.5f) : 1023.0f)
-                                  : 0.0f));
-    return ((vi << 20) | (ui << 10) | yi);
-  }
-
   template <typename T>
   VideoDisplayColormap<T>::VideoDisplayColormap()
   {
@@ -412,7 +400,7 @@ namespace Plus4Emu {
           }
           u = (u + 0.435912f) * 1.147020f;
           v = (v + 0.614777f) * 0.813303f;
-          colormapData[i] = pixelConvYUV30(y, u, v);
+          colormapData[i] = pixelConv(y, u, v);
         }
       }
       else {

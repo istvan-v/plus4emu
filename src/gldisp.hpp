@@ -62,7 +62,7 @@ namespace Plus4Emu {
     VideoDisplayColormap<uint32_t>  colormap32_0;
     VideoDisplayColormap<uint32_t>  colormap32_1;
     bool          *linesChanged;
-    // 1024x14 texture in 16-bit R5G6B5, or 32-bit R8G8B8 or Y10U10V10 format
+    // 1024x14 texture in 16-bit R5G6B5, or 32-bit R8G8B8 or Y8U8V8 format
     unsigned char *textureSpace;
     uint16_t      *textureBuffer16;
     uint32_t      *textureBuffer32;

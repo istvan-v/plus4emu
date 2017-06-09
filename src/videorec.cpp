@@ -1087,15 +1087,16 @@ namespace Plus4Emu {
       if (indexToYUVFunc)
         displayParameters.indexToYUVFunc = indexToYUVFunc;
       // scale video signal to YCrCb range (Y: 16..235, U,V: 16..240)
-      displayParameters.brightness = -386.0f / 1023.0f;
-      displayParameters.contrast = 219.0f / 1023.0f;
+      displayParameters.brightness = -2.0f / 255.0f;
+      displayParameters.contrast = 219.0f / 255.0f;
       displayParameters.saturation = 224.0f / 219.0f;
       colormap.setDisplayParameters(displayParameters, true);
+      // change pixel format for more efficient processing
       uint32_t  *p = colormap.getFirstEntry();
       while (p) {
         uint32_t  tmp = *p;
-        // fix chroma offset and make sure no color is below black level
-        tmp = tmp - 0x18060000U;
+        tmp = ((tmp & 0x00FF0000U) << 4) | ((tmp & 0x0000FF00U) << 2)
+              | (tmp & 0x000000FFU);
         if (!(tmp & 0x000000F0U))
           tmp = (tmp & 0x0FF3FC00U) | 0x00000010U;
         (*p) = tmp;
