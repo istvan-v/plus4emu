@@ -717,7 +717,8 @@ namespace Plus4 {
     // input interface.
     // Note that the input is 16 bits, compared to the 20 bit voice output.
     model_filter_t& f = model_filter[sid_model];
-    ve = (sample*f.voice_scale_s14*3 >> 14) + f.mixer[0];
+    // FIXME: the DC level is not added on MOS8580 to avoid DigiBlaster clipping
+    ve = (sample*f.voice_scale_s14*3 >> 14) + (sid_model == 0 ? f.mixer[0] : 0);
   }
 
   // --------------------------------------------------------------------------
