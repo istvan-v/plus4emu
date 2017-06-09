@@ -92,31 +92,34 @@ void Plus4FLIConvGUI_Display::draw()
   glPixelTransferf(GL_ALPHA_SCALE, GLfloat(1));
   glPixelTransferf(GL_ALPHA_BIAS, GLfloat(0));
   glDisable(GL_BLEND);
-  for (size_t yc = 0; yc < 576; yc += 16) {
+  for (size_t yc = 0; yc < 576; yc += 288) {
     // load texture
-    for (size_t yoffs = 0; yoffs < 16; yoffs++) {
+    for (size_t yoffs = 0; yoffs < 288; yoffs++) {
+      size_t  txtYoffs = yoffs & 7;
       for (size_t xc = 0; xc < 768; xc++) {
         unsigned char *p =
             &(gui.imageFileData[(((yc + yoffs) * 768) + xc) * 3]);
         uint32_t  tmp =
             uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16)
             | 0xFF000000U;
-        textureBuffer32[(yoffs * 768) + xc] = tmp;
+        textureBuffer32[(txtYoffs * 768) + xc] = tmp;
+      }
+      if (txtYoffs == 7) {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, GLint(yoffs - 7), 768, 8,
+                        GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
       }
     }
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 768, 16,
-                    GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, textureSpace);
     // update display
     GLfloat ycf0 = GLfloat(double(int(yc)) / 576.0);
-    GLfloat ycf1 = GLfloat(double(int(yc + 16)) / 576.0);
+    GLfloat ycf1 = GLfloat(double(int(yc + 288)) / 576.0);
     glBegin(GL_QUADS);
-    glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 16.0));
+    glTexCoord2f(GLfloat(0.0), GLfloat(0.001 / 512.0));
     glVertex2f(GLfloat(0.0), ycf0);
-    glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(0.001 / 16.0));
+    glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(0.001 / 512.0));
     glVertex2f(GLfloat(1.0), ycf0);
-    glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(15.999 / 16.0));
+    glTexCoord2f(GLfloat(768.0 / 1024.0), GLfloat(287.999 / 512.0));
     glVertex2f(GLfloat(1.0), ycf1);
-    glTexCoord2f(GLfloat(0.0), GLfloat(15.999 / 16.0));
+    glTexCoord2f(GLfloat(0.0), GLfloat(287.999 / 512.0));
     glVertex2f(GLfloat(0.0), ycf1);
     glEnd();
   }

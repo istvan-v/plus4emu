@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -62,7 +62,7 @@ namespace Plus4Emu {
     VideoDisplayColormap<uint32_t>  colormap32_0;
     VideoDisplayColormap<uint32_t>  colormap32_1;
     bool          *linesChanged;
-    // 1024x16 texture in 16-bit (R5G6B5) or 32-bit (R8G8B8) format
+    // 1024x14 texture in 16-bit R5G6B5, or 32-bit R8G8B8 or Y10U10V10 format
     unsigned char *textureSpace;
     uint16_t      *textureBuffer16;
     uint32_t      *textureBuffer32;
