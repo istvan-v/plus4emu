@@ -494,7 +494,7 @@ namespace Plus4 {
       bool    tapeFeedback = ((tapeButtonState == 1 && tedTapeInput) ||
                               (tapeButtonState == 2 && tedTapeOutput));
       vm.tapeFeedbackSignal = (tapeFeedback ?
-                               vm.tapeFeedbackLevel : int32_t(0));
+                               vm.tapeFeedbackMult : int32_t(0));
     }
     vm.soundOutputAccumulator += vm.tapeFeedbackSignal;
   }
@@ -846,13 +846,14 @@ namespace Plus4 {
       videoBreakPointCnt(0),
       videoBreakPoints((uint8_t *) 0),
       tapeFeedbackSignal(0),
-      tapeFeedbackLevel(0),
+      tapeFeedbackMult(0),
       lightPenPositionX(-1),
       lightPenPositionY(-1),
       lightPenCycleCounter(0),
       printerOutputChangedFlag(true),
       printerFormFeedOn(false),
       videoCaptureNTSCMode(false),
+      tapeFeedbackLevel(0),
       videoCapture((Plus4Emu::VideoCapture *) 0),
       acia_(),
       aciaTimeRemaining(0),
@@ -1182,33 +1183,19 @@ namespace Plus4 {
         }
       }
     }
-    if (enableDigiBlaster != digiBlasterEnabled) {
-      digiBlasterEnabled = enableDigiBlaster;
-      if (enableDigiBlaster)
-        sid_->input((int(digiBlasterOutput) << 8) - 32768);
-      else
-        sid_->input(0);
-    }
+    digiBlasterEnabled = enableDigiBlaster;
+    sid_->set_voice_mask(enableDigiBlaster ? 0x0F : 0x07);
+    if (enableDigiBlaster)
+      sid_->input((int(digiBlasterOutput) << 8) - 32768);
+    else
+      sid_->input(0);
     int32_t newSIDOutputVolume =
         int32_t(std::pow(10.0, double(outputVolume) * 0.05)
                 * (65536.0 * 3.0 / 187.0) + 0.5);
     if (newSIDOutputVolume != sidOutputVolume) {
       // adjust tape feedback level so that only the SID output level changes
-      int     tapeFeedbackLevel_ = 0;
-      if (tapeFeedbackLevel > 0) {
-        tapeFeedbackLevel_ =
-            int((std::log(double(tapeFeedbackLevel)
-                          * double(sidOutputVolume) / (5632.0 * 1117.0))
-                 / std::log(2.0)) * 2.0 + 0.5);
-      }
-      else if (tapeFeedbackLevel < 0) {
-        tapeFeedbackLevel_ =
-            int((std::log(double(tapeFeedbackLevel)
-                          * double(sidOutputVolume) / (-5632.0 * 1117.0))
-                 / std::log(2.0)) * -2.0 - 0.5);
-      }
       sidOutputVolume = newSIDOutputVolume;
-      setTapeFeedbackLevel(tapeFeedbackLevel_);
+      setTapeFeedbackLevel(tapeFeedbackLevel);
     }
   }
 
@@ -1949,18 +1936,20 @@ namespace Plus4 {
   void Plus4VM::setTapeFeedbackLevel(int n)
   {
     n = (n >= -10 ? (n <= 10 ? n : 10) : -10);
+    tapeFeedbackLevel = int8_t(n);
     if (n > 0) {
-      tapeFeedbackLevel = int32_t(std::pow(2.0, double(n) * 0.5)
-                                  * 5632.0 * 1117.0 / double(sidOutputVolume)
-                                  + 0.5);
+      tapeFeedbackMult = int32_t(std::pow(2.0, double(n) * 0.5)
+                                 * 5632.0 * 1117.0 / double(sidOutputVolume)
+                                 + 0.5);
     }
     else if (n < 0) {
-      tapeFeedbackLevel = int32_t(std::pow(2.0, double(n) * -0.5)
-                                  * -5632.0 * 1117.0 / double(sidOutputVolume)
-                                  - 0.5);
+      tapeFeedbackMult = int32_t(std::pow(2.0, double(n) * -0.5)
+                                 * -5632.0 * 1117.0 / double(sidOutputVolume)
+                                 - 0.5);
     }
-    else
-      tapeFeedbackLevel = 0;
+    else {
+      tapeFeedbackMult = 0;
+    }
   }
 
   void Plus4VM::tapePlay()
