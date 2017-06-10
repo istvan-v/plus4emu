@@ -472,15 +472,13 @@ namespace Plus4 {
         }
         if (n & 0x00000004U) {
           //   bit 2:   increment video line
-          if (renderWindow) {
-            dmaFlags = dmaFlags & 0x80;
-            // if done attribute DMA in the previous line,
-            // continue with character DMA in next one
-            if ((savedVideoLineDelay1 & 7) == int(verticalScroll) && dmaEnabled)
-              dmaFlags = dmaFlags | 0x02;
-            else if (dmaActive)
-              delayedEvents0.stopDMADelay1();
-          }
+          dmaFlags = dmaFlags & 0x80;
+          // if done attribute DMA in the previous line,
+          // continue with character DMA in next one
+          if ((savedVideoLineDelay1 & 7) == int(verticalScroll) && dmaEnabled)
+            dmaFlags = dmaFlags | 0x02;
+          else if (dmaActive)
+            delayedEvents0.stopDMADelay1();
           videoOutputFlags &= uint8_t(0xF9);
           videoOutputFlags |=
               uint8_t(((savedVideoLine & int(~videoOutputFlags)) & 1) << 2);
