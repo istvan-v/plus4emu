@@ -276,7 +276,7 @@ namespace Plus4 {
         current_render_func(*this, horizontalScroll);
         // check timer interrupts
         if (timer1_run) {
-          if (!timer1_state) {
+          if (PLUS4EMU_UNLIKELY(!timer1_state)) {
             tedRegisters[0x09] |= uint8_t(0x08);
             updateInterruptFlag();
             // reload timer

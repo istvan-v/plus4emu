@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -560,7 +560,7 @@ namespace Plus4 {
     ted.prv_video_buf_pos = ted.video_buf_pos;
     uint8_t *bufp = &(ted.video_buf[ted.video_buf_pos]);
     uint8_t borderColor = ted.colorRegisters[4];
-    if (borderColor != ted.tedRegisters[0x19]) {
+    if (PLUS4EMU_UNLIKELY(borderColor != ted.tedRegisters[0x19])) {
       ted.video_buf_pos = ted.video_buf_pos + 5;
       bufp[0] = ted.videoOutputFlags | uint8_t(0x02);
       bufp[1] = borderColor;
