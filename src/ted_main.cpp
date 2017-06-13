@@ -646,7 +646,7 @@ namespace Plus4 {
       }
       if (n & 0x00040000U) {
         //   bit 18:  DMA cycle 1
-        singleClockModeFlags |= uint8_t(0x01);
+        singleClockModeFlags |= uint8_t(renderWindow);
         delayedEvents0.dmaCycle(2);
         if (!(n & 0xFFF80000U))
           return;
@@ -654,6 +654,9 @@ namespace Plus4 {
       if (n & 0x00080000U) {
         //   bit 19:  DMA cycle 2
         M7501::setIsCPURunning(false);
+        // FIXME: this hack is needed because the main emulation loop assumes
+        // single clock mode during DMA
+        singleClockModeFlags |= uint8_t(0x01);
         delayedEvents0.dmaCycle(3);
         if (!(n & 0xFFF00000U))
           return;
