@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ namespace Plus4FLIConv {
 
   void FLIConfiguration::configChangeCallbackFloat(void *userData_,
                                                    const std::string& name_,
-                                                   double value_)
+                                                   float value_)
   {
     (void) name_;
     (void) value_;
@@ -257,19 +257,19 @@ namespace Plus4FLIConv {
   void FLIConfiguration::resetDefaultSettings()
   {
     conversionType = 0;
-    yMin = -0.02;
-    yMax = 1.03;
-    scaleX = 1.0;
-    scaleY = 1.0;
-    offsetX = 0.0;
-    offsetY = 0.0;
-    saturationMult = 1.0;
-    saturationPow = 0.9;
-    gammaCorrection = 1.0;
-    monitorGamma = 2.2;
+    yMin = -0.02f;
+    yMax = 1.03f;
+    scaleX = 1.0f;
+    scaleY = 1.0f;
+    offsetX = 0.0f;
+    offsetY = 0.0f;
+    saturationMult = 1.0f;
+    saturationPow = 0.9f;
+    gammaCorrection = 1.0f;
+    monitorGamma = 2.2f;
     ditherMode = 1;
-    ditherLimit = 0.25;
-    ditherDiffusion = 0.95;
+    ditherLimit = 0.25f;
+    ditherDiffusion = 0.95f;
     enablePAL = true;
     xShift0 = -1;
     xShift1 = -1;
@@ -281,8 +281,8 @@ namespace Plus4FLIConv {
     disableFLIEffects = false;
     colorInterlaceMode = 1;
     luminanceSearchMode = 2;
-    luminanceSearchModeParam = 4.0;
-    mcColorErrorScale = 0.5;
+    luminanceSearchModeParam = 4.0f;
+    mcColorErrorScale = 0.5f;
     multiColorQuality = 6;
     c64Color0 = 0x00;
     c64Color1 = 0x71;

@@ -44,12 +44,12 @@ namespace Plus4Emu {
       virtual operator bool();
       virtual operator int();
       virtual operator unsigned int();
-      virtual operator double();
+      virtual operator float();
       virtual operator std::string();
       virtual void operator=(const bool&);
       virtual void operator=(const int&);
       virtual void operator=(const unsigned int&);
-      virtual void operator=(const double&);
+      virtual void operator=(const float&);
       virtual void operator=(const char *);
       virtual void operator=(const std::string&);
       virtual void setRange(double min, double max, double step = 0.0);
@@ -71,7 +71,7 @@ namespace Plus4Emu {
                                void *userData, bool callOnChangeOnly = true);
       virtual void setCallback(void (*func)(void *userData_,
                                             const std::string& name_,
-                                            double value_),
+                                            float value_),
                                void *userData, bool callOnChangeOnly = true);
       virtual void setCallback(void (*func)(void *userData_,
                                             const std::string& name_,
@@ -92,7 +92,7 @@ namespace Plus4Emu {
     void createKey(const std::string& name, bool& ref);
     void createKey(const std::string& name, int& ref);
     void createKey(const std::string& name, unsigned int& ref);
-    void createKey(const std::string& name, double& ref);
+    void createKey(const std::string& name, float& ref);
     void createKey(const std::string& name, std::string& ref);
     void saveState(File::Buffer& buf);
     void saveState(File& f);

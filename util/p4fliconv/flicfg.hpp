@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,19 +31,19 @@ namespace Plus4FLIConv {
   class FLIConfiguration : public Plus4Emu::ConfigurationDB {
    protected:
     int         conversionType;
-    double      yMin;
-    double      yMax;
-    double      scaleX;
-    double      scaleY;
-    double      offsetX;
-    double      offsetY;
-    double      saturationMult;
-    double      saturationPow;
-    double      gammaCorrection;
-    double      monitorGamma;
+    float       yMin;
+    float       yMax;
+    float       scaleX;
+    float       scaleY;
+    float       offsetX;
+    float       offsetY;
+    float       saturationMult;
+    float       saturationPow;
+    float       gammaCorrection;
+    float       monitorGamma;
     int         ditherMode;
-    double      ditherLimit;
-    double      ditherDiffusion;
+    float       ditherLimit;
+    float       ditherDiffusion;
     bool        enablePAL;
     int         xShift0;
     int         xShift1;
@@ -55,8 +55,8 @@ namespace Plus4FLIConv {
     bool        disableFLIEffects;
     int         colorInterlaceMode;
     int         luminanceSearchMode;
-    double      luminanceSearchModeParam;
-    double      mcColorErrorScale;
+    float       luminanceSearchModeParam;
+    float       mcColorErrorScale;
     int         multiColorQuality;
     int         c64Color0;
     int         c64Color1;
@@ -86,7 +86,7 @@ namespace Plus4FLIConv {
                                             int value_);
     static void configChangeCallbackFloat(void *userData_,
                                           const std::string& name_,
-                                          double value_);
+                                          float value_);
     static void configChangeCallbackVSize(void *userData_,
                                           const std::string& name_,
                                           int value_);

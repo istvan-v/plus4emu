@@ -259,16 +259,16 @@ namespace Plus4Emu {
   class ConfigurationVariable_Float
     : public ConfigurationDB::ConfigurationVariable {
    private:
-    double& value;
+    float&  value;
     double  minValue;
     double  maxValue;
     double  step;
-    void    (*cbFunc)(void *, const std::string&, double);
+    void    (*cbFunc)(void *, const std::string&, float);
    public:
-    ConfigurationVariable_Float(const std::string& name_, double& ref)
+    ConfigurationVariable_Float(const std::string& name_, float& ref)
       : ConfigurationDB::ConfigurationVariable(name_),
         value(ref),
-        cbFunc((void (*)(void *, const std::string&, double)) 0)
+        cbFunc((void (*)(void *, const std::string&, float)) 0)
     {
       minValue = -2147483648.0;
       maxValue =  2147483647.999999;
@@ -278,13 +278,13 @@ namespace Plus4Emu {
     virtual ~ConfigurationVariable_Float()
     {
     }
-    virtual operator double()
+    virtual operator float()
     {
       return value;
     }
-    virtual void operator=(const double& n)
+    virtual void operator=(const float& n)
     {
-      double  oldValue = value;
+      float   oldValue = value;
       value = n;
       checkValue();
       if (cbFunc) {
@@ -305,18 +305,16 @@ namespace Plus4Emu {
     }
     virtual void checkValue()
     {
-      if (step > 0.0) {
-        double  tmp = (value + (step * 0.5)) / step;
-        value = std::floor(tmp) * step;
+      double  tmp = double(value);
+      if (step > 0.0)
+        tmp = std::floor((tmp + (step * 0.5)) / step) * step;
+      if (!(tmp >= minValue && tmp <= maxValue)) {
+        double  tmp2 = (minValue + maxValue) * 0.5;
+        tmp = (tmp < tmp2 ? minValue : (tmp > tmp2 ? maxValue : tmp2));
       }
-      if (value < minValue)
-        value = minValue;
-      else if (value > maxValue)
-        value = maxValue;
-      else if (!(value >= minValue && value <= maxValue))
-        value = (minValue + maxValue) * 0.5;
+      value = float(tmp);
     }
-    virtual void setCallback(void (*func)(void *, const std::string&, double),
+    virtual void setCallback(void (*func)(void *, const std::string&, float),
                              void *userData, bool callOnChangeOnly = true)
     {
       callbackUserData = userData;
@@ -515,7 +513,7 @@ namespace Plus4Emu {
     }
   }
 
-  void ConfigurationDB::createKey(const std::string& name, double& ref)
+  void ConfigurationDB::createKey(const std::string& name, float& ref)
   {
     if (db.find(name) != db.end())
       throw Exception("cannot create configuration variable: "
@@ -596,7 +594,7 @@ namespace Plus4Emu {
       else if (typeid(cv) == typeid(ConfigurationVariable_Float)) {
         buf.writeUInt32(0x00000004);
         buf.writeString((*i).first);
-        buf.writeFloat(double(cv));
+        buf.writeFloat(float(cv));
       }
       else if (typeid(cv) == typeid(ConfigurationVariable_String)) {
         buf.writeUInt32(0x00000005);
@@ -661,7 +659,7 @@ namespace Plus4Emu {
         break;
       case 0x00000004:
         {
-          double  value = buf.readFloat();
+          float   value = float(buf.readFloat());
           if (cv) {
             if (typeid(*cv) == typeid(ConfigurationVariable_Float))
               *cv = value;
@@ -735,7 +733,7 @@ namespace Plus4Emu {
           err = (std::fprintf(f, "%u\n", (unsigned int) cv) < 0);
         }
         else if (typeid(cv) == typeid(ConfigurationVariable_Float)) {
-          err = (std::fprintf(f, "%.9g\n", double(cv)) < 0);
+          err = (std::fprintf(f, "%.9g\n", double(float(cv))) < 0);
         }
         else if (typeid(cv) == typeid(ConfigurationVariable_String)) {
           const std::string s = std::string(cv);
@@ -842,10 +840,10 @@ namespace Plus4Emu {
     return 0U;
   }
 
-  ConfigurationDB::ConfigurationVariable::operator double()
+  ConfigurationDB::ConfigurationVariable::operator float()
   {
     throw Exception("configuration variable is not of type 'Float'");
-    return 0.0;
+    return 0.0f;
   }
 
   ConfigurationDB::ConfigurationVariable::operator std::string()
@@ -866,7 +864,7 @@ namespace Plus4Emu {
         n >= 0)
       (*this) = (unsigned int) n;
     else if (typeid(*this) == typeid(ConfigurationVariable_Float))
-      (*this) = double(n);
+      (*this) = float(n);
     else
       throw Exception("configuration variable is not of type 'Integer'");
   }
@@ -877,13 +875,13 @@ namespace Plus4Emu {
         n <= 0x7FFFFFFFU)
       (*this) = int(n);
     else if (typeid(*this) == typeid(ConfigurationVariable_Float))
-      (*this) = double(n);
+      (*this) = float(n);
     else
       throw Exception("configuration variable is not of type "
                       "'Unsigned Integer'");
   }
 
-  void ConfigurationDB::ConfigurationVariable::operator=(const double& n)
+  void ConfigurationDB::ConfigurationVariable::operator=(const float& n)
   {
     (void) n;
     throw Exception("configuration variable is not of type 'Float'");
@@ -958,7 +956,7 @@ namespace Plus4Emu {
       if (endp != &(n[len]))
         throw Exception("invalid floating point number format "
                         "for configuration variable");
-      (*this) = double(tmp);
+      (*this) = float(tmp);
     }
     else
       throw Exception("cannot set configuration variable to string value");
@@ -1038,7 +1036,7 @@ namespace Plus4Emu {
   }
 
   void ConfigurationDB::ConfigurationVariable::setCallback(
-      void (*func)(void *userData_, const std::string& name_, double value_),
+      void (*func)(void *userData_, const std::string& name_, float value_),
       void *userData, bool callOnChangeOnly)
   {
     (void) func;

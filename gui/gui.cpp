@@ -2717,7 +2717,7 @@ void Plus4EmuGUI::menuCallback_Options_SndIncVol(Fl_Widget *o, void *v)
   try {
     Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
         gui_.config["sound.volume"];
-    cv = double(cv) * 1.2589;
+    cv = float(cv) * 1.2589f;
     gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {
@@ -2732,7 +2732,7 @@ void Plus4EmuGUI::menuCallback_Options_SndDecVol(Fl_Widget *o, void *v)
   try {
     Plus4Emu::ConfigurationDB::ConfigurationVariable& cv =
         gui_.config["sound.volume"];
-    cv = double(cv) * 0.7943;
+    cv = float(cv) * 0.7943f;
     gui_.applyEmulatorConfiguration(true);
   }
   catch (std::exception& e) {

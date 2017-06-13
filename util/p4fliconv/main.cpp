@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
           else if (optionType == 'i')
             config[optionName] = int(std::atoi(args[i].c_str()));
           else if (optionType == 'f')
-            config[optionName] = double(std::atof(args[i].c_str()));
+            config[optionName] = float(std::atof(args[i].c_str()));
         }
       }
 #endif  // !DISABLE_OPENGL_DISPLAY
@@ -220,18 +220,18 @@ int main(int argc, char **argv)
         else
           throw Plus4Emu::Exception("invalid conversion type");
         Plus4FLIConv::YUVImageConverter imgConv;
-        imgConv.setXYScaleAndOffset(float(double(config["scaleX"])),
-                                    float(double(config["scaleY"])),
-                                    float(double(config["offsetX"])),
-                                    float(double(config["offsetY"])));
+        imgConv.setXYScaleAndOffset(float(config["scaleX"]),
+                                    float(config["scaleY"]),
+                                    float(config["offsetX"]),
+                                    float(config["offsetY"]));
         imgConv.setEnableInterpolation(!(bool(config["disableInterpolation"])));
         imgConv.setGammaCorrection(
-            float(double(config["gammaCorrection"])),
-            float(double(config["monitorGamma"]) * 0.625));
-        imgConv.setLuminanceRange(float(double(config["yMin"])),
-                                  float(double(config["yMax"])));
-        imgConv.setColorSaturation(float(double(config["saturationMult"])),
-                                   float(double(config["saturationPow"])));
+            float(config["gammaCorrection"]),
+            float(config["monitorGamma"]) * 0.625f);
+        imgConv.setLuminanceRange(float(config["yMin"]),
+                                  float(config["yMax"]));
+        imgConv.setColorSaturation(float(config["saturationMult"]),
+                                   float(config["saturationPow"]));
         float   borderY = 0.0f;
         float   borderU = 0.0f;
         float   borderV = 0.0f;

@@ -303,7 +303,7 @@ class Plus4EmuDisplaySndConfiguration {
       int         quality;
     } display;
     struct {
-      double      latency;
+      float       latency;
       int         hwPeriods;
     } sound;
  public:

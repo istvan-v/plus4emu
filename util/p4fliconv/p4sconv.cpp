@@ -1,6 +1,6 @@
 
 // p4fliconv: high resolution interlaced FLI converter utility
-// Copyright (C) 2007-2008 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2017 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
           else if (optionType == 'i')
             config[optionName] = int(std::atoi(args[i].c_str()));
           else if (optionType == 'f')
-            config[optionName] = double(std::atof(args[i].c_str()));
+            config[optionName] = float(std::atof(args[i].c_str()));
         }
       }
     }

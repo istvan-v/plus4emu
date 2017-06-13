@@ -224,11 +224,11 @@ class Plus4FLIConvGUI {open
               label X
               callback {{
   try {
-    config["scaleX"] = double(o->value());
-    o->value(double(config["scaleX"]));
+    config["scaleX"] = float(o->value());
+    o->value(float(config["scaleX"]));
     if (fixedAspectRatioValuator->value() != 0) {
-      config["scaleY"] = double(o->value());
-      scaleYValuator->value(double(config["scaleY"]));
+      config["scaleY"] = float(o->value());
+      scaleYValuator->value(float(config["scaleY"]));
     }
   }
   catch (std::exception& e) {
@@ -244,11 +244,11 @@ class Plus4FLIConvGUI {open
               label Y
               callback {{
   try {
-    config["scaleY"] = double(o->value());
-    o->value(double(config["scaleY"]));
+    config["scaleY"] = float(o->value());
+    o->value(float(config["scaleY"]));
     if (fixedAspectRatioValuator->value() != 0) {
-      config["scaleX"] = double(o->value());
-      scaleXValuator->value(double(config["scaleX"]));
+      config["scaleX"] = float(o->value());
+      scaleXValuator->value(float(config["scaleX"]));
     }
   }
   catch (std::exception& e) {
@@ -261,8 +261,8 @@ class Plus4FLIConvGUI {open
               label X
               callback {{
   try {
-    config["offsetX"] = double(o->value());
-    o->value(double(config["offsetX"]));
+    config["offsetX"] = float(o->value());
+    o->value(float(config["offsetX"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -274,8 +274,8 @@ class Plus4FLIConvGUI {open
               label Y
               callback {{
   try {
-    config["offsetY"] = double(o->value());
-    o->value(double(config["offsetY"]));
+    config["offsetY"] = float(o->value());
+    o->value(float(config["offsetY"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -291,8 +291,8 @@ class Plus4FLIConvGUI {open
               label Min
               callback {{
   try {
-    config["yMin"] = double(o->value());
-    o->value(double(config["yMin"]));
+    config["yMin"] = float(o->value());
+    o->value(float(config["yMin"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -304,8 +304,8 @@ class Plus4FLIConvGUI {open
               label Max
               callback {{
   try {
-    config["yMax"] = double(o->value());
-    o->value(double(config["yMax"]));
+    config["yMax"] = float(o->value());
+    o->value(float(config["yMax"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -321,8 +321,8 @@ class Plus4FLIConvGUI {open
               label Mult
               callback {{
   try {
-    config["saturationMult"] = double(o->value());
-    o->value(double(config["saturationMult"]));
+    config["saturationMult"] = float(o->value());
+    o->value(float(config["saturationMult"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -334,8 +334,8 @@ class Plus4FLIConvGUI {open
               label Pow
               callback {{
   try {
-    config["saturationPow"] = double(o->value());
-    o->value(double(config["saturationPow"]));
+    config["saturationPow"] = float(o->value());
+    o->value(float(config["saturationPow"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -350,8 +350,8 @@ class Plus4FLIConvGUI {open
             Fl_Value_Input gammaCorrectionValuator {
               callback {{
   try {
-    config["gammaCorrection"] = double(o->value());
-    o->value(double(config["gammaCorrection"]));
+    config["gammaCorrection"] = float(o->value());
+    o->value(float(config["gammaCorrection"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -366,8 +366,8 @@ class Plus4FLIConvGUI {open
             Fl_Value_Input monitorGammaValuator {
               callback {{
   try {
-    config["monitorGamma"] = double(o->value());
-    o->value(double(config["monitorGamma"]));
+    config["monitorGamma"] = float(o->value());
+    o->value(float(config["monitorGamma"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -400,8 +400,8 @@ class Plus4FLIConvGUI {open
               label Limit
               callback {{
   try {
-    config["ditherLimit"] = double(o->value());
-    o->value(double(config["ditherLimit"]));
+    config["ditherLimit"] = float(o->value());
+    o->value(float(config["ditherLimit"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -416,8 +416,8 @@ class Plus4FLIConvGUI {open
             Fl_Value_Input ditherDiffusionValuator {
               callback {{
   try {
-    config["ditherDiffusion"] = double(o->value());
-    o->value(double(config["ditherDiffusion"]));
+    config["ditherDiffusion"] = float(o->value());
+    o->value(float(config["ditherDiffusion"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -648,8 +648,8 @@ class Plus4FLIConvGUI {open
             Fl_Value_Input lumSearchModeParamValuator {
               callback {{
   try {
-    config["luminanceSearchModeParam"] = double(o->value());
-    o->value(double(config["luminanceSearchModeParam"]));
+    config["luminanceSearchModeParam"] = float(o->value());
+    o->value(float(config["luminanceSearchModeParam"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());
@@ -661,8 +661,8 @@ class Plus4FLIConvGUI {open
               label {MC chrominance error scale}
               callback {{
   try {
-    config["mcColorErrorScale"] = double(o->value());
-    o->value(double(config["mcColorErrorScale"]));
+    config["mcColorErrorScale"] = float(o->value());
+    o->value(float(config["mcColorErrorScale"]));
   }
   catch (std::exception& e) {
     errorMessage(e.what());

@@ -1,7 +1,7 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2007 Istvan Varga <istvanv@users.sourceforge.net>
-// http://sourceforge.net/projects/plus4emu/
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,10 +32,10 @@ namespace Plus4Emu {
       bool        enableJoystick;
       bool        enablePWM;
       bool        enableAutoFire;
-      double      axisThreshold;
-      double      pwmFrequency;
-      double      autoFireFrequency;
-      double      autoFirePulseWidth;
+      float       axisThreshold;
+      float       pwmFrequency;
+      float       autoFireFrequency;
+      float       autoFirePulseWidth;
       JoystickConfiguration();
       void registerConfigurationVariables(ConfigurationDB& config_);
     };
