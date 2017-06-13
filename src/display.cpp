@@ -138,6 +138,8 @@ namespace Plus4Emu {
     pixelAspectRatio = (src.pixelAspectRatio > 0.5f ?
                         (src.pixelAspectRatio < 2.0f ?
                          src.pixelAspectRatio : 2.0f) : 0.5f);
+    shaderSourcePAL = src.shaderSourcePAL;
+    shaderSourceNTSC = src.shaderSourceNTSC;
   }
 
   VideoDisplay::DisplayParameters::DisplayParameters()

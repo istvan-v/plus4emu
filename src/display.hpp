@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -85,6 +85,9 @@ namespace Plus4Emu {
       // pixel aspect ratio to assume
       // (calculated as (screen_width / screen_height) / (X_res / Y_res))
       float   pixelAspectRatio;
+      // file names of GLSL fragment shaders for PAL/NTSC emulation
+      std::string shaderSourcePAL;
+      std::string shaderSourceNTSC;
      private:
       static void defaultIndexToYUVFunc(uint8_t color, bool isNTSC,
                                         float& y, float& u, float& v);
