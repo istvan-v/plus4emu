@@ -45,7 +45,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Dial globalBrightnessValuator {
           label Global
           callback {{
-  gui.config.display.brightness = o->value();
+  gui.config.display.brightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalBrightnessValueDisplay->value(o->value());
 }}
@@ -53,7 +53,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output globalBrightnessValueDisplay {
           callback {{
-  gui.config.display.brightness = o->value();
+  gui.config.display.brightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalBrightnessValuator->value(o->value());
 }}
@@ -63,7 +63,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Dial redBrightnessValuator {
           label Red
           callback {{
-  gui.config.display.red.brightness = o->value();
+  gui.config.display.redBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   redBrightnessValueDisplay->value(o->value());
 }}
@@ -71,7 +71,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output redBrightnessValueDisplay {
           callback {{
-  gui.config.display.red.brightness = o->value();
+  gui.config.display.redBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   redBrightnessValuator->value(o->value());
 }}
@@ -81,7 +81,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Dial greenBrightnessValuator {
           label Green
           callback {{
-  gui.config.display.green.brightness = o->value();
+  gui.config.display.greenBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenBrightnessValueDisplay->value(o->value());
 }}
@@ -89,7 +89,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output greenBrightnessValueDisplay {
           callback {{
-  gui.config.display.green.brightness = o->value();
+  gui.config.display.greenBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenBrightnessValuator->value(o->value());
 }}
@@ -99,7 +99,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Dial blueBrightnessValuator {
           label Blue
           callback {{
-  gui.config.display.blue.brightness = o->value();
+  gui.config.display.blueBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueBrightnessValueDisplay->value(o->value());
 }}
@@ -107,7 +107,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output blueBrightnessValueDisplay {
           callback {{
-  gui.config.display.blue.brightness = o->value();
+  gui.config.display.blueBrightness = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueBrightnessValuator->value(o->value());
 }}
@@ -120,7 +120,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial globalContrastValuator {
           callback {{
-  gui.config.display.contrast = o->value();
+  gui.config.display.contrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalContrastValueDisplay->value(o->value());
 }}
@@ -128,7 +128,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output globalContrastValueDisplay {
           callback {{
-  gui.config.display.contrast = o->value();
+  gui.config.display.contrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalContrastValuator->value(o->value());
 }}
@@ -137,7 +137,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial redContrastValuator {
           callback {{
-  gui.config.display.red.contrast = o->value();
+  gui.config.display.redContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   redContrastValueDisplay->value(o->value());
 }}
@@ -145,7 +145,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output redContrastValueDisplay {
           callback {{
-  gui.config.display.red.contrast = o->value();
+  gui.config.display.redContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   redContrastValuator->value(o->value());
 }}
@@ -154,7 +154,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial greenContrastValuator {
           callback {{
-  gui.config.display.green.contrast = o->value();
+  gui.config.display.greenContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenContrastValueDisplay->value(o->value());
 }}
@@ -162,7 +162,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output greenContrastValueDisplay {
           callback {{
-  gui.config.display.green.contrast = o->value();
+  gui.config.display.greenContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenContrastValuator->value(o->value());
 }}
@@ -171,7 +171,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial blueContrastValuator {
           callback {{
-  gui.config.display.blue.contrast = o->value();
+  gui.config.display.blueContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueContrastValueDisplay->value(o->value());
 }}
@@ -179,7 +179,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output blueContrastValueDisplay {
           callback {{
-  gui.config.display.blue.contrast = o->value();
+  gui.config.display.blueContrast = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueContrastValuator->value(o->value());
 }}
@@ -192,7 +192,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial globalGammaValuator {
           callback {{
-  gui.config.display.gamma = o->value();
+  gui.config.display.gamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalGammaValueDisplay->value(o->value());
 }}
@@ -200,7 +200,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output globalGammaValueDisplay {
           callback {{
-  gui.config.display.gamma = o->value();
+  gui.config.display.gamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   globalGammaValuator->value(o->value());
 }}
@@ -209,7 +209,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial redGammaValuator {
           callback {{
-  gui.config.display.red.gamma = o->value();
+  gui.config.display.redGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   redGammaValueDisplay->value(o->value());
 }}
@@ -217,7 +217,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output redGammaValueDisplay {
           callback {{
-  gui.config.display.red.gamma = o->value();
+  gui.config.display.redGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   redGammaValuator->value(o->value());
 }}
@@ -226,7 +226,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial greenGammaValuator {
           callback {{
-  gui.config.display.green.gamma = o->value();
+  gui.config.display.greenGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenGammaValueDisplay->value(o->value());
 }}
@@ -234,7 +234,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output greenGammaValueDisplay {
           callback {{
-  gui.config.display.green.gamma = o->value();
+  gui.config.display.greenGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   greenGammaValuator->value(o->value());
 }}
@@ -243,7 +243,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Dial blueGammaValuator {
           callback {{
-  gui.config.display.blue.gamma = o->value();
+  gui.config.display.blueGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueGammaValueDisplay->value(o->value());
 }}
@@ -251,7 +251,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         }
         Fl_Value_Output blueGammaValueDisplay {
           callback {{
-  gui.config.display.blue.gamma = o->value();
+  gui.config.display.blueGamma = float(o->value());
   gui.config.displaySettingsChanged = true;
   blueGammaValuator->value(o->value());
 }}
@@ -291,7 +291,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayQualityValuator {
           label Quality
           callback {{
-  gui.config.display.quality = int(o->value() + 0.5);
+  gui.config.display.displayQuality = int(o->value() + 0.5);
   gui.config.displaySettingsChanged = true;
   updateWindow();
 }}
@@ -310,7 +310,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displaySaturationValuator {
           label Saturation
           callback {{
-  gui.config.display.saturation = o->value();
+  gui.config.display.saturation = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           xywh {195 235 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 2 value 1
@@ -318,7 +318,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayHueShiftValuator {
           label {Hue shift}
           callback {{
-  gui.config.display.hueShift = o->value();
+  gui.config.display.hueShift = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           xywh {195 262 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -180 maximum 180 step 1
@@ -326,7 +326,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayPALPhaseErrorValuator {
           label {Phase error}
           callback {{
-  gui.config.display.palPhaseError = o->value();
+  gui.config.display.palPhaseError = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           tooltip {PAL color phase error in degrees (OpenGL / quality 3 only)} xywh {195 289 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -30 maximum 30 step 1 value 8
@@ -337,7 +337,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayFXParam1Valuator {
           label {Line shade}
           callback {{
-  gui.config.display.lineShade = o->value();
+  gui.config.display.lineShade = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           tooltip {Controls vertical filtering of scanlines when display quality is set to 3} xywh {195 320 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 value 0.8
@@ -345,7 +345,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayFXParam2Valuator {
           label {Blend scale}
           callback {{
-  gui.config.display.blendScale = o->value();
+  gui.config.display.blendScale = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           tooltip {Scale factor applied to the RGB values displayed (OpenGL / single buffered mode only)} xywh {195 347 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum 0.5 maximum 2 step 0.02 value 1
@@ -353,7 +353,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
         Fl_Value_Slider displayFXParam3Valuator {
           label {Motion blur}
           callback {{
-  gui.config.display.motionBlur = o->value();
+  gui.config.display.motionBlur = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
           tooltip {Amount of temporal filtering in OpenGL / single buffered mode} xywh {195 374 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 0.95 value 0.25
@@ -365,26 +365,26 @@ class Plus4EmuGUI_DisplayConfigWindow {open
   gui.config.displaySettingsChanged = true;
   gui.config.display.enabled = true;
   gui.config.display.bufferingMode = 0;
-  gui.config.display.quality = 1;
-  gui.config.display.brightness = 0.0;
-  gui.config.display.contrast = 1.0;
-  gui.config.display.gamma = 1.0;
-  gui.config.display.hueShift = 0.0;
-  gui.config.display.saturation = 1.0;
-  gui.config.display.red.brightness = 0.0;
-  gui.config.display.red.contrast = 1.0;
-  gui.config.display.red.gamma = 1.0;
-  gui.config.display.green.brightness = 0.0;
-  gui.config.display.green.contrast = 1.0;
-  gui.config.display.green.gamma = 1.0;
-  gui.config.display.blue.brightness = 0.0;
-  gui.config.display.blue.contrast = 1.0;
-  gui.config.display.blue.gamma = 1.0;
-  gui.config.display.palPhaseError = 8.0;
-  gui.config.display.lineShade = 0.8;
-  gui.config.display.blendScale = 1.0;
-  gui.config.display.motionBlur = 0.25;
-  gui.config.display.pixelAspectRatio = 1.0;
+  gui.config.display.displayQuality = 1;
+  gui.config.display.brightness = 0.0f;
+  gui.config.display.contrast = 1.0f;
+  gui.config.display.gamma = 1.0f;
+  gui.config.display.hueShift = 0.0f;
+  gui.config.display.saturation = 1.0f;
+  gui.config.display.redBrightness = 0.0f;
+  gui.config.display.redContrast = 1.0f;
+  gui.config.display.redGamma = 1.0f;
+  gui.config.display.greenBrightness = 0.0f;
+  gui.config.display.greenContrast = 1.0f;
+  gui.config.display.greenGamma = 1.0f;
+  gui.config.display.blueBrightness = 0.0f;
+  gui.config.display.blueContrast = 1.0f;
+  gui.config.display.blueGamma = 1.0f;
+  gui.config.display.palPhaseError = 8.0f;
+  gui.config.display.lineShade = 0.8f;
+  gui.config.display.blendScale = 1.0f;
+  gui.config.display.motionBlur = 0.25f;
+  gui.config.display.pixelAspectRatio = 1.0f;
   updateWindow();
 }}
         xywh {15 415 170 25} selection_color 50
@@ -456,28 +456,28 @@ class Plus4EmuGUI_DisplayConfigWindow {open
     code {{
   globalBrightnessValuator->value(gui.config.display.brightness);
   globalBrightnessValueDisplay->value(gui.config.display.brightness);
-  redBrightnessValuator->value(gui.config.display.red.brightness);
-  redBrightnessValueDisplay->value(gui.config.display.red.brightness);
-  greenBrightnessValuator->value(gui.config.display.green.brightness);
-  greenBrightnessValueDisplay->value(gui.config.display.green.brightness);
-  blueBrightnessValuator->value(gui.config.display.blue.brightness);
-  blueBrightnessValueDisplay->value(gui.config.display.blue.brightness);
+  redBrightnessValuator->value(gui.config.display.redBrightness);
+  redBrightnessValueDisplay->value(gui.config.display.redBrightness);
+  greenBrightnessValuator->value(gui.config.display.greenBrightness);
+  greenBrightnessValueDisplay->value(gui.config.display.greenBrightness);
+  blueBrightnessValuator->value(gui.config.display.blueBrightness);
+  blueBrightnessValueDisplay->value(gui.config.display.blueBrightness);
   globalContrastValuator->value(gui.config.display.contrast);
   globalContrastValueDisplay->value(gui.config.display.contrast);
-  redContrastValuator->value(gui.config.display.red.contrast);
-  redContrastValueDisplay->value(gui.config.display.red.contrast);
-  greenContrastValuator->value(gui.config.display.green.contrast);
-  greenContrastValueDisplay->value(gui.config.display.green.contrast);
-  blueContrastValuator->value(gui.config.display.blue.contrast);
-  blueContrastValueDisplay->value(gui.config.display.blue.contrast);
+  redContrastValuator->value(gui.config.display.redContrast);
+  redContrastValueDisplay->value(gui.config.display.redContrast);
+  greenContrastValuator->value(gui.config.display.greenContrast);
+  greenContrastValueDisplay->value(gui.config.display.greenContrast);
+  blueContrastValuator->value(gui.config.display.blueContrast);
+  blueContrastValueDisplay->value(gui.config.display.blueContrast);
   globalGammaValuator->value(gui.config.display.gamma);
   globalGammaValueDisplay->value(gui.config.display.gamma);
-  redGammaValuator->value(gui.config.display.red.gamma);
-  redGammaValueDisplay->value(gui.config.display.red.gamma);
-  greenGammaValuator->value(gui.config.display.green.gamma);
-  greenGammaValueDisplay->value(gui.config.display.green.gamma);
-  blueGammaValuator->value(gui.config.display.blue.gamma);
-  blueGammaValueDisplay->value(gui.config.display.blue.gamma);
+  redGammaValuator->value(gui.config.display.redGamma);
+  redGammaValueDisplay->value(gui.config.display.redGamma);
+  greenGammaValuator->value(gui.config.display.greenGamma);
+  greenGammaValueDisplay->value(gui.config.display.greenGamma);
+  blueGammaValuator->value(gui.config.display.blueGamma);
+  blueGammaValueDisplay->value(gui.config.display.blueGamma);
   enableDisplayValuator->value(int(gui.config.display.enabled));
   displayNTSCModeValuator->value(int(gui.config.display.ntscMode));
   if (gui.config.display.bufferingMode >= 0 &&
@@ -485,8 +485,8 @@ class Plus4EmuGUI_DisplayConfigWindow {open
     displayBufferingModeValuator->value(gui.config.display.bufferingMode);
   else
     displayBufferingModeValuator->value(-1);
-  displayQualityValuator->value(double(gui.config.display.quality));
-  switch (gui.config.display.quality) {
+  displayQualityValuator->value(double(gui.config.display.displayQuality));
+  switch (gui.config.display.displayQuality) {
   case 0:
     displayQualityValuator->tooltip("Quality 0 (OpenGL only): "
                                     "low texture resolution, 16-bit RGB textures, "
