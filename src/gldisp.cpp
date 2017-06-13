@@ -151,7 +151,7 @@ static bool queryGLShaderFunctions()
 
 #ifdef ENABLE_GL_SHADERS
 
-static const char *shaderSourcePAL[1] = {
+static const char *shaderSourcePAL = {
   "uniform sampler2D textureHandle;\n"
   "uniform float lineShade;\n"
   "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.18236, -0.70100,\n"
@@ -168,21 +168,21 @@ static const char *shaderSourcePAL[1] = {
   "  float txcp1 = txc + 0.00296;\n"
   "  float tyc0 = tyc + 0.00048828125;\n"
   "  float tyc1 = tyc - 0.00146484375;\n"
-  "  vec4 p00 =   texture2D(textureHandle, vec2(txcm0, tyc0))\n"
-  "             + texture2D(textureHandle, vec2(txcp0, tyc0));\n"
-  "  vec4 p10 =   texture2D(textureHandle, vec2(txcm0, tyc1))\n"
-  "             + texture2D(textureHandle, vec2(txcp0, tyc1));\n"
-  "  vec4 p01 =   texture2D(textureHandle, vec2(txcm1, tyc0))\n"
-  "             + texture2D(textureHandle, vec2(txcp1, tyc0))\n"
-  "             + texture2D(textureHandle, vec2(txcm1, tyc1))\n"
-  "             + texture2D(textureHandle, vec2(txcp1, tyc1));\n"
+  "  vec4 p00 =   texture(textureHandle, vec2(txcm0, tyc0))\n"
+  "             + texture(textureHandle, vec2(txcp0, tyc0));\n"
+  "  vec4 p10 =   texture(textureHandle, vec2(txcm0, tyc1))\n"
+  "             + texture(textureHandle, vec2(txcp0, tyc1));\n"
+  "  vec4 p01 =   texture(textureHandle, vec2(txcm1, tyc0))\n"
+  "             + texture(textureHandle, vec2(txcp1, tyc0))\n"
+  "             + texture(textureHandle, vec2(txcm1, tyc1))\n"
+  "             + texture(textureHandle, vec2(txcp1, tyc1));\n"
   "  float f = mix(sin(tyc * 3216.991) * 0.5 + 0.5, 1.0, lineShade);\n"
   "  vec4 tmp = (p00 + p10) + (p01 * 0.922);\n"
   "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
   "}\n"
 };
 
-static const char *shaderSourceNTSC[1] = {
+static const char *shaderSourceNTSC = {
   "uniform sampler2D textureHandle;\n"
   "uniform float lineShade;\n"
   "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.37387, -0.70100,\n"
@@ -198,10 +198,10 @@ static const char *shaderSourceNTSC[1] = {
   "  float txcp0 = txc + 0.00095;\n"
   "  float txcp1 = txc + 0.00317;\n"
   "  float tyc0 = tyc + 0.00048828125;\n"
-  "  vec4 p00 =   texture2D(textureHandle, vec2(txcm0, tyc0))\n"
-  "             + texture2D(textureHandle, vec2(txcp0, tyc0));\n"
-  "  vec4 p01 =   texture2D(textureHandle, vec2(txcm1, tyc0))\n"
-  "             + texture2D(textureHandle, vec2(txcp1, tyc0));\n"
+  "  vec4 p00 =   texture(textureHandle, vec2(txcm0, tyc0))\n"
+  "             + texture(textureHandle, vec2(txcp0, tyc0));\n"
+  "  vec4 p01 =   texture(textureHandle, vec2(txcm1, tyc0))\n"
+  "             + texture(textureHandle, vec2(txcp1, tyc0));\n"
   "  float f = mix(sin(tyc * 3216.991) * 0.5 + 0.5, 1.0, lineShade);\n"
   "  vec4 tmp = p00 + (p01 * 0.875);\n"
   "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
@@ -263,6 +263,45 @@ static void initializeTexture(const Plus4Emu::VideoDisplay::DisplayParameters&
 
 namespace Plus4Emu {
 
+  void OpenGLDisplay::loadShaderSource(const char *fileName, bool isNTSC)
+  {
+    std::string&  shaderSource = shaderSources[int(isNTSC)];
+    shaderSource.clear();
+    deleteShader();
+    if (!fileName || fileName[0] == '\0') {
+      shaderSource = (isNTSC ? shaderSourceNTSC : shaderSourcePAL);
+      return;
+    }
+    std::FILE *f = fileOpen(fileName, "rb");
+    if (!f)
+      throw Exception("error opening shader source file");
+    try {
+      int     c;
+      bool    prvCR = false;
+      while ((c = std::fgetc(f)) != EOF) {
+        c = c & 0xFF;
+        if (prvCR && c == '\n') {
+          prvCR = false;
+          continue;
+        }
+        prvCR = (c == '\r');
+        if ((unsigned char) c < 0x20) {
+          if (c == '\r' || c == '\032')
+            c = '\n';
+          else if (c != '\t' && c != '\n')
+            throw Exception("invalid character in shader source file");
+        }
+        shaderSource += char(c);
+      }
+      std::fclose(f);
+      f = (std::FILE *) 0;
+    }
+    catch (...) {
+      loadShaderSource((char *) 0, isNTSC);
+      throw;
+    }
+  }
+
   bool OpenGLDisplay::compileShader(int shaderMode_)
   {
 #ifdef ENABLE_GL_SHADERS
@@ -285,14 +324,9 @@ namespace Plus4Emu {
       shaderHandle = 0UL;
       return false;
     }
-    if (shaderMode_ == 1) {
-      glShaderSource_(GLuint(shaderHandle),
-                      GLsizei(1), &(shaderSourcePAL[0]), (GLint *) 0);
-    }
-    else {
-      glShaderSource_(GLuint(shaderHandle),
-                      GLsizei(1), &(shaderSourceNTSC[0]), (GLint *) 0);
-    }
+    const char  *tmp[1];
+    tmp[0] = shaderSources[shaderMode_ - 1].c_str();
+    glShaderSource_(GLuint(shaderHandle), GLsizei(1), &(tmp[0]), (GLint *) 0);
     glAttachShader_(GLuint(programHandle), GLuint(shaderHandle));
     shaderMode = shaderMode_;
     glCompileShader_(GLuint(shaderHandle));
@@ -391,14 +425,16 @@ namespace Plus4Emu {
       programHandle(0UL)
   {
     try {
+      loadShaderSource((char *) 0, false);
+      loadShaderSource((char *) 0, true);
       for (size_t n = 0; n < 4; n++)
         frameRingBuffer[n] = (Message_LineData **) 0;
       linesChanged = new bool[289];
       for (size_t n = 0; n < 289; n++)
         linesChanged[n] = false;
       // max. texture size = 1024x14, 32 bits
-      textureSpace = new unsigned char[1024 * 14 * 4];
-      std::memset(textureSpace, 0, 1024 * 14 * 4);
+      textureSpace = new unsigned char[768 * 14 * 4];
+      std::memset(textureSpace, 0, 768 * 14 * 4);
       textureBuffer16 = reinterpret_cast<uint16_t *>(textureSpace);
       textureBuffer32 = reinterpret_cast<uint32_t *>(textureSpace);
       for (size_t n = 0; n < 4; n++) {
@@ -465,6 +501,91 @@ namespace Plus4Emu {
     }
     colormap32_0.setDisplayParameters(dp0, yuvTextureMode);
     colormap32_1.setDisplayParameters(dp1, yuvTextureMode);
+  }
+
+  void OpenGLDisplay::applyDisplayParameters(
+      const VideoDisplay::DisplayParameters& dp)
+  {
+    if (dp.displayQuality < 2) {
+      yuvTextureMode = false;
+      colormap16.setDisplayParameters(dp, false);
+    }
+    else if (dp.displayQuality == 2) {
+      yuvTextureMode = false;
+      colormap32_0.setDisplayParameters(dp, false);
+    }
+    else {
+      yuvTextureMode = true;
+      setColormap_quality3(dp);
+    }
+    if (displayParameters.displayQuality != dp.displayQuality ||
+        displayParameters.bufferingMode != dp.bufferingMode) {
+      Fl::remove_idle(&fltkIdleCallback, (void *) this);
+      if (displayParameters.bufferingMode != dp.bufferingMode ||
+          displayParameters.displayQuality == 3 || dp.displayQuality == 3) {
+        // if TV emulation (quality=3) or double buffering mode
+        // has changed, also need to generate a new texture ID
+        deleteShader();
+#ifdef WIN32
+        glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
+#  ifdef ENABLE_GL_SHADERS
+        haveGLShaderFuncs = false;
+#  endif
+#endif
+        GLuint  oldTextureID = GLuint(textureID);
+        textureID = 0UL;
+        if (oldTextureID)
+          glDeleteTextures(1, &oldTextureID);
+        this->mode(FL_RGB | (dp.bufferingMode != 0 ? FL_DOUBLE : FL_SINGLE));
+        if (oldTextureID) {
+          oldTextureID = 0U;
+          glGenTextures(1, &oldTextureID);
+          textureID = (unsigned long) oldTextureID;
+        }
+        Fl::focus(this);
+      }
+      if (dp.bufferingMode == 2) {
+        videoResampleEnabled = true;
+        Fl::add_idle(&fltkIdleCallback, (void *) this);
+        displayFrameRateTimer.reset();
+        inputFrameRateTimer.reset();
+      }
+      else {
+        videoResampleEnabled = false;
+        for (size_t n = 0; n < 4; n++) {
+          for (size_t yc = 0; yc < 578; yc++) {
+            Message *m_ = frameRingBuffer[n][yc];
+            if (m_) {
+              frameRingBuffer[n][yc] = (Message_LineData *) 0;
+              std::free(m_);
+            }
+          }
+        }
+      }
+      // reset texture
+      glEnable(GL_TEXTURE_2D);
+      GLint   savedTextureID;
+      glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
+      glBindTexture(GL_TEXTURE_2D, GLuint(textureID));
+      setTextureParameters(dp.displayQuality);
+      initializeTexture(dp, textureSpace);
+      glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
+    }
+    // load PAL/NTSC emulation shaders
+    for (int i = 0; i < 2; i++) {
+      const std::string&  s = (i == 0 ? dp.shaderSourcePAL
+                                        : dp.shaderSourceNTSC);
+      const std::string&  s_ = (i == 0 ? displayParameters.shaderSourcePAL
+                                         : displayParameters.shaderSourceNTSC);
+      if (s != s_ || (!s.empty() && dp.displayQuality == 3)) {
+        // FIXME: errors are ignored here
+        try {
+          loadShaderSource(s.c_str(), bool(i));
+        }
+        catch (std::exception& e) {
+        }
+      }
+    }
   }
 
   void OpenGLDisplay::decodeLine_quality0(uint16_t *outBuf,
@@ -1151,73 +1272,7 @@ namespace Plus4Emu {
       else if (m->msgType == Message::MsgType_SetParameters) {
         Message_SetParameters *msg;
         msg = static_cast<Message_SetParameters *>(m);
-        if (msg->dp.displayQuality < 2) {
-          yuvTextureMode = false;
-          colormap16.setDisplayParameters(msg->dp, false);
-        }
-        else if (msg->dp.displayQuality == 2) {
-          yuvTextureMode = false;
-          colormap32_0.setDisplayParameters(msg->dp, false);
-        }
-        else {
-          yuvTextureMode = true;
-          setColormap_quality3(msg->dp);
-        }
-        if (displayParameters.displayQuality != msg->dp.displayQuality ||
-            displayParameters.bufferingMode != msg->dp.bufferingMode) {
-          Fl::remove_idle(&fltkIdleCallback, (void *) this);
-          if (displayParameters.bufferingMode != msg->dp.bufferingMode ||
-              displayParameters.displayQuality == 3 ||
-              msg->dp.displayQuality == 3) {
-            // if TV emulation (quality=3) or double buffering mode
-            // has changed, also need to generate a new texture ID
-            deleteShader();
-#ifdef WIN32
-            glBlendColor__ = (PFNGLBLENDCOLORPROC) 0;
-#  ifdef ENABLE_GL_SHADERS
-            haveGLShaderFuncs = false;
-#  endif
-#endif
-            GLuint  oldTextureID = GLuint(textureID);
-            textureID = 0UL;
-            if (oldTextureID)
-              glDeleteTextures(1, &oldTextureID);
-            this->mode(FL_RGB
-                       | (msg->dp.bufferingMode != 0 ? FL_DOUBLE : FL_SINGLE));
-            if (oldTextureID) {
-              oldTextureID = 0U;
-              glGenTextures(1, &oldTextureID);
-              textureID = (unsigned long) oldTextureID;
-            }
-            Fl::focus(this);
-          }
-          if (msg->dp.bufferingMode == 2) {
-            videoResampleEnabled = true;
-            Fl::add_idle(&fltkIdleCallback, (void *) this);
-            displayFrameRateTimer.reset();
-            inputFrameRateTimer.reset();
-          }
-          else {
-            videoResampleEnabled = false;
-            for (size_t n = 0; n < 4; n++) {
-              for (size_t yc = 0; yc < 578; yc++) {
-                Message *m_ = frameRingBuffer[n][yc];
-                if (m_) {
-                  frameRingBuffer[n][yc] = (Message_LineData *) 0;
-                  std::free(m_);
-                }
-              }
-            }
-          }
-          // reset texture
-          glEnable(GL_TEXTURE_2D);
-          GLint   savedTextureID;
-          glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTextureID);
-          glBindTexture(GL_TEXTURE_2D, GLuint(textureID));
-          setTextureParameters(msg->dp.displayQuality);
-          initializeTexture(msg->dp, textureSpace);
-          glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
-        }
+        applyDisplayParameters(msg->dp);
         displayParameters = msg->dp;
         for (size_t yc = 0; yc < 289; yc++)
           linesChanged[yc] = true;

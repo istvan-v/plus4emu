@@ -35,9 +35,9 @@ namespace Plus4Emu {
     void deleteShader();
     bool enableShader();
     void disableShader();
-    void displayFrame();
     void initializeGLDisplay();
     void setColormap_quality3(const VideoDisplay::DisplayParameters& dp);
+    void applyDisplayParameters(const VideoDisplay::DisplayParameters& dp);
     void decodeLine_quality0(uint16_t *outBuf,
                              Message_LineData **lineBuffers_, size_t lineNum);
     void decodeLine_quality3(uint32_t *outBuf,
@@ -57,12 +57,13 @@ namespace Plus4Emu {
                             bool oddFrame_);
     void copyFrameToRingBuffer();
     static void fltkIdleCallback(void *userData_);
+    void displayFrame();
     // ----------------
     VideoDisplayColormap<uint16_t>  colormap16;
     VideoDisplayColormap<uint32_t>  colormap32_0;
     VideoDisplayColormap<uint32_t>  colormap32_1;
     bool          *linesChanged;
-    // 1024x14 texture in 16-bit R5G6B5, or 32-bit R8G8B8 or Y8U8V8 format
+    // 768x14 subtexture in 16-bit R5G6B5, or 32-bit R8G8B8 or Y8U8V8 format
     unsigned char *textureSpace;
     uint16_t      *textureBuffer16;
     uint32_t      *textureBuffer32;
@@ -85,6 +86,7 @@ namespace Plus4Emu {
     int           shaderMode;   // 0: no shader, 1: PAL, 2: NTSC
     unsigned long shaderHandle;
     unsigned long programHandle;
+    std::string   shaderSources[2];
    public:
     OpenGLDisplay(int xx = 0, int yy = 0, int ww = 768, int hh = 576,
                   const char *lbl = (char *) 0, bool isDoubleBuffered = false);
@@ -101,6 +103,11 @@ namespace Plus4Emu {
     virtual void draw();
    public:
     virtual int handle(int event);
+    /*!
+     * Load GLSL fragment shader for PAL emulation from 'fileName'.
+     * If the name is empty or NULL, the default shader will be used.
+     */
+    void loadShaderSource(const char *fileName, bool isNTSC);
   };
 
 }       // namespace Plus4Emu
