@@ -310,6 +310,7 @@ namespace Plus4Emu {
                                    int mode, long sampleRate_,
                                    int bitsPerSample)
   {
+    (void) bitsPerSample;
     f = (std::FILE *) 0;
     buf = (uint8_t *) 0;
     fileHeader = (uint32_t *) 0;
