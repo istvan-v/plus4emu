@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include "cfg_db.hpp"
 #include "emucfg.hpp"
 #include "system.hpp"
+#include "gldisp.hpp"
 
 template <typename T>
 static void configChangeCallback(void *userData,
@@ -158,61 +159,61 @@ namespace Plus4Emu {
                                 display.bufferingMode, int(0),
                                 displaySettingsChanged, 0.0, 2.0);
     defineConfigurationVariable(*this, "display.quality",
-                                display.quality, int(1),
+                                display.displayQuality, int(1),
                                 displaySettingsChanged, 0.0, 3.0);
     defineConfigurationVariable(*this, "display.brightness",
-                                display.brightness, 0.0,
+                                display.brightness, 0.0f,
                                 displaySettingsChanged, -0.5, 0.5);
     defineConfigurationVariable(*this, "display.contrast",
-                                display.contrast, 1.0,
+                                display.contrast, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
     defineConfigurationVariable(*this, "display.gamma",
-                                display.gamma, 1.0,
+                                display.gamma, 1.0f,
                                 displaySettingsChanged, 0.25, 4.0);
     defineConfigurationVariable(*this, "display.hueShift",
-                                display.hueShift, 0.0,
+                                display.hueShift, 0.0f,
                                 displaySettingsChanged, -180.0, 180.0);
     defineConfigurationVariable(*this, "display.saturation",
-                                display.saturation, 1.0,
+                                display.saturation, 1.0f,
                                 displaySettingsChanged, 0.0, 2.0);
     defineConfigurationVariable(*this, "display.red.brightness",
-                                display.red.brightness, 0.0,
+                                display.redBrightness, 0.0f,
                                 displaySettingsChanged, -0.5, 0.5);
     defineConfigurationVariable(*this, "display.red.contrast",
-                                display.red.contrast, 1.0,
+                                display.redContrast, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
     defineConfigurationVariable(*this, "display.red.gamma",
-                                display.red.gamma, 1.0,
+                                display.redGamma, 1.0f,
                                 displaySettingsChanged, 0.25, 4.0);
     defineConfigurationVariable(*this, "display.green.brightness",
-                                display.green.brightness, 0.0,
+                                display.greenBrightness, 0.0f,
                                 displaySettingsChanged, -0.5, 0.5);
     defineConfigurationVariable(*this, "display.green.contrast",
-                                display.green.contrast, 1.0,
+                                display.greenContrast, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
     defineConfigurationVariable(*this, "display.green.gamma",
-                                display.green.gamma, 1.0,
+                                display.greenGamma, 1.0f,
                                 displaySettingsChanged, 0.25, 4.0);
     defineConfigurationVariable(*this, "display.blue.brightness",
-                                display.blue.brightness, 0.0,
+                                display.blueBrightness, 0.0f,
                                 displaySettingsChanged, -0.5, 0.5);
     defineConfigurationVariable(*this, "display.blue.contrast",
-                                display.blue.contrast, 1.0,
+                                display.blueContrast, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
     defineConfigurationVariable(*this, "display.blue.gamma",
-                                display.blue.gamma, 1.0,
+                                display.blueGamma, 1.0f,
                                 displaySettingsChanged, 0.25, 4.0);
     defineConfigurationVariable(*this, "display.palPhaseError",
-                                display.palPhaseError, 8.0,
+                                display.palPhaseError, 8.0f,
                                 displaySettingsChanged, -30.0, 30.0);
     defineConfigurationVariable(*this, "display.lineShade",
-                                display.lineShade, 0.8,
+                                display.lineShade, 0.8f,
                                 displaySettingsChanged, 0.0, 1.0);
     defineConfigurationVariable(*this, "display.blendScale",
-                                display.blendScale, 1.0,
+                                display.blendScale, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
     defineConfigurationVariable(*this, "display.motionBlur",
-                                display.motionBlur, 0.25,
+                                display.motionBlur, 0.25f,
                                 displaySettingsChanged, 0.0, 0.95);
     defineConfigurationVariable(*this, "display.width",
                                 display.width, 768,
@@ -221,8 +222,14 @@ namespace Plus4Emu {
                                 display.height, 576,
                                 displaySettingsChanged, 288.0, 1152.0);
     defineConfigurationVariable(*this, "display.pixelAspectRatio",
-                                display.pixelAspectRatio, 1.0,
+                                display.pixelAspectRatio, 1.0f,
                                 displaySettingsChanged, 0.5, 2.0);
+    defineConfigurationVariable(*this, "display.shaderSourcePAL",
+                                display.shaderSourcePAL, std::string(""),
+                                displaySettingsChanged);
+    defineConfigurationVariable(*this, "display.shaderSourceNTSC",
+                                display.shaderSourceNTSC, std::string(""),
+                                displaySettingsChanged);
     // ----------------
     defineConfigurationVariable(*this, "sound.enabled",
                                 sound.enabled, true,
@@ -234,10 +241,10 @@ namespace Plus4Emu {
                                 sound.device, int(0),
                                 soundSettingsChanged, -1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.sampleRate",
-                                sound.sampleRate, 48000.0,
+                                sound.sampleRate, 48000.0f,
                                 soundSettingsChanged, 11025.0, 96000.0);
     defineConfigurationVariable(*this, "sound.latency",
-                                sound.latency, 0.07,
+                                sound.latency, 0.07f,
                                 soundSettingsChanged, 0.005, 0.5);
     defineConfigurationVariable(*this, "sound.hwPeriods",
                                 sound.hwPeriods, int(16),
@@ -249,25 +256,25 @@ namespace Plus4Emu {
                                 sound.file, std::string(""),
                                 soundSettingsChanged);
     defineConfigurationVariable(*this, "sound.volume",
-                                sound.volume, 0.7943,
+                                sound.volume, 0.7943f,
                                 soundSettingsChanged, 0.01, 1.0);
     defineConfigurationVariable(*this, "sound.dcBlockFilter1Freq",
-                                sound.dcBlockFilter1Freq, 5.0,
+                                sound.dcBlockFilter1Freq, 5.0f,
                                 soundSettingsChanged, 1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.dcBlockFilter2Freq",
-                                sound.dcBlockFilter2Freq, 15.0,
+                                sound.dcBlockFilter2Freq, 15.0f,
                                 soundSettingsChanged, 1.0, 1000.0);
     defineConfigurationVariable(*this, "sound.equalizer.mode",
                                 sound.equalizer.mode, int(2),
                                 soundSettingsChanged, -1.0, 2.0);
     defineConfigurationVariable(*this, "sound.equalizer.frequency",
-                                sound.equalizer.frequency, 15000.0,
+                                sound.equalizer.frequency, 15000.0f,
                                 soundSettingsChanged, 1.0, 100000.0);
     defineConfigurationVariable(*this, "sound.equalizer.level",
-                                sound.equalizer.level, 0.5,
+                                sound.equalizer.level, 0.5f,
                                 soundSettingsChanged, 0.0001, 100.0);
     defineConfigurationVariable(*this, "sound.equalizer.q",
-                                sound.equalizer.q, 0.5,
+                                sound.equalizer.q, 0.5f,
                                 soundSettingsChanged, 0.001, 100.0);
     // ----------------
     for (int i = 0; i < 128; i++) {
@@ -291,13 +298,13 @@ namespace Plus4Emu {
     (*this)["joystick.enableAutoFire"].setCallback(
         &configChangeCallback<bool>, (void *) &joystickSettingsChanged, true);
     (*this)["joystick.axisThreshold"].setCallback(
-        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+        &configChangeCallback<float>, (void *) &joystickSettingsChanged, true);
     (*this)["joystick.pwmFrequency"].setCallback(
-        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+        &configChangeCallback<float>, (void *) &joystickSettingsChanged, true);
     (*this)["joystick.autoFireFrequency"].setCallback(
-        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+        &configChangeCallback<float>, (void *) &joystickSettingsChanged, true);
     (*this)["joystick.autoFirePulseWidth"].setCallback(
-        &configChangeCallback<double>, (void *) &joystickSettingsChanged, true);
+        &configChangeCallback<float>, (void *) &joystickSettingsChanged, true);
     // ----------------
     for (int i = 0; i < 4; i++) {
       FloppyDriveSettings *floppy_ = (FloppyDriveSettings *) 0;
@@ -357,11 +364,11 @@ namespace Plus4Emu {
                                 tape.enableSoundFileFilter, false,
                                 tapeSoundFileSettingsChanged);
     defineConfigurationVariable(*this, "tape.soundFileFilterMinFreq",
-                                tape.soundFileFilterMinFreq, 500.0,
+                                tape.soundFileFilterMinFreq, 500.0f,
                                 tapeSoundFileSettingsChanged,
                                 0.0, 2000.0);
     defineConfigurationVariable(*this, "tape.soundFileFilterMaxFreq",
-                                tape.soundFileFilterMaxFreq, 5000.0,
+                                tape.soundFileFilterMaxFreq, 5000.0f,
                                 tapeSoundFileSettingsChanged,
                                 1000.0, 20000.0);
     // ----------------
@@ -467,30 +474,9 @@ namespace Plus4Emu {
       // assume that changing the display settings will not fail
       vm_.setEnableDisplay(display.enabled);
       vm_.setVideoCaptureNTSCMode(display.ntscMode);
-      VideoDisplay::DisplayParameters dp(videoDisplay.getDisplayParameters());
-      dp.displayQuality = display.quality;
-      dp.bufferingMode = display.bufferingMode;
-      dp.ntscMode = display.ntscMode;
-      dp.brightness = float(display.brightness);
-      dp.contrast = float(display.contrast);
-      dp.gamma = float(display.gamma);
-      dp.hueShift = float(display.hueShift);
-      dp.saturation = float(display.saturation);
-      dp.redBrightness = float(display.red.brightness);
-      dp.redContrast = float(display.red.contrast);
-      dp.redGamma = float(display.red.gamma);
-      dp.greenBrightness = float(display.green.brightness);
-      dp.greenContrast = float(display.green.contrast);
-      dp.greenGamma = float(display.green.gamma);
-      dp.blueBrightness = float(display.blue.brightness);
-      dp.blueContrast = float(display.blue.contrast);
-      dp.blueGamma = float(display.blue.gamma);
-      dp.palPhaseError = float(display.palPhaseError);
-      dp.lineShade = float(display.lineShade);
-      dp.blendScale = float(display.blendScale);
-      dp.motionBlur = float(display.motionBlur);
-      dp.pixelAspectRatio = float(display.pixelAspectRatio);
-      videoDisplay.setDisplayParameters(dp);
+      display.indexToYUVFunc =
+          videoDisplay.getDisplayParameters().indexToYUVFunc;
+      videoDisplay.setDisplayParameters(display);
       // NOTE: resolution changes are not handled here
       displaySettingsChanged = false;
     }
@@ -504,8 +490,8 @@ namespace Plus4Emu {
       }
       else {
         try {
-          audioOutput.setParameters(sound.device, float(sound.sampleRate),
-                                    float(sound.latency), sound.hwPeriods,
+          audioOutput.setParameters(sound.device, sound.sampleRate,
+                                    sound.latency, sound.hwPeriods,
                                     sound.swPeriods);
         }
         catch (Exception& e) {
@@ -514,13 +500,12 @@ namespace Plus4Emu {
         }
       }
       vm_.setAudioOutputHighQuality(sound.highQuality);
-      vm_.setAudioOutputVolume(float(sound.volume));
-      vm_.setAudioOutputFilters(float(sound.dcBlockFilter1Freq),
-                                float(sound.dcBlockFilter2Freq));
+      vm_.setAudioOutputVolume(sound.volume);
+      vm_.setAudioOutputFilters(sound.dcBlockFilter1Freq,
+                                sound.dcBlockFilter2Freq);
       vm_.setAudioOutputEqualizer(sound.equalizer.mode,
-                                  float(sound.equalizer.frequency),
-                                  float(sound.equalizer.level),
-                                  float(sound.equalizer.q));
+                                  sound.equalizer.frequency,
+                                  sound.equalizer.level, sound.equalizer.q);
       try {
         audioOutput.setOutputFile(sound.file);
       }
@@ -613,8 +598,8 @@ namespace Plus4Emu {
       vm_.setTapeSoundFileParameters(tape.soundFileChannel,
                                      tape.invertSoundFileSignal,
                                      tape.enableSoundFileFilter,
-                                     float(tape.soundFileFilterMinFreq),
-                                     float(tape.soundFileFilterMaxFreq));
+                                     tape.soundFileFilterMinFreq,
+                                     tape.soundFileFilterMaxFreq);
       tapeSoundFileSettingsChanged = false;
     }
     if (fileioSettingsChanged) {

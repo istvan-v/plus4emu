@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -83,58 +83,31 @@ namespace Plus4Emu {
     MemoryConfiguration_  memory;
     bool          memoryConfigurationChanged;
     // --------
-    struct {
+    struct DisplayParameters_ : public VideoDisplay::DisplayParameters {
       bool        enabled;
-      bool        ntscMode;
-      int         bufferingMode;
-      int         quality;
-      double      brightness;
-      double      contrast;
-      double      gamma;
-      double      hueShift;
-      double      saturation;
-      struct {
-        double    brightness;
-        double    contrast;
-        double    gamma;
-      } red;
-      struct {
-        double    brightness;
-        double    contrast;
-        double    gamma;
-      } green;
-      struct {
-        double    brightness;
-        double    contrast;
-        double    gamma;
-      } blue;
-      double      palPhaseError;
-      double      lineShade;
-      double      blendScale;
-      double      motionBlur;
       int         width;
       int         height;
-      double      pixelAspectRatio;
-    } display;
+    };
+    DisplayParameters_  display;
     bool          displaySettingsChanged;
     // --------
     struct SoundConfiguration_ {
       bool        enabled;
       bool        highQuality;
       int         device;
-      double      sampleRate;
-      double      latency;
+      float       sampleRate;
+      float       latency;
       int         hwPeriods;
       int         swPeriods;
       std::string file;
-      double      volume;
-      double      dcBlockFilter1Freq;
-      double      dcBlockFilter2Freq;
+      float       volume;
+      float       dcBlockFilter1Freq;
+      float       dcBlockFilter2Freq;
       struct {
         int       mode;
-        double    frequency;
-        double    level;
-        double    q;
+        float     frequency;
+        float     level;
+        float     q;
       } equalizer;
     };
     SoundConfiguration_   sound;
@@ -176,8 +149,8 @@ namespace Plus4Emu {
       int         soundFileChannel;
       bool        invertSoundFileSignal;
       bool        enableSoundFileFilter;
-      double      soundFileFilterMinFreq;
-      double      soundFileFilterMaxFreq;
+      float       soundFileFilterMinFreq;
+      float       soundFileFilterMaxFreq;
     };
     TapeConfiguration_    tape;
     bool          tapeFileChanged;
