@@ -586,7 +586,9 @@ if not mingwCrossCompile:
     makecfgEnvironment.Install(instDesktopDir, ["resource/plus4emu.desktop"])
     if not buildingLinuxPackage:
         confFileList = [instConfDir + '/P4_Keyboard_HU.cfg',
-                        instConfDir + '/P4_Keyboard_US.cfg']
+                        instConfDir + '/P4_Keyboard_US.cfg',
+                        instConfDir + '/shaders/pal.glsl',
+                        instConfDir + '/shaders/ntsc.glsl']
         confFiles = 0
         f = open("./installer/makecfg.cpp")
         for l in f:

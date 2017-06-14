@@ -146,6 +146,8 @@ static int keyboardMap_P4_HU[256] = {
 
 #endif  // WIN32
 
+#include "shaders.hpp"
+
 static const char *keyboardConfigFileNames[8] = {
   (char *) 0,                   // 0
   (char *) 0,                   // 1
@@ -155,6 +157,12 @@ static const char *keyboardConfigFileNames[8] = {
   "P4_Keyboard_HU.cfg",         // 5
   (char *) 0,                   // 6
   (char *) 0                    // 7
+};
+
+static const char *shaderSourceFiles[] = {
+  "pal.glsl",   shaderSourcePAL,
+  "ntsc.glsl",  shaderSourceNTSC,
+  (char *) 0
 };
 
 static void setKeyboardConfiguration(Plus4Emu::ConfigurationDB& config, int n)
@@ -509,6 +517,8 @@ int main(int argc, char **argv)
     mkdir(tmp2.c_str(), 0755);
     tmp2 = tmp + "tape";
     mkdir(tmp2.c_str(), 0755);
+    tmp2 = tmp + "config/shaders";
+    mkdir(tmp2.c_str(), 0755);
   }
 #else
   while ((installDirectory[installDirectory.length() - 1] == '/' ||
@@ -534,12 +544,14 @@ int main(int argc, char **argv)
     Plus4Emu::mkdir_UTF8(tmp2.c_str());
     tmp2 = tmp + "tape";
     Plus4Emu::mkdir_UTF8(tmp2.c_str());
+    tmp2 = tmp + "config\\shaders";
+    Plus4Emu::mkdir_UTF8(tmp2.c_str());
   }
 #endif
 #ifdef WIN32
-  uint8_t c = '\\';
+  char    c = '\\';
 #else
-  uint8_t c = '/';
+  char    c = '/';
 #endif
   if (installDirectory[installDirectory.length() - 1] != c)
     installDirectory += c;
@@ -616,6 +628,39 @@ int main(int argc, char **argv)
                               *gui);
         delete config;
         config = (Plus4Emu::ConfigurationDB *) 0;
+      }
+    }
+    for (int i = 0; shaderSourceFiles[i]; i = i + 2) {
+      try {
+        std::string fullName(configDirectory);
+        fullName += "shaders";
+        fullName += c;
+        fullName += shaderSourceFiles[i];
+        std::FILE *f = Plus4Emu::fileOpen(fullName.c_str(), "w");
+        if (!f) {
+#ifdef WIN32
+          // hack to work around errors due to lack of write access to
+          // Program Files if makecfg is run as a normal user; if the
+          // file already exists, then the error is ignored
+          f = Plus4Emu::fileOpen(fullName.c_str(), "rb");
+          if (f) {
+            std::fclose(f);
+            continue;
+          }
+#endif
+          throw Plus4Emu::Exception("error opening shader source file");
+        }
+        size_t  n = std::strlen(shaderSourceFiles[i + 1]);
+        if (std::fwrite(shaderSourceFiles[i + 1], sizeof(char), n, f) != n ||
+            std::fflush(f) != 0) {
+          std::fclose(f);
+          Plus4Emu::fileRemove(fullName.c_str());
+          throw Plus4Emu::Exception("error writing shader source file");
+        }
+        std::fclose(f);
+      }
+      catch (std::exception& e) {
+        gui->errorMessage(e.what());
       }
     }
   }
