@@ -254,7 +254,7 @@ namespace Plus4FLIConv {
     catch (...) {
       if (f) {
         std::fclose(f);
-        std::remove(fileName);
+        Plus4Emu::fileRemove(fileName);
       }
       if (compress_)
         delete compress_;
