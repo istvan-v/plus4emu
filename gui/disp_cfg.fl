@@ -368,7 +368,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {260 261 25 25} align 16
+            xywh {260 261 25 25} labelcolor 3 align 16
           }
           Fl_Box {} {
             label {PAL shader}
@@ -402,7 +402,7 @@ class Plus4EmuGUI_DisplayConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {260 296 25 25} align 16
+            xywh {260 296 25 25} labelcolor 3 align 16
           }
           Fl_Box {} {
             label {NTSC shader}

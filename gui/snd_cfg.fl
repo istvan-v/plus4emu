@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0109 
+version 1.0110 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -82,7 +82,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
           code0 {o->cursor_color(Fl_Color(3));}
         }
         Fl_Button {} {
-          label {...}
+          label {@fileopen}
           callback {{
   try {
     std::string tmp;
@@ -98,7 +98,7 @@ class Plus4EmuGUI_SoundConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-          xywh {230 160 25 25} color 50 selection_color 51
+          xywh {230 160 25 25} color 50 selection_color 51 labelcolor 3
         }
         Fl_Box {} {
           label {Audio output file}

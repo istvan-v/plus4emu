@@ -215,11 +215,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x00);
 }}
-                xywh {245 165 25 25} selection_color 50
+                xywh {245 165 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM00OffsetValuator {
                 callback {{
@@ -242,11 +242,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x01);
 }}
-                xywh {245 195 25 25} selection_color 50
+                xywh {245 195 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM01OffsetValuator {
                 callback {{
@@ -269,11 +269,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x02);
 }}
-                xywh {245 225 25 25} selection_color 50
+                xywh {245 225 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM02OffsetValuator {
                 callback {{
@@ -296,11 +296,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x03);
 }}
-                xywh {245 255 25 25} selection_color 50
+                xywh {245 255 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM03OffsetValuator {
                 callback {{
@@ -323,11 +323,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x04);
 }}
-                xywh {245 285 25 25} selection_color 50
+                xywh {245 285 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM04OffsetValuator {
                 callback {{
@@ -350,11 +350,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x05);
 }}
-                xywh {245 315 25 25} selection_color 50
+                xywh {245 315 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM05OffsetValuator {
                 callback {{
@@ -377,11 +377,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x06);
 }}
-                xywh {245 345 25 25} selection_color 50
+                xywh {245 345 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM06OffsetValuator {
                 callback {{
@@ -404,11 +404,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x07);
 }}
-                xywh {245 375 25 25} selection_color 50
+                xywh {245 375 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM07OffsetValuator {
                 callback {{
@@ -431,11 +431,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x0A);
 }}
-                xywh {245 405 25 25} selection_color 50
+                xywh {245 405 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM0AOffsetValuator {
                 callback {{
@@ -458,11 +458,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x0C);
 }}
-                xywh {245 435 25 25} selection_color 50
+                xywh {245 435 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM0COffsetValuator {
                 callback {{
@@ -485,11 +485,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x10);
 }}
-                xywh {245 465 25 25} selection_color 50
+                xywh {245 465 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM10OffsetValuator {
                 callback {{
@@ -512,11 +512,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x20);
 }}
-                xywh {245 495 25 25} selection_color 50
+                xywh {245 495 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM20OffsetValuator {
                 callback {{
@@ -539,11 +539,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x30);
 }}
-                xywh {245 525 25 25} selection_color 50
+                xywh {245 525 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM30OffsetValuator {
                 callback {{
@@ -566,11 +566,11 @@ class Plus4EmuGUI_MachineConfigWindow {open
                 code0 {o->cursor_color(Fl_Color(3));}
               }
               Fl_Button {} {
-                label {...}
+                label {@fileopen}
                 callback {{
   browseROMImageFile(0x31);
 }}
-                xywh {245 555 25 25} selection_color 50
+                xywh {245 555 25 25} selection_color 50 labelcolor 3
               }
               Fl_Value_Input memoryROM31OffsetValuator {
                 callback {{
