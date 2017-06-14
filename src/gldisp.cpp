@@ -217,9 +217,9 @@ namespace Plus4Emu {
       return;
     }
     std::FILE *f = fileOpen(fileName, "rb");
-    if (!f)
-      throw Exception("error opening shader source file");
     try {
+      if (!f)
+        throw Exception("error opening shader source file");
       int     c;
       bool    prvCR = false;
       while ((c = std::fgetc(f)) != EOF) {
@@ -241,6 +241,8 @@ namespace Plus4Emu {
       f = (std::FILE *) 0;
     }
     catch (...) {
+      if (f)
+        std::fclose(f);
       loadShaderSource((char *) 0, isNTSC);
       throw;
     }
@@ -382,7 +384,7 @@ namespace Plus4Emu {
       linesChanged = new bool[289];
       for (size_t n = 0; n < 289; n++)
         linesChanged[n] = false;
-      // max. texture size = 1024x14, 32 bits
+      // max. texture size = 768x14, 32 bits
       textureSpace = new unsigned char[768 * 14 * 4];
       std::memset(textureSpace, 0, 768 * 14 * 4);
       textureBuffer16 = reinterpret_cast<uint16_t *>(textureSpace);
