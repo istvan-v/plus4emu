@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0107 
+version 1.0110 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -45,7 +45,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
             code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
-            label {...}
+            label {@fileopen}
             callback {{
   try {
     std::string tmp;
@@ -61,7 +61,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 45 25 25} color 50 selection_color 51
+            xywh {265 45 25 25} color 50 selection_color 51 labelcolor 3
           }
           Fl_Box {} {
             label {Image file}
@@ -85,6 +85,14 @@ class Plus4EmuGUI_DiskConfigWindow {open
             label {Drive type for D64 files}
             xywh {120 80 170 25} align 20
           }
+          Fl_Button {} {
+            label Disable
+            callback {{
+  gui.menuCallback_Options_FloppyRmA((Fl_Widget *) 0, &gui);
+  gui.menuCallback_Options_FloppyGC((Fl_Widget *) 0, &gui);
+}}
+            xywh {300 80 70 25} color 50 selection_color 50
+          }
         }
         Fl_Group {} {
           label {Unit 9} open
@@ -103,7 +111,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
             code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
-            label {...}
+            label {@fileopen}
             callback {{
   try {
     std::string tmp;
@@ -119,7 +127,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 155 25 25} color 50 selection_color 51
+            xywh {265 155 25 25} color 50 selection_color 51 labelcolor 3
           }
           Fl_Box {} {
             label {Image file}
@@ -143,6 +151,14 @@ class Plus4EmuGUI_DiskConfigWindow {open
             label {Drive type for D64 files}
             xywh {120 190 170 25} align 20
           }
+          Fl_Button {} {
+            label Disable
+            callback {{
+  gui.menuCallback_Options_FloppyRmB((Fl_Widget *) 0, &gui);
+  gui.menuCallback_Options_FloppyGC((Fl_Widget *) 0, &gui);
+}}
+            xywh {300 190 70 25} color 50 selection_color 50
+          }
         }
         Fl_Group {} {
           label {Unit 10} open
@@ -161,7 +177,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
             code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
-            label {...}
+            label {@fileopen}
             callback {{
   try {
     std::string tmp;
@@ -177,7 +193,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 265 25 25} color 50 selection_color 51
+            xywh {265 265 25 25} color 50 selection_color 51 labelcolor 3
           }
           Fl_Box {} {
             label {Image file}
@@ -201,7 +217,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
             code0 {o->cursor_color(Fl_Color(3));}
           }
           Fl_Button {} {
-            label {...}
+            label {@fileopen}
             callback {{
   try {
     std::string tmp;
@@ -217,7 +233,7 @@ class Plus4EmuGUI_DiskConfigWindow {open
     gui.errorMessage(e.what());
   }
 }}
-            xywh {265 340 25 25} color 50 selection_color 51
+            xywh {265 340 25 25} color 50 selection_color 51 labelcolor 3
           }
           Fl_Box {} {
             label {Image file}
