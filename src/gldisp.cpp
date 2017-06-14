@@ -528,7 +528,7 @@ namespace Plus4Emu {
                                         : dp.shaderSourceNTSC);
       const std::string&  s_ = (i == 0 ? displayParameters.shaderSourcePAL
                                          : displayParameters.shaderSourceNTSC);
-      if (s != s_ || (!s.empty() && dp.displayQuality == 3)) {
+      if (dp.displayQuality == 3 && (s != s_ || (!s.empty() && !shaderMode))) {
         // FIXME: errors are ignored here
         try {
           loadShaderSource(s.c_str(), bool(i));
