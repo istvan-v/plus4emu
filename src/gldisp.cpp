@@ -150,65 +150,8 @@ static bool queryGLShaderFunctions()
 #endif
 
 #ifdef ENABLE_GL_SHADERS
-
-static const char *shaderSourcePAL = {
-  "uniform sampler2D textureHandle;\n"
-  "uniform float lineShade;\n"
-  "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.18236, -0.70100,\n"
-  "                                 0.50000, -0.04476, -0.09289,  0.52914,\n"
-  "                                 0.50000,  0.23049,  0.00000, -0.88600,\n"
-  "                                 0.00000,  0.00000,  0.00000,  0.00000);\n"
-  "void main()\n"
-  "{\n"
-  "  float txc = gl_TexCoord[0][0];\n"
-  "  float tyc = gl_TexCoord[0][1];\n"
-  "  float txcm1 = txc - 0.00296;\n"
-  "  float txcm0 = txc - 0.00085;\n"
-  "  float txcp0 = txc + 0.00085;\n"
-  "  float txcp1 = txc + 0.00296;\n"
-  "  float tyc0 = tyc + 0.00048828125;\n"
-  "  float tyc1 = tyc - 0.00146484375;\n"
-  "  vec4 p00 =   texture(textureHandle, vec2(txcm0, tyc0))\n"
-  "             + texture(textureHandle, vec2(txcp0, tyc0));\n"
-  "  vec4 p10 =   texture(textureHandle, vec2(txcm0, tyc1))\n"
-  "             + texture(textureHandle, vec2(txcp0, tyc1));\n"
-  "  vec4 p01 =   texture(textureHandle, vec2(txcm1, tyc0))\n"
-  "             + texture(textureHandle, vec2(txcp1, tyc0))\n"
-  "             + texture(textureHandle, vec2(txcm1, tyc1))\n"
-  "             + texture(textureHandle, vec2(txcp1, tyc1));\n"
-  "  float f = mix(sin(tyc * 3216.991) * 0.5 + 0.5, 1.0, lineShade);\n"
-  "  vec4 tmp = (p00 + p10) + (p01 * 0.922);\n"
-  "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
-  "}\n"
-};
-
-static const char *shaderSourceNTSC = {
-  "uniform sampler2D textureHandle;\n"
-  "uniform float lineShade;\n"
-  "const mat4 yuv2rgbMatrix = mat4( 0.50000,  0.00000,  0.37387, -0.70100,\n"
-  "                                 0.50000, -0.09177, -0.19044,  0.52914,\n"
-  "                                 0.50000,  0.47253,  0.00000, -0.88600,\n"
-  "                                 0.00000,  0.00000,  0.00000,  0.00000);\n"
-  "void main()\n"
-  "{\n"
-  "  float txc = gl_TexCoord[0][0];\n"
-  "  float tyc = gl_TexCoord[0][1];\n"
-  "  float txcm1 = txc - 0.00317;\n"
-  "  float txcm0 = txc - 0.00095;\n"
-  "  float txcp0 = txc + 0.00095;\n"
-  "  float txcp1 = txc + 0.00317;\n"
-  "  float tyc0 = tyc + 0.00048828125;\n"
-  "  vec4 p00 =   texture(textureHandle, vec2(txcm0, tyc0))\n"
-  "             + texture(textureHandle, vec2(txcp0, tyc0));\n"
-  "  vec4 p01 =   texture(textureHandle, vec2(txcm1, tyc0))\n"
-  "             + texture(textureHandle, vec2(txcp1, tyc0));\n"
-  "  float f = mix(sin(tyc * 3216.991) * 0.5 + 0.5, 1.0, lineShade);\n"
-  "  vec4 tmp = p00 + (p01 * 0.875);\n"
-  "  gl_FragColor = (vec4(p00[0], tmp[1], tmp[2], 1.0) * yuv2rgbMatrix) * f;\n"
-  "}\n"
-};
-
-#endif  // ENABLE_GL_SHADERS
+#  include "shaders.hpp"
+#endif
 
 static void setTextureParameters(int displayQuality)
 {
@@ -265,6 +208,7 @@ namespace Plus4Emu {
 
   void OpenGLDisplay::loadShaderSource(const char *fileName, bool isNTSC)
   {
+#ifdef ENABLE_GL_SHADERS
     std::string&  shaderSource = shaderSources[int(isNTSC)];
     shaderSource.clear();
     deleteShader();
@@ -300,6 +244,10 @@ namespace Plus4Emu {
       loadShaderSource((char *) 0, isNTSC);
       throw;
     }
+#else
+    (void) fileName;
+    (void) isNTSC;
+#endif  // ENABLE_GL_SHADERS
   }
 
   bool OpenGLDisplay::compileShader(int shaderMode_)
@@ -425,8 +373,10 @@ namespace Plus4Emu {
       programHandle(0UL)
   {
     try {
+#ifdef ENABLE_GL_SHADERS
       loadShaderSource((char *) 0, false);
       loadShaderSource((char *) 0, true);
+#endif
       for (size_t n = 0; n < 4; n++)
         frameRingBuffer[n] = (Message_LineData **) 0;
       linesChanged = new bool[289];
@@ -571,6 +521,7 @@ namespace Plus4Emu {
       initializeTexture(dp, textureSpace);
       glBindTexture(GL_TEXTURE_2D, GLuint(savedTextureID));
     }
+#ifdef ENABLE_GL_SHADERS
     // load PAL/NTSC emulation shaders
     for (int i = 0; i < 2; i++) {
       const std::string&  s = (i == 0 ? dp.shaderSourcePAL
@@ -586,6 +537,7 @@ namespace Plus4Emu {
         }
       }
     }
+#endif
   }
 
   void OpenGLDisplay::decodeLine_quality0(uint16_t *outBuf,
