@@ -1,5 +1,5 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0109 
+version 1.0110 
 do_not_include_H_from_C 
 header_name {.hpp} 
 code_name {.cpp}
@@ -259,104 +259,179 @@ class Plus4EmuGUI_DisplayConfigWindow {open
           code0 {o->precision(3);}
         }
       }
-      Fl_Group {} {open
-        xywh {10 225 380 180} box THIN_UP_BOX
+      Fl_Tabs {} {open
+        xywh {10 225 380 180}
       } {
-        Fl_Light_Button enableDisplayValuator {
-          label {Enable display}
-          callback {{
+        Fl_Group {} {
+          label General open
+          xywh {10 248 380 157} box THIN_UP_BOX
+        } {
+          Fl_Light_Button enableDisplayValuator {
+            label {Enable display}
+            callback {{
   gui.config.display.enabled = (o->value() != 0);
   gui.config.displaySettingsChanged = true;
 }}
-          xywh {20 235 160 25} color 50 selection_color 3
-        }
-        Fl_Light_Button displayNTSCModeValuator {
-          label {NTSC standard}
-          callback {{
+            xywh {20 261 160 25} color 50 selection_color 3
+          }
+          Fl_Light_Button displayNTSCModeValuator {
+            label {NTSC standard}
+            callback {{
   gui.config.display.ntscMode = (o->value() != 0);
   gui.config.displaySettingsChanged = true;
 }}
-          xywh {20 269 160 25} color 50 selection_color 3
-        }
-        Fl_Choice displayBufferingModeValuator {
-          callback {{
+            xywh {20 296 160 25} color 50 selection_color 3
+          }
+          Fl_Choice displayBufferingModeValuator {
+            callback {{
   if (o->value() >= 0 && o->value() <= 2) {
     gui.config.display.bufferingMode = o->value();
     gui.config.displaySettingsChanged = true;
   }
 }} open
-          xywh {20 304 160 25} down_box BORDER_BOX
-          code0 {o->add("Single buffered mode|Double buffered mode|Resample to monitor refresh rate");}
-        } {}
-        Fl_Value_Slider displayQualityValuator {
-          label Quality
-          callback {{
+            xywh {20 331 160 25} down_box BORDER_BOX
+            code0 {o->add("Single buffered mode|Double buffered mode|Resample to monitor refresh rate");}
+          } {}
+          Fl_Value_Slider displayQualityValuator {
+            label Quality
+            callback {{
   gui.config.display.displayQuality = int(o->value() + 0.5);
   gui.config.displaySettingsChanged = true;
   updateWindow();
 }}
-          xywh {20 338 110 23} type Horizontal color 47 selection_color 52 align 8 maximum 3 step 1 value 1
-        }
-        Fl_Value_Input pixelAspectRatioValuator {
-          label {Pixel aspect ratio}
-          callback {{
+            xywh {20 367 110 23} type Horizontal color 47 selection_color 52 align 8 maximum 3 step 1 value 1
+          }
+          Fl_Value_Slider displaySaturationValuator {
+            label Saturation
+            callback {{
+  gui.config.display.saturation = float(o->value());
+  gui.config.displaySettingsChanged = true;
+}}
+            xywh {195 263 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 2 value 1
+          }
+          Fl_Value_Slider displayFXParam1Valuator {
+            label {Line shade}
+            callback {{
+  gui.config.display.lineShade = float(o->value());
+  gui.config.displaySettingsChanged = true;
+}}
+            tooltip {Controls vertical filtering of scanlines when display quality is set to 3} xywh {195 298 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 value 0.8
+          }
+          Fl_Value_Slider displayFXParam3Valuator {
+            label {Motion blur}
+            callback {{
+  gui.config.display.motionBlur = float(o->value());
+  gui.config.displaySettingsChanged = true;
+}}
+            tooltip {Amount of temporal filtering in OpenGL / single buffered mode} xywh {195 333 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 0.95 value 0.25
+          }
+          Fl_Value_Input pixelAspectRatioValuator {
+            label {Pixel aspect ratio}
+            callback {{
   gui.config.display.pixelAspectRatio = o->clamp(o->value());
   o->value(gui.config.display.pixelAspectRatio);
   gui.config.displaySettingsChanged = true;
 }}
-          tooltip {The assumed pixel aspect ratio of the screen; 1.0 means square pixels (the default), larger values make the display narrower, while smaller values result in a wider display. Type new value, or click and drag to change it.} xywh {20 370 50 25} align 8 when 4 minimum 0.5 maximum 2 step 0.001 value 1
-          code0 {o->cursor_color(Fl_Color(3));}
+            tooltip {The assumed pixel aspect ratio of the screen; 1.0 means square pixels (the default), larger values make the display narrower, while smaller values result in a wider display. Type new value, or click and drag to change it.} xywh {195 366 50 25} align 8 when 4 minimum 0.5 maximum 2 step 0.001 value 1
+            code0 {o->cursor_color(Fl_Color(3));}
+          }
         }
-        Fl_Value_Slider displaySaturationValuator {
-          label Saturation
-          callback {{
-  gui.config.display.saturation = float(o->value());
-  gui.config.displaySettingsChanged = true;
+        Fl_Group {} {
+          label Advanced open
+          xywh {10 248 380 157} box THIN_UP_BOX hide
+        } {
+          Fl_Input shaderSourcePALInput {
+            callback {{
+  try {
+    gui.config["display.shaderSourcePAL"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
 }}
-          xywh {195 235 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 2 value 1
-        }
-        Fl_Value_Slider displayHueShiftValuator {
-          label {Hue shift}
-          callback {{
+            xywh {20 261 235 25}
+          }
+          Fl_Button {} {
+            label {@fileopen}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.configDirectory,
+                       "GLSL fragment shaders\\t*.{glsl,frag}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
+                       "Select PAL shader source file")) {
+      shaderSourcePALInput->value(tmp.c_str());
+      shaderSourcePALInput->do_callback();
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {260 261 25 25} align 16
+          }
+          Fl_Box {} {
+            label {PAL shader}
+            xywh {290 261 95 25} align 20
+          }
+          Fl_Input shaderSourceNTSCInput {
+            callback {{
+  try {
+    gui.config["display.shaderSourceNTSC"] = o->value();
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {20 296 235 25}
+          }
+          Fl_Button {} {
+            label {@fileopen}
+            callback {{
+  try {
+    std::string tmp;
+    if (gui.browseFile(tmp, gui.configDirectory,
+                       "GLSL fragment shaders\\t*.{glsl,frag}",
+                       Fl_Native_File_Chooser::BROWSE_FILE,
+                       "Select NTSC shader source file")) {
+      shaderSourceNTSCInput->value(tmp.c_str());
+      shaderSourceNTSCInput->do_callback();
+    }
+  }
+  catch (std::exception& e) {
+    gui.errorMessage(e.what());
+  }
+}}
+            xywh {260 296 25 25} align 16
+          }
+          Fl_Box {} {
+            label {NTSC shader}
+            xywh {290 296 95 25} align 20
+          }
+          Fl_Value_Slider displayHueShiftValuator {
+            label {Hue shift}
+            callback {{
   gui.config.display.hueShift = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
-          xywh {195 262 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -180 maximum 180 step 1
-        }
-        Fl_Value_Slider displayPALPhaseErrorValuator {
-          label {Phase error}
-          callback {{
+            xywh {20 333 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -180 maximum 180 step 1
+          }
+          Fl_Value_Slider displayPALPhaseErrorValuator {
+            label {Phase error}
+            callback {{
   gui.config.display.palPhaseError = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
-          tooltip {PAL color phase error in degrees (OpenGL / quality 3 only)} xywh {195 289 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -30 maximum 30 step 1 value 8
-        }
-        Fl_Box {} {
-          xywh {195 314 194 2} box THIN_DOWN_FRAME
-        }
-        Fl_Value_Slider displayFXParam1Valuator {
-          label {Line shade}
-          callback {{
-  gui.config.display.lineShade = float(o->value());
-  gui.config.displaySettingsChanged = true;
-}}
-          tooltip {Controls vertical filtering of scanlines when display quality is set to 3} xywh {195 320 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 value 0.8
-        }
-        Fl_Value_Slider displayFXParam2Valuator {
-          label {Blend scale}
-          callback {{
+            tooltip {PAL color phase error in degrees (OpenGL / quality 3 only)} xywh {200 333 110 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum -30 maximum 30 step 1 value 8
+          }
+          Fl_Value_Slider displayFXParam2Valuator {
+            label {Blend scale}
+            callback {{
   gui.config.display.blendScale = float(o->value());
   gui.config.displaySettingsChanged = true;
 }}
-          tooltip {Scale factor applied to the RGB values displayed (OpenGL / single buffered mode only)} xywh {195 347 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum 0.5 maximum 2 step 0.02 value 1
-        }
-        Fl_Value_Slider displayFXParam3Valuator {
-          label {Motion blur}
-          callback {{
-  gui.config.display.motionBlur = float(o->value());
-  gui.config.displaySettingsChanged = true;
-}}
-          tooltip {Amount of temporal filtering in OpenGL / single buffered mode} xywh {195 374 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 maximum 0.95 value 0.25
+            tooltip {Scale factor applied to the RGB values displayed (OpenGL / single buffered mode only)} xywh {20 368 120 21} type Horizontal color 47 selection_color 52 labelsize 12 align 8 minimum 0.5 maximum 2 step 0.02 value 1
+          }
         }
       }
       Fl_Button {} {
@@ -385,6 +460,8 @@ class Plus4EmuGUI_DisplayConfigWindow {open
   gui.config.display.blendScale = 1.0f;
   gui.config.display.motionBlur = 0.25f;
   gui.config.display.pixelAspectRatio = 1.0f;
+  gui.config.display.shaderSourcePAL.clear();
+  gui.config.display.shaderSourceNTSC.clear();
   updateWindow();
 }}
         xywh {15 415 170 25} selection_color 50
@@ -513,6 +590,8 @@ class Plus4EmuGUI_DisplayConfigWindow {open
   displayFXParam1Valuator->value(gui.config.display.lineShade);
   displayFXParam2Valuator->value(gui.config.display.blendScale);
   displayFXParam3Valuator->value(gui.config.display.motionBlur);
+  shaderSourcePALInput->value(gui.config.display.shaderSourcePAL.c_str());
+  shaderSourceNTSCInput->value(gui.config.display.shaderSourceNTSC.c_str());
 }} {}
   }
 } 
