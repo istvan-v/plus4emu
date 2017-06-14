@@ -1,6 +1,7 @@
 Changes in version 1.2.11
 -------------------------
 
+  * PAL/NTSC emulation can now use custom GLSL shaders
   * an empty D64 or D81 image is automatically created when trying to
     open a file that does not exist
   * disk and tape images can be opened from .zip format archives, the
