@@ -1,6 +1,6 @@
 
 // compressor utility for Commodore Plus/4 programs
-// Copyright (C) 2007-2016 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2007-2018 Istvan Varga <istvanv@users.sourceforge.net>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -198,6 +198,7 @@ namespace Plus4Compress {
       nBits += offs1EncodeTable.getSymbolSize(d);
     return nBits;
   }
+
   void Compressor_M1::writeSequenceCode(std::vector< unsigned int >& buf,
                                         unsigned char seqDiff,
                                         size_t d, size_t n)
@@ -237,7 +238,7 @@ namespace Plus4Compress {
       size_t  bestSize = 0x7FFFFFFF;
       size_t  bestLen = 1;
       size_t  bestOffs = 0;
-      bool    bestSeqDiff = 0x00;
+      unsigned char bestSeqDiff = 0x00;
       const unsigned int  *matchPtr = searchTable->getMatches(offs + i);
       size_t  len = matchPtr[0];        // match length
       if (len > (nBytes - i))
