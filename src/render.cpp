@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2018 Istvan Varga <istvanv@users.sourceforge.net>
 // http://sourceforge.net/projects/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -530,10 +530,16 @@ namespace Plus4 {
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();
-      if (!(ted.videoMode & 0x01))
-        ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
-      else
-        ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
+      if (PLUS4EMU_UNLIKELY(b != 0x00)) {
+        if (!(ted.videoMode & 0x01) ||
+            ((ted.videoMode & 0x03) == 0x01 &&
+             !(ted.shiftRegisterCharacter.attr_() & 0x08))) {
+          ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
+        }
+        else {
+          ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
+        }
+      }
     }
     else {
       ted.shiftRegisterCharacter.bitmap_() =
@@ -546,11 +552,15 @@ namespace Plus4 {
     if ((unsigned int) nextCharCnt < 4U) {
       ted.shiftRegisterCharacter = ted.currentCharacter;
       uint8_t b = ted.shiftRegisterCharacter.bitmap_();
-      if (b) {
-        if (!(ted.videoMode & 0x01))
+      if (PLUS4EMU_UNLIKELY(b != 0x00)) {
+        if (!(ted.videoMode & 0x01) ||
+            ((ted.videoMode & 0x03) == 0x01 &&
+             !(ted.shiftRegisterCharacter.attr_() & 0x08))) {
           ted.shiftRegisterCharacter.bitmap_() = b << (4 - nextCharCnt);
-        else
+        }
+        else {
           ted.shiftRegisterCharacter.bitmap_() = b << ((4 - nextCharCnt) & 6);
+        }
       }
     }
     else {
