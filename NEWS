@@ -11,6 +11,7 @@ Changes in version 1.2.11
   * added support for comments (beginning with ; or #) in the breakpoint
     list
   * fixed DigiBlaster bug, SID external input was muted by default
+  * fixed horizontal scroll bug in multicolor character mode
   * minor fixes in 1551 and TED emulation
   * fixed video breakpoints not working when the priority threshold is
     not zero
