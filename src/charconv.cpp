@@ -117,7 +117,6 @@ namespace Plus4Emu {
         break;
       }
     }
-    std::fprintf(stderr, "0x%02X\n", (unsigned int) c);
     return c;
   }
 
