@@ -10,6 +10,8 @@ Changes in version 1.2.11
     and used in read-only mode
   * added support for comments (beginning with ; or #) in the breakpoint
     list
+  * fixed copying and pasting upper/lower case characters, added limited
+    support for PETSCII graphic characters
   * fixed DigiBlaster bug, SID external input was muted by default
   * fixed horizontal scroll bug in multicolor character mode
   * minor fixes in 1551 and TED emulation

@@ -348,6 +348,7 @@ if not fltkVersion13:
     plus4emuLibSources2 += ['Fl_Native_File_Chooser/Fl_Native_File_Chooser.cxx']
 plus4emuLibSources2 += Split('''
     src/cfg_db.cpp
+    src/charconv.cpp
     src/compress.cpp
     src/comprlib.cpp
     src/decompm2.cpp

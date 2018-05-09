@@ -1,6 +1,6 @@
 
 // plus4emu -- portable Commodore Plus/4 emulator
-// Copyright (C) 2003-2017 Istvan Varga <istvanv@users.sourceforge.net>
+// Copyright (C) 2003-2018 Istvan Varga <istvanv@users.sourceforge.net>
 // https://github.com/istvan-v/plus4emu/
 //
 // This program is free software; you can redistribute it and/or modify
@@ -37,6 +37,7 @@
 #include "vc1581.hpp"
 #include "iecdrive.hpp"
 #include "system.hpp"
+#include "charconv.hpp"
 
 static void writeDemoTimeCnt(Plus4Emu::File::Buffer& buf, uint64_t n)
 {
@@ -657,27 +658,22 @@ namespace Plus4 {
       return;
     }
     int     charCnt = 0;
-    char    c = '\0';
+    uint8_t c = '\0';
     do {
-      c = vm.pasteTextBuffer[vm.pasteTextBufferPos++];
+      c = Plus4Emu::utf8ToPETSCII(vm.pasteTextBuffer, vm.pasteTextBufferPos,
+                                  bool(vm.ted->readMemoryCPU(0xFF13) & 0x04));
       if (c == '\0') {
         vm.ted->writeMemoryCPU(0x00EF, uint8_t(charCnt));
         vm.removePasteTextCallback();   // done pasting all characters
         return;
       }
-      if (c == '\n')
-        c = '\r';
-      if (c >= char(0x7F) || (c < char(0x20) && !(c == '\t' || c == '\r'))) {
+      if (c == char(0xFF)) {
         // ignore invalid characters
         continue;
       }
-      // convert tabs to spaces, and swap upper and lower case
+      // convert tabs to spaces
       if (c == '\t')
         c = ' ';
-      else if (c >= 'A' && c <= 'Z')
-        c = (c - 'A') + 'a';
-      else if (c >= 'a' && c <= 'z')
-        c = (c - 'a') + 'A';
       // store characters in keyboard buffer
       vm.ted->writeMemoryCPU(uint16_t(0x0527 + charCnt), uint8_t(c));
       charCnt++;
@@ -1277,7 +1273,7 @@ namespace Plus4 {
 
   std::string Plus4VM::copyText(int xPos, int yPos) const
   {
-    std::string s = "";
+    std::string s;
     if (yPos >= 100) {
       yPos = (yPos * 288) >> 16;
       if (!ted->getIsNTSCMode()) {
@@ -1334,51 +1330,38 @@ namespace Plus4 {
         y++;
       lastLine = y;
     }
+    std::string tmpBuf;
     for (int y = firstLine; y <= lastLine; y++) {
-      char    tmpBuf[42];
+      tmpBuf.clear();
       for (int x = 0; x < 40; x++) {
-        uint8_t tmp = ted->readMemoryCPU(0x0C00 | ((y * 40) + x)) & 0x7F;
-        if (!((tmp >= 0x20 && tmp <= 0x3F) || (tmp >= 0x41 && tmp <= 0x5A))) {
-          // convert character codes to ASCII:
-          if (tmp >= 0x01 && tmp <= 0x1A)
-            tmp = tmp + 0x60;
-          else if (tmp == 0x00 || tmp == 0x1B || tmp == 0x1D || tmp == 0x1E)
-            tmp = tmp + 0x40;
-          else if (tmp == 0x60)
-            tmp = 0x20;
-          else
-            tmp = 0x5F; // replace any invalid characters with underscores
-        }
-        tmpBuf[x] = char(tmp);
+        Plus4Emu::screenCharToUTF8(tmpBuf,
+                                   ted->readMemoryCPU(0x0C00 | ((y * 40) + x)),
+                                   bool(ted->readMemoryCPU(0xFF13) & 0x04));
       }
-      tmpBuf[40] = '\0';
       if (xPos < 0) {
         if (yPos >= 0 && !lineContTable[y]) {
           // strip leading spaces if this is a first line
-          while (tmpBuf[0] == ' ') {
-            for (int i = 0; tmpBuf[i] != '\0'; i++)
-              tmpBuf[i] = tmpBuf[i + 1];
-          }
+          size_t  n = 0;
+          for ( ; n < tmpBuf.length() && tmpBuf[n] == ' '; n++)
+            ;
+          if (n)
+            tmpBuf.erase(0, n);
         }
         if (!lineContTable[y + 1]) {
           // strip trailing spaces if this is a last line,
           // and append a newline character
-          int     i = 40;
-          while (--i >= 0) {
-            if (tmpBuf[i] == ' ')
-              tmpBuf[i] = '\0';
-            if (tmpBuf[i] == '\0')
-              continue;
-            break;
-          }
-          if (s.length() < 1 && i < 0)  // skip any leading empty lines
+          size_t  n = tmpBuf.length();
+          for ( ; n > 0 && tmpBuf[n - 1] == ' '; n--)
+            ;
+          if (n < tmpBuf.length())
+            tmpBuf.resize(n);
+          if (s.empty() && tmpBuf.empty())      // skip any leading empty lines
             continue;
-          tmpBuf[i + 1] = '\n';
-          tmpBuf[i + 2] = '\0';
+          tmpBuf += '\n';
         }
       }
       // append to output buffer
-      s += &(tmpBuf[0]);
+      s += tmpBuf;
     }
     // remove trailing newline characters
     while (s.length() > 0 && s[s.length() - 1] == '\n')
@@ -1389,9 +1372,8 @@ namespace Plus4 {
       int     endPos = xPos;
       while (startPos >= 0) {
         char    c = s[startPos];
-        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-              (c >= '0' && c <= '9') ||
-              c == '.' || c == '"' || c == '#' || c == '$' || c == '_')) {
+        if ((unsigned char) c <= (unsigned char) ' ' || c == '[' || c == ']' ||
+            (c >= '&' && c <= '-') || c == '/' || (c >= ':' && c <= '?')) {
           break;
         }
         startPos--;
@@ -1400,9 +1382,8 @@ namespace Plus4 {
         startPos++;
       while (size_t(endPos) < s.length()) {
         char    c = s[endPos];
-        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-              (c >= '0' && c <= '9') ||
-              c == '.' || c == '"' || c == '#' || c == '$' || c == '_')) {
+        if ((unsigned char) c <= (unsigned char) ' ' || c == '[' || c == ']' ||
+            (c >= '&' && c <= '-') || c == '/' || (c >= ':' && c <= '?')) {
           if (endPos == xPos)
             endPos++;
           break;
